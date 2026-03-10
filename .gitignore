@@ -1,0 +1,34 @@
+# Node / TypeScript
+node_modules/
+chatbot-integrations/dist/
+chatbot-integrations/.turbo/
+chatbot-integrations/.eslintcache
+chatbot-integrations/.tsbuildinfo
+
+# Python / Rasa
+.calisto-env/
+__pycache__/
+*.pyc
+.calisto-nlp-env/
+
+# Rasa cache and models
+calisto_nlp_export/.rasa/
+calisto_nlp_export/models/
+!calisto_nlp_export/models/*.tar.gz
+
+# Env files and secrets
+.env
+*.env
+chatbot-integrations/.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,534 @@
+version: "3.1"
+
+# ============================================================
+# Calisto Eyewear – NLU Training Data
+# ============================================================
+
+nlu:
+
+# ────────────────────────────────────────────────────────────
+# INTENT: greet
+# ────────────────────────────────────────────────────────────
+- intent: greet
+  examples: |
+    - hey
+    - hello
+    - hi
+    - hello there
+    - good morning
+    - good evening
+    - good afternoon
+    - hey there
+    - hi there
+    - greetings
+    - what's up
+    - howdy
+    - hey calisto
+    - hello calisto
+    - hi, I need help
+    - good day
+    - sup
+    - yo
+    - hiya
+    - hey! I need assistance
+
+# ────────────────────────────────────────────────────────────
+# INTENT: goodbye
+# ────────────────────────────────────────────────────────────
+- intent: goodbye
+  examples: |
+    - bye
+    - goodbye
+    - see you later
+    - see you around
+    - good bye
+    - bye bye
+    - farewell
+    - until next time
+    - have a good day
+    - take care
+    - I'm done
+    - that's all for now
+    - thanks, bye
+    - ok thanks goodbye
+    - see ya
+    - later
+    - I'll come back later
+    - thanks for your help, bye
+
+# ────────────────────────────────────────────────────────────
+# INTENT: ask_product
+# ────────────────────────────────────────────────────────────
+- intent: ask_product
+  examples: |
+    - what products do you have
+    - what do you sell
+    - tell me about your products
+    - show me your collection
+    - what eyewear do you offer
+    - what frames do you have
+    - show me your catalogue
+    - what's available at calisto
+    - I want to see your products
+    - what can I buy here
+    - show me what you have
+    - what types of glasses do you offer
+    - tell me about calisto eyewear
+    - what brands do you carry
+    - what is your product range
+    - I want to explore your collection
+    - do you have sunglasses
+    - do you sell prescription glasses
+
+# ────────────────────────────────────────────────────────────
+# INTENT: search_frames
+# ────────────────────────────────────────────────────────────
+- intent: search_frames
+  examples: |
+    - show me [round](frame_style) [glasses](product_type)
+    - I want [black](frame_style) [eyeglasses](product_type)
+    - find [frames](product_type) for [men](gender)
+    - show [stylish](frame_style) [frames](product_type) under [3000](budget)
+    - I want [glasses](product_type) for a [round face](face_shape)
+    - show me [aviator](frame_style) [sunglasses](product_type)
+    - find [women's](gender) [spectacles](product_type)
+    - I need [rectangular](frame_style) [frames](product_type)
+    - show me [cat-eye](frame_style) [glasses](product_type) for [women](gender)
+    - looking for [mens](gender) [eyeglasses](product_type)
+    - show [oval](frame_style) [frames](product_type)
+    - find me [frames](product_type) under [2000](budget)
+    - I want [prescription glasses](product_type)
+    - show [wayfarer](frame_style) [frames](product_type) for [men](gender)
+    - need [reading glasses](product_type)
+    - looking for [computer glasses](product_type)
+    - show [square](frame_style) [frames](product_type)
+    - find [titanium](frame_style) [frames](product_type)
+    - I want [blue](frame_style) [glasses](product_type) for [women](gender)
+    - show me [kids glasses](product_type)
+    - find [full rim](frame_style) [spectacles](product_type)
+    - I want [rimless](frame_style) [glasses](product_type)
+    - show me [half rim](frame_style) [frames](product_type)
+    - looking for [acetate](frame_style) [frames](product_type)
+    - find [metal](frame_style) [eyeglasses](product_type)
+    - show [sports glasses](product_type) for [men](gender)
+    - I want [sunglasses](product_type) under [5000](budget)
+    - find [unisex](gender) [glasses](product_type)
+    - show me [lightweight](frame_style) [frames](product_type)
+    - looking for [trendy](frame_style) [glasses](product_type) for [women](gender)
+    - show [eyeglasses](product_type) for [oval face](face_shape)
+    - I want [minimalist](frame_style) [spectacles](product_type)
+    - find [bold](frame_style) [glasses](product_type) for [men](gender) under [4000](budget)
+    - show me [classic](frame_style) [eyeglasses](product_type)
+
+# ────────────────────────────────────────────────────────────
+# INTENT: recommend_frames
+# ────────────────────────────────────────────────────────────
+- intent: recommend_frames
+  examples: |
+    - recommend me some frames
+    - suggest some glasses
+    - which glasses are best for me
+    - what frames would suit me
+    - recommend glasses for [oval face](face_shape)
+    - suggest frames for [square face](face_shape)
+    - what's best for [round face](face_shape)
+    - recommend [men's](gender) glasses
+    - suggest [women's](gender) frames
+    - what frames are trending
+    - show me popular frames
+    - what's your best seller
+    - recommend glasses under [5000](budget)
+    - best frames under [2000](budget)
+    - suggest stylish [eyeglasses](product_type) for [heart face](face_shape)
+    - which sunglasses should I buy
+    - recommend prescription glasses
+    - I don't know which frames to pick, can you help
+    - what frames match my face
+    - help me choose glasses
+    - can you suggest good frames
+    - I'm not sure what to pick
+    - help me choose eyewear
+    - which frames look good on [diamond face](face_shape)
+    - recommend glasses for [oblong](face_shape) face shape
+    - suggest frames suitable for [heart](face_shape) shaped faces
+
+# ────────────────────────────────────────────────────────────
+# INTENT: ask_lens_types
+# ────────────────────────────────────────────────────────────
+- intent: ask_lens_types
+  examples: |
+    - what lenses do you offer
+    - do you have [blue light](lens_type) lenses
+    - what is [anti glare](lens_type) lens
+    - tell me about [progressive](lens_type) lenses
+    - what are [photochromic](lens_type) lenses
+    - I want [transition](lens_type) lenses
+    - do you have [bifocal](lens_type) glasses
+    - what is [single vision](lens_type) lens
+    - tell me about [polarized](lens_type) lenses
+    - what types of lenses are available
+    - explain [anti reflective](lens_type) coating
+    - what is [AR coating](lens_type)
+    - do you offer [computer lenses](lens_type)
+    - what's the difference between bifocal and progressive
+    - I need lenses for digital eye strain
+    - what are the lens options
+    - tell me about lens types
+    - which lens is best for driving
+    - what lens is good for reading
+    - do you have UV protection lenses
+    - what is [UV400](lens_type) coating
+    - explain [blue ray](lens_type) blocking lenses
+    - do you have [night driving](lens_type) lenses
+    - what is [anti scratch](lens_type) coating
+    - tell me about [high index](lens_type) lenses
+    - can I get [photochromic](lens_type) lenses
+    - I want [digital protection](lens_type) lenses
+
+# ────────────────────────────────────────────────────────────
+# INTENT: ask_lens_price
+# ────────────────────────────────────────────────────────────
+- intent: ask_lens_price
+  examples: |
+    - how much do lenses cost
+    - what is the price of [progressive](lens_type) lenses
+    - cost of [anti glare](lens_type) coating
+    - price for [bifocal](lens_type) glasses
+    - how much for [blue light](lens_type) lenses
+    - what's the price range for lenses
+    - lens pricing
+    - how much does [photochromic](lens_type) lens cost
+    - price of [transition](lens_type) lens
+    - cost of [single vision](lens_type) lens
+    - how much do glasses cost
+    - what's the price of prescription glasses
+    - price list of lenses
+    - how much are [polarized](lens_type) lenses
+    - what are [computer glasses](product_type) prices
+    - give me lens price details
+    - how much does [anti reflective](lens_type) coating cost
+    - price for [high index](lens_type) lenses
+    - what is the cost of [UV coating](lens_type)
+    - how much are [progressive](lens_type) lenses
+
+# ────────────────────────────────────────────────────────────
+# INTENT: ask_store_location
+# ────────────────────────────────────────────────────────────
+- intent: ask_store_location
+  examples: |
+    - where is your store
+    - find a store near me
+    - store location in [Mumbai](city)
+    - where can I buy in [Delhi](city)
+    - is there a calisto store in [Bangalore](city)
+    - store address in [Chennai](city)
+    - nearest calisto store
+    - where are you located
+    - do you have a store in [Pune](city)
+    - calisto outlet in [Hyderabad](city)
+    - find store in [Kolkata](city)
+    - stores near [Bandra](city)
+    - where can I try on glasses in [Gurgaon](city)
+    - I want to visit a physical store
+    - how many stores do you have
+    - store timings
+    - what time do you open
+    - show me stores in [Noida](city)
+    - store in [Indiranagar](city)
+    - calisto store [Connaught Place](city)
+    - shop near [Saket](city)
+    - where is the nearest store
+    - find calisto store near [Ahmedabad](city)
+    - any store near [Jaipur](city)
+
+# ────────────────────────────────────────────────────────────
+# INTENT: book_eye_test
+# ────────────────────────────────────────────────────────────
+- intent: book_eye_test
+  examples: |
+    - I want to book an eye test
+    - schedule an eye checkup
+    - book an appointment for eye test
+    - I need an eye examination
+    - can I get an eye check done
+    - book eye test in [Mumbai](city)
+    - schedule eye checkup in [Delhi](city)
+    - I want to get my eyes checked
+    - appointment for eye test
+    - eye test booking
+    - schedule a vision test
+    - can I book an eye exam
+    - I want to check my eyesight
+    - book eye checkup
+    - I need a new prescription
+    - eye power check
+    - book eye test for tomorrow
+    - schedule eye exam on Sunday
+    - I want an eye test in [Bangalore](city)
+    - can I get my eyes tested at your store
+    - how do I book an eye checkup
+    - vision test appointment
+    - I'd like an eye examination in [Hyderabad](city)
+
+# ────────────────────────────────────────────────────────────
+# INTENT: track_order
+# ────────────────────────────────────────────────────────────
+- intent: track_order
+  examples: |
+    - track my order
+    - where is my order [45821](order_id)
+    - check delivery status
+    - what's the status of order [ORD12345](order_id)
+    - my order number is [78562](order_id)
+    - I placed an order, track it
+    - order [CAL-2024-9876](order_id) status
+    - when will my order arrive
+    - is my order shipped
+    - order tracking [56789](order_id)
+    - check my order [ORD98765](order_id)
+    - where is my glasses
+    - delivery status for order [12345](order_id)
+    - I want to track [CAL98231](order_id)
+    - check shipment status
+    - order status
+    - my order hasn't arrived yet
+    - expected delivery date for order [234567](order_id)
+    - track order [ORD00123](order_id)
+    - has my order been dispatched
+    - where's my parcel
+    - check dispatch status
+
+# ────────────────────────────────────────────────────────────
+# INTENT: check_face_shape
+# ────────────────────────────────────────────────────────────
+- intent: check_face_shape
+  examples: |
+    - what is my face shape
+    - how to find my face shape
+    - how do I know my face shape
+    - I have a [round](face_shape) face, what frames should I get
+    - glasses for [oval face](face_shape)
+    - best frames for [square face](face_shape)
+    - what glasses suit [heart shaped face](face_shape)
+    - I have [diamond](face_shape) face shape
+    - help me find my face shape
+    - what frames for [oblong](face_shape) face
+    - I think I have [round](face_shape) face, what do you recommend
+    - face shape guide
+    - which frames are best for my face
+    - tell me about face shapes
+    - how to choose glasses for my face
+    - face shape and glasses
+    - which frame suits [oval](face_shape) face
+    - frame recommendation for [heart](face_shape) face
+    - I have a [square](face_shape) jawline
+    - guide me on face shape and glasses
+
+# ────────────────────────────────────────────────────────────
+# INTENT: affirm
+# ────────────────────────────────────────────────────────────
+- intent: affirm
+  examples: |
+    - yes
+    - yeah
+    - yep
+    - sure
+    - of course
+    - absolutely
+    - yes please
+    - that's right
+    - correct
+    - ok
+    - okay
+    - sounds good
+    - go ahead
+    - definitely
+    - for sure
+    - totally
+
+# ────────────────────────────────────────────────────────────
+# INTENT: deny
+# ────────────────────────────────────────────────────────────
+- intent: deny
+  examples: |
+    - no
+    - nope
+    - no thanks
+    - not really
+    - I don't think so
+    - negative
+    - skip it
+    - not now
+    - I'll pass
+    - not interested
+    - maybe later
+    - nah
+
+# ────────────────────────────────────────────────────────────
+# INTENT: inform  (slot-filling responses in multi-turn dialogue)
+# ────────────────────────────────────────────────────────────
+- intent: inform
+  examples: |
+    - I prefer [round](frame_style) style
+    - [men's](gender) frames please
+    - my budget is [3000](budget)
+    - [oval](face_shape) face shape
+    - I want [blue light](lens_type) lenses
+    - my city is [Mumbai](city)
+    - the order id is [45821](order_id)
+    - [women's](gender)
+    - [square](frame_style) frames
+    - [anti glare](lens_type)
+    - [Bangalore](city)
+    - [progressive](lens_type)
+    - under [5000](budget)
+    - [rectangular](frame_style)
+    - tomorrow
+    - this Saturday
+    - 10 AM
+    - 2:30 PM
+    - [cat-eye](frame_style)
+    - [aviator](frame_style) style
+    - [sunglasses](product_type)
+    - [eyeglasses](product_type)
+    - [heart](face_shape)
+    - [Delhi](city)
+    - [Chennai](city)
+    - [Hyderabad](city)
+    - [ORD12345](order_id)
+    - budget is around [2500](budget)
+    - something under [1500](budget)
+    - [women](gender)
+    - [men](gender)
+    - next Monday
+
+# ────────────────────────────────────────────────────────────
+# INTENT: out_of_scope
+# ────────────────────────────────────────────────────────────
+- intent: out_of_scope
+  examples: |
+    - what's the weather today
+    - tell me a joke
+    - what's the stock price
+    - book a flight
+    - I want to order food
+    - who is the prime minister
+    - play music
+    - set an alarm
+    - translate this for me
+    - what is the capital of France
+    - tell me about yourself
+    - are you a robot
+    - what can you do outside eyewear
+    - tell me something funny
+    - what's the news today
+    - recommend a movie
+
+# ────────────────────────────────────────────────────────────
+# ENTITY SYNONYMS
+# ────────────────────────────────────────────────────────────
+- synonym: eyeglasses
+  examples: |
+    - glasses
+    - spectacles
+    - prescription glasses
+    - specs
+    - optical frames
+    - eyewear
+    - optical glasses
+
+- synonym: sunglasses
+  examples: |
+    - shades
+    - sunnies
+    - sun glasses
+    - UV glasses
+    - tinted glasses
+
+- synonym: anti glare
+  examples: |
+    - AR coating
+    - anti reflective
+    - anti-reflective coating
+    - anti glare coating
+    - antireflective
+
+- synonym: blue light
+  examples: |
+    - computer glass
+    - digital protection
+    - screen protection
+    - blue ray
+    - bluelight
+    - blue-light blocking
+    - computer glasses
+
+- synonym: men
+  examples: |
+    - mens
+    - male
+    - gents
+    - man
+    - boys
+
+- synonym: women
+  examples: |
+    - womens
+    - female
+    - ladies
+    - woman
+    - girls
+
+# ────────────────────────────────────────────────────────────
+# REGEX FEATURES  (entity pre-annotation)
+# ────────────────────────────────────────────────────────────
+- regex: order_id
+  examples: |
+    - \b(CAL-\d{4}-\d{4})\b
+    - \b(ORD\d{5,8})\b
+    - \b([A-Z]{0,3}\d{5,10})\b
+
+# ────────────────────────────────────────────────────────────
+# LOOKUP TABLES
+# ────────────────────────────────────────────────────────────
+- lookup: city
+  examples: |
+    - Mumbai
+    - Delhi
+    - Bangalore
+    - Chennai
+    - Hyderabad
+    - Pune
+    - Kolkata
+    - Ahmedabad
+    - Jaipur
+    - Noida
+    - Gurgaon
+    - Bandra
+    - Saket
+    - Connaught Place
+    - Indiranagar
+    - T. Nagar
+    - Banjara Hills
+    - Kurla
+
+- lookup: frame_style
+  examples: |
+    - round
+    - square
+    - rectangular
+    - cat-eye
+    - aviator
+    - oval
+    - wayfarer
+    - rimless
+    - half rim
+    - full rim
+    - titanium
+    - acetate
+    - metal
+    - lightweight
+    - bold
+    - classic
+    - minimalist
+    - trendy

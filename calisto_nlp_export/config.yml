@@ -1,0 +1,79 @@
+# ============================================================
+# Calisto Eyewear – Rasa NLU + Core Configuration
+# ============================================================
+# Run: rasa train   |   Chat: rasa shell
+# Serve actions: rasa run actions
+# ============================================================
+
+recipe: default.v1
+
+language: en
+
+# ────────────────────────────────────────────────────────────
+# NLU PIPELINE
+# ────────────────────────────────────────────────────────────
+pipeline:
+  # 1. Tokenize on whitespace
+- name: WhitespaceTokenizer
+
+  # 2. Regex-based features (order_id pattern, city lookups)
+- name: RegexFeaturizer
+
+  # 3. Lexical / syntactic features (POS-like n-gram context)
+- name: LexicalSyntacticFeaturizer
+
+  # 4. Bag-of-words word-level features
+- name: CountVectorsFeaturizer
+
+  # 5. Character n-gram features (handles typos & morphological variation)
+- name: CountVectorsFeaturizer
+  analyzer: char_wb
+  min_ngram: 1
+  max_ngram: 4
+
+  # 6. Joint intent classifier + entity extractor
+- name: DIETClassifier
+  epochs: 100
+  constrain_similarities: true
+  entity_recognition: true
+  use_masked_language_model: false
+
+  # 7. Merge entity synonyms (e.g. "specs" → "eyeglasses")
+- name: EntitySynonymMapper
+
+  # 8. Response selector for FAQ-style retrieval intents
+- name: ResponseSelector
+  epochs: 100
+  constrain_similarities: true
+  retrieval_intent: chitchat
+
+  # 9. Fallback when classifier confidence is below threshold
+- name: FallbackClassifier
+  threshold: 0.30
+  ambiguity_threshold: 0.10
+
+# ────────────────────────────────────────────────────────────
+# DIALOGUE POLICIES
+# ────────────────────────────────────────────────────────────
+policies:
+  # Exact conversation memorisation (great for short demos)
+- name: MemoizationPolicy
+  max_history: 5
+
+  # Deterministic rules (greet, goodbye, fallback, form activation)
+- name: RulePolicy
+  core_fallback_threshold: 0.30
+  core_fallback_action_name: "action_default_fallback"
+  enable_fallback_prediction: true
+
+  # ML-based multi-turn dialogue
+- name: TEDPolicy
+  max_history: 10
+  epochs: 100
+  constrain_similarities: true
+
+  # Detects unexpected intents mid-conversation for graceful recovery
+- name: UnexpecTEDIntentPolicy
+  max_history: 5
+  epochs: 100
+assistant_id: 20260308-085429-plain-geometry

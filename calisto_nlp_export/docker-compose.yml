@@ -1,0 +1,42 @@
+# ============================================================
+# Calisto Eyewear – Docker Compose
+# ============================================================
+# Runs Rasa NLP server + Action server in Docker containers.
+# Compatible with any host Python version.
+#
+# Usage:
+#   docker compose up -d        → start services
+#   docker compose down         → stop services
+#   docker compose logs -f      → follow logs
+# ============================================================
+
+services:
+  # ── Rasa NLP Server ──────────────────────────────────────
+  rasa:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5005:5005"
+    depends_on:
+      - action-server
+    volumes:
+      - ./models:/app/models
+    environment:
+      - ACTION_ENDPOINT_URL=http://action-server:5055/webhook
+    networks:
+      - calisto-net
+
+  # ── Rasa Action Server ──────────────────────────────────
+  action-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.actions
+    ports:
+      - "5055:5055"
+    networks:
+      - calisto-net
+
+networks:
+  calisto-net:
+    driver: bridge

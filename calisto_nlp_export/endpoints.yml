@@ -1,0 +1,13 @@
+# ============================================================
+# Calisto Eyewear – Action Server Endpoint
+# ============================================================
+# Start action server: rasa run actions --actions actions.actions
+# ============================================================
+# When running via Docker Compose, the action server is at:
+#   http://action-server:5055/webhook
+# When running locally (bare metal), use:
+#   http://localhost:5055/webhook
+# ============================================================
+
+action_endpoint:
+  url: "http://action-server:5055/webhook"

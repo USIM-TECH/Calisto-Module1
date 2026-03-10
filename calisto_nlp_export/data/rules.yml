@@ -1,0 +1,111 @@
+version: "3.1"
+
+# ============================================================
+# Calisto Eyewear – Dialogue Rules
+# Deterministic rules managed by RulePolicy
+# ============================================================
+
+rules:
+
+# ────────────────────────────────────────────────────────────
+# ALWAYS-ON RULES (fire regardless of conversation state)
+# ────────────────────────────────────────────────────────────
+- rule: Say greet whenever user greets
+  steps:
+    - intent: greet
+    - action: utter_greet
+
+- rule: Say goodbye whenever user says goodbye
+  steps:
+    - intent: goodbye
+    - action: utter_goodbye
+
+- rule: Handle NLU fallback (low confidence)
+  steps:
+    - intent: nlu_fallback
+    - action: utter_fallback
+
+- rule: Handle out-of-scope topics
+  steps:
+    - intent: out_of_scope
+    - action: utter_out_of_scope
+
+# ────────────────────────────────────────────────────────────
+# FAQ-STYLE SINGLE-TURN RULES
+# ────────────────────────────────────────────────────────────
+- rule: Answer lens types question
+  steps:
+    - intent: ask_lens_types
+    - action: utter_lens_types_info
+
+- rule: Answer lens pricing question
+  steps:
+    - intent: ask_lens_price
+    - action: utter_lens_price_info
+
+- rule: Show all store locations
+  steps:
+    - intent: ask_store_location
+    - action: action_find_nearest_store
+
+- rule: Face shape guide
+  steps:
+    - intent: check_face_shape
+    - action: utter_check_face_shape_help
+
+# ────────────────────────────────────────────────────────────
+# FORM: frame_search_form  –  activation + submission
+# ────────────────────────────────────────────────────────────
+- rule: Activate frame search form on search_frames intent
+  steps:
+    - intent: search_frames
+    - action: frame_search_form
+    - active_loop: frame_search_form
+
+- rule: Submit frame search form and recommend frames
+  condition:
+    - active_loop: frame_search_form
+  steps:
+    - action: frame_search_form
+    - active_loop: null
+    - slot_was_set:
+        - requested_slot: null
+    - action: action_recommend_frames
+
+# ────────────────────────────────────────────────────────────
+# FORM: order_tracking_form  –  activation + submission
+# ────────────────────────────────────────────────────────────
+- rule: Activate order tracking form
+  steps:
+    - intent: track_order
+    - action: order_tracking_form
+    - active_loop: order_tracking_form
+
+- rule: Submit order tracking form and check status
+  condition:
+    - active_loop: order_tracking_form
+  steps:
+    - action: order_tracking_form
+    - active_loop: null
+    - slot_was_set:
+        - requested_slot: null
+    - action: action_check_order_status
+
+# ────────────────────────────────────────────────────────────
+# FORM: eye_test_form  –  activation + submission
+# ────────────────────────────────────────────────────────────
+- rule: Activate eye test booking form
+  steps:
+    - intent: book_eye_test
+    - action: eye_test_form
+    - active_loop: eye_test_form
+
+- rule: Submit eye test form and confirm booking
+  condition:
+    - active_loop: eye_test_form
+  steps:
+    - action: eye_test_form
+    - active_loop: null
+    - slot_was_set:
+        - requested_slot: null
+    - action: utter_eye_test_booked

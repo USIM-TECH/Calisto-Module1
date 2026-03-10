@@ -1,0 +1,9 @@
+# ============================================================
+# Calisto Eyewear – Rasa Action Server Dockerfile
+# ============================================================
+FROM rasa/rasa-sdk:3.6.2
+
+# Copy custom actions
+COPY actions/ /app/actions/
+
+EXPOSE 5055
