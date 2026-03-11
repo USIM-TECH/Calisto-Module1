@@ -1,16 +1,32 @@
 import { Client as OfficialHubspotClient } from '@hubspot/api-client'
 import type { Logger } from '../../../core/utils/index.js'
-
-const DEFAULT_CONTACT_PROPERTIES = ['createdate', 'email', 'firstname', 'lastmodifieddate', 'lastname', 'phone']
-const DEFAULT_COMPANY_PROPERTIES = ['createdate', 'domain', 'name', 'hs_lastmodifieddate', 'phone']
-const DEFAULT_DEAL_PROPERTIES = [
-  'dealname', 'pipeline', 'dealstage', 'closedate', 'amount',
-  'hubspot_owner_id', 'createdate', 'hs_lastmodifieddate',
-]
-const DEFAULT_LEAD_PROPERTIES = [
-  'hs_lead_name', 'hs_pipeline_stage', 'hs_createdate', 'hs_lastmodifieddate',
-  'hs_object_id', 'hs_pipeline',
-]
+import {
+  createContact,
+  deleteContact,
+  getContact,
+  listContacts,
+  searchContact,
+  updateContact,
+} from './contacts.js'
+import {
+  getCompany,
+  searchCompany,
+  updateCompany,
+} from './companies.js'
+import {
+  createDeal,
+  deleteDeal,
+  getDeal,
+  searchDeal,
+  updateDeal,
+} from './deals.js'
+import {
+  createLead,
+  deleteLead,
+  getLead,
+  updateLead,
+} from './leads.js'
+import type { HubSpotClientContext } from './shared.js'
 
 export interface HubSpotConfig {
   accessToken: string
@@ -18,341 +34,96 @@ export interface HubSpotConfig {
 
 /**
  * HubSpot CRM Client.
- * Extracted from Botpress HubSpot integration with Botpress SDK dependencies removed.
- * Wraps the official @hubspot/api-client for contacts, companies, deals, and leads.
+ * Thin facade over domain-specific HubSpot operation modules.
  */
 export class HubSpotClient {
-  private readonly _hsClient: OfficialHubspotClient
-  private readonly _logger: Logger
+  private readonly _context: HubSpotClientContext
 
   constructor(config: HubSpotConfig, logger: Logger) {
-    this._logger = logger
-    this._hsClient = new OfficialHubspotClient({
-      accessToken: config.accessToken,
-      numberOfApiCallRetries: 2,
-    })
-  }
-
-  // ── Contacts ──────────────────────────────────────────────────────
-
-  /** Search for a contact by email and/or phone */
-  public async searchContact({
-    email,
-    phone,
-    propertiesToReturn,
-  }: {
-    email?: string
-    phone?: string
-    propertiesToReturn?: string[]
-  }) {
-    const filters: any[] = []
-
-    if (phone) {
-      filters.push({ propertyName: 'phone', operator: 'EQ', value: phone.trim() })
+    this._context = {
+      logger,
+      hsClient: new OfficialHubspotClient({
+        accessToken: config.accessToken,
+        numberOfApiCallRetries: 2,
+      }),
     }
-    if (email) {
-      filters.push({ propertyName: 'email', operator: 'EQ', value: email.trim() })
-    }
-    if (!filters.length) {
-      throw new Error('Missing required filters: phone and/or email')
-    }
-
-    const contacts = await this._hsClient.crm.contacts.searchApi.doSearch({
-      filterGroups: [{ filters }],
-      properties: [...DEFAULT_CONTACT_PROPERTIES, ...(propertiesToReturn ?? [])],
-    })
-
-    const contact = contacts.results[0]
-    if (!contact) {
-      this._logger.debug(`No contact found for email=${email}, phone=${phone}`)
-      return undefined
-    }
-    return contact
   }
 
-  /** Get a contact by ID (numeric or email) */
-  public async getContact({ contactId, propertiesToReturn }: { contactId: string; propertiesToReturn?: string[] }) {
-    const idProperty = contactId.includes('@') ? 'email' : undefined
-    const contact = await this._hsClient.crm.contacts.basicApi.getById(
-      contactId,
-      [...DEFAULT_CONTACT_PROPERTIES, ...(propertiesToReturn ?? [])],
-      undefined,
-      undefined,
-      undefined,
-      idProperty
-    )
-    return contact
+  public async searchContact(args: Parameters<typeof searchContact>[1]) {
+    return searchContact(this._context, args)
   }
 
-  /** Create a new contact */
-  public async createContact({
-    email,
-    phone,
-    additionalProperties,
-  }: {
-    email?: string
-    phone?: string
-    additionalProperties?: Record<string, string>
-  }) {
-    if (!email && !phone) {
-      throw new Error('Email or phone is required to create a contact')
-    }
-
-    const newContact = await this._hsClient.crm.contacts.basicApi.create({
-      properties: {
-        ...(additionalProperties ?? {}),
-        ...(email ? { email } : {}),
-        ...(phone ? { phone } : {}),
-      },
-      associations: [],
-    })
-    return newContact
+  public async getContact(args: Parameters<typeof getContact>[1]) {
+    return getContact(this._context, args)
   }
 
-  /** Update an existing contact */
-  public async updateContact({
-    contactId,
-    email,
-    phone,
-    additionalProperties,
-  }: {
-    contactId: string
-    email?: string
-    phone?: string
-    additionalProperties?: Record<string, string>
-  }) {
-    const idProperty = contactId.includes('@') ? 'email' : undefined
-    const updatedContact = await this._hsClient.crm.contacts.basicApi.update(
-      contactId,
-      {
-        properties: {
-          ...(additionalProperties ?? {}),
-          ...(email ? { email } : {}),
-          ...(phone ? { phone } : {}),
-        },
-      },
-      idProperty
-    )
-    return updatedContact
+  public async createContact(args: Parameters<typeof createContact>[1]) {
+    return createContact(this._context, args)
   }
 
-  /** Delete a contact */
-  public async deleteContact({ contactId }: { contactId: string }) {
-    await this._hsClient.crm.contacts.basicApi.archive(contactId)
+  public async updateContact(args: Parameters<typeof updateContact>[1]) {
+    return updateContact(this._context, args)
   }
 
-  /** List contacts with pagination */
-  public async listContacts({ limit, after }: { limit?: number; after?: string } = {}) {
-    const contacts = await this._hsClient.crm.contacts.basicApi.getPage(
-      limit ?? 100,
-      after,
-      DEFAULT_CONTACT_PROPERTIES
-    )
-    return contacts
+  public async deleteContact(args: Parameters<typeof deleteContact>[1]) {
+    return deleteContact(this._context, args)
   }
 
-  // ── Companies ─────────────────────────────────────────────────────
-
-  /** Search for a company by name and/or domain */
-  public async searchCompany({
-    name,
-    domain,
-    propertiesToReturn,
-  }: {
-    name?: string
-    domain?: string
-    propertiesToReturn?: string[]
-  }) {
-    const filters: any[] = []
-
-    if (name) {
-      filters.push({ propertyName: 'name', operator: 'EQ', value: name.trim() })
-    }
-    if (domain) {
-      filters.push({ propertyName: 'domain', operator: 'EQ', value: domain.trim() })
-    }
-    if (!filters.length) {
-      throw new Error('Missing required filters: name and/or domain')
-    }
-
-    const companies = await this._hsClient.crm.companies.searchApi.doSearch({
-      filterGroups: [{ filters }],
-      properties: [...DEFAULT_COMPANY_PROPERTIES, ...(propertiesToReturn ?? [])],
-    })
-
-    const company = companies.results[0]
-    if (!company) {
-      this._logger.debug(`No company found for name=${name}, domain=${domain}`)
-      return undefined
-    }
-    return company
+  public async listContacts(args?: Parameters<typeof listContacts>[1]) {
+    return listContacts(this._context, args)
   }
 
-  /** Get a company by ID */
-  public async getCompany({ companyId, propertiesToReturn }: { companyId: string; propertiesToReturn?: string[] }) {
-    const company = await this._hsClient.crm.companies.basicApi.getById(
-      companyId,
-      [...DEFAULT_COMPANY_PROPERTIES, ...(propertiesToReturn ?? [])]
-    )
-    return company
+  public async searchCompany(args: Parameters<typeof searchCompany>[1]) {
+    return searchCompany(this._context, args)
   }
 
-  /** Update a company */
-  public async updateCompany({
-    companyId,
-    additionalProperties,
-  }: {
-    companyId: string
-    additionalProperties: Record<string, string>
-  }) {
-    const updated = await this._hsClient.crm.companies.basicApi.update(companyId, {
-      properties: additionalProperties,
-    })
-    return updated
+  public async getCompany(args: Parameters<typeof getCompany>[1]) {
+    return getCompany(this._context, args)
   }
 
-  // ── Deals ─────────────────────────────────────────────────────────
-
-  /** Search for a deal by name */
-  public async searchDeal({
-    dealName,
-    propertiesToReturn,
-  }: {
-    dealName: string
-    propertiesToReturn?: string[]
-  }) {
-    const deals = await this._hsClient.crm.deals.searchApi.doSearch({
-      filterGroups: [
-        {
-          filters: [
-            {
-              propertyName: 'dealname',
-              operator: 'EQ' as any,
-              value: dealName.trim(),
-            },
-          ],
-        },
-      ],
-      properties: [...DEFAULT_DEAL_PROPERTIES, ...(propertiesToReturn ?? [])],
-    })
-
-    const deal = deals.results[0]
-    if (!deal) {
-      this._logger.debug(`No deal found for name=${dealName}`)
-      return undefined
-    }
-    return deal
+  public async updateCompany(args: Parameters<typeof updateCompany>[1]) {
+    return updateCompany(this._context, args)
   }
 
-  /** Get a deal by ID */
-  public async getDeal({ dealId, propertiesToReturn }: { dealId: string; propertiesToReturn?: string[] }) {
-    const deal = await this._hsClient.crm.deals.basicApi.getById(
-      dealId,
-      [...DEFAULT_DEAL_PROPERTIES, ...(propertiesToReturn ?? [])]
-    )
-    return deal
+  public async searchDeal(args: Parameters<typeof searchDeal>[1]) {
+    return searchDeal(this._context, args)
   }
 
-  /** Create a new deal */
-  public async createDeal({
-    dealName,
-    pipeline,
-    dealStage,
-    amount,
-    additionalProperties,
-  }: {
-    dealName: string
-    pipeline?: string
-    dealStage?: string
-    amount?: string
-    additionalProperties?: Record<string, string>
-  }) {
-    const newDeal = await this._hsClient.crm.deals.basicApi.create({
-      properties: {
-        ...(additionalProperties ?? {}),
-        dealname: dealName,
-        ...(pipeline ? { pipeline } : {}),
-        ...(dealStage ? { dealstage: dealStage } : {}),
-        ...(amount ? { amount } : {}),
-      },
-      associations: [],
-    })
-    return newDeal
+  public async getDeal(args: Parameters<typeof getDeal>[1]) {
+    return getDeal(this._context, args)
   }
 
-  /** Update a deal */
-  public async updateDeal({
-    dealId,
-    additionalProperties,
-  }: {
-    dealId: string
-    additionalProperties: Record<string, string>
-  }) {
-    const updated = await this._hsClient.crm.deals.basicApi.update(dealId, {
-      properties: additionalProperties,
-    })
-    return updated
+  public async createDeal(args: Parameters<typeof createDeal>[1]) {
+    return createDeal(this._context, args)
   }
 
-  /** Delete a deal */
-  public async deleteDeal({ dealId }: { dealId: string }) {
-    await this._hsClient.crm.deals.basicApi.archive(dealId)
+  public async updateDeal(args: Parameters<typeof updateDeal>[1]) {
+    return updateDeal(this._context, args)
   }
 
-  // ── Leads (via objects/leads API) ─────────────────────────────────
-
-  /** Create a lead */
-  public async createLead({
-    leadName,
-    additionalProperties,
-  }: {
-    leadName: string
-    additionalProperties?: Record<string, string>
-  }) {
-    const newLead = await (this._hsClient.crm as any).objects.leads.basicApi.create({
-      properties: {
-        ...(additionalProperties ?? {}),
-        hs_lead_name: leadName,
-      },
-      associations: [],
-    })
-    return newLead
+  public async deleteDeal(args: Parameters<typeof deleteDeal>[1]) {
+    return deleteDeal(this._context, args)
   }
 
-  /** Get a lead by ID */
-  public async getLead({ leadId, propertiesToReturn }: { leadId: string; propertiesToReturn?: string[] }) {
-    const lead = await (this._hsClient.crm as any).objects.leads.basicApi.getById(
-      leadId,
-      [...DEFAULT_LEAD_PROPERTIES, ...(propertiesToReturn ?? [])]
-    )
-    return lead
+  public async createLead(args: Parameters<typeof createLead>[1]) {
+    return createLead(this._context, args)
   }
 
-  /** Update a lead */
-  public async updateLead({
-    leadId,
-    additionalProperties,
-  }: {
-    leadId: string
-    additionalProperties: Record<string, string>
-  }) {
-    const updated = await (this._hsClient.crm as any).objects.leads.basicApi.update(leadId, {
-      properties: additionalProperties,
-    })
-    return updated
+  public async getLead(args: Parameters<typeof getLead>[1]) {
+    return getLead(this._context, args)
   }
 
-  /** Delete a lead */
-  public async deleteLead({ leadId }: { leadId: string }) {
-    await (this._hsClient.crm as any).objects.leads.basicApi.archive(leadId)
+  public async updateLead(args: Parameters<typeof updateLead>[1]) {
+    return updateLead(this._context, args)
   }
 
-  // ── Generic Helpers ───────────────────────────────────────────────
+  public async deleteLead(args: Parameters<typeof deleteLead>[1]) {
+    return deleteLead(this._context, args)
+  }
 
-  /** Get the hub ID associated with the access token */
   public async getHubId(): Promise<string> {
-    const { hubId } = await this._hsClient.oauth.accessTokensApi.get(
-      (this._hsClient as any)._config?.accessToken ?? ''
+    const { hubId } = await this._context.hsClient.oauth.accessTokensApi.get(
+      (this._context.hsClient as any)._config?.accessToken ?? ''
     )
     return hubId.toString()
   }
