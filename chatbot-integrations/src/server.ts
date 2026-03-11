@@ -35,7 +35,7 @@ let gmail: GmailEmailClient | undefined
 
 // WhatsApp
 if (process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_VERIFY_TOKEN) {
-  whatsapp = new WhatsAppChannel(
+  const waChannel = new WhatsAppChannel(
     {
       accessToken: process.env.WHATSAPP_ACCESS_TOKEN,
       phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
@@ -45,12 +45,36 @@ if (process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID &&
     },
     logger
   )
-  // Register message handler (NLP connection point)
-  whatsapp.onMessage(async (message) => {
+  // Register message handler with NLP integration
+  waChannel.onMessage(async (message) => {
     logger.info(`[WhatsApp] Incoming: ${JSON.stringify(message)}`)
-    // TODO: Connect your NLP / chatbot logic here
+
+    const messageText = message.text || message.interactive?.title
+    if (!messageText) {
+      logger.warn(`[WhatsApp] No text content in message from ${message.senderId}, skipping NLP`)
+      return
+    }
+
+    try {
+      const nlpResponse = await nlpClient.getResponse(message.senderId, messageText)
+      logger.info(`[WhatsApp] NLP response for ${message.senderId}: ${nlpResponse.text.substring(0, 100)}...`)
+
+      await waChannel.sendMessage(message.senderId, { type: 'text', text: nlpResponse.text })
+      logger.info(`[WhatsApp] Reply sent to ${message.senderId}`)
+    } catch (error: any) {
+      logger.error(`[WhatsApp] Failed to process/reply: ${error.message}`)
+      try {
+        await waChannel.sendMessage(message.senderId, {
+          type: 'text',
+          text: 'Sorry, something went wrong. Please try again.',
+        })
+      } catch (sendError: any) {
+        logger.error(`[WhatsApp] Failed to send fallback message: ${sendError.message}`)
+      }
+    }
   })
-  logger.info('✅ WhatsApp channel initialized')
+  whatsapp = waChannel
+  logger.info('✅ WhatsApp channel initialized with NLP integration')
 }
 
 // Instagram
@@ -102,7 +126,7 @@ if (process.env.INSTAGRAM_ACCESS_TOKEN && process.env.INSTAGRAM_ID && process.en
 
 // Messenger
 if (process.env.MESSENGER_PAGE_ACCESS_TOKEN && process.env.MESSENGER_PAGE_ID && process.env.MESSENGER_VERIFY_TOKEN) {
-  messenger = new MessengerChannel(
+  const msgChannel = new MessengerChannel(
     {
       pageAccessToken: process.env.MESSENGER_PAGE_ACCESS_TOKEN,
       pageId: process.env.MESSENGER_PAGE_ID,
@@ -114,11 +138,35 @@ if (process.env.MESSENGER_PAGE_ACCESS_TOKEN && process.env.MESSENGER_PAGE_ID && 
     },
     logger
   )
-  messenger.onMessage(async (message) => {
+  msgChannel.onMessage(async (message) => {
     logger.info(`[Messenger] Incoming: ${JSON.stringify(message)}`)
-    // TODO: Connect your NLP / chatbot logic here
+
+    const messageText = message.text || message.interactive?.title
+    if (!messageText) {
+      logger.warn(`[Messenger] No text content in message from ${message.senderId}, skipping NLP`)
+      return
+    }
+
+    try {
+      const nlpResponse = await nlpClient.getResponse(message.senderId, messageText)
+      logger.info(`[Messenger] NLP response for ${message.senderId}: ${nlpResponse.text.substring(0, 100)}...`)
+
+      await msgChannel.sendMessage(message.senderId, { type: 'text', text: nlpResponse.text })
+      logger.info(`[Messenger] Reply sent to ${message.senderId}`)
+    } catch (error: any) {
+      logger.error(`[Messenger] Failed to process/reply: ${error.message}`)
+      try {
+        await msgChannel.sendText(
+          message.senderId,
+          'Sorry, something went wrong. Please try again.'
+        )
+      } catch (sendError: any) {
+        logger.error(`[Messenger] Failed to send fallback message: ${sendError.message}`)
+      }
+    }
   })
-  logger.info('✅ Messenger channel initialized')
+  messenger = msgChannel
+  logger.info('✅ Messenger channel initialized with NLP integration')
 }
 
 // HubSpot CRM
