@@ -1,5 +1,5 @@
 # ============================================================
-# Calisto Eyewear – Rasa NLU + Core Configuration
+# Calisto Eyewear (Malaysia) - Rasa NLU + Core Configuration
 # ============================================================
 # Run: rasa train   |   Chat: rasa shell
 # Serve actions: rasa run actions
@@ -7,73 +7,76 @@
 
 recipe: default.v1
 
+# Supports English + Manglish + Bahasa Melayu mixed input
 language: en
 
-# ────────────────────────────────────────────────────────────
-# NLU PIPELINE
-# ────────────────────────────────────────────────────────────
+# NLU PIPELINE (tuned for Malaysian multilingual input)
 pipeline:
-  # 1. Tokenize on whitespace
+  # 1. Tokenize on whitespace (handles English + Malay well)
 - name: WhitespaceTokenizer
+  intent_tokenization_flag: false
+  intent_split_symbol: "_"
 
-  # 2. Regex-based features (order_id pattern, city lookups)
+  # 2. Regex-based features (order_id, city lookups)
 - name: RegexFeaturizer
+  case_sensitive: false
 
-  # 3. Lexical / syntactic features (POS-like n-gram context)
+  # 3. Lexical / syntactic features
 - name: LexicalSyntacticFeaturizer
 
   # 4. Bag-of-words word-level features
 - name: CountVectorsFeaturizer
+  OOV_token: "__oov__"
 
-  # 5. Character n-gram features (handles typos & morphological variation)
+  # 5. Character n-gram features (critical for Manglish/Malay typos)
 - name: CountVectorsFeaturizer
   analyzer: char_wb
   min_ngram: 1
   max_ngram: 4
+  OOV_token: "__oov__"
 
-  # 6. Joint intent classifier + entity extractor
+  # 6. Joint intent classifier + entity extractor (increased epochs)
 - name: DIETClassifier
-  epochs: 100
+  epochs: 200
   constrain_similarities: true
   entity_recognition: true
   use_masked_language_model: false
+  learning_rate: 0.001
+  batch_size: [64, 256]
+  number_of_transformer_layers: 2
+  drop_rate: 0.2
+  weight_sparsity: 0.8
 
-  # 7. Merge entity synonyms (e.g. "specs" → "eyeglasses")
+  # 7. Merge entity synonyms
 - name: EntitySynonymMapper
 
   # 8. Response selector for FAQ-style retrieval intents
 - name: ResponseSelector
-  epochs: 100
+  epochs: 200
   constrain_similarities: true
   retrieval_intent: chitchat
 
   # 9. Fallback when classifier confidence is below threshold
 - name: FallbackClassifier
-  threshold: 0.30
+  threshold: 0.40
   ambiguity_threshold: 0.10
 
-# ────────────────────────────────────────────────────────────
 # DIALOGUE POLICIES
-# ────────────────────────────────────────────────────────────
 policies:
-  # Exact conversation memorisation (great for short demos)
 - name: MemoizationPolicy
   max_history: 5
 
-  # Deterministic rules (greet, goodbye, fallback, form activation)
 - name: RulePolicy
   core_fallback_threshold: 0.30
   core_fallback_action_name: "action_default_fallback"
   enable_fallback_prediction: true
 
-  # ML-based multi-turn dialogue
 - name: TEDPolicy
   max_history: 10
-  epochs: 100
+  epochs: 200
   constrain_similarities: true
 
-  # Detects unexpected intents mid-conversation for graceful recovery
 - name: UnexpecTEDIntentPolicy
   max_history: 5
-  epochs: 100
-assistant_id: 20260308-085429-plain-geometry
+  epochs: 200
+assistant_id: 20260311-091336-sleek-taxi

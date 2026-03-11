@@ -1,7 +1,9 @@
 version: "3.1"
 
 # ============================================================
-# Calisto Eyewear – NLU Training Data
+# Calisto Eyewear (Malaysia) – NLU Training Data
+# Includes: Standard English, Malaysian English (Manglish),
+#           and Bahasa Melayu phrases
 # ============================================================
 
 nlu:
@@ -14,6 +16,8 @@ nlu:
     - hey
     - hello
     - hi
+    - Hi
+    - HI
     - hello there
     - good morning
     - good evening
@@ -31,6 +35,47 @@ nlu:
     - yo
     - hiya
     - hey! I need assistance
+    - hi calisto
+    - hello!
+    - hai
+    - hai calisto
+    - helo
+    - selamat pagi
+    - selamat petang
+    - selamat tengahari
+    - selamat malam
+    - apa khabar
+    - assalamualaikum
+    - salam
+    - hi boss
+    - hello boss
+    - hey boss
+    - hi bro
+    - wei hi
+    - eh hello
+    - hi lah
+    - hello boleh tolong
+    - hi nak tanya
+    - hi, boleh bantu?
+    - oi hi
+    - hey kawan
+    - hi encik
+    - hi cik
+    - hi puan
+    - morning
+    - good morning calisto
+    - morning boss
+    - pagi
+    - petang
+    - malam
+    - hi ada orang tak
+    - hello anyone there
+    - hi i need help lah
+    - yo calisto
+    - helloo
+    - hellooo
+    - hihi
+    - hiii
 
 # ────────────────────────────────────────────────────────────
 # INTENT: goodbye
@@ -55,6 +100,31 @@ nlu:
     - later
     - I'll come back later
     - thanks for your help, bye
+    - jumpa lagi
+    - terima kasih bye
+    - terima kasih
+    - ok terima kasih
+    - ok bye
+    - ok thank you
+    - bye boss
+    - bye bro
+    - ok dah cukup
+    - ok tu je
+    - dah siap
+    - ok thanks dah
+    - settle dah bye
+    - ok bye bye
+    - thanks lah bye
+    - thank you so much bye
+    - ok tq
+    - tq bye
+    - tq
+    - k bye
+    - k thanks
+    - ok bye thanks a lot
+    - alright bye
+    - ok later
+    - nanti jumpa lagi
 
 # ────────────────────────────────────────────────────────────
 # INTENT: ask_product
@@ -79,6 +149,29 @@ nlu:
     - I want to explore your collection
     - do you have sunglasses
     - do you sell prescription glasses
+    - ada apa jual
+    - apa yang korang jual
+    - ada jual apa
+    - nak tengok product
+    - show me product lah
+    - ada apa collection
+    - korang ada jual cermin mata tak
+    - what you got here
+    - got what product ah
+    - nak tengok cermin mata
+    - ada glasses tak
+    - what kind of glasses got
+    - ada apa frame
+    - nak tahu pasal product calisto
+    - ada sunglasses tak
+    - korang jual apa eh
+    - I want to see your cermin mata
+    - senarai product
+    - ada jual spectacles tak
+    - what brand ada
+    - any new collection ah
+    - got new arrivals or not
+    - ada new stock tak
 
 # ────────────────────────────────────────────────────────────
 # INTENT: search_frames
@@ -119,6 +212,25 @@ nlu:
     - I want [minimalist](frame_style) [spectacles](product_type)
     - find [bold](frame_style) [glasses](product_type) for [men](gender) under [4000](budget)
     - show me [classic](frame_style) [eyeglasses](product_type)
+    - nak cari [round](frame_style) [cermin mata](product_type)
+    - ada [aviator](frame_style) [sunglasses](product_type) tak
+    - nak tengok [cat-eye](frame_style) [frame](product_type)
+    - tolong cari [square](frame_style) [glasses](product_type) untuk [perempuan](gender)
+    - ada [frame](product_type) bawah [300](budget) tak
+    - nak [rectangular](frame_style) [spectacles](product_type) untuk [lelaki](gender)
+    - got [round](frame_style) [glasses](product_type) below [500](budget) ah
+    - show [wayfarer](frame_style) [frame](product_type) for [ladies](gender) lah
+    - I want [rimless](frame_style) [glasses](product_type) can ah
+    - looking for [lightweight](frame_style) [cermin mata](product_type) under [200](budget)
+    - show me [trendy](frame_style) [specs](product_type) for [women](gender)
+    - cari [sunglasses](product_type) [men](gender) below [400](budget)
+    - ada tak [half rim](frame_style) [glasses](product_type)
+    - nak beli [prescription glasses](product_type) style [oval](frame_style)
+    - find [sporty](frame_style) [cermin mata](product_type) untuk [lelaki](gender)
+    - I want nice [frame](product_type) for [women](gender) budget [250](budget)
+    - nak cari [metal](frame_style) [frame](product_type) for [men](gender) under [350](budget)
+    - ada [acetate](frame_style) [frame](product_type) color black tak
+    - show me [full rim](frame_style) [eyeglasses](product_type) for [unisex](gender)
 
 # ────────────────────────────────────────────────────────────
 # INTENT: recommend_frames
@@ -151,6 +263,27 @@ nlu:
     - which frames look good on [diamond face](face_shape)
     - recommend glasses for [oblong](face_shape) face shape
     - suggest frames suitable for [heart](face_shape) shaped faces
+    - boleh suggest frame best tak
+    - mana satu frame paling cantik
+    - recommend frame untuk [muka bulat](face_shape)
+    - suggest frame yang sesuai untuk [oval](face_shape)
+    - apa frame paling laris
+    - mana yang trending sekarang
+    - nak frame yang nice
+    - best seller frame apa
+    - which one popular ah
+    - can suggest frame for my face shape or not
+    - mana yang paling ramai orang beli
+    - frame mana yang paling value
+    - nak frame cantik under [300](budget)
+    - suggest satu frame for [lelaki](gender)
+    - frame paling stylish apa
+    - got any recommendation lah
+    - recommend something nice below [500](budget)
+    - tolong pilih frame untuk saya
+    - what frame sesuai for [round](face_shape) face ah
+    - help me pick lah
+    - tak tahu nak pilih mana satu
 
 # ────────────────────────────────────────────────────────────
 # INTENT: ask_lens_types
@@ -184,6 +317,25 @@ nlu:
     - tell me about [high index](lens_type) lenses
     - can I get [photochromic](lens_type) lenses
     - I want [digital protection](lens_type) lenses
+    - ada lens apa
+    - jenis lens apa ada
+    - korang offer lens apa
+    - ada [blue light](lens_type) lens tak
+    - apa tu [progressive](lens_type) lens
+    - ada [anti glare](lens_type) tak
+    - lens apa paling bagus untuk komputer
+    - nak tahu pasal [transition](lens_type) lens
+    - ada [photochromic](lens_type) lens tak
+    - got [blue light](lens_type) filter or not
+    - what lens best for screen time ah
+    - ada lens untuk driving tak
+    - explain [anti glare](lens_type) boleh tak
+    - apa bezanya [bifocal](lens_type) dengan [progressive](lens_type)
+    - lens apa bagus untuk baca buku
+    - [UV protection](lens_type) lens ada tak
+    - I always look at phone screen, what lens good ah
+    - mata saya cepat penat, lens apa sesuai
+    - ada lens untuk protect mata dari screen tak
 
 # ────────────────────────────────────────────────────────────
 # INTENT: ask_lens_price
@@ -210,6 +362,26 @@ nlu:
     - price for [high index](lens_type) lenses
     - what is the cost of [UV coating](lens_type)
     - how much are [progressive](lens_type) lenses
+    - berapa harga lens
+    - harga [progressive](lens_type) lens berapa
+    - berapa cost [anti glare](lens_type)
+    - price [blue light](lens_type) lens berapa ah
+    - [photochromic](lens_type) lens mahal tak
+    - berapa harga [bifocal](lens_type)
+    - lens paling murah berapa
+    - ada price list tak
+    - harga cermin mata berapa
+    - how much ah the [transition](lens_type) lens
+    - murah tak [anti glare](lens_type) coating
+    - apa harga lens [single vision](lens_type)
+    - [polarized](lens_type) lens berapa ringgit
+    - what's the cheapest lens ah
+    - got any promotion for lens or not
+    - ada offer tak untuk lens
+    - berapa range harga lens korang
+    - pricing for [computer glasses](product_type) macam mana
+    - lens under RM100 ada tak
+    - harga terbaru lens apa
 
 # ────────────────────────────────────────────────────────────
 # INTENT: ask_store_location
@@ -218,28 +390,48 @@ nlu:
   examples: |
     - where is your store
     - find a store near me
-    - store location in [Mumbai](city)
-    - where can I buy in [Delhi](city)
-    - is there a calisto store in [Bangalore](city)
-    - store address in [Chennai](city)
+    - store location in [Kuala Lumpur](city)
+    - where can I buy in [Penang](city)
+    - is there a calisto store in [Johor Bahru](city)
+    - store address in [Ipoh](city)
     - nearest calisto store
     - where are you located
-    - do you have a store in [Pune](city)
-    - calisto outlet in [Hyderabad](city)
-    - find store in [Kolkata](city)
-    - stores near [Bandra](city)
-    - where can I try on glasses in [Gurgaon](city)
+    - do you have a store in [Petaling Jaya](city)
+    - calisto outlet in [Shah Alam](city)
+    - find store in [Kota Kinabalu](city)
+    - stores near [Bangsar](city)
+    - where can I try on glasses in [Subang Jaya](city)
     - I want to visit a physical store
     - how many stores do you have
     - store timings
     - what time do you open
-    - show me stores in [Noida](city)
-    - store in [Indiranagar](city)
-    - calisto store [Connaught Place](city)
-    - shop near [Saket](city)
+    - show me stores in [Cyberjaya](city)
+    - store in [Bukit Bintang](city)
+    - calisto store [Mid Valley](city)
+    - shop near [KLCC](city)
     - where is the nearest store
-    - find calisto store near [Ahmedabad](city)
-    - any store near [Jaipur](city)
+    - find calisto store near [Melaka](city)
+    - any store near [Kuching](city)
+    - kedai calisto kat mana
+    - ada kedai kat [KL](city) tak
+    - kedai mana paling dekat
+    - nak pergi kedai calisto
+    - store kat [Penang](city) ada ke
+    - mana outlet calisto
+    - ada branch kat [JB](city) tak
+    - calisto ada outlet kat [Sunway](city) tak
+    - store dekat [One Utama](city) ada tak
+    - kedai calisto kat [Pavilion](city) ada ke
+    - where got calisto store ah
+    - got shop in [PJ](city) or not
+    - which mall got calisto
+    - ada kat [IOI City Mall](city) tak
+    - store kat [Gurney Plaza](city) ada ke
+    - any branch near [Setia Alam](city)
+    - mana kedai calisto paling dekat dari sini
+    - calisto ada dekat [Putrajaya](city) tak
+    - I want to try glasses at your [Bangsar](city) store
+    - waktu operasi kedai calisto
 
 # ────────────────────────────────────────────────────────────
 # INTENT: book_eye_test
@@ -251,8 +443,8 @@ nlu:
     - book an appointment for eye test
     - I need an eye examination
     - can I get an eye check done
-    - book eye test in [Mumbai](city)
-    - schedule eye checkup in [Delhi](city)
+    - book eye test in [Kuala Lumpur](city)
+    - schedule eye checkup in [Penang](city)
     - I want to get my eyes checked
     - appointment for eye test
     - eye test booking
@@ -264,11 +456,31 @@ nlu:
     - eye power check
     - book eye test for tomorrow
     - schedule eye exam on Sunday
-    - I want an eye test in [Bangalore](city)
+    - I want an eye test in [Johor Bahru](city)
     - can I get my eyes tested at your store
     - how do I book an eye checkup
     - vision test appointment
-    - I'd like an eye examination in [Hyderabad](city)
+    - I'd like an eye examination in [Petaling Jaya](city)
+    - nak book eye test
+    - nak buat appointment check mata
+    - boleh book eye test tak
+    - nak periksa mata
+    - nak check power mata
+    - boleh buat appointment eye test kat [KL](city) tak
+    - nak booking eye checkup
+    - macam mana nak book eye test
+    - saya nak check mata kat [Penang](city)
+    - book appointment check mata untuk esok
+    - ada slot untuk eye test tak
+    - I want eye test at your [Bangsar](city) branch
+    - can book eye test this weekend or not
+    - nak pergi check mata hari Sabtu
+    - book eye check for my kid in [PJ](city)
+    - ada free eye test tak
+    - any slot for eye test tomorrow ah
+    - boleh walk in eye test ke
+    - nak book eye checkup kat [Sunway](city)
+    - appointment check mata dekat mana
 
 # ────────────────────────────────────────────────────────────
 # INTENT: track_order
@@ -297,6 +509,27 @@ nlu:
     - has my order been dispatched
     - where's my parcel
     - check dispatch status
+    - nak track order
+    - mana order saya
+    - order [45821](order_id) dah sampai ke belum
+    - check status order [ORD12345](order_id)
+    - bila order saya sampai
+    - order saya dah ship ke
+    - jejak order [CAL-2024-9876](order_id)
+    - nak tahu status penghantaran
+    - dah dispatch ke belum order saya
+    - where my parcel ah
+    - my order still haven't come lah
+    - order number [78562](order_id), dah sampai mana
+    - bila boleh dapat glasses saya
+    - status order macam mana
+    - saya punya order lambat sangat
+    - track parcel [ORD98765](order_id)
+    - order tak sampai-sampai lagi
+    - berapa lama nak deliver
+    - dah berapa hari order belum sampai
+    - can check my order status or not
+    - my spectacles already shipped ah
 
 # ────────────────────────────────────────────────────────────
 # INTENT: check_face_shape
@@ -323,6 +556,99 @@ nlu:
     - frame recommendation for [heart](face_shape) face
     - I have a [square](face_shape) jawline
     - guide me on face shape and glasses
+    - macam mana nak tahu bentuk muka saya
+    - bentuk muka saya apa eh
+    - muka saya [bulat](face_shape), frame apa sesuai
+    - frame apa sesuai untuk muka [oval](face_shape)
+    - cermin mata apa bagus untuk muka [persegi](face_shape)
+    - saya ada muka [heart](face_shape), glasses apa sesuai
+    - nak tahu face shape saya
+    - how to check my face shape ah
+    - what frame suit my face lah
+    - I got [round](face_shape) face, which one nice ah
+    - tolong recommend frame ikut face shape
+    - frame apa sesuai untuk bentuk muka saya
+    - boleh bantu pilih ikut muka
+    - sesuai tak frame ni untuk [diamond](face_shape) face
+    - muka macam mana nak pakai frame apa
+
+# ────────────────────────────────────────────────────────────
+# INTENT: ask_warranty
+# ────────────────────────────────────────────────────────────
+- intent: ask_warranty
+  examples: |
+    - do you have warranty
+    - what's the warranty period
+    - is there a guarantee on frames
+    - warranty policy
+    - how long is the warranty
+    - ada warranty tak
+    - warranty berapa lama
+    - glasses got warranty or not
+    - can claim warranty ah
+    - if rosak macam mana
+    - if broken how
+    - warranty cover apa
+    - what does the warranty include
+    - ada guarantee tak untuk cermin mata
+    - warranty untuk lens ada ke
+    - kalau pecah boleh tukar tak
+    - macam mana nak claim warranty
+    - how to make warranty claim
+
+# ────────────────────────────────────────────────────────────
+# INTENT: ask_return_exchange
+# ────────────────────────────────────────────────────────────
+- intent: ask_return_exchange
+  examples: |
+    - can I return my glasses
+    - what is your return policy
+    - I want to exchange my frames
+    - how do I return
+    - return policy
+    - boleh return tak
+    - nak tukar frame
+    - macam mana nak exchange
+    - boleh exchange size tak
+    - tak suka frame ni, boleh tukar
+    - I don't like this frame, can change or not
+    - the size wrong, can exchange ah
+    - how many days to return
+    - berapa hari boleh return
+    - return process macam mana
+    - can refund or not
+    - ada money back guarantee tak
+    - nak pulangkan balik cermin mata
+    - exchange to different color can ah
+
+# ────────────────────────────────────────────────────────────
+# INTENT: ask_payment_options
+# ────────────────────────────────────────────────────────────
+- intent: ask_payment_options
+  examples: |
+    - what payment methods do you accept
+    - can I pay with credit card
+    - do you accept online banking
+    - payment options
+    - boleh bayar guna apa
+    - payment method apa ada
+    - accept FPX tak
+    - boleh bayar pakai Touch n Go eWallet tak
+    - got installment plan or not
+    - ada ansuran tak
+    - boleh bayar Grab Pay tak
+    - accept Boost tak
+    - can use Shopee Pay ah
+    - I want to pay with debit card
+    - got 0% installment or not
+    - boleh pay later tak
+    - accept online banking tak
+    - how to pay
+    - macam mana nak bayar
+    - can split payment or not
+    - ada BNPL tak
+    - accept credit card installment tak
+    - bayar cash boleh ke
 
 # ────────────────────────────────────────────────────────────
 # INTENT: affirm
@@ -345,6 +671,23 @@ nlu:
     - definitely
     - for sure
     - totally
+    - ya
+    - yalah
+    - ye lah
+    - boleh
+    - ok lah
+    - can
+    - can lah
+    - betul
+    - memang
+    - nak
+    - ok boleh
+    - yes boss
+    - sure boss
+    - ok sure
+    - yes correct
+    - exactly
+    - right
 
 # ────────────────────────────────────────────────────────────
 # INTENT: deny
@@ -363,9 +706,51 @@ nlu:
     - not interested
     - maybe later
     - nah
+    - tak nak
+    - tak mau
+    - takpe
+    - tak payah
+    - tak perlu
+    - no lah
+    - nah tak nak
+    - skip lah
+    - not now lah
+    - later lah
+    - don't want
+    - no need
+    - tak jadi
+    - cancel lah
+    - no boss
+    - bukan
+    - belum
 
 # ────────────────────────────────────────────────────────────
-# INTENT: inform  (slot-filling responses in multi-turn dialogue)
+# INTENT: thank_you
+# ────────────────────────────────────────────────────────────
+- intent: thank_you
+  examples: |
+    - thank you
+    - thanks
+    - thanks a lot
+    - thank you so much
+    - terima kasih
+    - tq
+    - tq banyak
+    - terima kasih banyak
+    - thanks boss
+    - thanks bro
+    - thx
+    - appreciate it
+    - nice one thanks
+    - thank you for your help
+    - many thanks
+    - tq sangat
+    - thanks lah
+    - ok thank you
+    - great thanks
+
+# ────────────────────────────────────────────────────────────
+# INTENT: inform  (slot-filling in multi-turn dialogue)
 # ────────────────────────────────────────────────────────────
 - intent: inform
   examples: |
@@ -374,12 +759,12 @@ nlu:
     - my budget is [3000](budget)
     - [oval](face_shape) face shape
     - I want [blue light](lens_type) lenses
-    - my city is [Mumbai](city)
+    - my city is [Kuala Lumpur](city)
     - the order id is [45821](order_id)
     - [women's](gender)
     - [square](frame_style) frames
     - [anti glare](lens_type)
-    - [Bangalore](city)
+    - [Penang](city)
     - [progressive](lens_type)
     - under [5000](budget)
     - [rectangular](frame_style)
@@ -392,15 +777,32 @@ nlu:
     - [sunglasses](product_type)
     - [eyeglasses](product_type)
     - [heart](face_shape)
-    - [Delhi](city)
-    - [Chennai](city)
-    - [Hyderabad](city)
+    - [Johor Bahru](city)
+    - [Petaling Jaya](city)
     - [ORD12345](order_id)
     - budget is around [2500](budget)
     - something under [1500](budget)
     - [women](gender)
     - [men](gender)
     - next Monday
+    - [KL](city)
+    - [PJ](city)
+    - [JB](city)
+    - [Shah Alam](city)
+    - [Subang Jaya](city)
+    - [Ipoh](city)
+    - budget [500](budget)
+    - dalam [300](budget) macam tu
+    - nak yang bawah [200](budget)
+    - [lelaki](gender)
+    - [perempuan](gender)
+    - [bulat](face_shape)
+    - [persegi](face_shape)
+    - [wayfarer](frame_style)
+    - esok
+    - hari Sabtu
+    - pukul 10 pagi
+    - 3 petang
 
 # ────────────────────────────────────────────────────────────
 # INTENT: out_of_scope
@@ -423,6 +825,18 @@ nlu:
     - tell me something funny
     - what's the news today
     - recommend a movie
+    - apa cuaca hari ini
+    - cerita lawak
+    - nak order makanan
+    - siapa perdana menteri malaysia
+    - tolong translate
+    - main game
+    - nak dengar muzik
+    - cuaca kat KL macam mana
+    - apa berita terbaru
+    - who won the football match
+    - recommend restaurant near me
+    - what time is it
 
 # ────────────────────────────────────────────────────────────
 # ENTITY SYNONYMS
@@ -436,6 +850,9 @@ nlu:
     - optical frames
     - eyewear
     - optical glasses
+    - cermin mata
+    - spek
+    - kaca mata
 
 - synonym: sunglasses
   examples: |
@@ -444,6 +861,7 @@ nlu:
     - sun glasses
     - UV glasses
     - tinted glasses
+    - cermin mata hitam
 
 - synonym: anti glare
   examples: |
@@ -470,6 +888,8 @@ nlu:
     - gents
     - man
     - boys
+    - lelaki
+    - jantan
 
 - synonym: women
   examples: |
@@ -478,6 +898,35 @@ nlu:
     - ladies
     - woman
     - girls
+    - perempuan
+    - wanita
+
+- synonym: round
+  examples: |
+    - bulat
+
+- synonym: square
+  examples: |
+    - persegi
+
+- synonym: Kuala Lumpur
+  examples: |
+    - KL
+    - kuala lumpur
+    - kl
+
+- synonym: Petaling Jaya
+  examples: |
+    - PJ
+    - pj
+    - petaling jaya
+
+- synonym: Johor Bahru
+  examples: |
+    - JB
+    - jb
+    - johor bahru
+    - johor
 
 # ────────────────────────────────────────────────────────────
 # REGEX FEATURES  (entity pre-annotation)
@@ -493,42 +942,50 @@ nlu:
 # ────────────────────────────────────────────────────────────
 - lookup: city
   examples: |
-    - Mumbai
-    - Delhi
-    - Bangalore
-    - Chennai
-    - Hyderabad
-    - Pune
-    - Kolkata
-    - Ahmedabad
-    - Jaipur
-    - Noida
-    - Gurgaon
-    - Bandra
-    - Saket
-    - Connaught Place
-    - Indiranagar
-    - T. Nagar
-    - Banjara Hills
-    - Kurla
+    - Kuala Lumpur
+    - KL
+    - Petaling Jaya
+    - PJ
+    - Subang Jaya
+    - Shah Alam
+    - Bangsar
+    - Bukit Bintang
+    - KLCC
+    - Mid Valley
+    - Sunway
+    - Cyberjaya
+    - Putrajaya
+    - Penang
+    - Georgetown
+    - Gurney Plaza
+    - Johor Bahru
+    - JB
+    - Ipoh
+    - Melaka
+    - Kota Kinabalu
+    - Kuching
+    - Seremban
+    - One Utama
+    - IOI City Mall
+    - Pavilion
+    - Setia Alam
 
-- lookup: frame_style
+- lookup: lens_type
   examples: |
-    - round
-    - square
-    - rectangular
-    - cat-eye
-    - aviator
-    - oval
-    - wayfarer
-    - rimless
-    - half rim
-    - full rim
-    - titanium
-    - acetate
-    - metal
-    - lightweight
-    - bold
-    - classic
-    - minimalist
-    - trendy
+    - blue light
+    - anti glare
+    - progressive
+    - photochromic
+    - transition
+    - bifocal
+    - single vision
+    - polarized
+    - AR coating
+    - anti reflective
+    - UV400
+    - blue ray
+    - night driving
+    - anti scratch
+    - high index
+    - digital protection
+    - computer lenses
