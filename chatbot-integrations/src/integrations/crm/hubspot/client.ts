@@ -32,10 +32,6 @@ export interface HubSpotConfig {
   accessToken: string
 }
 
-/**
- * HubSpot CRM Client.
- * Thin facade over domain-specific HubSpot operation modules.
- */
 export class HubSpotClient {
   private readonly _context: HubSpotClientContext
 
