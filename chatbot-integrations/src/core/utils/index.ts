@@ -7,4 +7,4 @@ export {
   safeJsonParse,
   extractFileExtension,
 } from './helpers.js'
-export { NLPClient, type NLPClientConfig, type NLPResponse } from './nlpClient.js'
+export { NLPClient, type NLPClientConfig, type NLPResponse } from './nlp-client.js'

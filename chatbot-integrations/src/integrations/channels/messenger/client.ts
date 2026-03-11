@@ -1,16 +1,12 @@
 import axios from 'axios'
 import { z } from 'zod'
 import {
-  messengerPayloadSchema,
-  type MessengerPayload,
-  type MessengerMessagingItemMessage,
-  type MessengerMessagingItemPostback,
-  type CardPayload,
-  type ChoicePayload,
-  type MessengerOutMessageAttachment,
 } from './types.js'
-import { validateMetaSignature, type Logger } from '../../utils/index.js'
-import type { IncomingMessage, OutgoingMessage, WebhookRequest, WebhookResponse } from '../../types.js'
+import type { IncomingMessage, OutgoingMessage, WebhookRequest, WebhookResponse } from '../../../core/types.js'
+import type { Logger } from '../../../core/utils/index.js'
+import { normalizeMessengerMessagingItem } from './incoming.js'
+import { buildMessengerChoiceMessage } from './outgoing.js'
+import { handleMessengerWebhook } from './webhook.js'
 
 export interface MessengerConfig {
   pageAccessToken: string
@@ -102,7 +98,7 @@ export class MessengerChannel {
       case 'location':
         return this.sendLocation(recipientId, message.latitude, message.longitude)
       case 'choice': {
-        const choiceMsg = this._getChoiceMessage({ text: message.text, options: message.options })
+        const choiceMsg = buildMessengerChoiceMessage(message)
         return this._sendViaApi(recipientId, choiceMsg)
       }
       default:
@@ -154,58 +150,14 @@ export class MessengerChannel {
 
   /** Handle incoming webhook requests from Meta for Messenger */
   public async handleWebhook(req: WebhookRequest): Promise<WebhookResponse> {
-    try {
-      // Handle webhook verification
-      const queryParams = new URLSearchParams(req.query)
-      if (queryParams.has('hub.mode')) {
-        return this._handleVerification(queryParams)
-      }
-
-      // Validate signature
-      if (this._config.clientSecret) {
-        const { valid, error } = validateMetaSignature(
-          req.body,
-          req.headers['x-hub-signature-256'],
-          this._config.clientSecret
-        )
-        if (!valid) {
-          this._logger.error(`Messenger webhook signature validation failed: ${error}`)
-          return { status: 401, body: error }
-        }
-      }
-
-      if (!req.body) {
-        this._logger.warn('Messenger handler received empty body')
-        return { status: 200 }
-      }
-
-      let payload: MessengerPayload
-      try {
-        const parsed = JSON.parse(req.body)
-        const result = messengerPayloadSchema.safeParse(parsed)
-        if (!result.success) {
-          this._logger.warn('Unsupported Messenger event payload: ' + result.error.message)
-          return { status: 200 }
-        }
-        payload = result.data
-      } catch {
-        return { status: 400, body: 'Invalid JSON payload' }
-      }
-
-      for (const entry of payload.entry) {
-        if ('messaging' in entry) {
-          for (const item of entry.messaging) {
-            await this._processMessagingItem(item)
-          }
-        }
-        // Feed/comment entries can be processed here if needed
-      }
-
-      return { status: 200 }
-    } catch (error: any) {
-      this._logger.error(`Messenger webhook error: ${error.message}`)
-      return { status: 500, body: 'Internal error' }
-    }
+    return handleMessengerWebhook({
+      config: this._config,
+      logger: this._logger,
+      req,
+      onMessagingItem: async (item) => {
+        await this._processMessagingItem(item)
+      },
+    })
   }
 
   // ── Private Helpers ────────────────────────────────────────────────
@@ -226,110 +178,12 @@ export class MessengerChannel {
     return response.data?.message_id ?? ''
   }
 
-  private _handleVerification(params: URLSearchParams): WebhookResponse {
-    const mode = params.get('hub.mode')
-    const token = params.get('hub.verify_token')
-    const challenge = params.get('hub.challenge')
-
-    if (mode === 'subscribe' && token === this._config.verifyToken) {
-      this._logger.info('Messenger webhook verified successfully')
-      return { status: 200, body: challenge ?? '' }
-    }
-
-    this._logger.warn('Messenger webhook verification failed')
-    return { status: 403, body: 'Forbidden' }
-  }
-
   private async _processMessagingItem(item: any): Promise<void> {
-    const incoming: IncomingMessage = {
-      channel: 'messenger',
-      senderId: item.sender.id,
-      conversationId: item.sender.id,
-      messageId: '',
-      timestamp: String(item.timestamp),
-      type: 'unknown',
-      rawPayload: item,
-    }
-
-    if ('message' in item) {
-      const msg = item as MessengerMessagingItemMessage
-      incoming.messageId = msg.message.mid
-
-      if (msg.message.quick_reply) {
-        incoming.type = 'interactive'
-        incoming.interactive = {
-          type: 'button',
-          id: msg.message.quick_reply.payload,
-          title: msg.message.text ?? '',
-        }
-        incoming.text = msg.message.text
-      } else if (msg.message.text) {
-        incoming.type = 'text'
-        incoming.text = msg.message.text
-      } else if (msg.message.attachments?.length) {
-        const attachment = msg.message.attachments[0]!
-        const typeMap: Record<string, IncomingMessage['type']> = {
-          image: 'image',
-          audio: 'audio',
-          video: 'video',
-          file: 'file',
-        }
-        incoming.type = typeMap[attachment.type] ?? 'unknown'
-        incoming.mediaUrl = attachment.payload.url
-      }
-    } else if ('postback' in item) {
-      const pb = item as MessengerMessagingItemPostback
-      incoming.messageId = pb.postback.mid
-      incoming.type = 'interactive'
-      incoming.text = pb.postback.title
-      incoming.interactive = {
-        type: 'button',
-        id: pb.postback.payload,
-        title: pb.postback.title,
-      }
-    }
-
+    const incoming = normalizeMessengerMessagingItem(item)
     if (this._onMessage) {
       await this._onMessage(incoming)
     } else {
       this._logger.debug(`Messenger message received but no handler registered: ${JSON.stringify(incoming)}`)
-    }
-  }
-
-  private _formatCardElement(payload: CardPayload): any {
-    const buttons: MessengerOutMessageAttachment[] = payload.actions.map((action) => {
-      switch (action.action) {
-        case 'postback':
-        case 'say':
-          return { type: 'postback' as const, title: action.label, payload: action.value }
-        case 'url':
-          return { type: 'web_url' as const, title: action.label, url: action.value }
-        default:
-          return { type: 'postback' as const, title: action.label, payload: action.value }
-      }
-    })
-    return {
-      title: payload.title,
-      image_url: payload.imageUrl,
-      subtitle: payload.subtitle,
-      buttons,
-    }
-  }
-
-  private _getChoiceMessage(payload: ChoicePayload): any {
-    if (!payload.options.length) {
-      return { text: payload.text }
-    }
-    if (payload.options.length > 13) {
-      return { text: `${payload.text}\n\n${payload.options.map((o, idx) => `${idx + 1}. ${o.label}`).join('\n')}` }
-    }
-    return {
-      text: payload.text,
-      quick_replies: payload.options.map((option) => ({
-        content_type: 'text',
-        title: option.label,
-        payload: option.value,
-      })),
     }
   }
 }

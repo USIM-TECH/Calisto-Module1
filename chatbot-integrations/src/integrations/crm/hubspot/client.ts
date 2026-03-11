@@ -1,5 +1,5 @@
 import { Client as OfficialHubspotClient } from '@hubspot/api-client'
-import type { Logger } from '../../utils/index.js'
+import type { Logger } from '../../../core/utils/index.js'
 
 const DEFAULT_CONTACT_PROPERTIES = ['createdate', 'email', 'firstname', 'lastmodifieddate', 'lastname', 'phone']
 const DEFAULT_COMPANY_PROPERTIES = ['createdate', 'domain', 'name', 'hs_lastmodifieddate', 'phone']

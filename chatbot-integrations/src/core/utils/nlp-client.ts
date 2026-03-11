@@ -51,7 +51,7 @@ export class NLPClient {
     const timeout = this._config.timeout ?? 10_000
     const fallback = this._config.fallbackMessage ?? DEFAULT_FALLBACK
 
-    // Sanitise input (same guards as calisto_rasa_client.js)
+    // Sanitise input before sending to the NLP service.
     const safeMessage = String(message).slice(0, 1000).trim()
     const safeSender = String(userId).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 50)
 

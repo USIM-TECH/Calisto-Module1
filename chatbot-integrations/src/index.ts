@@ -9,34 +9,23 @@
  */
 
 // ── Channels ────────────────────────────────────────────────────
-export { WhatsAppChannel, type WhatsAppConfig } from './channels/whatsapp/index.js'
-export { InstagramChannel, type InstagramConfig } from './channels/instagram/index.js'
-export { MessengerChannel, type MessengerConfig } from './channels/messenger/index.js'
+export { WhatsAppChannel, type WhatsAppConfig } from './integrations/channels/whatsapp/index.js'
+export { InstagramChannel, type InstagramConfig } from './integrations/channels/instagram/index.js'
+export { MessengerChannel, type MessengerConfig } from './integrations/channels/messenger/index.js'
 
 // ── CRM ─────────────────────────────────────────────────────────
-export { HubSpotClient, type HubSpotConfig } from './crm/hubspot/index.js'
-
-// ── Data ────────────────────────────────────────────────────────
-export { GSheetsClient, type GSheetsConfig, type MajorDimension } from './data/gsheets/index.js'
-
-// ── Notifications ───────────────────────────────────────────────
-export { GmailEmailClient, type GmailConfig } from './notifications/email/index.js'
+export { HubSpotClient, type HubSpotConfig } from './integrations/crm/hubspot/index.js'
 
 // ── Webhook ─────────────────────────────────────────────────────
-export { createWebhookRouter, type WebhookRouterConfig } from './webhook/index.js'
+export { createWebhookRouter, type WebhookRouterConfig } from './core/webhook/index.js'
 
 // ── Auth ────────────────────────────────────────────────────────
-export {
-  verifyMetaSignature,
-  createGoogleOAuth2Client,
-  getGoogleAuthUrl,
-  exchangeGoogleAuthCode,
-} from './auth/index.js'
+export { verifyMetaSignature } from './core/auth/index.js'
 
 // ── Utilities ───────────────────────────────────────────────────
-export { type Logger, ConsoleLogger, createConsoleLogger } from './utils/logger.js'
-export { validateMetaSignature, chunkArray, truncate, sleep, safeJsonParse } from './utils/helpers.js'
-export { NLPClient, type NLPClientConfig, type NLPResponse } from './utils/nlpClient.js'
+export { type Logger, ConsoleLogger, createConsoleLogger } from './core/utils/logger.js'
+export { validateMetaSignature, chunkArray, truncate, sleep, safeJsonParse } from './core/utils/helpers.js'
+export { NLPClient, type NLPClientConfig, type NLPResponse } from './core/utils/nlp-client.js'
 
 // ── Types ───────────────────────────────────────────────────────
 export type {
@@ -56,4 +45,4 @@ export type {
   CrmLead,
   WebhookRequest,
   WebhookResponse,
-} from './types.js'
+} from './core/types.js'

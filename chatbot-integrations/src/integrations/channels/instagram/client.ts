@@ -1,21 +1,13 @@
 import axios from 'axios'
 import { z } from 'zod'
 import {
-  instagramPayloadSchema,
   type InstagramRecipientId,
-  type InstagramPayload,
-  type InstagramMessagingItemMessage,
-  type InstagramMessagingItemPostback,
-  type CardPayload,
-  type CarouselPayload,
-  type ChoicePayload,
-  type GenericTemplateElement,
-  type GenericTemplateMessage,
-  type TextMessageWithQuickReplies,
-  type InstagramAction,
 } from './types.js'
-import { validateMetaSignature, type Logger } from '../../utils/index.js'
-import type { IncomingMessage, OutgoingMessage, WebhookRequest, WebhookResponse } from '../../types.js'
+import type { IncomingMessage, OutgoingMessage, WebhookRequest, WebhookResponse } from '../../../core/types.js'
+import type { Logger } from '../../../core/utils/index.js'
+import { normalizeInstagramMessagingItem } from './incoming.js'
+import { buildInstagramChoiceMessage } from './outgoing.js'
+import { handleInstagramWebhook } from './webhook.js'
 
 export interface InstagramConfig {
   accessToken: string
@@ -122,7 +114,7 @@ export class InstagramChannel {
       case 'location':
         return this.sendLocationMessage(recipientId, message.latitude, message.longitude)
       case 'choice': {
-        const choiceMsg = this._getChoiceMessage({ text: message.text, options: message.options })
+        const choiceMsg = buildInstagramChoiceMessage(message)
         const response = await this._sendMessage({ id: recipientId }, choiceMsg)
         return response.message_id
       }
@@ -186,57 +178,14 @@ export class InstagramChannel {
 
   /** Handle incoming webhook requests from Meta for Instagram */
   public async handleWebhook(req: WebhookRequest): Promise<WebhookResponse> {
-    try {
-      // Handle webhook verification (subscribe challenge)
-      const queryParams = new URLSearchParams(req.query)
-      if (queryParams.has('hub.mode')) {
-        return this._handleVerification(queryParams)
-      }
-
-      // Validate signature
-      if (this._config.clientSecret) {
-        const { valid, error } = validateMetaSignature(
-          req.body,
-          req.headers['x-hub-signature-256'],
-          this._config.clientSecret
-        )
-        if (!valid) {
-          this._logger.error(`Instagram webhook signature validation failed: ${error}`)
-          return { status: 401, body: error }
-        }
-      }
-
-      if (!req.body) {
-        return { status: 200 }
-      }
-
-      let payload: InstagramPayload
-      try {
-        const parsed = JSON.parse(req.body)
-        const result = instagramPayloadSchema.safeParse(parsed)
-        if (!result.success) {
-          this._logger.warn('Unsupported Instagram event payload: ' + result.error.message)
-          return { status: 200 }
-        }
-        payload = result.data
-      } catch {
-        return { status: 400, body: 'Invalid JSON payload' }
-      }
-
-      for (const entry of payload.entry) {
-        if ('messaging' in entry) {
-          for (const item of entry.messaging) {
-            await this._processMessagingItem(item)
-          }
-        }
-        // Comment entries can be processed here if needed
-      }
-
-      return { status: 200 }
-    } catch (error: any) {
-      this._logger.error(`Instagram webhook error: ${error.message}`)
-      return { status: 500, body: 'Internal error' }
-    }
+    return handleInstagramWebhook({
+      config: this._config,
+      logger: this._logger,
+      req,
+      onMessagingItem: async (item) => {
+        await this._processMessagingItem(item)
+      },
+    })
   }
 
   // ── Private Helpers ────────────────────────────────────────────────
@@ -249,71 +198,10 @@ export class InstagramChannel {
     return response.data
   }
 
-  private _handleVerification(params: URLSearchParams): WebhookResponse {
-    const mode = params.get('hub.mode')
-    const token = params.get('hub.verify_token')
-    const challenge = params.get('hub.challenge')
-
-    if (mode === 'subscribe' && token === this._config.verifyToken) {
-      this._logger.info('Instagram webhook verified successfully')
-      return { status: 200, body: challenge ?? '' }
-    }
-
-    this._logger.warn('Instagram webhook verification failed')
-    return { status: 403, body: 'Forbidden' }
-  }
-
   private async _processMessagingItem(item: any): Promise<void> {
-    const incoming: IncomingMessage = {
-      channel: 'instagram',
-      senderId: item.sender.id,
-      conversationId: item.sender.id,
-      messageId: '',
-      timestamp: String(item.timestamp),
-      type: 'unknown',
-      rawPayload: item,
-    }
-
-    if ('message' in item) {
-      const msg = item as InstagramMessagingItemMessage
-      if (msg.message.is_echo) return // Ignore echo messages
-
-      incoming.messageId = msg.message.mid
-
-      if (msg.message.text) {
-        incoming.type = 'text'
-        incoming.text = msg.message.text
-      } else if (msg.message.attachments?.length) {
-        const attachment = msg.message.attachments[0]!
-        const typeMap: Record<string, IncomingMessage['type']> = {
-          image: 'image',
-          audio: 'audio',
-          video: 'video',
-          file: 'file',
-        }
-        incoming.type = typeMap[attachment.type] ?? 'unknown'
-        incoming.mediaUrl = attachment.payload.url
-      }
-
-      if (msg.message.quick_reply) {
-        incoming.type = 'interactive'
-        incoming.interactive = {
-          type: 'button',
-          id: msg.message.quick_reply.payload,
-          title: msg.message.text ?? '',
-        }
-        incoming.text = msg.message.text
-      }
-    } else if ('postback' in item) {
-      const pb = item as InstagramMessagingItemPostback
-      incoming.messageId = pb.postback.mid
-      incoming.type = 'interactive'
-      incoming.text = pb.postback.title
-      incoming.interactive = {
-        type: 'button',
-        id: pb.postback.payload,
-        title: pb.postback.title,
-      }
+    const incoming = normalizeInstagramMessagingItem(item)
+    if (!incoming) {
+      return
     }
 
     if (this._onMessage) {
@@ -323,41 +211,4 @@ export class InstagramChannel {
     }
   }
 
-  private _formatCardElement(payload: CardPayload): any {
-    const buttons: InstagramAction[] = []
-    for (const action of payload.actions) {
-      switch (action.action) {
-        case 'postback':
-        case 'say':
-          buttons.push({ type: 'postback', title: action.label, payload: `postback:${action.value}` })
-          break
-        case 'url':
-          buttons.push({ type: 'web_url', title: action.label, url: action.value })
-          break
-      }
-    }
-    return {
-      title: payload.title,
-      image_url: payload.imageUrl,
-      subtitle: payload.subtitle,
-      buttons,
-    }
-  }
-
-  private _getChoiceMessage(payload: ChoicePayload): TextMessageWithQuickReplies {
-    if (!payload.options.length) {
-      return { text: payload.text }
-    }
-    if (payload.options.length > 13) {
-      return { text: `${payload.text}\n\n${payload.options.map((o) => `- ${o.label}`).join('\n')}` }
-    }
-    return {
-      text: payload.text,
-      quick_replies: payload.options.map((option) => ({
-        content_type: 'text',
-        title: option.label,
-        payload: option.value,
-      })),
-    }
-  }
 }

@@ -1,7 +1,7 @@
 import type { Request, Response, Router } from 'express'
-import type { WhatsAppChannel } from '../channels/whatsapp/client.js'
-import type { InstagramChannel } from '../channels/instagram/client.js'
-import type { MessengerChannel } from '../channels/messenger/client.js'
+import type { InstagramChannel } from '../../integrations/channels/instagram/client.js'
+import type { MessengerChannel } from '../../integrations/channels/messenger/client.js'
+import type { WhatsAppChannel } from '../../integrations/channels/whatsapp/client.js'
 import type { Logger } from '../utils/index.js'
 import type { WebhookRequest } from '../types.js'
 

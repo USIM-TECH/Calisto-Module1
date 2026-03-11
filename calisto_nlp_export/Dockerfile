@@ -18,7 +18,6 @@ COPY domain.yml .
 COPY endpoints.yml .
 COPY credentials.yml .
 COPY data/ ./data/
-COPY models/ ./models/
 COPY actions/ ./actions/
 
 # Switch back to non-root user

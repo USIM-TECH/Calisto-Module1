@@ -10,7 +10,7 @@ export function validateMetaSignature(
   clientSecret: string
 ): { valid: boolean; error?: string } {
   if (!clientSecret) {
-    return { valid: true } // No secret configured, skip validation
+    return { valid: true } 
   }
 
   const expectedSignature = crypto
