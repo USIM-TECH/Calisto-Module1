@@ -11,7 +11,7 @@
 
 export interface IncomingMessage {
   /** Which channel this arrived on */
-  channel: 'whatsapp' | 'instagram' | 'messenger'
+  channel: 'whatsapp' | 'instagram' | 'messenger' | 'x' | 'telegram'
   /** Platform-specific sender ID */
   senderId: string
   /** Platform-specific conversation/thread ID */

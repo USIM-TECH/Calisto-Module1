@@ -1,11 +1,9 @@
 import axios from 'axios'
 import { z } from 'zod'
-import {
-} from './types.js'
 import type { IncomingMessage, OutgoingMessage, WebhookRequest, WebhookResponse } from '../../../core/types.js'
 import type { Logger } from '../../../core/utils/index.js'
 import { normalizeMessengerMessagingItem } from './incoming.js'
-import { buildMessengerChoiceMessage } from './outgoing.js'
+import { sendMessengerMessage } from './outgoing.js'
 import { handleMessengerWebhook } from './webhook.js'
 
 export interface MessengerConfig {
@@ -45,66 +43,39 @@ export class MessengerChannel {
 
   /** Send a text message via Messenger Send API */
   public async sendText(recipientId: string, text: string): Promise<string> {
-    return this._sendViaApi(recipientId, { text })
+    return (await this.sendMessage(recipientId, { type: 'text', text })) ?? ''
   }
 
   /** Send an image message */
   public async sendImage(recipientId: string, imageUrl: string): Promise<string> {
-    return this._sendViaApi(recipientId, {
-      attachment: { type: 'image', payload: { url: imageUrl, is_reusable: true } },
-    })
+    return (await this.sendMessage(recipientId, { type: 'image', imageUrl })) ?? ''
   }
 
   /** Send an audio message */
   public async sendAudio(recipientId: string, audioUrl: string): Promise<string> {
-    return this._sendViaApi(recipientId, {
-      attachment: { type: 'audio', payload: { url: audioUrl, is_reusable: true } },
-    })
+    return (await this.sendMessage(recipientId, { type: 'audio', audioUrl })) ?? ''
   }
 
   /** Send a video message */
   public async sendVideo(recipientId: string, videoUrl: string): Promise<string> {
-    return this._sendViaApi(recipientId, {
-      attachment: { type: 'video', payload: { url: videoUrl, is_reusable: true } },
-    })
+    return (await this.sendMessage(recipientId, { type: 'video', videoUrl })) ?? ''
   }
 
   /** Send a file message */
   public async sendFile(recipientId: string, fileUrl: string): Promise<string> {
-    return this._sendViaApi(recipientId, {
-      attachment: { type: 'file', payload: { url: fileUrl, is_reusable: true } },
-    })
+    return (await this.sendMessage(recipientId, { type: 'file', fileUrl })) ?? ''
   }
 
   /** Send a location as Google Maps link */
   public async sendLocation(recipientId: string, latitude: number, longitude: number): Promise<string> {
-    const link = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
-    return this.sendText(recipientId, link)
+    return (await this.sendMessage(recipientId, { type: 'location', latitude, longitude })) ?? ''
   }
 
   /** Send an outgoing message (dispatches by type) */
   public async sendMessage(recipientId: string, message: OutgoingMessage): Promise<string | undefined> {
-    switch (message.type) {
-      case 'text':
-        return this.sendText(recipientId, message.text)
-      case 'image':
-        return this.sendImage(recipientId, message.imageUrl)
-      case 'audio':
-        return this.sendAudio(recipientId, message.audioUrl)
-      case 'video':
-        return this.sendVideo(recipientId, message.videoUrl)
-      case 'file':
-        return this.sendFile(recipientId, message.fileUrl)
-      case 'location':
-        return this.sendLocation(recipientId, message.latitude, message.longitude)
-      case 'choice': {
-        const choiceMsg = buildMessengerChoiceMessage(message)
-        return this._sendViaApi(recipientId, choiceMsg)
-      }
-      default:
-        this._logger.warn(`Unsupported outgoing message type for Messenger: ${(message as any).type}`)
-        return undefined
-    }
+    return sendMessengerMessage(recipientId, message, this._logger, async (id, rawMessage) => {
+      return this._sendViaApi(id, rawMessage)
+    })
   }
 
   // ── OAuth Helpers ──────────────────────────────────────────────────

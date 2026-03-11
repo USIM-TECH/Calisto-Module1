@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-// ── Incoming Payload Schemas ───────────────────────────────────────────
+// ── Incoming Payload Schemas
 
 const baseMessengerMessagingItemSchema = z.object({
   sender: z.object({ id: z.string() }),
@@ -73,7 +73,7 @@ export type MessengerMessagingItemMessage = z.infer<typeof messengerMessagingIte
 export type MessengerMessagingItemPostback = z.infer<typeof messengerMessagingItemPostbackSchema>
 export type MessengerMessagingItem = z.infer<typeof messengerMessagingItemSchema>
 
-// ── Outgoing Message Types ─────────────────────────────────────────────
+// ── Outgoing Message Types
 
 export type MessengerOutMessageAttachment =
   | { type: 'postback'; title: string; payload: string }

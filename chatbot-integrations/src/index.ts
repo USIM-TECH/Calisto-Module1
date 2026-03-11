@@ -12,6 +12,8 @@
 export { WhatsAppChannel, type WhatsAppConfig } from './integrations/channels/whatsapp/index.js'
 export { InstagramChannel, type InstagramConfig } from './integrations/channels/instagram/index.js'
 export { MessengerChannel, type MessengerConfig } from './integrations/channels/messenger/index.js'
+export { TelegramChannel, type TelegramConfig } from './integrations/channels/telegram/index.js'
+export { XChannel, type XConfig } from './integrations/channels/x/index.js'
 
 // ── CRM ─────────────────────────────────────────────────────────
 export { HubSpotClient, type HubSpotConfig } from './integrations/crm/hubspot/index.js'

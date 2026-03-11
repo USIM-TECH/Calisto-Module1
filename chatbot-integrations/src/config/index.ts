@@ -1,7 +1,9 @@
 import { z } from 'zod'
 import type { InstagramConfig } from '../integrations/channels/instagram/index.js'
 import type { MessengerConfig } from '../integrations/channels/messenger/index.js'
+import type { TelegramConfig } from '../integrations/channels/telegram/index.js'
 import type { WhatsAppConfig } from '../integrations/channels/whatsapp/index.js'
+import type { XConfig } from '../integrations/channels/x/index.js'
 import type { HubSpotConfig } from '../integrations/crm/hubspot/index.js'
 
 const optionalString = z.preprocess((value) => {
@@ -38,6 +40,16 @@ const envSchema = z.object({
   MESSENGER_APP_TOKEN: optionalString,
   MESSENGER_API_VERSION: optionalString,
 
+  X_API_KEY: optionalString,
+  X_API_SECRET: optionalString,
+  X_ACCESS_TOKEN: optionalString,
+  X_ACCESS_TOKEN_SECRET: optionalString,
+  X_API_BASE_URL: optionalString,
+
+  TELEGRAM_BOT_TOKEN: optionalString,
+  TELEGRAM_SECRET_TOKEN: optionalString,
+  TELEGRAM_API_BASE_URL: optionalString,
+
   HUBSPOT_ACCESS_TOKEN: optionalString,
 
 })
@@ -48,6 +60,8 @@ export interface AppConfig {
   whatsapp?: WhatsAppConfig
   instagram?: InstagramConfig
   messenger?: MessengerConfig
+  telegram?: TelegramConfig
+  x?: XConfig
   hubspot?: HubSpotConfig
 }
 
@@ -85,6 +99,22 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
           clientSecret: parsed.MESSENGER_CLIENT_SECRET,
           appToken: parsed.MESSENGER_APP_TOKEN,
           apiVersion: parsed.MESSENGER_API_VERSION,
+        }
+      : undefined,
+    x: parsed.X_API_KEY && parsed.X_API_SECRET && parsed.X_ACCESS_TOKEN && parsed.X_ACCESS_TOKEN_SECRET
+      ? {
+          consumerKey: parsed.X_API_KEY,
+          consumerSecret: parsed.X_API_SECRET,
+          accessToken: parsed.X_ACCESS_TOKEN,
+          accessTokenSecret: parsed.X_ACCESS_TOKEN_SECRET,
+          apiBaseUrl: parsed.X_API_BASE_URL,
+        }
+      : undefined,
+    telegram: parsed.TELEGRAM_BOT_TOKEN
+      ? {
+          botToken: parsed.TELEGRAM_BOT_TOKEN,
+          secretToken: parsed.TELEGRAM_SECRET_TOKEN,
+          apiBaseUrl: parsed.TELEGRAM_API_BASE_URL,
         }
       : undefined,
     hubspot: parsed.HUBSPOT_ACCESS_TOKEN

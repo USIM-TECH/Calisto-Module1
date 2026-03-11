@@ -1,12 +1,14 @@
 import type { IncomingMessage } from '../core/types.js'
 import type { Logger } from '../core/utils/index.js'
 import { NLPClient } from '../core/utils/index.js'
+import type { MessageDeduplicator } from './message-deduplicator.js'
 
 interface CreateNlpMessageHandlerProps {
-  channelName: 'WhatsApp' | 'Instagram' | 'Messenger'
+  channelName: 'WhatsApp' | 'Instagram' | 'Messenger' | 'X' | 'Telegram'
   logger: Logger
   nlpClient: NLPClient
   sendText: (recipientId: string, text: string) => Promise<unknown>
+  deduplicator: MessageDeduplicator
 }
 
 function redactSenderId(senderId: string): string {
@@ -22,10 +24,16 @@ export function createNlpMessageHandler({
   logger,
   nlpClient,
   sendText,
+  deduplicator,
 }: CreateNlpMessageHandlerProps) {
   return async (message: IncomingMessage): Promise<void> => {
     const messageText = message.text || message.interactive?.title
     const senderLabel = redactSenderId(message.senderId)
+
+    if (!deduplicator.shouldProcess(message)) {
+      logger.warn(`[${channelName}] Ignoring duplicate message ${message.messageId} from ${senderLabel}`)
+      return
+    }
 
     if (!messageText) {
       logger.warn(`[${channelName}] Ignoring non-text message from ${senderLabel}`)
