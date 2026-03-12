@@ -1,12 +1,15 @@
-# Calisto Eyewear – NLP Service
+# Calisto NLP Export
 
-Standalone Rasa NLP service for the Calisto Eyewear chatbot. Connects to any Node.js (or other) backend via REST API.
+Rasa project used by the chatbot integration service.
 
 > **Note:** Rasa 3.6.x requires Python 3.8–3.10. The recommended way to run this service is via **Docker**, which bundles the correct Python version automatically.
 
 ---
 
-## Folder Structure
+- `data/`: NLU, rules, and stories
+- `domain.yml`: intents, slots, forms, responses
+- `actions/actions.py`: custom actions and validators
+- `docker-compose.yml`: Rasa server + action server
 
 ```
 calisto_nlp_export/
@@ -31,7 +34,7 @@ calisto_nlp_export/
 └── calisto_rasa_client.js   ← Node.js integration example
 ```
 
----
+The custom actions still use in-memory catalog, order, and store data. That is suitable for demo and development only. Production readiness requires replacing those helpers with real backend/API calls.
 
 ## Setup & Run (Docker — Recommended)
 
@@ -225,9 +228,9 @@ docker compose up -d --build
 
 ### Via local Python (requires Python 3.8–3.10)
 ```bash
-source .venv/bin/activate
-rasa train
-# New model saved to models/
+curl -X POST http://localhost:5005/webhooks/rest/webhook \
+  -H "Content-Type: application/json" \
+  -d '{"sender":"test-user","message":"hi"}'
 ```
 
 ---
