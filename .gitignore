@@ -32,3 +32,14 @@ yarn-error.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Virtual environment
+.venv/
+calisto_nlp_export/.venv/
+
+# FAISS index (rebuild locally)
+calisto_nlp_export/knowledge_base/index/
+calisto_nlp_export/actions/knowledge_base/index/
+
+# Old backup
+*.py.bak

@@ -1,6 +1,6 @@
 """
-Calisto Eyewear – Custom Rasa Actions
-======================================
+Calisto Eyewear (Malaysia) – Custom Rasa Actions
+==================================================
 Three primary actions + three form validators.
 
 Actions
@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import logging
 import re
+from difflib import get_close_matches
 from typing import Any, Dict, List, Optional, Text
 
 from rasa_sdk import Action, FormValidationAction, Tracker
@@ -32,95 +33,95 @@ from rasa_sdk.types import DomainDict
 logger = logging.getLogger(__name__)
 
 # ============================================================
-# Simulated Backend Data
+# Simulated Backend Data  (Malaysian context)
 # In production replace each _fetch_* method with a real
 # HTTP call to your order-management / product / store API.
 # ============================================================
 
-# ── Frame Catalogue ─────────────────────────────────────────
+# ── Frame Catalogue (prices in RM) ──────────────────────────
 FRAME_CATALOG: Dict[str, Dict[str, List[Dict]]] = {
     "round": {
         "men": [
-            {"name": "Calisto Retro Round",   "price": 1999, "material": "Acetate",        "color": "Tortoise",  "sku": "CAL-RR-M01"},
-            {"name": "Calisto Classic Circle","price": 2499, "material": "Metal",           "color": "Gold",      "sku": "CAL-CC-M02"},
-            {"name": "Calisto Vintage Round", "price": 1499, "material": "TR90",            "color": "Black",     "sku": "CAL-VR-M03"},
+            {"name": "Calisto Retro Round",   "price": 199, "material": "Acetate",        "color": "Tortoise",  "sku": "CAL-RR-M01"},
+            {"name": "Calisto Classic Circle","price": 249, "material": "Metal",           "color": "Gold",      "sku": "CAL-CC-M02"},
+            {"name": "Calisto Vintage Round", "price": 149, "material": "TR90",            "color": "Black",     "sku": "CAL-VR-M03"},
         ],
         "women": [
-            {"name": "Calisto Chic Round",    "price": 2199, "material": "Acetate",        "color": "Rose Gold", "sku": "CAL-CR-W01"},
-            {"name": "Calisto Elegant Circle","price": 2999, "material": "Premium Metal",  "color": "Silver",    "sku": "CAL-EC-W02"},
-            {"name": "Calisto Petite Round",  "price": 1799, "material": "TR90",            "color": "Purple",    "sku": "CAL-PR-W03"},
+            {"name": "Calisto Chic Round",    "price": 219, "material": "Acetate",        "color": "Rose Gold", "sku": "CAL-CR-W01"},
+            {"name": "Calisto Elegant Circle","price": 299, "material": "Premium Metal",  "color": "Silver",    "sku": "CAL-EC-W02"},
+            {"name": "Calisto Petite Round",  "price": 179, "material": "TR90",            "color": "Purple",    "sku": "CAL-PR-W03"},
         ],
         "unisex": [
-            {"name": "Calisto Neo Round",     "price": 1699, "material": "TR90",            "color": "Matte Black","sku": "CAL-NR-U01"},
+            {"name": "Calisto Neo Round",     "price": 169, "material": "TR90",            "color": "Matte Black","sku": "CAL-NR-U01"},
         ],
     },
     "rectangular": {
         "men": [
-            {"name": "Calisto Pro Rectangle", "price": 2299, "material": "Titanium",       "color": "Gunmetal",  "sku": "CAL-PR-M01"},
-            {"name": "Calisto Sharp Edge",    "price": 1899, "material": "Acetate",        "color": "Dark Brown","sku": "CAL-SE-M02"},
+            {"name": "Calisto Pro Rectangle", "price": 229, "material": "Titanium",       "color": "Gunmetal",  "sku": "CAL-PR-M01"},
+            {"name": "Calisto Sharp Edge",    "price": 189, "material": "Acetate",        "color": "Dark Brown","sku": "CAL-SE-M02"},
         ],
         "women": [
-            {"name": "Calisto Slim Rectangle","price": 1999, "material": "Metal",           "color": "Rose Gold", "sku": "CAL-SR-W01"},
+            {"name": "Calisto Slim Rectangle","price": 199, "material": "Metal",           "color": "Rose Gold", "sku": "CAL-SR-W01"},
         ],
         "unisex": [
-            {"name": "Calisto Classic Rect",  "price": 1499, "material": "TR90",            "color": "Black",     "sku": "CAL-CR-U01"},
+            {"name": "Calisto Classic Rect",  "price": 149, "material": "TR90",            "color": "Black",     "sku": "CAL-CR-U01"},
         ],
     },
     "square": {
         "men": [
-            {"name": "Calisto Bold Square",   "price": 2499, "material": "Acetate",        "color": "Black",     "sku": "CAL-BS-M01"},
-            {"name": "Calisto Power Square",  "price": 1999, "material": "Metal",           "color": "Silver",    "sku": "CAL-PS-M02"},
+            {"name": "Calisto Bold Square",   "price": 249, "material": "Acetate",        "color": "Black",     "sku": "CAL-BS-M01"},
+            {"name": "Calisto Power Square",  "price": 199, "material": "Metal",           "color": "Silver",    "sku": "CAL-PS-M02"},
         ],
         "women": [
-            {"name": "Calisto Fierce Square", "price": 2299, "material": "Acetate",        "color": "Tortoise",  "sku": "CAL-FS-W01"},
+            {"name": "Calisto Fierce Square", "price": 229, "material": "Acetate",        "color": "Tortoise",  "sku": "CAL-FS-W01"},
         ],
         "unisex": [
-            {"name": "Calisto Urban Square",  "price": 1799, "material": "TR90",            "color": "Blue",      "sku": "CAL-US-U01"},
+            {"name": "Calisto Urban Square",  "price": 179, "material": "TR90",            "color": "Blue",      "sku": "CAL-US-U01"},
         ],
     },
     "cat-eye": {
         "men": [],
         "women": [
-            {"name": "Calisto Glamour Cat-Eye","price": 2799, "material": "Acetate",       "color": "Cherry Red","sku": "CAL-GC-W01"},
-            {"name": "Calisto Retro Cat-Eye", "price": 2299, "material": "Acetate",        "color": "Black-Gold","sku": "CAL-RC-W02"},
-            {"name": "Calisto Chic Cat-Eye",  "price": 1999, "material": "TR90",            "color": "Leopard",   "sku": "CAL-CC-W03"},
+            {"name": "Calisto Glamour Cat-Eye","price": 279, "material": "Acetate",       "color": "Cherry Red","sku": "CAL-GC-W01"},
+            {"name": "Calisto Retro Cat-Eye", "price": 229, "material": "Acetate",        "color": "Black-Gold","sku": "CAL-RC-W02"},
+            {"name": "Calisto Chic Cat-Eye",  "price": 199, "material": "TR90",            "color": "Leopard",   "sku": "CAL-CC-W03"},
         ],
         "unisex": [
-            {"name": "Calisto Modern Cat-Eye","price": 2199, "material": "Metal",          "color": "Rose Gold", "sku": "CAL-MC-U01"},
+            {"name": "Calisto Modern Cat-Eye","price": 219, "material": "Metal",          "color": "Rose Gold", "sku": "CAL-MC-U01"},
         ],
     },
     "aviator": {
         "men": [
-            {"name": "Calisto Ace Aviator",   "price": 1999, "material": "Metal",           "color": "Gold",      "sku": "CAL-AA-M01"},
-            {"name": "Calisto Sky Aviator",   "price": 2499, "material": "Titanium",        "color": "Silver",    "sku": "CAL-SA-M02"},
+            {"name": "Calisto Ace Aviator",   "price": 199, "material": "Metal",           "color": "Gold",      "sku": "CAL-AA-M01"},
+            {"name": "Calisto Sky Aviator",   "price": 249, "material": "Titanium",        "color": "Silver",    "sku": "CAL-SA-M02"},
         ],
         "women": [
-            {"name": "Calisto Femme Aviator", "price": 2199, "material": "Metal",           "color": "Rose Gold", "sku": "CAL-FA-W01"},
+            {"name": "Calisto Femme Aviator", "price": 219, "material": "Metal",           "color": "Rose Gold", "sku": "CAL-FA-W01"},
         ],
         "unisex": [
-            {"name": "Calisto Classic Aviator","price": 1699, "material": "Metal",          "color": "Gunmetal",  "sku": "CAL-CA-U01"},
+            {"name": "Calisto Classic Aviator","price": 169, "material": "Metal",          "color": "Gunmetal",  "sku": "CAL-CA-U01"},
         ],
     },
     "wayfarer": {
         "men": [
-            {"name": "Calisto Street Wayfarer","price": 1799, "material": "Acetate",       "color": "Black",     "sku": "CAL-SW-M01"},
+            {"name": "Calisto Street Wayfarer","price": 179, "material": "Acetate",       "color": "Black",     "sku": "CAL-SW-M01"},
         ],
         "women": [
-            {"name": "Calisto Trend Wayfarer","price": 1999, "material": "Acetate",        "color": "Tortoise",  "sku": "CAL-TW-W01"},
+            {"name": "Calisto Trend Wayfarer","price": 199, "material": "Acetate",        "color": "Tortoise",  "sku": "CAL-TW-W01"},
         ],
         "unisex": [
-            {"name": "Calisto Original Wayfarer","price": 1699,"material": "Acetate",      "color": "Classic Black","sku": "CAL-OW-U01"},
+            {"name": "Calisto Original Wayfarer","price": 169,"material": "Acetate",      "color": "Classic Black","sku": "CAL-OW-U01"},
         ],
     },
     "oval": {
         "men": [
-            {"name": "Calisto Smooth Oval",   "price": 1899, "material": "TR90",            "color": "Brown",     "sku": "CAL-SO-M01"},
+            {"name": "Calisto Smooth Oval",   "price": 189, "material": "TR90",            "color": "Brown",     "sku": "CAL-SO-M01"},
         ],
         "women": [
-            {"name": "Calisto Dainty Oval",   "price": 2099, "material": "Metal",           "color": "Gold",      "sku": "CAL-DO-W01"},
+            {"name": "Calisto Dainty Oval",   "price": 209, "material": "Metal",           "color": "Gold",      "sku": "CAL-DO-W01"},
         ],
         "unisex": [
-            {"name": "Calisto Neo Oval",       "price": 1599, "material": "TR90",            "color": "Black",     "sku": "CAL-NO-U01"},
+            {"name": "Calisto Neo Oval",       "price": 159, "material": "TR90",            "color": "Black",     "sku": "CAL-NO-U01"},
         ],
     },
 }
@@ -132,49 +133,133 @@ FACE_SHAPE_STYLES: Dict[str, List[str]] = {
     "heart":   ["wayfarer", "rectangular", "aviator"],
     "diamond": ["oval", "cat-eye", "rectangular"],
     "oblong":  ["aviator", "square", "wayfarer"],
+    # Malay synonyms map to same styles
+    "bulat":   ["rectangular", "square", "wayfarer"],
+    "persegi": ["round", "oval", "cat-eye"],
 }
 
 FEATURED_FRAMES = [
-    {"name": "Calisto Ace Aviator",    "price": 1999, "material": "Metal",   "sku": "CAL-AA-M01"},
-    {"name": "Calisto Chic Round",     "price": 2199, "material": "Acetate", "sku": "CAL-CR-W01"},
-    {"name": "Calisto Bold Square",    "price": 2499, "material": "Acetate", "sku": "CAL-BS-M01"},
-    {"name": "Calisto Classic Aviator","price": 1699, "material": "Metal",   "sku": "CAL-CA-U01"},
+    {"name": "Calisto Ace Aviator",    "price": 199, "material": "Metal",   "sku": "CAL-AA-M01"},
+    {"name": "Calisto Chic Round",     "price": 219, "material": "Acetate", "sku": "CAL-CR-W01"},
+    {"name": "Calisto Bold Square",    "price": 249, "material": "Acetate", "sku": "CAL-BS-M01"},
+    {"name": "Calisto Classic Aviator","price": 169, "material": "Metal",   "sku": "CAL-CA-U01"},
 ]
 
 # ── Order Database ───────────────────────────────────────────
 ORDER_DATABASE: Dict[str, Dict] = {
-    "45821":          {"status": "Shipped",    "carrier": "BlueDart",  "tracking": "BD78234561",   "eta": "2 days",    "step": "Out for Delivery"},
-    "ORD12345":       {"status": "Processing", "carrier": "N/A",       "tracking": "N/A",           "eta": "5–7 days",  "step": "Quality Check in Progress"},
-    "78562":          {"status": "Delivered",  "carrier": "Delhivery", "tracking": "DL98765432",   "eta": "Delivered", "step": "Delivered on 5 March 2026"},
-    "CAL-2024-9876":  {"status": "Shipped",    "carrier": "DTDC",      "tracking": "DTDC12345",    "eta": "3 days",    "step": "In Transit – Bangalore Hub"},
-    "CAL98231":       {"status": "Confirmed",  "carrier": "N/A",       "tracking": "N/A",           "eta": "7–10 days", "step": "Being Prepared at Warehouse"},
-    "ORD98765":       {"status": "Shipped",    "carrier": "BlueDart",  "tracking": "BD99112233",   "eta": "1 day",     "step": "Out for Delivery"},
-    "234567":         {"status": "Processing", "carrier": "N/A",       "tracking": "N/A",           "eta": "6–8 days",  "step": "Payment Confirmed"},
+    "45821":          {"status": "Shipped",    "carrier": "J&T Express",  "tracking": "JT78234561MY",  "eta": "2 days",    "step": "Out for Delivery"},
+    "ORD12345":       {"status": "Processing", "carrier": "N/A",          "tracking": "N/A",            "eta": "5-7 days",  "step": "Quality Check in Progress"},
+    "78562":          {"status": "Delivered",  "carrier": "Pos Laju",     "tracking": "EN098765432MY",  "eta": "Delivered", "step": "Delivered on 5 March 2026"},
+    "CAL-2024-9876":  {"status": "Shipped",    "carrier": "Ninja Van",    "tracking": "NVMY12345",      "eta": "3 days",    "step": "In Transit - KL Hub"},
+    "CAL98231":       {"status": "Confirmed",  "carrier": "N/A",          "tracking": "N/A",            "eta": "7-10 days", "step": "Being Prepared at Warehouse"},
+    "ORD98765":       {"status": "Shipped",    "carrier": "J&T Express",  "tracking": "JT99112233MY",   "eta": "1 day",     "step": "Out for Delivery"},
+    "234567":         {"status": "Processing", "carrier": "N/A",          "tracking": "N/A",            "eta": "6-8 days",  "step": "Payment Confirmed"},
 }
 
-# ── Store Database ───────────────────────────────────────────
+# ── Store Database (Malaysian locations) ─────────────────────
 STORE_DATABASE: Dict[str, List[Dict]] = {
-    "mumbai": [
-        {"name": "Calisto – Bandra",         "address": "Shop 12, Linking Road, Bandra West, Mumbai 400050",           "phone": "+91 22-2640-1234", "hours": "Mon–Sun: 10AM–9PM"},
-        {"name": "Calisto – Phoenix Kurla",  "address": "Level 2, Phoenix Market City, LBS Marg, Kurla, Mumbai 400070","phone": "+91 22-2503-5678", "hours": "Mon–Sun: 10AM–10PM"},
+    "kuala lumpur": [
+        {"name": "Calisto – Pavilion KL",        "address": "Lot 3.12, Level 3, Pavilion KL, 168 Jalan Bukit Bintang, 55100 KL",           "phone": "+60 3-2110-1234", "hours": "Mon-Sun: 10AM-10PM"},
+        {"name": "Calisto – Mid Valley Megamall", "address": "Lot S-025, Level S, Mid Valley Megamall, Lingkaran Syed Putra, 59200 KL",     "phone": "+60 3-2282-5678", "hours": "Mon-Sun: 10AM-10PM"},
     ],
-    "delhi": [
-        {"name": "Calisto – Connaught Place","address": "Block A, Inner Circle, Connaught Place, New Delhi 110001",   "phone": "+91 11-2341-9012", "hours": "Mon–Sun: 10AM–9PM"},
-        {"name": "Calisto – Select City Walk","address": "Level 1, Select City Walk, Saket, New Delhi 110017",         "phone": "+91 11-2956-3456", "hours": "Mon–Sun: 11AM–9PM"},
+    "kl": [
+        {"name": "Calisto – Pavilion KL",        "address": "Lot 3.12, Level 3, Pavilion KL, 168 Jalan Bukit Bintang, 55100 KL",           "phone": "+60 3-2110-1234", "hours": "Mon-Sun: 10AM-10PM"},
+        {"name": "Calisto – Mid Valley Megamall", "address": "Lot S-025, Level S, Mid Valley Megamall, Lingkaran Syed Putra, 59200 KL",     "phone": "+60 3-2282-5678", "hours": "Mon-Sun: 10AM-10PM"},
     ],
-    "bangalore": [
-        {"name": "Calisto – Brigade Road",  "address": "No. 45, Brigade Road, Bangalore 560001",                      "phone": "+91 80-4123-7890", "hours": "Mon–Sun: 10AM–9PM"},
-        {"name": "Calisto – Indiranagar",   "address": "100 Feet Road, Indiranagar, Bangalore 560038",                 "phone": "+91 80-4125-6789", "hours": "Mon–Sun: 10AM–9PM"},
+    "bukit bintang": [
+        {"name": "Calisto – Pavilion KL",        "address": "Lot 3.12, Level 3, Pavilion KL, 168 Jalan Bukit Bintang, 55100 KL",           "phone": "+60 3-2110-1234", "hours": "Mon-Sun: 10AM-10PM"},
     ],
-    "chennai": [
-        {"name": "Calisto – T Nagar",       "address": "Usman Road, T. Nagar, Chennai 600017",                        "phone": "+91 44-4321-1234", "hours": "Mon–Sun: 10AM–8:30PM"},
+    "klcc": [
+        {"name": "Calisto – Suria KLCC",         "address": "Lot 221, Level 2, Suria KLCC, Jalan Ampang, 50088 KL",                         "phone": "+60 3-2161-9012", "hours": "Mon-Sun: 10AM-10PM"},
     ],
-    "hyderabad": [
-        {"name": "Calisto – Banjara Hills", "address": "Road No. 12, Banjara Hills, Hyderabad 500034",                "phone": "+91 40-6789-0123", "hours": "Mon–Sun: 10AM–9PM"},
+    "bangsar": [
+        {"name": "Calisto – Bangsar Village II", "address": "Lot G-15, Ground Floor, Bangsar Village II, Jalan Telawi, 59100 KL",           "phone": "+60 3-2287-3456", "hours": "Mon-Sun: 10AM-9PM"},
     ],
-    "pune": [
-        {"name": "Calisto – FC Road",       "address": "Fergusson College Road, Shivaji Nagar, Pune 411016",          "phone": "+91 20-2567-8901", "hours": "Mon–Sun: 10AM–9PM"},
+    "mid valley": [
+        {"name": "Calisto – Mid Valley Megamall", "address": "Lot S-025, Level S, Mid Valley Megamall, Lingkaran Syed Putra, 59200 KL",     "phone": "+60 3-2282-5678", "hours": "Mon-Sun: 10AM-10PM"},
     ],
+    "pavilion": [
+        {"name": "Calisto – Pavilion KL",        "address": "Lot 3.12, Level 3, Pavilion KL, 168 Jalan Bukit Bintang, 55100 KL",           "phone": "+60 3-2110-1234", "hours": "Mon-Sun: 10AM-10PM"},
+    ],
+    "petaling jaya": [
+        {"name": "Calisto – One Utama",          "address": "Lot LG-313, LG Floor, 1 Utama Shopping Centre, Bandar Utama, 47800 PJ",       "phone": "+60 3-7722-7890", "hours": "Mon-Sun: 10AM-10PM"},
+    ],
+    "pj": [
+        {"name": "Calisto – One Utama",          "address": "Lot LG-313, LG Floor, 1 Utama Shopping Centre, Bandar Utama, 47800 PJ",       "phone": "+60 3-7722-7890", "hours": "Mon-Sun: 10AM-10PM"},
+    ],
+    "one utama": [
+        {"name": "Calisto – One Utama",          "address": "Lot LG-313, LG Floor, 1 Utama Shopping Centre, Bandar Utama, 47800 PJ",       "phone": "+60 3-7722-7890", "hours": "Mon-Sun: 10AM-10PM"},
+    ],
+    "subang jaya": [
+        {"name": "Calisto – Sunway Pyramid",     "address": "Lot LG1.89, LG1 Floor, Sunway Pyramid, 3 Jalan PJS 11/15, 47500 Subang Jaya", "phone": "+60 3-5612-6789", "hours": "Mon-Sun: 10AM-10PM"},
+    ],
+    "sunway": [
+        {"name": "Calisto – Sunway Pyramid",     "address": "Lot LG1.89, LG1 Floor, Sunway Pyramid, 3 Jalan PJS 11/15, 47500 Subang Jaya", "phone": "+60 3-5612-6789", "hours": "Mon-Sun: 10AM-10PM"},
+    ],
+    "shah alam": [
+        {"name": "Calisto – AEON Shah Alam",     "address": "Lot 2F-18, Level 2, AEON Mall Shah Alam, Seksyen 13, 40100 Shah Alam",         "phone": "+60 3-5519-4567", "hours": "Mon-Sun: 10AM-10PM"},
+    ],
+    "penang": [
+        {"name": "Calisto – Gurney Plaza",       "address": "Lot 170-G-43, Gurney Plaza, Persiaran Gurney, 10250 Georgetown, Penang",       "phone": "+60 4-228-1234", "hours": "Mon-Sun: 10AM-9:30PM"},
+        {"name": "Calisto – Queensbay Mall",     "address": "Lot LG-39, Queensbay Mall, 100 Persiaran Bayan Indah, 11900 Bayan Lepas",      "phone": "+60 4-645-5678", "hours": "Mon-Sun: 10AM-10PM"},
+    ],
+    "georgetown": [
+        {"name": "Calisto – Gurney Plaza",       "address": "Lot 170-G-43, Gurney Plaza, Persiaran Gurney, 10250 Georgetown, Penang",       "phone": "+60 4-228-1234", "hours": "Mon-Sun: 10AM-9:30PM"},
+    ],
+    "gurney plaza": [
+        {"name": "Calisto – Gurney Plaza",       "address": "Lot 170-G-43, Gurney Plaza, Persiaran Gurney, 10250 Georgetown, Penang",       "phone": "+60 4-228-1234", "hours": "Mon-Sun: 10AM-9:30PM"},
+    ],
+    "johor bahru": [
+        {"name": "Calisto – Mid Valley Southkey","address": "Lot G-023, Ground Floor, Mid Valley Southkey, Persiaran Southkey, 80150 JB",   "phone": "+60 7-338-9012", "hours": "Mon-Sun: 10AM-10PM"},
+    ],
+    "jb": [
+        {"name": "Calisto – Mid Valley Southkey","address": "Lot G-023, Ground Floor, Mid Valley Southkey, Persiaran Southkey, 80150 JB",   "phone": "+60 7-338-9012", "hours": "Mon-Sun: 10AM-10PM"},
+    ],
+    "ipoh": [
+        {"name": "Calisto – Ipoh Parade",        "address": "Lot LG-15, LG Floor, Ipoh Parade Mall, 105 Jalan Sultan Abdul Jalil, 30300 Ipoh","phone": "+60 5-255-3456", "hours": "Mon-Sun: 10AM-9PM"},
+    ],
+    "melaka": [
+        {"name": "Calisto – Dataran Pahlawan",   "address": "Lot L1-28, Level 1, Dataran Pahlawan Megamall, Jalan Merdeka, 75000 Melaka",   "phone": "+60 6-281-7890", "hours": "Mon-Sun: 10AM-10PM"},
+    ],
+    "kota kinabalu": [
+        {"name": "Calisto – Suria Sabah",        "address": "Lot L2-07, Level 2, Suria Sabah, 1 Jalan Tun Fuad Stephens, 88000 KK",        "phone": "+60 88-251-234", "hours": "Mon-Sun: 10AM-9:30PM"},
+    ],
+    "kuching": [
+        {"name": "Calisto – Vivacity Megamall",  "address": "Lot G-10, Ground Floor, Vivacity Megamall, Jalan Wan Alwi, 93350 Kuching",     "phone": "+60 82-367-567", "hours": "Mon-Sun: 10AM-10PM"},
+    ],
+}
+
+# City aliases / fuzzy matching map
+CITY_ALIASES: Dict[str, str] = {
+    "kuala lumpur": "kuala lumpur",
+    "kl": "kuala lumpur",
+    "bukit bintang": "bukit bintang",
+    "klcc": "klcc",
+    "bangsar": "bangsar",
+    "mid valley": "mid valley",
+    "pavilion": "pavilion",
+    "petaling jaya": "petaling jaya",
+    "pj": "petaling jaya",
+    "one utama": "one utama",
+    "subang jaya": "subang jaya",
+    "sunway": "sunway",
+    "shah alam": "shah alam",
+    "setia alam": "shah alam",
+    "penang": "penang",
+    "georgetown": "georgetown",
+    "gurney plaza": "gurney plaza",
+    "johor bahru": "johor bahru",
+    "jb": "johor bahru",
+    "johor": "johor bahru",
+    "ipoh": "ipoh",
+    "melaka": "melaka",
+    "malacca": "melaka",
+    "kota kinabalu": "kota kinabalu",
+    "kk": "kota kinabalu",
+    "kuching": "kuching",
+    "cyberjaya": "kuala lumpur",
+    "putrajaya": "kuala lumpur",
+    "seremban": "melaka",
 }
 
 
@@ -186,9 +271,9 @@ def _normalise_gender(gender: Optional[str]) -> str:
     if not gender:
         return "unisex"
     g = gender.lower().strip()
-    if any(k in g for k in ("men", "male", "gents", "man")):
+    if any(k in g for k in ("men", "male", "gents", "man", "lelaki", "jantan")):
         return "men"
-    if any(k in g for k in ("women", "female", "ladies", "woman")):
+    if any(k in g for k in ("women", "female", "ladies", "woman", "perempuan", "wanita")):
         return "women"
     return "unisex"
 
@@ -202,18 +287,38 @@ def _parse_budget(budget: Optional[str]) -> Optional[int]:
 
 def _fetch_order(order_id: str) -> Optional[Dict]:
     """Simulate an order-management API lookup."""
-    # Production: return requests.get(f"{ORDER_API}/orders/{order_id}", ...).json()
     key = order_id.strip().upper()
     return ORDER_DATABASE.get(key) or ORDER_DATABASE.get(order_id.strip())
 
 
 def _fetch_stores(city: str) -> List[Dict]:
-    """Simulate a store-locator API lookup."""
-    # Production: return requests.get(f"{STORE_API}/stores?city={city}", ...).json()["stores"]
+    """Simulate a store-locator API lookup with fuzzy matching."""
     city_lower = city.lower().strip()
+
+    # Direct lookup
+    if city_lower in STORE_DATABASE:
+        return STORE_DATABASE[city_lower]
+
+    # Alias lookup
+    if city_lower in CITY_ALIASES:
+        alias = CITY_ALIASES[city_lower]
+        if alias in STORE_DATABASE:
+            return STORE_DATABASE[alias]
+
+    # Partial match
     for key, stores in STORE_DATABASE.items():
         if key in city_lower or city_lower in key:
             return stores
+
+    # Fuzzy match against all known keys (aliases + store keys)
+    all_keys = list(CITY_ALIASES.keys()) + list(STORE_DATABASE.keys())
+    matches = get_close_matches(city_lower, all_keys, n=1, cutoff=0.6)
+    if matches:
+        matched = matches[0]
+        resolved = CITY_ALIASES.get(matched, matched)
+        if resolved in STORE_DATABASE:
+            return STORE_DATABASE[resolved]
+
     return []
 
 
@@ -284,7 +389,7 @@ class ActionRecommendFrames(Action):
             else:
                 dispatcher.utter_message(
                     text=(
-                        f"Hmm, no **{frame_style}** frames exactly within ₹{budget_value} right now. "
+                        f"Hmm, no **{frame_style}** frames exactly within RM{budget_value} right now. "
                         f"Here are the closest options:"
                     )
                 )
@@ -294,7 +399,7 @@ class ActionRecommendFrames(Action):
         for i, f in enumerate(results, 1):
             lines.append(
                 f"{i}. **{f['name']}**\n"
-                f"   💰 ₹{f['price']}  |  🔧 {f['material']}  |  🎨 {f['color']}\n"
+                f"   💰 RM{f['price']}  |  🔧 {f['material']}  |  🎨 {f['color']}\n"
                 f"   🏷️ SKU: {f['sku']}\n"
             )
         lines.append(
@@ -308,8 +413,8 @@ class ActionRecommendFrames(Action):
     def _show_featured(dispatcher: CollectingDispatcher) -> None:
         lines = ["🌟 **Calisto Top Picks:**\n"]
         for i, f in enumerate(FEATURED_FRAMES, 1):
-            lines.append(f"{i}. **{f['name']}** – ₹{f['price']} ({f['material']})  |  SKU: {f['sku']}")
-        lines.append("\nShop online at **www.calisto.com** or visit a store near you!")
+            lines.append(f"{i}. **{f['name']}** – RM{f['price']} ({f['material']})  |  SKU: {f['sku']}")
+        lines.append("\nShop online at **www.calisto.com.my** or visit our store!")
         dispatcher.utter_message(text="\n".join(lines))
 
 
@@ -344,7 +449,7 @@ class ActionCheckOrderStatus(Action):
                 text=(
                     "I need your **Order ID** to check the status. "
                     "It looks like: `45821`, `ORD12345`, or `CAL-2024-9876`.\n"
-                    "Please share it and I'll look it up right away!"
+                    "Please share it and I'll check terus!"
                 )
             )
             return []
@@ -374,7 +479,7 @@ class ActionCheckOrderStatus(Action):
             msg = (
                 f"❌ Order **#{order_id}** not found in our system.\n\n"
                 f"Please double-check the Order ID in your confirmation email/SMS. "
-                f"Need more help? Call our support: **1800-XXX-XXXX** (Toll Free, 9AM–9PM)."
+                f"Need more help? WhatsApp us: **+60 12-XXX-XXXX** or call **1-800-XX-XXXX** (Toll Free, 9AM-9PM)."
             )
 
         dispatcher.utter_message(text=msg)
@@ -406,14 +511,14 @@ class ActionFindNearestStore(Action):
             city = self._detect_city(text)
 
         if not city:
-            dispatcher.utter_message(text="Which city are you in? 🏙️ I'll find your nearest Calisto store.")
+            dispatcher.utter_message(text="Kat mana you sekarang? / Which city are you in? 🏙️ I'll find your nearest Calisto store.")
             return []
 
         logger.info("action_find_nearest_store | city=%s", city)
         stores = _fetch_stores(city)
 
         if stores:
-            lines = [f"🏪 **Calisto Stores in {city.title()}:**\n"]
+            lines = [f"🏪 **Calisto Stores near {city.title()}:**\n"]
             for i, s in enumerate(stores, 1):
                 lines.append(
                     f"{i}. **{s['name']}**\n"
@@ -421,17 +526,17 @@ class ActionFindNearestStore(Action):
                     f"   📞 {s['phone']}\n"
                     f"   🕐 {s['hours']}\n"
                 )
-            lines.append("We recommend calling ahead to confirm frame availability. Would you like to book an eye test there? 😊")
+            lines.append("We recommend calling ahead / WhatsApp to confirm frame availability. Nak book eye test kat situ? 😊")
             dispatcher.utter_message(text="\n".join(lines))
         else:
             dispatcher.utter_message(
                 text=(
                     f"We don't have a store in **{city.title()}** yet — but we're growing fast! 😊\n\n"
                     f"In the meantime:\n"
-                    f"• 🛒 **Shop Online:** www.calisto.com (Free shipping + easy returns)\n"
+                    f"• 🛒 **Shop Online:** www.calisto.com.my (Free shipping seluruh Malaysia!)\n"
                     f"• 🏠 **Home Trial:** We deliver 5 frames to try at home — no cost!\n"
-                    f"• 📞 **Support:** 1800-XXX-XXXX (9AM–9PM)\n\n"
-                    f"Current stores: Mumbai · Delhi · Bangalore · Chennai · Hyderabad · Pune"
+                    f"• 📱 **WhatsApp:** +60 12-XXX-XXXX\n\n"
+                    f"Current stores: KL · PJ · Subang · Shah Alam · Penang · JB · Ipoh · Melaka · KK · Kuching"
                 )
             )
 
@@ -439,9 +544,21 @@ class ActionFindNearestStore(Action):
 
     @staticmethod
     def _detect_city(text: str) -> Optional[str]:
+        text_lower = text.lower()
+        # Check aliases first (handles KL, PJ, JB, etc.)
+        for alias, canonical in CITY_ALIASES.items():
+            if alias in text_lower:
+                return canonical.title()
+        # Then check store database keys
         for key in STORE_DATABASE:
-            if key in text.lower():
+            if key in text_lower:
                 return key.title()
+        # Fuzzy match the whole input against known city names
+        all_keys = list(CITY_ALIASES.keys()) + list(STORE_DATABASE.keys())
+        matches = get_close_matches(text_lower.strip(), all_keys, n=1, cutoff=0.6)
+        if matches:
+            matched = matches[0]
+            return CITY_ALIASES.get(matched, matched).title()
         return None
 
 
@@ -556,11 +673,12 @@ class ValidateEyeTestForm(FormValidationAction):
             )
             return {"city": slot_value.title()}
 
+        available_cities = "KL, PJ, Subang Jaya, Shah Alam, Penang, JB, Ipoh, Melaka, KK, Kuching"
         dispatcher.utter_message(
             text=(
                 f"Sorry, no store in **{slot_value.title()}** yet. "
-                f"We're available in: Mumbai, Delhi, Bangalore, Chennai, Hyderabad, Pune. "
-                f"Which city works for you?"
+                f"We're available in: {available_cities}. "
+                f"Which city works for you? / Mana satu yang okay?"
             )
         )
         return {"city": None}
@@ -574,7 +692,7 @@ class ValidateEyeTestForm(FormValidationAction):
     ) -> Dict[Text, Any]:
         if slot_value and str(slot_value).strip():
             return {"appointment_date": slot_value}
-        dispatcher.utter_message(text="Please provide a valid date (e.g. 15 March, next Monday).")
+        dispatcher.utter_message(text="Please provide a valid date (e.g. 15 March, next Monday, esok, Sabtu ni).")
         return {"appointment_date": None}
 
     def validate_appointment_time(
@@ -586,5 +704,5 @@ class ValidateEyeTestForm(FormValidationAction):
     ) -> Dict[Text, Any]:
         if slot_value and str(slot_value).strip():
             return {"appointment_time": slot_value}
-        dispatcher.utter_message(text="Please provide a valid time (e.g. 10:00 AM, 2:30 PM).")
+        dispatcher.utter_message(text="Please provide a valid time (e.g. 10:00 AM, 2:30 PM / pukul 10 pagi).")
         return {"appointment_time": None}
