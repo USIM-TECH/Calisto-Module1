@@ -428,6 +428,19 @@ nlu:
     - ada kat [IOI City Mall](city) tak
     - store kat [Gurney Plaza](city) ada ke
     - any branch near [Setia Alam](city)
+    - available stores
+    - what stores are available
+    - list of stores
+    - list your stores
+    - show me available stores
+    - which stores do you have
+    - all store locations
+    - your store list
+    - calisto store list
+    - store availability
+    - senarai kedai calisto
+    - kedai mana available
+    - mana ada kedai
     - mana kedai calisto paling dekat dari sini
     - calisto ada dekat [Putrajaya](city) tak
     - I want to try glasses at your [Bangsar](city) store
@@ -989,3 +1002,90 @@ nlu:
     - high index
     - digital protection
     - computer lenses
+
+# ── RAG-ROUTED INTENTS ──────────────────────────────────────
+
+- intent: ask_company_info
+  examples: |
+    - tell me about Calisto
+    - what is Calisto Eyewear
+    - Calisto company profile
+    - who is Calisto
+    - ceritakan tentang Calisto
+    - company background
+    - about Calisto
+    - who owns Calisto Eyewear
+    - Calisto history
+    - siapa Calisto
+    - when was Calisto founded
+    - what does Calisto do
+    - apa itu Calisto
+    - Calisto brand story
+    - how did Calisto start
+    - is Calisto a Malaysian company
+    - Calisto Eyewear background
+    - info about your company
+    - your company profile
+    - tell me your company story
+    - Calisto vision and mission
+    - what is the mission of Calisto
+    - who started Calisto
+    - Calisto overview
+
+- intent: ask_services
+  examples: |
+    - what services do you offer
+    - services available
+    - apa servis yang ada
+    - do you offer eye tests
+    - Calisto services
+    - corporate services
+    - what can you do for me
+    - perkhidmatan Calisto
+    - do you do contact lens fitting
+    - what are your services
+    - eye check up services
+    - personal styling service
+    - do you provide home trial
+    - servis apa yang Calisto ada
+    - any corporate packages
+    - do you do bulk orders
+    - services for companies
+    - can I book a consultation
+    - do you offer insurance claims
+    - what professional services do you have
+    - styling consultation
+    - frame adjustment service
+    - do you repair glasses
+    - lens replacement service
+
+- intent: ask_product_info
+  examples: |
+    - what products does Calisto offer
+    - product catalog
+    - do you sell contact lenses
+    - apa produk yang ada
+    - Calisto product range
+    - produk Calisto apa
+    - product categories
+    - apa jenis cermin mata yang dijual
+    - luxury frames available
+    - kids glasses available
+    - any new arrivals
+    - latest products
+    - luxury sunglasses price
+    - how much is the sunglasses
+    - price of designer frames
+    - sunglasses price list
+    - how much are your frames
+    - frame price
+    - berapa harga cermin mata
+    - harga sunglasses berapa
+    - what is the price of your sunglasses
+    - price of eyeglasses
+    - how much does a frame cost
+    - price range for frames
+    - harga frame designer berapa
+    - how much for luxury sunglasses
+    - product price list
+    - calisto frame price

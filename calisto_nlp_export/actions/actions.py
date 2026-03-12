@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import logging
 import re
+from difflib import get_close_matches
 from typing import Any, Dict, List, Optional, Text
 
 from rasa_sdk import Action, FormValidationAction, Tracker
@@ -309,6 +310,15 @@ def _fetch_stores(city: str) -> List[Dict]:
         if key in city_lower or city_lower in key:
             return stores
 
+    # Fuzzy match against all known keys (aliases + store keys)
+    all_keys = list(CITY_ALIASES.keys()) + list(STORE_DATABASE.keys())
+    matches = get_close_matches(city_lower, all_keys, n=1, cutoff=0.6)
+    if matches:
+        matched = matches[0]
+        resolved = CITY_ALIASES.get(matched, matched)
+        if resolved in STORE_DATABASE:
+            return STORE_DATABASE[resolved]
+
     return []
 
 
@@ -543,6 +553,12 @@ class ActionFindNearestStore(Action):
         for key in STORE_DATABASE:
             if key in text_lower:
                 return key.title()
+        # Fuzzy match the whole input against known city names
+        all_keys = list(CITY_ALIASES.keys()) + list(STORE_DATABASE.keys())
+        matches = get_close_matches(text_lower.strip(), all_keys, n=1, cutoff=0.6)
+        if matches:
+            matched = matches[0]
+            return CITY_ALIASES.get(matched, matched).title()
         return None
 
 

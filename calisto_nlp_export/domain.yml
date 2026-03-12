@@ -20,6 +20,9 @@ intents:
   - ask_warranty
   - ask_return_exchange
   - ask_payment_options
+  - ask_company_info
+  - ask_services
+  - ask_product_info
   - thank_you
   - affirm
   - deny
@@ -353,3 +356,4 @@ actions:
   - validate_frame_search_form
   - validate_order_tracking_form
   - validate_eye_test_form
+  - action_document_search

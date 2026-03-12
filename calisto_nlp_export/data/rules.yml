@@ -118,3 +118,26 @@ rules:
     - slot_was_set:
         - requested_slot: null
     - action: utter_eye_test_booked
+
+# RAG – KNOWLEDGE BASE RETRIEVAL RULES
+- rule: Search knowledge base for company info
+  steps:
+    - intent: ask_company_info
+    - action: action_document_search
+
+- rule: Search knowledge base for services
+  steps:
+    - intent: ask_services
+    - action: action_document_search
+
+- rule: Search knowledge base for product info
+  steps:
+    - intent: ask_product_info
+    - action: action_document_search
+
+# When user provides city after being asked "which city?"
+- rule: Provide city after store location question
+  steps:
+    - action: action_find_nearest_store
+    - intent: inform
+    - action: action_find_nearest_store
