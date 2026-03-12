@@ -1,7 +1,7 @@
 version: "3.1"
 
 # ============================================================
-# Calisto Eyewear – Conversation Stories
+# Calisto Eyewear (Malaysia) – Conversation Stories
 # All stories are consistent with the form-activation rules.
 # Forms: frame_search_form, order_tracking_form, eye_test_form
 # ============================================================
@@ -179,7 +179,7 @@ stories:
     - action: action_check_order_status
     - intent: ask_store_location
       entities:
-        - city: Mumbai
+        - city: Kuala Lumpur
     - action: action_find_nearest_store
 
 # ────────────────────────────────────────────────────────────
@@ -194,7 +194,7 @@ stories:
         - requested_slot: city
     - intent: inform
       entities:
-        - city: Bangalore
+        - city: Penang
     - action: eye_test_form
     - slot_was_set:
         - requested_slot: appointment_date
@@ -213,7 +213,7 @@ stories:
   steps:
     - intent: book_eye_test
       entities:
-        - city: Delhi
+        - city: Kuala Lumpur
     - action: eye_test_form
     - active_loop: eye_test_form
     - slot_was_set:
@@ -250,7 +250,7 @@ stories:
         - requested_slot: city
     - intent: inform
       entities:
-        - city: Chennai
+        - city: Johor Bahru
     - action: eye_test_form
     - slot_was_set:
         - requested_slot: appointment_date
@@ -313,7 +313,7 @@ stories:
   steps:
     - intent: ask_store_location
       entities:
-        - city: Hyderabad
+        - city: Penang
     - action: action_find_nearest_store
     - intent: book_eye_test
     - action: eye_test_form
@@ -369,7 +369,7 @@ stories:
         - requested_slot: city
     - intent: inform
       entities:
-        - city: Mumbai
+        - city: Petaling Jaya
     - action: eye_test_form
     - slot_was_set:
         - requested_slot: appointment_date
@@ -395,3 +395,54 @@ stories:
     - action: utter_out_of_scope
     - intent: ask_product
     - action: utter_ask_product_type
+
+# ────────────────────────────────────────────────────────────
+# NEW INTENT FLOWS
+# ────────────────────────────────────────────────────────────
+- story: warranty inquiry then browse
+  steps:
+    - intent: ask_warranty
+    - action: utter_warranty_info
+    - intent: ask_product
+    - action: utter_ask_product_type
+
+- story: return exchange then warranty
+  steps:
+    - intent: ask_return_exchange
+    - action: utter_return_exchange_info
+    - intent: ask_warranty
+    - action: utter_warranty_info
+
+- story: payment options then search frames
+  steps:
+    - intent: ask_payment_options
+    - action: utter_payment_options_info
+    - intent: search_frames
+    - action: frame_search_form
+    - active_loop: frame_search_form
+
+- story: thank you then goodbye
+  steps:
+    - intent: thank_you
+    - action: utter_thank_you
+    - intent: goodbye
+    - action: utter_goodbye
+
+- story: greet then warranty then goodbye
+  steps:
+    - intent: greet
+    - action: utter_greet
+    - intent: ask_warranty
+    - action: utter_warranty_info
+    - intent: goodbye
+    - action: utter_goodbye
+
+- story: greet then payment then eye test
+  steps:
+    - intent: greet
+    - action: utter_greet
+    - intent: ask_payment_options
+    - action: utter_payment_options_info
+    - intent: book_eye_test
+    - action: eye_test_form
+    - active_loop: eye_test_form

@@ -1,15 +1,12 @@
 version: "3.1"
 
 # ============================================================
-# Calisto Eyewear – Dialogue Rules
-# Deterministic rules managed by RulePolicy
+# Calisto Eyewear (Malaysia) - Dialogue Rules
 # ============================================================
 
 rules:
 
-# ────────────────────────────────────────────────────────────
-# ALWAYS-ON RULES (fire regardless of conversation state)
-# ────────────────────────────────────────────────────────────
+# ALWAYS-ON RULES
 - rule: Say greet whenever user greets
   steps:
     - intent: greet
@@ -30,9 +27,12 @@ rules:
     - intent: out_of_scope
     - action: utter_out_of_scope
 
-# ────────────────────────────────────────────────────────────
+- rule: Respond to thank you
+  steps:
+    - intent: thank_you
+    - action: utter_thank_you
+
 # FAQ-STYLE SINGLE-TURN RULES
-# ────────────────────────────────────────────────────────────
 - rule: Answer lens types question
   steps:
     - intent: ask_lens_types
@@ -53,9 +53,22 @@ rules:
     - intent: check_face_shape
     - action: utter_check_face_shape_help
 
-# ────────────────────────────────────────────────────────────
-# FORM: frame_search_form  –  activation + submission
-# ────────────────────────────────────────────────────────────
+- rule: Answer warranty question
+  steps:
+    - intent: ask_warranty
+    - action: utter_warranty_info
+
+- rule: Answer return exchange question
+  steps:
+    - intent: ask_return_exchange
+    - action: utter_return_exchange_info
+
+- rule: Answer payment options question
+  steps:
+    - intent: ask_payment_options
+    - action: utter_payment_options_info
+
+# FORM: frame_search_form
 - rule: Activate frame search form on search_frames intent
   steps:
     - intent: search_frames
@@ -72,9 +85,7 @@ rules:
         - requested_slot: null
     - action: action_recommend_frames
 
-# ────────────────────────────────────────────────────────────
-# FORM: order_tracking_form  –  activation + submission
-# ────────────────────────────────────────────────────────────
+# FORM: order_tracking_form
 - rule: Activate order tracking form
   steps:
     - intent: track_order
@@ -91,9 +102,7 @@ rules:
         - requested_slot: null
     - action: action_check_order_status
 
-# ────────────────────────────────────────────────────────────
-# FORM: eye_test_form  –  activation + submission
-# ────────────────────────────────────────────────────────────
+# FORM: eye_test_form
 - rule: Activate eye test booking form
   steps:
     - intent: book_eye_test
@@ -109,3 +118,42 @@ rules:
     - slot_was_set:
         - requested_slot: null
     - action: utter_eye_test_booked
+
+# RAG – KNOWLEDGE BASE RETRIEVAL RULES
+- rule: Search knowledge base for company info
+  steps:
+    - intent: ask_company_info
+    - action: action_document_search
+
+- rule: Search knowledge base for services
+  steps:
+    - intent: ask_services
+    - action: action_document_search
+
+- rule: Search knowledge base for product info
+  steps:
+    - intent: ask_product_info
+    - action: action_document_search
+
+# Handle affirm outside of active forms
+- rule: Respond to affirm when no form active
+  condition:
+    - active_loop: null
+  steps:
+    - intent: affirm
+    - action: utter_affirm
+
+# Handle deny outside of active forms
+- rule: Respond to deny when no form active
+  condition:
+    - active_loop: null
+  steps:
+    - intent: deny
+    - action: utter_deny
+
+# When user provides city after being asked "which city?"
+- rule: Provide city after store location question
+  steps:
+    - action: action_find_nearest_store
+    - intent: inform
+    - action: action_find_nearest_store
