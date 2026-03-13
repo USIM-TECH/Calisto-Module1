@@ -93,6 +93,7 @@ export function createDependencies(): AppDependencies {
       logger,
       nlpClient,
       sendText: (recipientId, text) => telegram!.sendTextMessage(recipientId, text),
+      sendMessage: (recipientId, message) => telegram!.sendMessage(recipientId, message),
       deduplicator,
     }))
     logger.info('Telegram channel enabled')

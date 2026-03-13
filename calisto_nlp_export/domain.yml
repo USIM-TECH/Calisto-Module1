@@ -124,34 +124,94 @@ responses:
     - text: |
         Selamat datang to Calisto Eyewear! 👓 I'm your personal eyewear assistant.
 
-        I can help you with:
-        • 🕶️  Browse & find Frames
-        • 🔬  Lens types & pricing
-        • 🗺️  Store locations in Malaysia
-        • 📦  Order tracking
-        • 👁️  Book an eye test
-        • 💳  Payment & warranty info
-
         Nak tahu apa hari ni? / What are you looking for today?
+      buttons:
+        - title: "🕶️ Browse Frames"
+          payload: "/search_frames"
+        - title: "🔬 Lens Types & Pricing"
+          payload: "/ask_lens_types"
+        - title: "🗺️ Store Locations"
+          payload: "/ask_store_location"
+        - title: "📦 Track My Order"
+          payload: "/track_order"
+        - title: "👁️ Book Eye Test"
+          payload: "/book_eye_test"
+        - title: "💳 Payment & Warranty"
+          payload: "/ask_payment_options"
 
   utter_goodbye:
     - text: "Terima kasih for visiting Calisto Eyewear! Jumpa lagi soon. 👋"
     - text: "Goodbye! Great vision starts with great eyewear. 😊 Come back anytime! Terima kasih!"
 
   utter_ask_product_type:
-    - text: "What type of eyewear are you looking for? / Nak cari cermin mata jenis apa?\n\n• Eyeglasses (Cermin mata)\n• Sunglasses\n• Computer / Blue Light Glasses\n• Reading Glasses\n• Sports Glasses"
+    - text: "What type of eyewear are you looking for? / Nak cari cermin mata jenis apa?"
+      buttons:
+        - title: "🕶️ Sunglasses"
+          payload: "/inform{\"product_type\": \"sunglasses\"}"
+        - title: "👓 Eyeglasses"
+          payload: "/inform{\"product_type\": \"eyeglasses\"}"
+        - title: "💻 Blue Light Glasses"
+          payload: "/inform{\"product_type\": \"blue light glasses\"}"
+        - title: "📖 Reading Glasses"
+          payload: "/inform{\"product_type\": \"reading glasses\"}"
+        - title: "🏃 Sports Glasses"
+          payload: "/inform{\"product_type\": \"sports glasses\"}"
 
   utter_ask_frame_style:
-    - text: "What frame style do you prefer? / Style apa yang you suka?\n\n• Round  • Square  • Rectangular\n• Cat-eye  • Aviator  • Oval  • Wayfarer"
+    - text: "What frame style do you prefer? / Style apa yang you suka?"
+      buttons:
+        - title: "⭕ Round"
+          payload: "/inform{\"frame_style\": \"round\"}"
+        - title: "⬜ Square"
+          payload: "/inform{\"frame_style\": \"square\"}"
+        - title: "▬ Rectangular"
+          payload: "/inform{\"frame_style\": \"rectangular\"}"
+        - title: "🐱 Cat-eye"
+          payload: "/inform{\"frame_style\": \"cat-eye\"}"
+        - title: "✈️ Aviator"
+          payload: "/inform{\"frame_style\": \"aviator\"}"
+        - title: "🥚 Oval"
+          payload: "/inform{\"frame_style\": \"oval\"}"
+        - title: "🕶️ Wayfarer"
+          payload: "/inform{\"frame_style\": \"wayfarer\"}"
 
   utter_ask_gender:
-    - text: "Are you looking for **men's**, **women's**, or **unisex** frames?\n(Untuk lelaki, perempuan, atau unisex?)"
+    - text: "Are you looking for men's, women's, or unisex frames?\n(Untuk lelaki, perempuan, atau unisex?)"
+      buttons:
+        - title: "👨 Men's"
+          payload: "/inform{\"gender\": \"men\"}"
+        - title: "👩 Women's"
+          payload: "/inform{\"gender\": \"women\"}"
+        - title: "🧑 Unisex"
+          payload: "/inform{\"gender\": \"unisex\"}"
 
   utter_ask_face_shape:
-    - text: "What's your face shape? / Bentuk muka you apa?\n(Round, Oval, Square, Heart, Diamond, or Oblong)\n\nTak pasti? Just say *help me find my face shape* and I'll guide you! 😊"
+    - text: "What's your face shape? / Bentuk muka you apa?\n\nTak pasti? Just say 'help me find my face shape' and I'll guide you! 😊"
+      buttons:
+        - title: "🔵 Round"
+          payload: "/inform{\"face_shape\": \"round\"}"
+        - title: "🥚 Oval"
+          payload: "/inform{\"face_shape\": \"oval\"}"
+        - title: "🟥 Square"
+          payload: "/inform{\"face_shape\": \"square\"}"
+        - title: "💜 Heart"
+          payload: "/inform{\"face_shape\": \"heart\"}"
+        - title: "💎 Diamond"
+          payload: "/inform{\"face_shape\": \"diamond\"}"
+        - title: "📏 Oblong"
+          payload: "/inform{\"face_shape\": \"oblong\"}"
 
   utter_ask_budget:
-    - text: "What's your budget range? / Berapa budget you?\n\n• Under RM150\n• RM150 – RM300\n• RM300 – RM600\n• Above RM600"
+    - text: "What's your budget range? / Berapa budget you?"
+      buttons:
+        - title: "💰 Under RM150"
+          payload: "/inform{\"budget\": \"under 150\"}"
+        - title: "💰 RM150 – RM300"
+          payload: "/inform{\"budget\": \"150-300\"}"
+        - title: "💰 RM300 – RM600"
+          payload: "/inform{\"budget\": \"300-600\"}"
+        - title: "💎 Above RM600"
+          payload: "/inform{\"budget\": \"above 600\"}"
 
   utter_ask_order_id:
     - text: "Please share your **Order ID** so I can check the status.\n(e.g. 45821, ORD12345, or CAL-2024-9876)"
