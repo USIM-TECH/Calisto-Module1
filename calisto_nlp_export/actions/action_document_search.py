@@ -1,7 +1,4 @@
-"""
-Calisto Eyewear – RAG Custom Action for Rasa
-Retrieves answers from the FAISS knowledge-base index.
-"""
+"""Calisto Eyewear – RAG custom action using pgvector-backed retrieval."""
 
 from typing import Any, Dict, List, Text
 
@@ -46,8 +43,6 @@ class ActionDocumentSearch(Action):
 
         best = results[0]
         answer = best["text"].strip()
-        source = best["source"]
-
         # Cap at ~150 words so responses stay concise
         words = answer.split()
         if len(words) > 150:

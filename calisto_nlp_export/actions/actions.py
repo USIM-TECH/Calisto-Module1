@@ -1,19 +1,8 @@
 """
 Calisto Eyewear (Malaysia) – Custom Rasa Actions
 ==================================================
-Three primary actions + three form validators.
-
-Actions
--------
-- ActionRecommendFrames      → Suggests frames by style / gender / budget / face shape
-- ActionCheckOrderStatus     → Looks up order status by order_id slot
-- ActionFindNearestStore     → Returns store info for the given city slot
-
-Form Validators
----------------
-- ValidateFrameSearchForm
-- ValidateOrderTrackingForm
-- ValidateEyeTestForm
+All product, store, order, conversation, and document data is loaded from
+the PostgreSQL knowledge base at runtime. Nothing is hardcoded.
 
 Run with:  rasa run actions --actions actions.actions
 """
@@ -22,7 +11,6 @@ from __future__ import annotations
 
 import logging
 import re
-from difflib import get_close_matches
 from typing import Any, Dict, List, Optional, Text
 
 from rasa_sdk import Action, FormValidationAction, Tracker
@@ -30,253 +18,23 @@ from rasa_sdk.events import SlotSet
 from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk.types import DomainDict
 
+from actions.knowledge_base.runtime_data import CalistoKnowledgeBase
+from actions.action_document_search import ActionDocumentSearch as _ActionDocumentSearch
+
 logger = logging.getLogger(__name__)
 
-# ============================================================
-# Simulated Backend Data  (Malaysian context)
-# In production replace each _fetch_* method with a real
-# HTTP call to your order-management / product / store API.
-# ============================================================
 
-# ── Frame Catalogue (prices in RM) ──────────────────────────
-FRAME_CATALOG: Dict[str, Dict[str, List[Dict]]] = {
-    "round": {
-        "men": [
-            {"name": "Calisto Retro Round",   "price": 199, "material": "Acetate",        "color": "Tortoise",  "sku": "CAL-RR-M01"},
-            {"name": "Calisto Classic Circle","price": 249, "material": "Metal",           "color": "Gold",      "sku": "CAL-CC-M02"},
-            {"name": "Calisto Vintage Round", "price": 149, "material": "TR90",            "color": "Black",     "sku": "CAL-VR-M03"},
-        ],
-        "women": [
-            {"name": "Calisto Chic Round",    "price": 219, "material": "Acetate",        "color": "Rose Gold", "sku": "CAL-CR-W01"},
-            {"name": "Calisto Elegant Circle","price": 299, "material": "Premium Metal",  "color": "Silver",    "sku": "CAL-EC-W02"},
-            {"name": "Calisto Petite Round",  "price": 179, "material": "TR90",            "color": "Purple",    "sku": "CAL-PR-W03"},
-        ],
-        "unisex": [
-            {"name": "Calisto Neo Round",     "price": 169, "material": "TR90",            "color": "Matte Black","sku": "CAL-NR-U01"},
-        ],
-    },
-    "rectangular": {
-        "men": [
-            {"name": "Calisto Pro Rectangle", "price": 229, "material": "Titanium",       "color": "Gunmetal",  "sku": "CAL-PR-M01"},
-            {"name": "Calisto Sharp Edge",    "price": 189, "material": "Acetate",        "color": "Dark Brown","sku": "CAL-SE-M02"},
-        ],
-        "women": [
-            {"name": "Calisto Slim Rectangle","price": 199, "material": "Metal",           "color": "Rose Gold", "sku": "CAL-SR-W01"},
-        ],
-        "unisex": [
-            {"name": "Calisto Classic Rect",  "price": 149, "material": "TR90",            "color": "Black",     "sku": "CAL-CR-U01"},
-        ],
-    },
-    "square": {
-        "men": [
-            {"name": "Calisto Bold Square",   "price": 249, "material": "Acetate",        "color": "Black",     "sku": "CAL-BS-M01"},
-            {"name": "Calisto Power Square",  "price": 199, "material": "Metal",           "color": "Silver",    "sku": "CAL-PS-M02"},
-        ],
-        "women": [
-            {"name": "Calisto Fierce Square", "price": 229, "material": "Acetate",        "color": "Tortoise",  "sku": "CAL-FS-W01"},
-        ],
-        "unisex": [
-            {"name": "Calisto Urban Square",  "price": 179, "material": "TR90",            "color": "Blue",      "sku": "CAL-US-U01"},
-        ],
-    },
-    "cat-eye": {
-        "men": [],
-        "women": [
-            {"name": "Calisto Glamour Cat-Eye","price": 279, "material": "Acetate",       "color": "Cherry Red","sku": "CAL-GC-W01"},
-            {"name": "Calisto Retro Cat-Eye", "price": 229, "material": "Acetate",        "color": "Black-Gold","sku": "CAL-RC-W02"},
-            {"name": "Calisto Chic Cat-Eye",  "price": 199, "material": "TR90",            "color": "Leopard",   "sku": "CAL-CC-W03"},
-        ],
-        "unisex": [
-            {"name": "Calisto Modern Cat-Eye","price": 219, "material": "Metal",          "color": "Rose Gold", "sku": "CAL-MC-U01"},
-        ],
-    },
-    "aviator": {
-        "men": [
-            {"name": "Calisto Ace Aviator",   "price": 199, "material": "Metal",           "color": "Gold",      "sku": "CAL-AA-M01"},
-            {"name": "Calisto Sky Aviator",   "price": 249, "material": "Titanium",        "color": "Silver",    "sku": "CAL-SA-M02"},
-        ],
-        "women": [
-            {"name": "Calisto Femme Aviator", "price": 219, "material": "Metal",           "color": "Rose Gold", "sku": "CAL-FA-W01"},
-        ],
-        "unisex": [
-            {"name": "Calisto Classic Aviator","price": 169, "material": "Metal",          "color": "Gunmetal",  "sku": "CAL-CA-U01"},
-        ],
-    },
-    "wayfarer": {
-        "men": [
-            {"name": "Calisto Street Wayfarer","price": 179, "material": "Acetate",       "color": "Black",     "sku": "CAL-SW-M01"},
-        ],
-        "women": [
-            {"name": "Calisto Trend Wayfarer","price": 199, "material": "Acetate",        "color": "Tortoise",  "sku": "CAL-TW-W01"},
-        ],
-        "unisex": [
-            {"name": "Calisto Original Wayfarer","price": 169,"material": "Acetate",      "color": "Classic Black","sku": "CAL-OW-U01"},
-        ],
-    },
-    "oval": {
-        "men": [
-            {"name": "Calisto Smooth Oval",   "price": 189, "material": "TR90",            "color": "Brown",     "sku": "CAL-SO-M01"},
-        ],
-        "women": [
-            {"name": "Calisto Dainty Oval",   "price": 209, "material": "Metal",           "color": "Gold",      "sku": "CAL-DO-W01"},
-        ],
-        "unisex": [
-            {"name": "Calisto Neo Oval",       "price": 159, "material": "TR90",            "color": "Black",     "sku": "CAL-NO-U01"},
-        ],
-    },
-}
+def _kb() -> CalistoKnowledgeBase:
+    return CalistoKnowledgeBase.get()
 
-FACE_SHAPE_STYLES: Dict[str, List[str]] = {
-    "round":   ["rectangular", "square", "wayfarer"],
-    "oval":    ["round", "aviator", "wayfarer", "cat-eye"],
-    "square":  ["round", "oval", "cat-eye"],
-    "heart":   ["wayfarer", "rectangular", "aviator"],
-    "diamond": ["oval", "cat-eye", "rectangular"],
-    "oblong":  ["aviator", "square", "wayfarer"],
-    # Malay synonyms map to same styles
-    "bulat":   ["rectangular", "square", "wayfarer"],
-    "persegi": ["round", "oval", "cat-eye"],
-}
 
-FEATURED_FRAMES = [
-    {"name": "Calisto Ace Aviator",    "price": 199, "material": "Metal",   "sku": "CAL-AA-M01"},
-    {"name": "Calisto Chic Round",     "price": 219, "material": "Acetate", "sku": "CAL-CR-W01"},
-    {"name": "Calisto Bold Square",    "price": 249, "material": "Acetate", "sku": "CAL-BS-M01"},
-    {"name": "Calisto Classic Aviator","price": 169, "material": "Metal",   "sku": "CAL-CA-U01"},
-]
-
-# ── Order Database ───────────────────────────────────────────
-ORDER_DATABASE: Dict[str, Dict] = {
-    "45821":          {"status": "Shipped",    "carrier": "J&T Express",  "tracking": "JT78234561MY",  "eta": "2 days",    "step": "Out for Delivery"},
-    "ORD12345":       {"status": "Processing", "carrier": "N/A",          "tracking": "N/A",            "eta": "5-7 days",  "step": "Quality Check in Progress"},
-    "78562":          {"status": "Delivered",  "carrier": "Pos Laju",     "tracking": "EN098765432MY",  "eta": "Delivered", "step": "Delivered on 5 March 2026"},
-    "CAL-2024-9876":  {"status": "Shipped",    "carrier": "Ninja Van",    "tracking": "NVMY12345",      "eta": "3 days",    "step": "In Transit - KL Hub"},
-    "CAL98231":       {"status": "Confirmed",  "carrier": "N/A",          "tracking": "N/A",            "eta": "7-10 days", "step": "Being Prepared at Warehouse"},
-    "ORD98765":       {"status": "Shipped",    "carrier": "J&T Express",  "tracking": "JT99112233MY",   "eta": "1 day",     "step": "Out for Delivery"},
-    "234567":         {"status": "Processing", "carrier": "N/A",          "tracking": "N/A",            "eta": "6-8 days",  "step": "Payment Confirmed"},
-}
-
-# ── Store Database (Malaysian locations) ─────────────────────
-STORE_DATABASE: Dict[str, List[Dict]] = {
-    "kuala lumpur": [
-        {"name": "Calisto – Pavilion KL",        "address": "Lot 3.12, Level 3, Pavilion KL, 168 Jalan Bukit Bintang, 55100 KL",           "phone": "+60 3-2110-1234", "hours": "Mon-Sun: 10AM-10PM"},
-        {"name": "Calisto – Mid Valley Megamall", "address": "Lot S-025, Level S, Mid Valley Megamall, Lingkaran Syed Putra, 59200 KL",     "phone": "+60 3-2282-5678", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "kl": [
-        {"name": "Calisto – Pavilion KL",        "address": "Lot 3.12, Level 3, Pavilion KL, 168 Jalan Bukit Bintang, 55100 KL",           "phone": "+60 3-2110-1234", "hours": "Mon-Sun: 10AM-10PM"},
-        {"name": "Calisto – Mid Valley Megamall", "address": "Lot S-025, Level S, Mid Valley Megamall, Lingkaran Syed Putra, 59200 KL",     "phone": "+60 3-2282-5678", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "bukit bintang": [
-        {"name": "Calisto – Pavilion KL",        "address": "Lot 3.12, Level 3, Pavilion KL, 168 Jalan Bukit Bintang, 55100 KL",           "phone": "+60 3-2110-1234", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "klcc": [
-        {"name": "Calisto – Suria KLCC",         "address": "Lot 221, Level 2, Suria KLCC, Jalan Ampang, 50088 KL",                         "phone": "+60 3-2161-9012", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "bangsar": [
-        {"name": "Calisto – Bangsar Village II", "address": "Lot G-15, Ground Floor, Bangsar Village II, Jalan Telawi, 59100 KL",           "phone": "+60 3-2287-3456", "hours": "Mon-Sun: 10AM-9PM"},
-    ],
-    "mid valley": [
-        {"name": "Calisto – Mid Valley Megamall", "address": "Lot S-025, Level S, Mid Valley Megamall, Lingkaran Syed Putra, 59200 KL",     "phone": "+60 3-2282-5678", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "pavilion": [
-        {"name": "Calisto – Pavilion KL",        "address": "Lot 3.12, Level 3, Pavilion KL, 168 Jalan Bukit Bintang, 55100 KL",           "phone": "+60 3-2110-1234", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "petaling jaya": [
-        {"name": "Calisto – One Utama",          "address": "Lot LG-313, LG Floor, 1 Utama Shopping Centre, Bandar Utama, 47800 PJ",       "phone": "+60 3-7722-7890", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "pj": [
-        {"name": "Calisto – One Utama",          "address": "Lot LG-313, LG Floor, 1 Utama Shopping Centre, Bandar Utama, 47800 PJ",       "phone": "+60 3-7722-7890", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "one utama": [
-        {"name": "Calisto – One Utama",          "address": "Lot LG-313, LG Floor, 1 Utama Shopping Centre, Bandar Utama, 47800 PJ",       "phone": "+60 3-7722-7890", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "subang jaya": [
-        {"name": "Calisto – Sunway Pyramid",     "address": "Lot LG1.89, LG1 Floor, Sunway Pyramid, 3 Jalan PJS 11/15, 47500 Subang Jaya", "phone": "+60 3-5612-6789", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "sunway": [
-        {"name": "Calisto – Sunway Pyramid",     "address": "Lot LG1.89, LG1 Floor, Sunway Pyramid, 3 Jalan PJS 11/15, 47500 Subang Jaya", "phone": "+60 3-5612-6789", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "shah alam": [
-        {"name": "Calisto – AEON Shah Alam",     "address": "Lot 2F-18, Level 2, AEON Mall Shah Alam, Seksyen 13, 40100 Shah Alam",         "phone": "+60 3-5519-4567", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "penang": [
-        {"name": "Calisto – Gurney Plaza",       "address": "Lot 170-G-43, Gurney Plaza, Persiaran Gurney, 10250 Georgetown, Penang",       "phone": "+60 4-228-1234", "hours": "Mon-Sun: 10AM-9:30PM"},
-        {"name": "Calisto – Queensbay Mall",     "address": "Lot LG-39, Queensbay Mall, 100 Persiaran Bayan Indah, 11900 Bayan Lepas",      "phone": "+60 4-645-5678", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "georgetown": [
-        {"name": "Calisto – Gurney Plaza",       "address": "Lot 170-G-43, Gurney Plaza, Persiaran Gurney, 10250 Georgetown, Penang",       "phone": "+60 4-228-1234", "hours": "Mon-Sun: 10AM-9:30PM"},
-    ],
-    "gurney plaza": [
-        {"name": "Calisto – Gurney Plaza",       "address": "Lot 170-G-43, Gurney Plaza, Persiaran Gurney, 10250 Georgetown, Penang",       "phone": "+60 4-228-1234", "hours": "Mon-Sun: 10AM-9:30PM"},
-    ],
-    "johor bahru": [
-        {"name": "Calisto – Mid Valley Southkey","address": "Lot G-023, Ground Floor, Mid Valley Southkey, Persiaran Southkey, 80150 JB",   "phone": "+60 7-338-9012", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "jb": [
-        {"name": "Calisto – Mid Valley Southkey","address": "Lot G-023, Ground Floor, Mid Valley Southkey, Persiaran Southkey, 80150 JB",   "phone": "+60 7-338-9012", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "ipoh": [
-        {"name": "Calisto – Ipoh Parade",        "address": "Lot LG-15, LG Floor, Ipoh Parade Mall, 105 Jalan Sultan Abdul Jalil, 30300 Ipoh","phone": "+60 5-255-3456", "hours": "Mon-Sun: 10AM-9PM"},
-    ],
-    "melaka": [
-        {"name": "Calisto – Dataran Pahlawan",   "address": "Lot L1-28, Level 1, Dataran Pahlawan Megamall, Jalan Merdeka, 75000 Melaka",   "phone": "+60 6-281-7890", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "kota kinabalu": [
-        {"name": "Calisto – Suria Sabah",        "address": "Lot L2-07, Level 2, Suria Sabah, 1 Jalan Tun Fuad Stephens, 88000 KK",        "phone": "+60 88-251-234", "hours": "Mon-Sun: 10AM-9:30PM"},
-    ],
-    "kuching": [
-        {"name": "Calisto – Vivacity Megamall",  "address": "Lot G-10, Ground Floor, Vivacity Megamall, Jalan Wan Alwi, 93350 Kuching",     "phone": "+60 82-367-567", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-}
-
-# City aliases / fuzzy matching map
-CITY_ALIASES: Dict[str, str] = {
-    "kuala lumpur": "kuala lumpur",
-    "kl": "kuala lumpur",
-    "bukit bintang": "bukit bintang",
-    "klcc": "klcc",
-    "bangsar": "bangsar",
-    "mid valley": "mid valley",
-    "pavilion": "pavilion",
-    "petaling jaya": "petaling jaya",
-    "pj": "petaling jaya",
-    "one utama": "one utama",
-    "subang jaya": "subang jaya",
-    "sunway": "sunway",
-    "shah alam": "shah alam",
-    "setia alam": "shah alam",
-    "penang": "penang",
-    "georgetown": "georgetown",
-    "gurney plaza": "gurney plaza",
-    "johor bahru": "johor bahru",
-    "jb": "johor bahru",
-    "johor": "johor bahru",
-    "ipoh": "ipoh",
-    "melaka": "melaka",
-    "malacca": "melaka",
-    "kota kinabalu": "kota kinabalu",
-    "kk": "kota kinabalu",
-    "kuching": "kuching",
-    "cyberjaya": "kuala lumpur",
-    "putrajaya": "kuala lumpur",
-    "seremban": "melaka",
-}
+class ActionDocumentSearch(_ActionDocumentSearch):
+    """Bridge class so Rasa SDK discovers this action in the actions.actions module."""
 
 
 # ============================================================
 # Helpers
 # ============================================================
-
-def _normalise_gender(gender: Optional[str]) -> str:
-    if not gender:
-        return "unisex"
-    g = gender.lower().strip()
-    if any(k in g for k in ("men", "male", "gents", "man", "lelaki", "jantan")):
-        return "men"
-    if any(k in g for k in ("women", "female", "ladies", "woman", "perempuan", "wanita")):
-        return "women"
-    return "unisex"
-
 
 def _parse_budget(budget: Optional[str]) -> Optional[int]:
     if not budget:
@@ -285,41 +43,234 @@ def _parse_budget(budget: Optional[str]) -> Optional[int]:
     return int(nums[-1]) if nums else None
 
 
-def _fetch_order(order_id: str) -> Optional[Dict]:
-    """Simulate an order-management API lookup."""
-    key = order_id.strip().upper()
-    return ORDER_DATABASE.get(key) or ORDER_DATABASE.get(order_id.strip())
-
-
 def _fetch_stores(city: str) -> List[Dict]:
-    """Simulate a store-locator API lookup with fuzzy matching."""
-    city_lower = city.lower().strip()
+    """Load store data from the Calisto knowledge base."""
+    return _kb().fetch_stores(city)
 
-    # Direct lookup
-    if city_lower in STORE_DATABASE:
-        return STORE_DATABASE[city_lower]
 
-    # Alias lookup
-    if city_lower in CITY_ALIASES:
-        alias = CITY_ALIASES[city_lower]
-        if alias in STORE_DATABASE:
-            return STORE_DATABASE[alias]
+class _KnowledgePromptAction:
+    prompt_key: str
 
-    # Partial match
-    for key, stores in STORE_DATABASE.items():
-        if key in city_lower or city_lower in key:
-            return stores
+    FALLBACK_PROMPTS = {
+        "frame_search_form_product_type": (
+            "What type of product are you looking for?\n"
+            "• Luxury Sunglasses\n"
+            "• Designer Frames\n"
+            "• Prescription Lenses\n"
+            "• Contact Lens Solutions\n"
+            "• Professional Services"
+        ),
+        "frame_search_form_budget": (
+            "What is your budget in RM?\n"
+            "Example: under 200, 300, or 500"
+        ),
+        "order_tracking_form_order_id": "Please share your Order ID so I can check the status.",
+        "eye_test_form_city": "Which city would you like to book your eye test in?",
+        "eye_test_form_appointment_date": "What date works for your eye test?",
+        "eye_test_form_appointment_time": "What time works best for your eye test?",
+    }
 
-    # Fuzzy match against all known keys (aliases + store keys)
-    all_keys = list(CITY_ALIASES.keys()) + list(STORE_DATABASE.keys())
-    matches = get_close_matches(city_lower, all_keys, n=1, cutoff=0.6)
-    if matches:
-        matched = matches[0]
-        resolved = CITY_ALIASES.get(matched, matched)
-        if resolved in STORE_DATABASE:
-            return STORE_DATABASE[resolved]
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: DomainDict,
+    ) -> List[Dict[Text, Any]]:
+        try:
+            text = _kb().prompt(self.prompt_key)
+        except Exception:
+            text = self.FALLBACK_PROMPTS.get(self.prompt_key, "Please provide the requested details.")
+        dispatcher.utter_message(text=text)
+        return []
 
-    return []
+
+class _KnowledgeResponseAction:
+    response_key: str
+
+    FALLBACK_RESPONSES = {
+        "lens_types_info": "We offer single vision, progressive, blue-light, photochromic, anti-glare, polarized, and UV-protection lens options.",
+        "face_shape_help": "Tell me your face shape (round, oval, square, heart, diamond, oblong) and I can recommend suitable frame styles.",
+        "warranty_info": "Most Calisto frames include warranty coverage for manufacturing defects. Share your order details and I can guide your claim steps.",
+        "return_exchange_info": "You can exchange eligible products within 7 days and return unworn eligible items within 14 days. Prescription custom lenses are non-refundable.",
+        "payment_options_info": "We support major cards, FPX online banking, and selected e-wallet/payment providers.",
+    }
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: DomainDict,
+    ) -> List[Dict[Text, Any]]:
+        try:
+            text = _kb().response(self.response_key)
+        except Exception:
+            text = self.FALLBACK_RESPONSES.get(self.response_key, "I can help with that. Please tell me what details you need.")
+        dispatcher.utter_message(text=text)
+        return []
+
+
+class ActionShowProductOverview(Action):
+    def name(self) -> Text:
+        return "action_show_product_overview"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: DomainDict,
+    ) -> List[Dict[Text, Any]]:
+        overview = _kb().product_overview()
+        categories = "\n".join(f"• {category}" for category in overview["categories"])
+        samples = "\n".join(
+            f"• {row['Product_Name']} ({row['Category']}) - RM{float(row['Price_MYR']):.2f}"
+            for row in overview["samples"]
+        )
+        dispatcher.utter_message(
+            text=(
+                f"{_kb().prompt('product_overview_intro')}\n\n"
+                f"{categories}\n\n"
+                f"Sample items from the current catalog:\n{samples}\n\n"
+                f"{_kb().prompt('product_overview_outro')}"
+            )
+        )
+        return []
+
+
+class ActionShowLensTypes(_KnowledgeResponseAction, Action):
+    response_key = "lens_types_info"
+
+    def name(self) -> Text:
+        return "action_show_lens_types"
+
+
+class ActionShowLensPricing(Action):
+    def name(self) -> Text:
+        return "action_show_lens_pricing"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: DomainDict,
+    ) -> List[Dict[Text, Any]]:
+        rows = _kb().lens_price_summary()
+        if not rows:
+            dispatcher.utter_message(text="I couldn't find lens pricing in the knowledge base right now.")
+            return []
+
+        lines = ["Here are the current prescription-lens price ranges from the Calisto knowledge base:\n"]
+        for row in rows:
+            lines.append(
+                f"• {row['name']}: RM{row['min_price']:.2f} - RM{row['max_price']:.2f}"
+            )
+        lines.append("\nIf you want, I can also help you book an eye test.")
+        dispatcher.utter_message(text="\n".join(lines))
+        return []
+
+
+class ActionShowFaceShapeHelp(_KnowledgeResponseAction, Action):
+    response_key = "face_shape_help"
+
+    def name(self) -> Text:
+        return "action_show_face_shape_help"
+
+
+class ActionShowWarrantyInfo(_KnowledgeResponseAction, Action):
+    response_key = "warranty_info"
+
+    def name(self) -> Text:
+        return "action_show_warranty_info"
+
+
+class ActionShowReturnExchangeInfo(_KnowledgeResponseAction, Action):
+    response_key = "return_exchange_info"
+
+    def name(self) -> Text:
+        return "action_show_return_exchange_info"
+
+
+class ActionShowPaymentOptionsInfo(_KnowledgeResponseAction, Action):
+    response_key = "payment_options_info"
+
+    def name(self) -> Text:
+        return "action_show_payment_options_info"
+
+
+class ActionShowRecommendFramesPrompt(Action):
+    def name(self) -> Text:
+        return "action_show_recommend_frames_prompt"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: DomainDict,
+    ) -> List[Dict[Text, Any]]:
+        dispatcher.utter_message(text=_kb().prompt("recommend_frames_prompt"))
+        return []
+
+
+class ActionConfirmEyeTestBooking(Action):
+    def name(self) -> Text:
+        return "action_confirm_eye_test_booking"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: DomainDict,
+    ) -> List[Dict[Text, Any]]:
+        dispatcher.utter_message(
+            text=_kb().response(
+                "eye_test_booked",
+                appointment_date=tracker.get_slot("appointment_date") or "TBD",
+                appointment_time=tracker.get_slot("appointment_time") or "TBD",
+                city=tracker.get_slot("city") or "TBD",
+            )
+        )
+        return []
+
+
+class ActionAskFrameSearchFormProductType(_KnowledgePromptAction, Action):
+    prompt_key = "frame_search_form_product_type"
+
+    def name(self) -> Text:
+        return "action_ask_frame_search_form_product_type"
+
+
+class ActionAskFrameSearchFormBudget(_KnowledgePromptAction, Action):
+    prompt_key = "frame_search_form_budget"
+
+    def name(self) -> Text:
+        return "action_ask_frame_search_form_budget"
+
+
+class ActionAskOrderTrackingFormOrderId(_KnowledgePromptAction, Action):
+    prompt_key = "order_tracking_form_order_id"
+
+    def name(self) -> Text:
+        return "action_ask_order_tracking_form_order_id"
+
+
+class ActionAskEyeTestFormCity(_KnowledgePromptAction, Action):
+    prompt_key = "eye_test_form_city"
+
+    def name(self) -> Text:
+        return "action_ask_eye_test_form_city"
+
+
+class ActionAskEyeTestFormAppointmentDate(_KnowledgePromptAction, Action):
+    prompt_key = "eye_test_form_appointment_date"
+
+    def name(self) -> Text:
+        return "action_ask_eye_test_form_appointment_date"
+
+
+class ActionAskEyeTestFormAppointmentTime(_KnowledgePromptAction, Action):
+    prompt_key = "eye_test_form_appointment_time"
+
+    def name(self) -> Text:
+        return "action_ask_eye_test_form_appointment_time"
 
 
 # ============================================================
@@ -327,7 +278,7 @@ def _fetch_stores(city: str) -> List[Dict]:
 # ============================================================
 
 class ActionRecommendFrames(Action):
-    """Recommends frames based on face shape, style, gender, and budget."""
+    """Recommends products from the product_catalog CSV based on category and budget."""
 
     def name(self) -> Text:
         return "action_recommend_frames"
@@ -339,82 +290,50 @@ class ActionRecommendFrames(Action):
         domain: DomainDict,
     ) -> List[Dict[Text, Any]]:
 
-        frame_style = tracker.get_slot("frame_style")
-        gender      = tracker.get_slot("gender")
-        budget      = tracker.get_slot("budget")
-        face_shape  = tracker.get_slot("face_shape")
+        product_type = tracker.get_slot("product_type")
+        budget       = tracker.get_slot("budget")
 
         logger.info(
-            "action_recommend_frames | style=%s gender=%s budget=%s face_shape=%s",
-            frame_style, gender, budget, face_shape,
+            "action_recommend_frames | product_type=%s budget=%s",
+            product_type, budget,
         )
 
-        # ── Derive style from face shape when not given ──────
-        if not frame_style and face_shape:
-            shape_key   = face_shape.lower().strip()
-            suggestions = FACE_SHAPE_STYLES.get(shape_key, [])
-            if suggestions:
-                frame_style = suggestions[0]
-                style_list  = ", ".join(f"**{s}**" for s in suggestions)
-                dispatcher.utter_message(
-                    text=f"💡 For a **{face_shape}** face, we recommend: {style_list} frames.\n"
-                         f"Let me show you our **{frame_style}** collection!"
-                )
-
-        if not frame_style:
-            self._show_featured(dispatcher)
-            return []
-
-        gender_key   = _normalise_gender(gender)
+        kb = _kb()
         budget_value = _parse_budget(budget)
-        style_key    = frame_style.lower().strip()
 
-        catalog_entry = FRAME_CATALOG.get(style_key, {})
-        candidates    = catalog_entry.get(gender_key, []) + catalog_entry.get("unisex", [])
+        results = kb.search_products(
+            category=product_type,
+            budget=budget_value,
+            limit=5,
+        )
 
-        if not candidates:
+        if not results:
             dispatcher.utter_message(
-                text=(
-                    f"I don't have exact **{frame_style}** frames for **{gender or 'you'}** right now, "
-                    f"but here are some of our hottest picks! 🌟"
-                )
+                text=kb.response("no_results_found", product_type=product_type or "your selection")
             )
             self._show_featured(dispatcher)
             return []
 
-        if budget_value:
-            within_budget = [f for f in candidates if f["price"] <= budget_value]
-            if within_budget:
-                candidates = within_budget
-            else:
-                dispatcher.utter_message(
-                    text=(
-                        f"Hmm, no **{frame_style}** frames exactly within RM{budget_value} right now. "
-                        f"Here are the closest options:"
-                    )
-                )
-
-        results = candidates[:3]
-        lines   = [f"👓 **{frame_style.title()} Frames** from Calisto:\n"]
-        for i, f in enumerate(results, 1):
+        category_label = product_type or "All Categories"
+        lines = [f"🛍️ **{category_label.title()} Products** from the Calisto catalog:\n"]
+        for i, row in enumerate(results, 1):
             lines.append(
-                f"{i}. **{f['name']}**\n"
-                f"   💰 RM{f['price']}  |  🔧 {f['material']}  |  🎨 {f['color']}\n"
-                f"   🏷️ SKU: {f['sku']}\n"
+                f"{i}. **{row['Product_Name']}**\n"
+                f"   💰 RM{float(row['Price_MYR']):.2f}  |  📂 {row['Category']}\n"
+                f"   📍 Available at: {row['Store_Location']}\n"
             )
-        lines.append(
-            "\nLike what you see? Visit a store to try them on, "
-            "or shall I help you find the nearest Calisto outlet? 😊"
-        )
+        lines.append("\nIf you want, I can also find the nearest Calisto outlet or book an eye test.")
         dispatcher.utter_message(text="\n".join(lines))
         return []
 
     @staticmethod
     def _show_featured(dispatcher: CollectingDispatcher) -> None:
-        lines = ["🌟 **Calisto Top Picks:**\n"]
-        for i, f in enumerate(FEATURED_FRAMES, 1):
-            lines.append(f"{i}. **{f['name']}** – RM{f['price']} ({f['material']})  |  SKU: {f['sku']}")
-        lines.append("\nShop online at **www.calisto.com.my** or visit our store!")
+        lines = [_kb().response("featured_intro") + "\n"]
+        for i, row in enumerate(_kb().featured_products(), 1):
+            lines.append(
+                f"{i}. **{row['Product_Name']}** – RM{float(row['Price_MYR']):.2f} ({row['Category']})"
+            )
+        lines.append("\nTell me the category or budget and I'll narrow it down.")
         dispatcher.utter_message(text="\n".join(lines))
 
 
@@ -455,7 +374,7 @@ class ActionCheckOrderStatus(Action):
             return []
 
         logger.info("action_check_order_status | order_id=%s", order_id)
-        order = _fetch_order(order_id)
+        order = _kb().fetch_order(order_id)
 
         STATUS_ICON = {
             "Confirmed":   "✅",
@@ -511,7 +430,7 @@ class ActionFindNearestStore(Action):
             city = self._detect_city(text)
 
         if not city:
-            dispatcher.utter_message(text="Kat mana you sekarang? / Which city are you in? 🏙️ I'll find your nearest Calisto store.")
+            dispatcher.utter_message(text=_kb().prompt("store_city_prompt"))
             return []
 
         logger.info("action_find_nearest_store | city=%s", city)
@@ -526,17 +445,14 @@ class ActionFindNearestStore(Action):
                     f"   📞 {s['phone']}\n"
                     f"   🕐 {s['hours']}\n"
                 )
-            lines.append("We recommend calling ahead / WhatsApp to confirm frame availability. Nak book eye test kat situ? 😊")
+            lines.append(_kb().response("store_follow_up"))
             dispatcher.utter_message(text="\n".join(lines))
         else:
             dispatcher.utter_message(
-                text=(
-                    f"We don't have a store in **{city.title()}** yet — but we're growing fast! 😊\n\n"
-                    f"In the meantime:\n"
-                    f"• 🛒 **Shop Online:** www.calisto.com.my (Free shipping seluruh Malaysia!)\n"
-                    f"• 🏠 **Home Trial:** We deliver 5 frames to try at home — no cost!\n"
-                    f"• 📱 **WhatsApp:** +60 12-XXX-XXXX\n\n"
-                    f"Current stores: KL · PJ · Subang · Shah Alam · Penang · JB · Ipoh · Melaka · KK · Kuching"
+                text=_kb().response(
+                    "store_not_found",
+                    city=city.title(),
+                    supported_cities=_kb().supported_cities(),
                 )
             )
 
@@ -544,22 +460,7 @@ class ActionFindNearestStore(Action):
 
     @staticmethod
     def _detect_city(text: str) -> Optional[str]:
-        text_lower = text.lower()
-        # Check aliases first (handles KL, PJ, JB, etc.)
-        for alias, canonical in CITY_ALIASES.items():
-            if alias in text_lower:
-                return canonical.title()
-        # Then check store database keys
-        for key in STORE_DATABASE:
-            if key in text_lower:
-                return key.title()
-        # Fuzzy match the whole input against known city names
-        all_keys = list(CITY_ALIASES.keys()) + list(STORE_DATABASE.keys())
-        matches = get_close_matches(text_lower.strip(), all_keys, n=1, cutoff=0.6)
-        if matches:
-            matched = matches[0]
-            return CITY_ALIASES.get(matched, matched).title()
-        return None
+        return _kb().detect_city(text)
 
 
 # ============================================================
@@ -572,17 +473,26 @@ class ValidateFrameSearchForm(FormValidationAction):
     def name(self) -> Text:
         return "validate_frame_search_form"
 
-    def validate_gender(
+    def validate_product_type(
         self,
         slot_value: Any,
         dispatcher: CollectingDispatcher,
         tracker: Tracker,
         domain: DomainDict,
     ) -> Dict[Text, Any]:
+        if not slot_value:
+            return {"product_type": None}
         if slot_value:
-            normalised = _normalise_gender(slot_value)
-            return {"gender": normalised}
-        return {"gender": slot_value}
+            resolved = _kb().normalize_category(slot_value)
+            if resolved:
+                return {"product_type": resolved}
+            # Unrecognised – ask again
+            dispatcher.utter_message(
+                text="Sorry, I didn't recognise that category. "
+                "Please pick one: "
+                + ", ".join(_kb().list_categories())
+            )
+            return {"product_type": None}
 
     def validate_budget(
         self,
@@ -596,18 +506,6 @@ class ValidateFrameSearchForm(FormValidationAction):
             if value:
                 return {"budget": str(value)}
         return {"budget": slot_value}
-
-    def validate_frame_style(
-        self,
-        slot_value: Any,
-        dispatcher: CollectingDispatcher,
-        tracker: Tracker,
-        domain: DomainDict,
-    ) -> Dict[Text, Any]:
-        known = list(FRAME_CATALOG.keys())
-        if slot_value and any(k in slot_value.lower() for k in known):
-            return {"frame_style": slot_value}
-        return {"frame_style": slot_value}
 
 
 # ============================================================
@@ -673,7 +571,7 @@ class ValidateEyeTestForm(FormValidationAction):
             )
             return {"city": slot_value.title()}
 
-        available_cities = "KL, PJ, Subang Jaya, Shah Alam, Penang, JB, Ipoh, Melaka, KK, Kuching"
+        available_cities = _kb().supported_cities()
         dispatcher.utter_message(
             text=(
                 f"Sorry, no store in **{slot_value.title()}** yet. "

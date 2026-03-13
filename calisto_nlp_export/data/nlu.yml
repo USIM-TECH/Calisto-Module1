@@ -178,110 +178,107 @@ nlu:
 # ────────────────────────────────────────────────────────────
 - intent: search_frames
   examples: |
-    - show me [round](frame_style) [glasses](product_type)
-    - I want [black](frame_style) [eyeglasses](product_type)
-    - find [frames](product_type) for [men](gender)
-    - show [stylish](frame_style) [frames](product_type) under [3000](budget)
-    - I want [glasses](product_type) for a [round face](face_shape)
-    - show me [aviator](frame_style) [sunglasses](product_type)
-    - find [women's](gender) [spectacles](product_type)
-    - I need [rectangular](frame_style) [frames](product_type)
-    - show me [cat-eye](frame_style) [glasses](product_type) for [women](gender)
-    - looking for [mens](gender) [eyeglasses](product_type)
-    - show [oval](frame_style) [frames](product_type)
-    - find me [frames](product_type) under [2000](budget)
+    - show me [sunglasses](product_type)
+    - I want [designer frames](product_type)
+    - find [prescription lenses](product_type)
+    - show [luxury sunglasses](product_type) under [300](budget)
+    - I want [contact lens solutions](product_type)
+    - show me [professional services](product_type)
+    - find [frames](product_type) under [200](budget)
     - I want [prescription glasses](product_type)
-    - show [wayfarer](frame_style) [frames](product_type) for [men](gender)
-    - need [reading glasses](product_type)
-    - looking for [computer glasses](product_type)
-    - show [square](frame_style) [frames](product_type)
-    - find [titanium](frame_style) [frames](product_type)
-    - I want [blue](frame_style) [glasses](product_type) for [women](gender)
-    - show me [kids glasses](product_type)
-    - find [full rim](frame_style) [spectacles](product_type)
-    - I want [rimless](frame_style) [glasses](product_type)
-    - show me [half rim](frame_style) [frames](product_type)
-    - looking for [acetate](frame_style) [frames](product_type)
-    - find [metal](frame_style) [eyeglasses](product_type)
-    - show [sports glasses](product_type) for [men](gender)
-    - I want [sunglasses](product_type) under [5000](budget)
-    - find [unisex](gender) [glasses](product_type)
-    - show me [lightweight](frame_style) [frames](product_type)
-    - looking for [trendy](frame_style) [glasses](product_type) for [women](gender)
-    - show [eyeglasses](product_type) for [oval face](face_shape)
-    - I want [minimalist](frame_style) [spectacles](product_type)
-    - find [bold](frame_style) [glasses](product_type) for [men](gender) under [4000](budget)
-    - show me [classic](frame_style) [eyeglasses](product_type)
-    - nak cari [round](frame_style) [cermin mata](product_type)
-    - ada [aviator](frame_style) [sunglasses](product_type) tak
-    - nak tengok [cat-eye](frame_style) [frame](product_type)
-    - tolong cari [square](frame_style) [glasses](product_type) untuk [perempuan](gender)
+    - show [designer frames](product_type) under [150](budget)
+    - need [contact lenses](product_type)
+    - looking for [sunglasses](product_type) under [500](budget)
+    - show me [eyeglasses](product_type)
+    - I want [glasses](product_type)
+    - find [spectacles](product_type) under [250](budget)
+    - show [frames](product_type)
+    - looking for [luxury shades](product_type)
+    - I need [prescription lenses](product_type) under [400](budget)
+    - show me [contact lens](product_type) options
+    - find [sunglasses](product_type) below [300](budget)
+    - I want to browse [designer frames](product_type)
+    - show me cheap [glasses](product_type) under [100](budget)
+    - nak cari [cermin mata](product_type)
+    - ada [sunglasses](product_type) tak
+    - nak tengok [frame](product_type)
+    - tolong cari [glasses](product_type) bawah [300](budget)
     - ada [frame](product_type) bawah [300](budget) tak
-    - nak [rectangular](frame_style) [spectacles](product_type) untuk [lelaki](gender)
-    - got [round](frame_style) [glasses](product_type) below [500](budget) ah
-    - show [wayfarer](frame_style) [frame](product_type) for [ladies](gender) lah
-    - I want [rimless](frame_style) [glasses](product_type) can ah
-    - looking for [lightweight](frame_style) [cermin mata](product_type) under [200](budget)
-    - show me [trendy](frame_style) [specs](product_type) for [women](gender)
-    - cari [sunglasses](product_type) [men](gender) below [400](budget)
-    - ada tak [half rim](frame_style) [glasses](product_type)
-    - nak beli [prescription glasses](product_type) style [oval](frame_style)
-    - find [sporty](frame_style) [cermin mata](product_type) untuk [lelaki](gender)
-    - I want nice [frame](product_type) for [women](gender) budget [250](budget)
-    - nak cari [metal](frame_style) [frame](product_type) for [men](gender) under [350](budget)
-    - ada [acetate](frame_style) [frame](product_type) color black tak
-    - show me [full rim](frame_style) [eyeglasses](product_type) for [unisex](gender)
+    - nak [spectacles](product_type) below [200](budget)
+    - got [sunglasses](product_type) below [500](budget) ah
+    - show [frames](product_type) lah
+    - I want nice [glasses](product_type) budget [250](budget)
+    - cari [sunglasses](product_type) below [400](budget)
+    - nak beli [prescription glasses](product_type)
+    - ada [contact lenses](product_type) tak
+    - show me [lenses](product_type)
+    - find [designer](product_type) glasses
+    - looking for [luxury](product_type) eyewear
+    - I want [professional services](product_type)
+    - nak [eye test](product_type) service
+    - can find [contact lens](product_type) or not
+    - ada [prescription lenses](product_type) below [200](budget) tak
+    - [luxury sunglasses](product_type) would be fine
+    - [sunglasses](product_type) please
+    - [designer frames](product_type) please
+    - I'll go with [luxury sunglasses](product_type)
+    - [prescription lenses](product_type) would be good
+    - let me see [contact lenses](product_type)
+    - [frames](product_type) would be nice
+    - [sunglasses](product_type) lah
+    - maybe [luxury sunglasses](product_type)
+    - [professional services](product_type) please
+    - I think [designer frames](product_type)
+    - yeah [sunglasses](product_type)
+    - ok [prescription lenses](product_type)
+    - go with [glasses](product_type)
+    - [luxury sunglasses](product_type) can
 
 # ────────────────────────────────────────────────────────────
 # INTENT: recommend_frames
 # ────────────────────────────────────────────────────────────
 - intent: recommend_frames
   examples: |
-    - recommend me some frames
+    - recommend me some products
     - suggest some glasses
     - which glasses are best for me
-    - what frames would suit me
+    - what products would suit me
     - recommend glasses for [oval face](face_shape)
     - suggest frames for [square face](face_shape)
     - what's best for [round face](face_shape)
-    - recommend [men's](gender) glasses
-    - suggest [women's](gender) frames
-    - what frames are trending
-    - show me popular frames
+    - what products are trending
+    - show me popular products
     - what's your best seller
-    - recommend glasses under [5000](budget)
-    - best frames under [2000](budget)
-    - suggest stylish [eyeglasses](product_type) for [heart face](face_shape)
+    - recommend products under [500](budget)
+    - best products under [200](budget)
     - which sunglasses should I buy
     - recommend prescription glasses
-    - I don't know which frames to pick, can you help
-    - what frames match my face
+    - I don't know which product to pick, can you help
     - help me choose glasses
-    - can you suggest good frames
+    - can you suggest good products
     - I'm not sure what to pick
     - help me choose eyewear
     - which frames look good on [diamond face](face_shape)
     - recommend glasses for [oblong](face_shape) face shape
     - suggest frames suitable for [heart](face_shape) shaped faces
-    - boleh suggest frame best tak
-    - mana satu frame paling cantik
+    - boleh suggest product best tak
+    - mana satu paling cantik
     - recommend frame untuk [muka bulat](face_shape)
-    - suggest frame yang sesuai untuk [oval](face_shape)
-    - apa frame paling laris
+    - suggest yang sesuai untuk [oval](face_shape)
+    - apa yang paling laris
     - mana yang trending sekarang
-    - nak frame yang nice
-    - best seller frame apa
+    - nak yang nice
+    - best seller apa
     - which one popular ah
-    - can suggest frame for my face shape or not
+    - can suggest product or not
     - mana yang paling ramai orang beli
-    - frame mana yang paling value
-    - nak frame cantik under [300](budget)
-    - suggest satu frame for [lelaki](gender)
-    - frame paling stylish apa
+    - mana yang paling value
+    - nak product under [300](budget)
+    - suggest something nice
+    - paling stylish apa
     - got any recommendation lah
     - recommend something nice below [500](budget)
-    - tolong pilih frame untuk saya
-    - what frame sesuai for [round](face_shape) face ah
+    - tolong pilih product untuk saya
     - help me pick lah
     - tak tahu nak pilih mana satu
 

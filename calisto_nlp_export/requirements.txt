@@ -10,9 +10,12 @@ tensorflow-estimator==2.12.0
 tensorflow-hub==0.13.0
 tensorflow-macos==2.12.0
 
+# Hugging Face Transformer Pipeline
+transformers>=4.34.0,<4.40.0
+sentence-transformers>=2.2.2,<3.0.0
+torch>=2.0.0
+
 # RAG – Knowledge Base Retrieval
-faiss-cpu>=1.7.4
-sentence-transformers>=2.2.2
-pypdf>=3.0.0
-python-docx>=0.8.11
 pandas>=1.5.0
+psycopg[binary]>=3.2,<3.3
+pgvector>=0.3,<0.4

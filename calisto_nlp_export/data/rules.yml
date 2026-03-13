@@ -33,15 +33,20 @@ rules:
     - action: utter_thank_you
 
 # FAQ-STYLE SINGLE-TURN RULES
+- rule: Show product overview from knowledge base
+  steps:
+    - intent: ask_product
+    - action: action_show_product_overview
+
 - rule: Answer lens types question
   steps:
     - intent: ask_lens_types
-    - action: utter_lens_types_info
+    - action: action_show_lens_types
 
 - rule: Answer lens pricing question
   steps:
     - intent: ask_lens_price
-    - action: utter_lens_price_info
+    - action: action_show_lens_pricing
 
 - rule: Show all store locations
   steps:
@@ -51,22 +56,22 @@ rules:
 - rule: Face shape guide
   steps:
     - intent: check_face_shape
-    - action: utter_check_face_shape_help
+    - action: action_show_face_shape_help
 
 - rule: Answer warranty question
   steps:
     - intent: ask_warranty
-    - action: utter_warranty_info
+    - action: action_show_warranty_info
 
 - rule: Answer return exchange question
   steps:
     - intent: ask_return_exchange
-    - action: utter_return_exchange_info
+    - action: action_show_return_exchange_info
 
 - rule: Answer payment options question
   steps:
     - intent: ask_payment_options
-    - action: utter_payment_options_info
+    - action: action_show_payment_options_info
 
 # FORM: frame_search_form
 - rule: Activate frame search form on search_frames intent
@@ -117,7 +122,7 @@ rules:
     - active_loop: null
     - slot_was_set:
         - requested_slot: null
-    - action: utter_eye_test_booked
+    - action: action_confirm_eye_test_booking
 
 # RAG – KNOWLEDGE BASE RETRIEVAL RULES
 - rule: Search knowledge base for company info

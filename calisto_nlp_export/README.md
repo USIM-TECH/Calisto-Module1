@@ -2,6 +2,8 @@
 
 Standalone Rasa NLP service for the Calisto Eyewear chatbot. Connects to any Node.js (or other) backend via REST API.
 
+The chatbot's structured knowledge base and RAG document retrieval are backed by PostgreSQL. This repository no longer uses local `knowledge_base/` seed files at runtime.
+
 > **Note:** Rasa 3.6.x requires Python 3.8–3.10. The recommended way to run this service is via **Docker**, which bundles the correct Python version automatically.
 
 ---
@@ -45,14 +47,15 @@ calisto_nlp_export/
 docker compose up -d --build
 ```
 
-This builds and starts two containers:
+This builds and starts three containers:
 
 | Container | Image | Port | Purpose |
 |-----------|-------|------|---------|
+| `postgres` | `pgvector/pgvector:pg16` | `5432` | Knowledge-base storage + vector search |
 | `rasa` | `rasa/rasa:3.6.21` | `5005` | NLP server (REST API) |
 | `action-server` | `rasa/rasa-sdk:3.6.2` | `5055` | Custom actions (Python) |
 
-The containers are connected via an internal Docker network (`calisto-net`). The Rasa server automatically loads the pre-trained model from `models/`.
+The containers are connected via an internal Docker network (`calisto-net`). The action server auto-creates the PostgreSQL schema and enables the `vector` extension. Populate the database before starting the bot if you are setting up a fresh environment.
 
 ### 2. Verify containers are running
 
@@ -62,9 +65,10 @@ docker compose ps
 
 Expected output:
 ```
-NAME                          IMAGE                          STATUS    PORTS
-calisto_nlp_export-rasa-1     calisto_nlp_export-rasa        Up        0.0.0.0:5005->5005/tcp
-calisto_nlp_export-action-..  calisto_nlp_export-action-..   Up        0.0.0.0:5055->5055/tcp
+NAME                             IMAGE                             STATUS    PORTS
+calisto_nlp_export-postgres-1    postgres:16-alpine                Up        0.0.0.0:5432->5432/tcp
+calisto_nlp_export-rasa-1        calisto_nlp_export-rasa           Up        0.0.0.0:5005->5005/tcp
+calisto_nlp_export-action-...    calisto_nlp_export-action-...     Up        0.0.0.0:5055->5055/tcp
 ```
 
 ### 3. Wait for the model to load (~20–30 seconds), then test
@@ -86,6 +90,9 @@ docker compose logs -f rasa
 
 # Action server only
 docker compose logs -f action-server
+
+# PostgreSQL only
+docker compose logs -f postgres
 ```
 
 ### 5. Stop the service
@@ -96,6 +103,34 @@ docker compose down
 
 ---
 
+## PostgreSQL Knowledge Base
+
+Runtime KB access now goes through PostgreSQL.
+
+Default connection settings:
+
+```bash
+KB_DB_HOST=localhost
+KB_DB_PORT=5432
+KB_DB_NAME=calisto_kb
+KB_DB_USER=calisto
+KB_DB_PASSWORD=calisto
+```
+
+You can also supply a single connection string:
+
+```bash
+export KB_DATABASE_URL=postgresql://calisto:calisto@localhost:5432/calisto_kb
+```
+
+### Rebuild runtime RAG embeddings in PostgreSQL
+
+After updating KB documents in PostgreSQL, rebuild the pgvector embeddings used for runtime retrieval:
+
+```bash
+python scripts/build_index.py
+```
+
 ## Setup & Run (Local — Requires Python 3.8–3.10)
 
 > ⚠️ Rasa 3.6.x does **not** support Python 3.11+. If your system Python is newer, use Docker instead.
@@ -103,7 +138,7 @@ docker compose down
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install rasa==3.6.21 rasa-sdk==3.6.2
+pip install -r requirements.txt
 
 chmod +x start.sh
 ./start.sh
@@ -130,7 +165,8 @@ chmod +x start.sh
 ```
 
 - **Rasa server** receives user messages, runs NLU classification, manages dialogue state
-- **Action server** executes custom Python actions (frame catalog lookup, order tracking, store locator)
+- **Action server** executes custom Python actions and reads knowledge-base data from PostgreSQL
+- **PostgreSQL** stores product rows, store metadata, order records, prompts/responses, and searchable document segments
 - Rasa calls the action server at `http://action-server:5055/webhook` (configured in `endpoints.yml`)
 
 ---
@@ -211,6 +247,8 @@ Content-Type: application/json
 
 If you update training data in `data/`, you need to retrain.
 
+If you update KB documents in PostgreSQL, rebuild the pgvector embeddings before training or starting the action server.
+
 ### Via Docker (recommended)
 ```bash
 docker run --rm -v "$(pwd)":/app -w /app -u root rasa/rasa:3.6.21 \
@@ -226,6 +264,7 @@ docker compose up -d --build
 ### Via local Python (requires Python 3.8–3.10)
 ```bash
 source .venv/bin/activate
+python scripts/build_index.py
 rasa train
 # New model saved to models/
 ```

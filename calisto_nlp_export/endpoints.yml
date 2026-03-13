@@ -10,4 +10,4 @@
 # ============================================================
 
 action_endpoint:
-  url: "http://localhost:5055/webhook"
+  url: "${ACTION_ENDPOINT_URL:-http://localhost:5055/webhook}"

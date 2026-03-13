@@ -65,10 +65,13 @@ start_local() {
     python3 -m venv .venv
     source .venv/bin/activate
     pip install --upgrade pip
-    pip install rasa==3.6.21 rasa-sdk==3.6.2
   else
     source .venv/bin/activate
   fi
+
+  echo "📚 Syncing Python dependencies..."
+  pip install --upgrade pip
+  pip install -r requirements.txt
 
   local SUB_MODE="${1:-all}"
 
@@ -88,6 +91,7 @@ start_local() {
       echo "✅ Calisto NLP services running:"
       echo "   • Rasa REST API  → http://localhost:5005"
       echo "   • Action Server  → http://localhost:5055"
+      echo "   • PostgreSQL KB  → configure KB_DB_* env vars or KB_DATABASE_URL"
       echo ""
       echo "   POST messages to: http://localhost:5005/webhooks/rest/webhook"
       echo "   Press Ctrl+C to stop."

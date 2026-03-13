@@ -36,6 +36,7 @@ Thumbs.db
 # Virtual environment
 .venv/
 calisto_nlp_export/.venv/
+calisto_nlp_export/.venv*/
 
 # FAISS index (rebuild locally)
 calisto_nlp_export/knowledge_base/index/

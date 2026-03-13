@@ -1,60 +1,37 @@
-"""
-Calisto Eyewear – FAISS Index Builder & Searcher
-Builds a FAISS vector index from document chunks and provides search.
-"""
+"""Calisto Eyewear – pgvector index builder and runtime searcher."""
 
-import json
-import os
 from typing import List, Tuple
 
-import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
+from actions.knowledge_base.postgres_store import KnowledgeBaseStorage
+
 # ── Defaults ────────────────────────────────────────────────
 MODEL_NAME = "all-MiniLM-L6-v2"
-INDEX_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "knowledge_base", "index")
-INDEX_PATH = os.path.join(INDEX_DIR, "calisto.faiss")
-META_PATH = os.path.join(INDEX_DIR, "calisto_meta.json")
 
 
 def build_index(chunks: List[Tuple[str, str]]) -> None:
-    """Embed *chunks* and persist FAISS index + metadata to disk."""
+    """Embed *chunks* and persist them into PostgreSQL with pgvector."""
     model = SentenceTransformer(MODEL_NAME)
 
     texts = [text for _, text in chunks]
-    sources = [src for src, _ in chunks]
 
-    embeddings = model.encode(texts, show_progress_bar=True, normalize_embeddings=True)
-    embeddings = np.array(embeddings, dtype="float32")
+    embeddings = model.encode(texts, show_progress_bar=True, normalize_embeddings=True, batch_size=32)
+    embeddings = np.array(embeddings, dtype="float32").tolist()
 
-    dim = embeddings.shape[1]
-    index = faiss.IndexFlatIP(dim)  # Inner-product (cosine) on normalised vectors
-    index.add(embeddings)
-
-    os.makedirs(INDEX_DIR, exist_ok=True)
-    faiss.write_index(index, INDEX_PATH)
-
-    meta = [{"source": s, "text": t} for s, t in zip(sources, texts)]
-    with open(META_PATH, "w", encoding="utf-8") as f:
-        json.dump(meta, f, ensure_ascii=False, indent=2)
-
-    print(f"[✓] Index built: {index.ntotal} vectors  →  {INDEX_PATH}")
+    inserted = KnowledgeBaseStorage.get().replace_document_embeddings(chunks, embeddings)
+    print(f"[✓] Vector index built in PostgreSQL: {inserted} chunks")
 
 
 class KnowledgeSearcher:
-    """Lazy-loaded searcher that lives across Rasa action-server requests."""
+    """Lazy-loaded searcher that queries pgvector at runtime."""
 
     _instance = None  # singleton
 
     def __init__(self) -> None:
-        idx_path = os.path.normpath(INDEX_PATH)
-        meta_path = os.path.normpath(META_PATH)
-
-        self.index = faiss.read_index(idx_path)
-        with open(meta_path, encoding="utf-8") as f:
-            self.meta = json.load(f)
         self.model = SentenceTransformer(MODEL_NAME)
+        self.storage = KnowledgeBaseStorage.get()
 
     @classmethod
     def get(cls) -> "KnowledgeSearcher":
@@ -65,15 +42,10 @@ class KnowledgeSearcher:
     def search(self, query: str, top_k: int = 3) -> List[dict]:
         """Return top-k results as dicts with keys: source, text, score."""
         vec = self.model.encode([query], normalize_embeddings=True)
-        vec = np.array(vec, dtype="float32")
+        query_embedding = np.array(vec, dtype="float32")[0].tolist()
 
-        scores, indices = self.index.search(vec, top_k)
-
-        results = []
-        for score, idx in zip(scores[0], indices[0]):
-            if idx < 0:
-                continue
-            entry = self.meta[idx].copy()
-            entry["score"] = float(score)
-            results.append(entry)
-        return results
+        rows = self.storage.search_document_embeddings(query_embedding, top_k=top_k)
+        return [
+            {"source": row["source"], "text": row["text"], "score": float(row["score"])}
+            for row in rows
+        ]

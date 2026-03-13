@@ -3,7 +3,20 @@
 # ============================================================
 FROM rasa/rasa-sdk:3.6.2
 
-# Copy custom actions
+# Switch to root to install python dependencies securely
+USER root
+
+# Install action-server dependencies needed for KB retrieval and PostgreSQL.
+COPY requirements.actions.txt /tmp/requirements.actions.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.actions.txt
+
+# Switch back to non-root
+USER 1001
+
+# Copy custom actions and KB indexing helpers.
 COPY actions/ /app/actions/
+COPY scripts/ /app/scripts/
 
 EXPOSE 5055
+
+CMD ["start", "--actions", "actions.actions", "--port", "5055"]

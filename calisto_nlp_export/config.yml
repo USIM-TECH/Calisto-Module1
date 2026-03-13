@@ -10,56 +10,34 @@ recipe: default.v1
 # Supports English + Manglish + Bahasa Melayu mixed input
 language: en
 
-# NLU PIPELINE (tuned for Malaysian multilingual input)
+# NLU PIPELINE (Hugging Face transformer embeddings)
 pipeline:
   # 1. Tokenize on whitespace (handles English + Malay well)
 - name: WhitespaceTokenizer
-  intent_tokenization_flag: false
-  intent_split_symbol: "_"
 
   # 2. Regex-based features (order_id, city lookups)
 - name: RegexFeaturizer
-  case_sensitive: false
 
-  # 3. Lexical / syntactic features
-- name: LexicalSyntacticFeaturizer
+  # 3. Hugging Face transformer embeddings
+- name: LanguageModelFeaturizer
+  model_name: bert
+  model_weights: sentence-transformers/all-MiniLM-L6-v2
 
-  # 4. Bag-of-words word-level features
-- name: CountVectorsFeaturizer
-  OOV_token: "__oov__"
-
-  # 5. Character n-gram features (critical for Manglish/Malay typos)
-- name: CountVectorsFeaturizer
-  analyzer: char_wb
-  min_ngram: 1
-  max_ngram: 4
-  OOV_token: "__oov__"
-
-  # 6. Joint intent classifier + entity extractor (increased epochs)
+  # 4. Joint intent classifier + entity extractor
 - name: DIETClassifier
-  epochs: 200
-  constrain_similarities: true
+  epochs: 100
   entity_recognition: true
-  use_masked_language_model: false
-  learning_rate: 0.001
-  batch_size: [64, 256]
-  number_of_transformer_layers: 2
-  drop_rate: 0.2
-  weight_sparsity: 0.8
 
-  # 7. Merge entity synonyms
+  # 5. Merge entity synonyms
 - name: EntitySynonymMapper
 
-  # 8. Response selector for FAQ-style retrieval intents
+  # 6. Response selector for FAQ-style retrieval intents
 - name: ResponseSelector
-  epochs: 200
-  constrain_similarities: true
-  retrieval_intent: chitchat
+  epochs: 100
 
-  # 9. Fallback when classifier confidence is below threshold
+  # 7. Fallback when classifier confidence is below threshold
 - name: FallbackClassifier
-  threshold: 0.40
-  ambiguity_threshold: 0.10
+  threshold: 0.4
 
 # DIALOGUE POLICIES
 policies:

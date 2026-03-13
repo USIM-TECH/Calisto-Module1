@@ -23,7 +23,7 @@ stories:
     - intent: greet
     - action: utter_greet
     - intent: ask_product
-    - action: utter_ask_product_type
+    - action: action_show_product_overview
     - intent: recommend_frames
       entities:
         - face_shape: oval
@@ -35,7 +35,7 @@ stories:
 - story: face shape consultation then recommend_frames
   steps:
     - intent: check_face_shape
-    - action: utter_check_face_shape_help
+    - action: action_show_face_shape_help
     - intent: recommend_frames
       entities:
         - face_shape: oval
@@ -46,7 +46,7 @@ stories:
     - intent: recommend_frames
       entities:
         - face_shape: round
-    - action: utter_recommend_frames_prompt
+    - action: action_show_recommend_frames_prompt
     - action: action_recommend_frames
 
 # ────────────────────────────────────────────────────────────
@@ -62,25 +62,13 @@ stories:
         - requested_slot: product_type
     - intent: inform
       entities:
-        - product_type: eyeglasses
-    - action: frame_search_form
-    - slot_was_set:
-        - requested_slot: frame_style
-    - intent: inform
-      entities:
-        - frame_style: round
-    - action: frame_search_form
-    - slot_was_set:
-        - requested_slot: gender
-    - intent: inform
-      entities:
-        - gender: women
+        - product_type: designer frames
     - action: frame_search_form
     - slot_was_set:
         - requested_slot: budget
     - intent: inform
       entities:
-        - budget: "3000"
+        - budget: "300"
     - action: frame_search_form
     - active_loop: null
     - slot_was_set:
@@ -92,9 +80,7 @@ stories:
     - intent: search_frames
       entities:
         - product_type: sunglasses
-        - frame_style: aviator
-        - gender: men
-        - budget: "5000"
+        - budget: "500"
     - action: frame_search_form
     - active_loop: null
     - slot_was_set:
@@ -104,7 +90,7 @@ stories:
 - story: face shape check then frame search form
   steps:
     - intent: check_face_shape
-    - action: utter_check_face_shape_help
+    - action: action_show_face_shape_help
     - intent: search_frames
     - action: frame_search_form
     - active_loop: frame_search_form
@@ -112,25 +98,13 @@ stories:
         - requested_slot: product_type
     - intent: inform
       entities:
-        - product_type: eyeglasses
-    - action: frame_search_form
-    - slot_was_set:
-        - requested_slot: frame_style
-    - intent: inform
-      entities:
-        - frame_style: rectangular
-    - action: frame_search_form
-    - slot_was_set:
-        - requested_slot: gender
-    - intent: inform
-      entities:
-        - gender: men
+        - product_type: designer frames
     - action: frame_search_form
     - slot_was_set:
         - requested_slot: budget
     - intent: inform
       entities:
-        - budget: "4000"
+        - budget: "400"
     - action: frame_search_form
     - active_loop: null
     - slot_was_set:
@@ -207,7 +181,7 @@ stories:
     - active_loop: null
     - slot_was_set:
         - requested_slot: null
-    - action: utter_eye_test_booked
+    - action: action_confirm_eye_test_booking
 
 - story: book eye test form – city given upfront
   steps:
@@ -227,7 +201,7 @@ stories:
     - active_loop: null
     - slot_was_set:
         - requested_slot: null
-    - action: utter_eye_test_booked
+    - action: action_confirm_eye_test_booking
 
 # ────────────────────────────────────────────────────────────
 # LENS INFORMATION FLOWS
@@ -235,14 +209,14 @@ stories:
 - story: ask lens types then pricing
   steps:
     - intent: ask_lens_types
-    - action: utter_lens_types_info
+    - action: action_show_lens_types
     - intent: ask_lens_price
-    - action: utter_lens_price_info
+    - action: action_show_lens_pricing
 
 - story: ask lens price then book eye test form
   steps:
     - intent: ask_lens_price
-    - action: utter_lens_price_info
+    - action: action_show_lens_pricing
     - intent: book_eye_test
     - action: eye_test_form
     - active_loop: eye_test_form
@@ -263,12 +237,12 @@ stories:
     - active_loop: null
     - slot_was_set:
         - requested_slot: null
-    - action: utter_eye_test_booked
+    - action: action_confirm_eye_test_booking
 
 - story: lens inquiry then frame search form
   steps:
     - intent: ask_lens_types
-    - action: utter_lens_types_info
+    - action: action_show_lens_types
     - intent: search_frames
     - action: frame_search_form
     - active_loop: frame_search_form
@@ -276,25 +250,13 @@ stories:
         - requested_slot: product_type
     - intent: inform
       entities:
-        - product_type: eyeglasses
-    - action: frame_search_form
-    - slot_was_set:
-        - requested_slot: frame_style
-    - intent: inform
-      entities:
-        - frame_style: rectangular
-    - action: frame_search_form
-    - slot_was_set:
-        - requested_slot: gender
-    - intent: inform
-      entities:
-        - gender: men
+        - product_type: prescription lenses
     - action: frame_search_form
     - slot_was_set:
         - requested_slot: budget
     - intent: inform
       entities:
-        - budget: "2500"
+        - budget: "250"
     - action: frame_search_form
     - active_loop: null
     - slot_was_set:
@@ -329,7 +291,7 @@ stories:
     - active_loop: null
     - slot_was_set:
         - requested_slot: null
-    - action: utter_eye_test_booked
+    - action: action_confirm_eye_test_booking
 
 # ────────────────────────────────────────────────────────────
 # FULL PURCHASE JOURNEY  (end-to-end multi-turn)
@@ -341,20 +303,13 @@ stories:
     - intent: search_frames
       entities:
         - product_type: sunglasses
-        - gender: women
     - action: frame_search_form
     - active_loop: frame_search_form
-    - slot_was_set:
-        - requested_slot: frame_style
-    - intent: inform
-      entities:
-        - frame_style: aviator
-    - action: frame_search_form
     - slot_was_set:
         - requested_slot: budget
     - intent: inform
       entities:
-        - budget: "5000"
+        - budget: "500"
     - action: frame_search_form
     - active_loop: null
     - slot_was_set:
@@ -382,7 +337,7 @@ stories:
     - active_loop: null
     - slot_was_set:
         - requested_slot: null
-    - action: utter_eye_test_booked
+    - action: action_confirm_eye_test_booking
     - intent: goodbye
     - action: utter_goodbye
 
@@ -394,7 +349,7 @@ stories:
     - intent: out_of_scope
     - action: utter_out_of_scope
     - intent: ask_product
-    - action: utter_ask_product_type
+    - action: action_show_product_overview
 
 # ────────────────────────────────────────────────────────────
 # NEW INTENT FLOWS
@@ -402,21 +357,21 @@ stories:
 - story: warranty inquiry then browse
   steps:
     - intent: ask_warranty
-    - action: utter_warranty_info
+    - action: action_show_warranty_info
     - intent: ask_product
-    - action: utter_ask_product_type
+    - action: action_show_product_overview
 
 - story: return exchange then warranty
   steps:
     - intent: ask_return_exchange
-    - action: utter_return_exchange_info
+    - action: action_show_return_exchange_info
     - intent: ask_warranty
-    - action: utter_warranty_info
+    - action: action_show_warranty_info
 
 - story: payment options then search frames
   steps:
     - intent: ask_payment_options
-    - action: utter_payment_options_info
+    - action: action_show_payment_options_info
     - intent: search_frames
     - action: frame_search_form
     - active_loop: frame_search_form
@@ -433,7 +388,7 @@ stories:
     - intent: greet
     - action: utter_greet
     - intent: ask_warranty
-    - action: utter_warranty_info
+    - action: action_show_warranty_info
     - intent: goodbye
     - action: utter_goodbye
 
@@ -442,7 +397,7 @@ stories:
     - intent: greet
     - action: utter_greet
     - intent: ask_payment_options
-    - action: utter_payment_options_info
+    - action: action_show_payment_options_info
     - intent: book_eye_test
     - action: eye_test_form
     - active_loop: eye_test_form
