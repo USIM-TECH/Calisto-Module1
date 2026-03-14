@@ -32,3 +32,21 @@ yarn-error.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Virtual Environments
+.venv/
+.venv*/
+venv/
+
+# Python
+__pycache__/
+*.pyc
+
+# Temp files
+*.txt
+!requirements.txt
+!calisto_nlp_export/requirements.txt
+calisto_nlp_export/rasa_train_output.txt
+
+# Models
+calisto_nlp_export/models/*.tar.gz

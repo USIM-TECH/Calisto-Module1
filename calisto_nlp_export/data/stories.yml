@@ -1,448 +1,87 @@
 version: "3.1"
 
-# ============================================================
-# Calisto Eyewear (Malaysia) – Conversation Stories
-# All stories are consistent with the form-activation rules.
-# Forms: frame_search_form, order_tracking_form, eye_test_form
-# ============================================================
-
 stories:
+  - story: Browse Eyewear - Designer Frames Flow
+    steps:
+      - intent: greet
+      - action: utter_greet
+      - intent: browse_eyewear
+      - action: action_reset_eyewear_slots
+      - action: utter_ask_product_type
+      - intent: select_product_type
+        entities:
+          - product_type: "Designer Frames"
+      - slot_was_set:
+          - product_type: "Designer Frames"
+      - action: utter_ask_brand_designer_frames
+      - intent: select_brand
+      - slot_was_set:
+          - brand
+      - action: utter_ask_budget_range
+      - intent: select_budget
+      - slot_was_set:
+          - price_range
+      - action: action_filter_products
+      - action: utter_ask_try_frames
 
-# ────────────────────────────────────────────────────────────
-# GREET / GOODBYE
-# ────────────────────────────────────────────────────────────
-- story: simple greet and goodbye
-  steps:
-    - intent: greet
-    - action: utter_greet
-    - intent: goodbye
-    - action: utter_goodbye
+  - story: Browse Eyewear - Luxury Sunglasses Flow
+    steps:
+      - intent: greet
+      - action: utter_greet
+      - intent: browse_eyewear
+      - action: action_reset_eyewear_slots
+      - action: utter_ask_product_type
+      - intent: select_product_type
+        entities:
+          - product_type: "Luxury Sunglasses"
+      - slot_was_set:
+          - product_type: "Luxury Sunglasses"
+      - action: utter_ask_brand_luxury_sunglasses
+      - intent: select_brand
+      - slot_was_set:
+          - brand
+      - action: utter_ask_budget_range
+      - intent: select_budget
+      - slot_was_set:
+          - price_range
+      - action: action_filter_products
+      - action: utter_ask_try_frames
 
-- story: greet then browse with recommend_frames
-  steps:
-    - intent: greet
-    - action: utter_greet
-    - intent: ask_product
-    - action: utter_ask_product_type
-    - intent: recommend_frames
-      entities:
-        - face_shape: oval
-    - action: action_recommend_frames
+  - story: Browse Eyewear - Contact Lenses Flow
+    steps:
+      - intent: greet
+      - action: utter_greet
+      - intent: browse_eyewear
+      - action: action_reset_eyewear_slots
+      - action: utter_ask_product_type
+      - intent: select_product_type
+        entities:
+          - product_type: "Contact Lenses"
+      - slot_was_set:
+          - product_type: "Contact Lenses"
+      - action: utter_ask_contact_lens_type
+      - action: utter_ask_contact_lens_fitting
 
-# ────────────────────────────────────────────────────────────
-# FACE SHAPE FLOWS  (no form conflict – recommend_frames has no rule)
-# ────────────────────────────────────────────────────────────
-- story: face shape consultation then recommend_frames
-  steps:
-    - intent: check_face_shape
-    - action: utter_check_face_shape_help
-    - intent: recommend_frames
-      entities:
-        - face_shape: oval
-    - action: action_recommend_frames
+  - story: Lens & Vision Solutions Flow
+    steps:
+      - intent: greet
+      - action: utter_greet
+      - intent: lens_vision_solutions
+      - action: utter_ask_lens_type
+      - intent: ask_lens_type
+      - slot_was_set:
+          - lens_type
+      - action: utter_explain_lens
+      - action: action_explain_lens
+      - action: utter_ask_eye_exam
 
-- story: recommend frames for round face
-  steps:
-    - intent: recommend_frames
-      entities:
-        - face_shape: round
-    - action: utter_recommend_frames_prompt
-    - action: action_recommend_frames
-
-# ────────────────────────────────────────────────────────────
-# FRAME SEARCH FORM  (form activation is handled by rule;
-# stories show slot-filling turns inside the active loop)
-# ────────────────────────────────────────────────────────────
-- story: frame search form – full slot collection
-  steps:
-    - intent: search_frames
-    - action: frame_search_form
-    - active_loop: frame_search_form
-    - slot_was_set:
-        - requested_slot: product_type
-    - intent: inform
-      entities:
-        - product_type: eyeglasses
-    - action: frame_search_form
-    - slot_was_set:
-        - requested_slot: frame_style
-    - intent: inform
-      entities:
-        - frame_style: round
-    - action: frame_search_form
-    - slot_was_set:
-        - requested_slot: gender
-    - intent: inform
-      entities:
-        - gender: women
-    - action: frame_search_form
-    - slot_was_set:
-        - requested_slot: budget
-    - intent: inform
-      entities:
-        - budget: "3000"
-    - action: frame_search_form
-    - active_loop: null
-    - slot_was_set:
-        - requested_slot: null
-    - action: action_recommend_frames
-
-- story: frame search form – all slots in opening message
-  steps:
-    - intent: search_frames
-      entities:
-        - product_type: sunglasses
-        - frame_style: aviator
-        - gender: men
-        - budget: "5000"
-    - action: frame_search_form
-    - active_loop: null
-    - slot_was_set:
-        - requested_slot: null
-    - action: action_recommend_frames
-
-- story: face shape check then frame search form
-  steps:
-    - intent: check_face_shape
-    - action: utter_check_face_shape_help
-    - intent: search_frames
-    - action: frame_search_form
-    - active_loop: frame_search_form
-    - slot_was_set:
-        - requested_slot: product_type
-    - intent: inform
-      entities:
-        - product_type: eyeglasses
-    - action: frame_search_form
-    - slot_was_set:
-        - requested_slot: frame_style
-    - intent: inform
-      entities:
-        - frame_style: rectangular
-    - action: frame_search_form
-    - slot_was_set:
-        - requested_slot: gender
-    - intent: inform
-      entities:
-        - gender: men
-    - action: frame_search_form
-    - slot_was_set:
-        - requested_slot: budget
-    - intent: inform
-      entities:
-        - budget: "4000"
-    - action: frame_search_form
-    - active_loop: null
-    - slot_was_set:
-        - requested_slot: null
-    - action: action_recommend_frames
-
-# ────────────────────────────────────────────────────────────
-# ORDER TRACKING FORM
-# ────────────────────────────────────────────────────────────
-- story: order tracking form – order id provided mid-form
-  steps:
-    - intent: track_order
-    - action: order_tracking_form
-    - active_loop: order_tracking_form
-    - slot_was_set:
-        - requested_slot: order_id
-    - intent: inform
-      entities:
-        - order_id: "45821"
-    - action: order_tracking_form
-    - active_loop: null
-    - slot_was_set:
-        - requested_slot: null
-    - action: action_check_order_status
-
-- story: order tracking form – order id in opening message
-  steps:
-    - intent: track_order
-      entities:
-        - order_id: "ORD12345"
-    - action: order_tracking_form
-    - active_loop: null
-    - slot_was_set:
-        - requested_slot: null
-    - action: action_check_order_status
-
-- story: order tracking form then find store
-  steps:
-    - intent: track_order
-      entities:
-        - order_id: "78562"
-    - action: order_tracking_form
-    - active_loop: null
-    - slot_was_set:
-        - requested_slot: null
-    - action: action_check_order_status
-    - intent: ask_store_location
-      entities:
-        - city: Kuala Lumpur
-    - action: action_find_nearest_store
-
-# ────────────────────────────────────────────────────────────
-# EYE TEST FORM
-# ────────────────────────────────────────────────────────────
-- story: book eye test form – full slot collection
-  steps:
-    - intent: book_eye_test
-    - action: eye_test_form
-    - active_loop: eye_test_form
-    - slot_was_set:
-        - requested_slot: city
-    - intent: inform
-      entities:
-        - city: Penang
-    - action: eye_test_form
-    - slot_was_set:
-        - requested_slot: appointment_date
-    - intent: inform
-    - action: eye_test_form
-    - slot_was_set:
-        - requested_slot: appointment_time
-    - intent: inform
-    - action: eye_test_form
-    - active_loop: null
-    - slot_was_set:
-        - requested_slot: null
-    - action: utter_eye_test_booked
-
-- story: book eye test form – city given upfront
-  steps:
-    - intent: book_eye_test
-      entities:
-        - city: Kuala Lumpur
-    - action: eye_test_form
-    - active_loop: eye_test_form
-    - slot_was_set:
-        - requested_slot: appointment_date
-    - intent: inform
-    - action: eye_test_form
-    - slot_was_set:
-        - requested_slot: appointment_time
-    - intent: inform
-    - action: eye_test_form
-    - active_loop: null
-    - slot_was_set:
-        - requested_slot: null
-    - action: utter_eye_test_booked
-
-# ────────────────────────────────────────────────────────────
-# LENS INFORMATION FLOWS
-# ────────────────────────────────────────────────────────────
-- story: ask lens types then pricing
-  steps:
-    - intent: ask_lens_types
-    - action: utter_lens_types_info
-    - intent: ask_lens_price
-    - action: utter_lens_price_info
-
-- story: ask lens price then book eye test form
-  steps:
-    - intent: ask_lens_price
-    - action: utter_lens_price_info
-    - intent: book_eye_test
-    - action: eye_test_form
-    - active_loop: eye_test_form
-    - slot_was_set:
-        - requested_slot: city
-    - intent: inform
-      entities:
-        - city: Johor Bahru
-    - action: eye_test_form
-    - slot_was_set:
-        - requested_slot: appointment_date
-    - intent: inform
-    - action: eye_test_form
-    - slot_was_set:
-        - requested_slot: appointment_time
-    - intent: inform
-    - action: eye_test_form
-    - active_loop: null
-    - slot_was_set:
-        - requested_slot: null
-    - action: utter_eye_test_booked
-
-- story: lens inquiry then frame search form
-  steps:
-    - intent: ask_lens_types
-    - action: utter_lens_types_info
-    - intent: search_frames
-    - action: frame_search_form
-    - active_loop: frame_search_form
-    - slot_was_set:
-        - requested_slot: product_type
-    - intent: inform
-      entities:
-        - product_type: eyeglasses
-    - action: frame_search_form
-    - slot_was_set:
-        - requested_slot: frame_style
-    - intent: inform
-      entities:
-        - frame_style: rectangular
-    - action: frame_search_form
-    - slot_was_set:
-        - requested_slot: gender
-    - intent: inform
-      entities:
-        - gender: men
-    - action: frame_search_form
-    - slot_was_set:
-        - requested_slot: budget
-    - intent: inform
-      entities:
-        - budget: "2500"
-    - action: frame_search_form
-    - active_loop: null
-    - slot_was_set:
-        - requested_slot: null
-    - action: action_recommend_frames
-
-# ────────────────────────────────────────────────────────────
-# STORE LOCATION FLOWS
-# ────────────────────────────────────────────────────────────
-- story: find store location direct
-  steps:
-    - intent: ask_store_location
-    - action: action_find_nearest_store
-
-- story: find store then book eye test form
-  steps:
-    - intent: ask_store_location
-      entities:
-        - city: Penang
-    - action: action_find_nearest_store
-    - intent: book_eye_test
-    - action: eye_test_form
-    - active_loop: eye_test_form
-    - slot_was_set:
-        - requested_slot: appointment_date
-    - intent: inform
-    - action: eye_test_form
-    - slot_was_set:
-        - requested_slot: appointment_time
-    - intent: inform
-    - action: eye_test_form
-    - active_loop: null
-    - slot_was_set:
-        - requested_slot: null
-    - action: utter_eye_test_booked
-
-# ────────────────────────────────────────────────────────────
-# FULL PURCHASE JOURNEY  (end-to-end multi-turn)
-# ────────────────────────────────────────────────────────────
-- story: complete eyewear purchase journey
-  steps:
-    - intent: greet
-    - action: utter_greet
-    - intent: search_frames
-      entities:
-        - product_type: sunglasses
-        - gender: women
-    - action: frame_search_form
-    - active_loop: frame_search_form
-    - slot_was_set:
-        - requested_slot: frame_style
-    - intent: inform
-      entities:
-        - frame_style: aviator
-    - action: frame_search_form
-    - slot_was_set:
-        - requested_slot: budget
-    - intent: inform
-      entities:
-        - budget: "5000"
-    - action: frame_search_form
-    - active_loop: null
-    - slot_was_set:
-        - requested_slot: null
-    - action: action_recommend_frames
-    - intent: ask_store_location
-    - action: action_find_nearest_store
-    - intent: book_eye_test
-    - action: eye_test_form
-    - active_loop: eye_test_form
-    - slot_was_set:
-        - requested_slot: city
-    - intent: inform
-      entities:
-        - city: Petaling Jaya
-    - action: eye_test_form
-    - slot_was_set:
-        - requested_slot: appointment_date
-    - intent: inform
-    - action: eye_test_form
-    - slot_was_set:
-        - requested_slot: appointment_time
-    - intent: inform
-    - action: eye_test_form
-    - active_loop: null
-    - slot_was_set:
-        - requested_slot: null
-    - action: utter_eye_test_booked
-    - intent: goodbye
-    - action: utter_goodbye
-
-# ────────────────────────────────────────────────────────────
-# OUT OF SCOPE RECOVERY
-# ────────────────────────────────────────────────────────────
-- story: out of scope then redirect to eyewear
-  steps:
-    - intent: out_of_scope
-    - action: utter_out_of_scope
-    - intent: ask_product
-    - action: utter_ask_product_type
-
-# ────────────────────────────────────────────────────────────
-# NEW INTENT FLOWS
-# ────────────────────────────────────────────────────────────
-- story: warranty inquiry then browse
-  steps:
-    - intent: ask_warranty
-    - action: utter_warranty_info
-    - intent: ask_product
-    - action: utter_ask_product_type
-
-- story: return exchange then warranty
-  steps:
-    - intent: ask_return_exchange
-    - action: utter_return_exchange_info
-    - intent: ask_warranty
-    - action: utter_warranty_info
-
-- story: payment options then search frames
-  steps:
-    - intent: ask_payment_options
-    - action: utter_payment_options_info
-    - intent: search_frames
-    - action: frame_search_form
-    - active_loop: frame_search_form
-
-- story: thank you then goodbye
-  steps:
-    - intent: thank_you
-    - action: utter_thank_you
-    - intent: goodbye
-    - action: utter_goodbye
-
-- story: greet then warranty then goodbye
-  steps:
-    - intent: greet
-    - action: utter_greet
-    - intent: ask_warranty
-    - action: utter_warranty_info
-    - intent: goodbye
-    - action: utter_goodbye
-
-- story: greet then payment then eye test
-  steps:
-    - intent: greet
-    - action: utter_greet
-    - intent: ask_payment_options
-    - action: utter_payment_options_info
-    - intent: book_eye_test
-    - action: eye_test_form
-    - active_loop: eye_test_form
+  - story: Find A Store Flow
+    steps:
+      - intent: greet
+      - action: utter_greet
+      - intent: find_a_store
+      - action: utter_ask_city
+      - intent: choose_city
+      - slot_was_set:
+          - city
+      - action: action_find_store

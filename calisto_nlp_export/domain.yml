@@ -1,47 +1,23 @@
 version: "3.1"
 
-# ============================================================
-# Calisto Eyewear (Malaysia) - Domain
-# ============================================================
-
-# INTENTS
 intents:
   - greet
-  - goodbye
-  - ask_product
-  - search_frames
-  - recommend_frames
-  - ask_lens_types
-  - ask_lens_price
-  - ask_store_location
-  - book_eye_test
-  - track_order
-  - check_face_shape
-  - ask_warranty
-  - ask_return_exchange
-  - ask_payment_options
-  - ask_company_info
-  - ask_services
-  - ask_product_info
-  - thank_you
-  - affirm
-  - deny
-  - inform
-  - out_of_scope
-  - nlu_fallback
+  - browse_eyewear
+  - select_product_type
+  - select_brand
+  - select_budget
+  - ask_lens_type
+  - lens_vision_solutions
+  - find_a_store
+  - choose_city
 
-# ENTITIES
 entities:
   - product_type
-  - frame_style
-  - gender
-  - face_shape
+  - brand
+  - price_range
   - lens_type
-  - order_id
   - city
-  - budget
 
-# SLOTS
 slots:
   product_type:
     type: text
@@ -49,379 +25,155 @@ slots:
     mappings:
       - type: from_entity
         entity: product_type
-
-  frame_style:
+  brand:
     type: text
     influence_conversation: true
     mappings:
       - type: from_entity
-        entity: frame_style
-
-  gender:
+        entity: brand
+  price_range:
     type: text
-    influence_conversation: false
+    influence_conversation: true
     mappings:
       - type: from_entity
-        entity: gender
-
-  face_shape:
-    type: text
-    influence_conversation: false
-    mappings:
-      - type: from_entity
-        entity: face_shape
-
+        entity: price_range
   lens_type:
     type: text
-    influence_conversation: false
+    influence_conversation: true
     mappings:
       - type: from_entity
         entity: lens_type
-
-  order_id:
-    type: text
-    influence_conversation: true
-    mappings:
-      - type: from_entity
-        entity: order_id
-
   city:
     type: text
-    influence_conversation: false
+    influence_conversation: true
     mappings:
       - type: from_entity
         entity: city
 
-  budget:
-    type: text
-    influence_conversation: false
-    mappings:
-      - type: from_entity
-        entity: budget
-
-  appointment_date:
-    type: text
-    influence_conversation: false
-    mappings:
-      - type: from_text
-        conditions:
-          - active_loop: eye_test_form
-            requested_slot: appointment_date
-
-  appointment_time:
-    type: text
-    influence_conversation: false
-    mappings:
-      - type: from_text
-        conditions:
-          - active_loop: eye_test_form
-            requested_slot: appointment_time
-
-# RESPONSES
 responses:
-
   utter_greet:
-    - text: |
-        Selamat datang to Calisto Eyewear! 👓 I'm your personal eyewear assistant.
-
-        Nak tahu apa hari ni? / What are you looking for today?
+    - text: "Selamat datang to Calisto Eyewear 👓\nHow can I assist you today?"
       buttons:
-        - title: "🕶️ Browse Frames"
-          payload: "/search_frames"
-        - title: "🔬 Lens Types & Pricing"
-          payload: "/ask_lens_types"
-        - title: "🗺️ Store Locations"
-          payload: "/ask_store_location"
-        - title: "📦 Track My Order"
-          payload: "/track_order"
-        - title: "👁️ Book Eye Test"
-          payload: "/book_eye_test"
-        - title: "💳 Payment & Warranty"
-          payload: "/ask_payment_options"
-
-  utter_goodbye:
-    - text: "Terima kasih for visiting Calisto Eyewear! Jumpa lagi soon. 👋"
-    - text: "Goodbye! Great vision starts with great eyewear. 😊 Come back anytime! Terima kasih!"
+        - title: "Browse Eyewear"
+          payload: '/browse_eyewear'
+        - title: "Lens & Vision Solutions"
+          payload: '/lens_vision_solutions'
+        - title: "Find a Store"
+          payload: '/find_a_store'
 
   utter_ask_product_type:
-    - text: "What type of eyewear are you looking for? / Nak cari cermin mata jenis apa?"
+    - text: "What type of eyewear are you looking for?"
       buttons:
-        - title: "🕶️ Sunglasses"
-          payload: "/inform{\"product_type\": \"sunglasses\"}"
-        - title: "👓 Eyeglasses"
-          payload: "/inform{\"product_type\": \"eyeglasses\"}"
-        - title: "💻 Blue Light Glasses"
-          payload: "/inform{\"product_type\": \"blue light glasses\"}"
-        - title: "📖 Reading Glasses"
-          payload: "/inform{\"product_type\": \"reading glasses\"}"
-        - title: "🏃 Sports Glasses"
-          payload: "/inform{\"product_type\": \"sports glasses\"}"
+        - title: "Designer Frames"
+          payload: '/select_product_type{"product_type":"Designer Frames"}'
+        - title: "Luxury Sunglasses"
+          payload: '/select_product_type{"product_type":"Luxury Sunglasses"}'
+        - title: "Contact Lenses"
+          payload: '/select_product_type{"product_type":"Contact Lenses"}'
 
-  utter_ask_frame_style:
-    - text: "What frame style do you prefer? / Style apa yang you suka?"
+  utter_ask_brand_designer_frames:
+    - text: "Which brand would you like to explore?"
       buttons:
-        - title: "⭕ Round"
-          payload: "/inform{\"frame_style\": \"round\"}"
-        - title: "⬜ Square"
-          payload: "/inform{\"frame_style\": \"square\"}"
-        - title: "▬ Rectangular"
-          payload: "/inform{\"frame_style\": \"rectangular\"}"
-        - title: "🐱 Cat-eye"
-          payload: "/inform{\"frame_style\": \"cat-eye\"}"
-        - title: "✈️ Aviator"
-          payload: "/inform{\"frame_style\": \"aviator\"}"
-        - title: "🥚 Oval"
-          payload: "/inform{\"frame_style\": \"oval\"}"
-        - title: "🕶️ Wayfarer"
-          payload: "/inform{\"frame_style\": \"wayfarer\"}"
+        - title: "Bottega Veneta"
+          payload: '/select_brand{"brand":"Bottega Veneta"}'
+        - title: "Projekt Produkt"
+          payload: '/select_brand{"brand":"Projekt Produkt"}'
+        - title: "Bossini"
+          payload: '/select_brand{"brand":"Bossini"}'
+        - title: "Show All Brands"
+          payload: '/select_brand{"brand":"Show All Brands"}'
 
-  utter_ask_gender:
-    - text: "Are you looking for men's, women's, or unisex frames?\n(Untuk lelaki, perempuan, atau unisex?)"
+  utter_ask_brand_luxury_sunglasses:
+    - text: "What brand of sunglasses are you interested in?"
       buttons:
-        - title: "👨 Men's"
-          payload: "/inform{\"gender\": \"men\"}"
-        - title: "👩 Women's"
-          payload: "/inform{\"gender\": \"women\"}"
-        - title: "🧑 Unisex"
-          payload: "/inform{\"gender\": \"unisex\"}"
+        - title: "Gucci"
+          payload: '/select_brand{"brand":"Gucci"}'
+        - title: "Saint Laurent"
+          payload: '/select_brand{"brand":"Saint Laurent"}'
+        - title: "Cartier"
+          payload: '/select_brand{"brand":"Cartier"}'
 
-  utter_ask_face_shape:
-    - text: "What's your face shape? / Bentuk muka you apa?\n\nTak pasti? Just say 'help me find my face shape' and I'll guide you! 😊"
+  utter_ask_budget_range:
+    - text: "What is your budget range?"
       buttons:
-        - title: "🔵 Round"
-          payload: "/inform{\"face_shape\": \"round\"}"
-        - title: "🥚 Oval"
-          payload: "/inform{\"face_shape\": \"oval\"}"
-        - title: "🟥 Square"
-          payload: "/inform{\"face_shape\": \"square\"}"
-        - title: "💜 Heart"
-          payload: "/inform{\"face_shape\": \"heart\"}"
-        - title: "💎 Diamond"
-          payload: "/inform{\"face_shape\": \"diamond\"}"
-        - title: "📏 Oblong"
-          payload: "/inform{\"face_shape\": \"oblong\"}"
+        - title: "Under RM100"
+          payload: '/select_budget{"price_range":"Under RM100"}'
+        - title: "RM100 - RM250"
+          payload: '/select_budget{"price_range":"RM100 - RM250"}'
+        - title: "RM250 - RM300"
+          payload: '/select_budget{"price_range":"RM250 - RM300"}'
+        - title: "Above RM300"
+          payload: '/select_budget{"price_range":"Above RM300"}'
 
-  utter_ask_budget:
-    - text: "What's your budget range? / Berapa budget you?"
+  utter_ask_try_frames:
+    - text: "Would you like to try these frames at a Calisto store?"
       buttons:
-        - title: "💰 Under RM150"
-          payload: "/inform{\"budget\": \"under 150\"}"
-        - title: "💰 RM150 – RM300"
-          payload: "/inform{\"budget\": \"150-300\"}"
-        - title: "💰 RM300 – RM600"
-          payload: "/inform{\"budget\": \"300-600\"}"
-        - title: "💎 Above RM600"
-          payload: "/inform{\"budget\": \"above 600\"}"
+        - title: "Find Nearest Store"
+          payload: '/find_a_store'
+        - title: "Browse Other Eyewear"
+          payload: '/browse_eyewear'
 
-  utter_ask_order_id:
-    - text: "Please share your **Order ID** so I can check the status.\n(e.g. 45821, ORD12345, or CAL-2024-9876)"
+  utter_ask_contact_lens_type:
+    - text: "What type of contact lenses are you interested in?"
+      buttons:
+        - title: "Daily Lenses"
+          payload: '/select_product_type{"product_type":"Daily Lenses"}'
+        - title: "Monthly Lenses"
+          payload: '/select_product_type{"product_type":"Monthly Lenses"}'
+        - title: "Multifocal Lenses"
+          payload: '/select_product_type{"product_type":"Multifocal Lenses"}'
+
+  utter_ask_contact_lens_fitting:
+    - text: "Would you like help with contact lens fitting?"
+      buttons:
+        - title: "Find Store for Fitting"
+          payload: '/find_a_store'
+        - title: "Browse Eyewear"
+          payload: '/browse_eyewear'
+
+  utter_ask_lens_type:
+    - text: "Which lens type would you like to learn about?"
+      buttons:
+        - title: "Single Vision Lenses"
+          payload: '/ask_lens_type{"lens_type":"Single Vision Lenses"}'
+        - title: "Progressive Lenses"
+          payload: '/ask_lens_type{"lens_type":"Progressive Lenses"}'
+        - title: "Blue Light Protection"
+          payload: '/ask_lens_type{"lens_type":"Blue Light Protection"}'
+        - title: "Photochromic Lenses"
+          payload: '/ask_lens_type{"lens_type":"Photochromic Lenses"}'
+
+  utter_explain_lens:
+    - text: "Here is more information about {lens_type}..."
+
+  utter_ask_eye_exam:
+    - text: "Would you like an eye examination?"
+      buttons:
+        - title: "Find Store for Eye Exam"
+          payload: '/find_a_store'
+        - title: "Learn About Another Lens Type"
+          payload: '/lens_vision_solutions'
+        - title: "Browse Eyewear"
+          payload: '/browse_eyewear'
 
   utter_ask_city:
-    - text: "Which city are you in? / Kat mana you sekarang? I'll find the nearest Calisto store! 🏙️"
+    - text: "Which city or shopping mall are you looking for?"
+      buttons:
+        - title: "Aeon Mall Nilai"
+          payload: '/choose_city{"city":"Aeon Mall Nilai"}'
+        - title: "Lalaport Bukit Bintang"
+          payload: '/choose_city{"city":"Lalaport Bukit Bintang"}'
+        - title: "Melawati Mall"
+          payload: '/choose_city{"city":"Melawati Mall"}'
+        - title: "Mitsui Outlet Park"
+          payload: '/choose_city{"city":"Mitsui Outlet Park"}'
 
-  utter_ask_appointment_date:
-    - text: "What **date** would you like for your eye test?\n(e.g. 15 March, next Monday, this Saturday / esok, Sabtu ni)"
-
-  utter_ask_appointment_time:
-    - text: "What **time** works best for you?\n(e.g. 10:00 AM, 2:30 PM / pukul 10 pagi)"
-
-  utter_lens_types_info:
-    - text: |
-        We offer a wide range of lenses at Calisto Eyewear:
-
-        👁️  **Single Vision** – Corrects near or distance vision
-        👁️  **Bifocal** – Two zones: near + distance (visible line)
-        👁️  **Progressive** – Seamless multi-focal (no visible lines)
-        💡  **Blue Light Blocking** – Shields from digital screen strain
-        🌞  **Photochromic (Transitions)** – Auto-darkens in sunlight
-        ✨  **Anti-Glare (AR Coat)** – Reduces reflections for clear vision
-        🌊  **Polarized** – Best for driving & outdoor use
-        🛡️  **UV400** – Blocks 100% UVA + UVB rays
-
-        Nak tahu **harga** untuk mana-mana lens ni? / Would you like to see pricing?
-
-  utter_lens_price_info:
-    - text: |
-        Here's our lens pricing guide (all prices in RM):
-
-        | Lens Type            | Starting Price  |
-        |----------------------|-----------------|
-        | Single Vision        | RM49            |
-        | Bifocal              | RM89            |
-        | Progressive          | RM249           |
-        | Blue Light Blocking  | RM79            |
-        | Photochromic         | RM199           |
-        | Anti-Glare Coating   | RM29 (add-on)   |
-        | Polarized            | RM149           |
-        | UV400 Coating        | RM19 (add-on)   |
-
-        All prices include professional fitting. Nak **book eye test**?
-
-  utter_store_locations:
-    - text: |
-        🏪 **Calisto Eyewear Stores in Malaysia:**
-
-        **Kuala Lumpur**
-        • Pavilion KL, Bukit Bintang – 10AM–10PM
-        • Mid Valley Megamall – 10AM–10PM
-
-        **Petaling Jaya**
-        • One Utama Shopping Centre – 10AM–10PM
-
-        **Subang Jaya**
-        • Sunway Pyramid – 10AM–10PM
-
-        **Penang**
-        • Gurney Plaza, Georgetown – 10AM–9:30PM
-
-        **Johor Bahru**
-        • Mid Valley Southkey – 10AM–10PM
-
-        **Ipoh**
-        • Ipoh Parade Mall – 10AM–9PM
-
-        📍 Taip city you and I'll bagi exact address!
-
-  utter_eye_test_booked:
-    - text: |
-        ✅ **Eye Test Booked at Calisto Eyewear!**
-
-        📅 Date: {appointment_date}
-        ⏰ Time: {appointment_time}
-        📍 City: {city}
-
-        You'll receive a confirmation SMS & WhatsApp shortly.
-        Please bring your previous prescription (if ada). Jumpa nanti! 👓
-
-  utter_check_face_shape_help:
-    - text: |
-        Here's a quick guide to identifying your face shape:
-
-        🔵 **Round (Bulat)** – Equal width & length, soft curves
-           → Best frames: Square, Rectangular, Wayfarer
-
-        🥚 **Oval** – Slightly wider forehead, balanced proportions
-           → Best frames: Almost any style works! Try Aviators or Wayfarers
-
-        🟥 **Square (Persegi)** – Strong jawline & broad forehead
-           → Best frames: Round, Oval, Cat-eye
-
-        💜 **Heart** – Wider forehead, narrow chin
-           → Best frames: Bottom-heavy, Aviator, Rectangular
-
-        💎 **Diamond** – Narrow forehead & chin, wide cheekbones
-           → Best frames: Oval, Cat-eye, Rimless
-
-        📏 **Oblong** – Longer than it is wide
-           → Best frames: Wide frames, Aviator, Square
-
-        Tell me your face shape and I'll recommend the perfect Calisto frames! 😊
-
-  utter_recommend_frames_prompt:
-    - text: "Okay best! Let me help you find the perfect frames. 😊 / Jom cari frame yang sesuai!"
-
-  utter_fallback:
-    - text: "Sorry, I tak berapa faham tu. 🤔 Boleh rephrase?\n\nI can help with: frames, lenses, store locations, order tracking, eye test bookings, warranty & payments."
-    - text: "Hmm, I'm not sure I understood. Cuba tanya cara lain? I boleh tolong dengan Calisto eyewear, lenses, orders, or store visits!"
-
-  utter_out_of_scope:
-    - text: "That's a bit outside my expertise lah! 😅 I'm here to help with all things Calisto Eyewear — frames, lenses, stores, orders & more. How can I assist?"
-
-  utter_thank_you:
-    - text: "Sama-sama! 😊 Happy to help. Ada apa-apa lagi nak tanya?"
-    - text: "You're welcome! Glad I could help. Anything else about Calisto Eyewear?"
-
-  utter_warranty_info:
-    - text: |
-        🛡️ **Calisto Eyewear Warranty Policy:**
-
-        **Frames:**
-        • 1-year warranty against manufacturing defects
-        • Covers: broken hinges, loose screws, peeling coating
-        • Does NOT cover: accidental damage, scratches from misuse
-
-        **Lenses:**
-        • 6-month warranty on coatings (AR, blue light, etc.)
-        • Free adjustment & tightening at any Calisto store
-
-        **How to Claim:**
-        1. Visit any Calisto store with your receipt
-        2. Or WhatsApp us at +60 12-XXX-XXXX with photos
-        3. We'll assess & replace within 3-5 working days
-
-        Ada soalan lain pasal warranty?
-
-  utter_return_exchange_info:
-    - text: |
-        🔄 **Return & Exchange Policy:**
-
-        • **7-day exchange** – Bring your glasses back within 7 days for a different frame (with receipt)
-        • **14-day return** – Full refund within 14 days if unworn & in original packaging
-        • Custom prescription lenses are non-refundable
-
-        **How to Return/Exchange:**
-        1. Visit any Calisto store with your receipt
-        2. Or contact us via WhatsApp: +60 12-XXX-XXXX
-        3. Online orders: Free return shipping provided
-
-        Nak tahu apa-apa lagi?
-
-  utter_payment_options_info:
-    - text: |
-        💳 **Payment Options at Calisto Eyewear:**
-
-        **In-Store:**
-        • Cash / Debit Card / Credit Card
-        • Touch 'n Go eWallet
-        • GrabPay / Boost / ShopeePay
-        • FPX (Online Banking)
-
-        **Online (calisto.com.my):**
-        • Credit/Debit Card (Visa, Mastercard)
-        • FPX Online Banking
-        • Touch 'n Go eWallet
-        • GrabPay / Boost / ShopeePay
-        • Atome / ShopBack PayLater (0% installment)
-
-        **Installment Plans:**
-        • 0% installment for 3/6/12 months (selected banks)
-        • BNPL via Atome / ShopBack PayLater
-
-        Ada apa-apa lagi nak tahu?
-
-  utter_affirm:
-    - text: "Great! 😊 How can I help you today? I can assist with frames, lenses, store locations, orders, eye test bookings, and more!"
-    - text: "Sure thing! What would you like to know about Calisto Eyewear? Nak tahu pasal apa? 😊"
-
-  utter_deny:
-    - text: "No worries! If you need anything later, just ask. I'm here to help with all things Calisto Eyewear! 😊"
-    - text: "Okay, tak apa! Let me know anytime you need help with eyewear, lenses, or store visits. 👋"
-
-# FORMS
-forms:
-  frame_search_form:
-    required_slots:
-      - product_type
-      - frame_style
-      - gender
-      - budget
-
-  order_tracking_form:
-    required_slots:
-      - order_id
-
-  eye_test_form:
-    required_slots:
-      - city
-      - appointment_date
-      - appointment_time
-
-# CUSTOM ACTIONS
 actions:
-  - action_recommend_frames
-  - action_check_order_status
-  - action_find_nearest_store
-  - validate_frame_search_form
-  - validate_order_tracking_form
-  - validate_eye_test_form
-  - action_document_search
+  - action_filter_products
+  - action_explain_lens
+  - action_find_store
+  - action_reset_eyewear_slots
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true
