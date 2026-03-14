@@ -1,7 +1,7 @@
 version: "3.1"
 
 stories:
-  - story: Browse Eyewear - Designer Frames Flow
+  - story: Browse Eyewear Flow
     steps:
       - intent: greet
       - action: utter_greet
@@ -9,11 +9,9 @@ stories:
       - action: action_reset_eyewear_slots
       - action: utter_ask_product_type
       - intent: select_product_type
-        entities:
-          - product_type: "Designer Frames"
       - slot_was_set:
-          - product_type: "Designer Frames"
-      - action: utter_ask_brand_designer_frames
+          - product_type
+      - action: utter_ask_brand_designer_frames # This is a placeholder, rules will determine the correct action
       - intent: select_brand
       - slot_was_set:
           - brand
@@ -24,64 +22,15 @@ stories:
       - action: action_filter_products
       - action: utter_ask_try_frames
 
-  - story: Browse Eyewear - Luxury Sunglasses Flow
+  - story: Lens and Vision Flow
     steps:
-      - intent: greet
-      - action: utter_greet
-      - intent: browse_eyewear
-      - action: action_reset_eyewear_slots
-      - action: utter_ask_product_type
-      - intent: select_product_type
-        entities:
-          - product_type: "Luxury Sunglasses"
-      - slot_was_set:
-          - product_type: "Luxury Sunglasses"
-      - action: utter_ask_brand_luxury_sunglasses
-      - intent: select_brand
-      - slot_was_set:
-          - brand
-      - action: utter_ask_budget_range
-      - intent: select_budget
-      - slot_was_set:
-          - price_range
-      - action: action_filter_products
-      - action: utter_ask_try_frames
-
-  - story: Browse Eyewear - Contact Lenses Flow
-    steps:
-      - intent: greet
-      - action: utter_greet
-      - intent: browse_eyewear
-      - action: action_reset_eyewear_slots
-      - action: utter_ask_product_type
-      - intent: select_product_type
-        entities:
-          - product_type: "Contact Lenses"
-      - slot_was_set:
-          - product_type: "Contact Lenses"
-      - action: utter_ask_contact_lens_type
-      - action: utter_ask_contact_lens_fitting
-
-  - story: Lens & Vision Solutions Flow
-    steps:
-      - intent: greet
-      - action: utter_greet
       - intent: lens_vision_solutions
       - action: utter_ask_lens_type
       - intent: ask_lens_type
       - slot_was_set:
           - lens_type
-      - action: utter_explain_lens
-      - action: action_explain_lens
-      - action: utter_ask_eye_exam
-
-  - story: Find A Store Flow
-    steps:
-      - intent: greet
-      - action: utter_greet
-      - intent: find_a_store
-      - action: utter_ask_city
-      - intent: choose_city
+      - action: utter_ask_budget_range
+      - intent: select_budget
       - slot_was_set:
-          - city
-      - action: action_find_store
+          - price_range
+      - action: action_filter_lenses

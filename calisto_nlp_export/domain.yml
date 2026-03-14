@@ -1,179 +1,199 @@
-version: "3.1"
-
+version: '3.1'
 intents:
-  - greet
-  - browse_eyewear
-  - select_product_type
-  - select_brand
-  - select_budget
-  - ask_lens_type
-  - lens_vision_solutions
-  - find_a_store
-  - choose_city
-
+- greet
+- browse_eyewear
+- select_product_type
+- select_brand
+- select_budget
+- ask_lens_type
+- lens_vision_solutions
+- find_a_store
+- choose_city
+- search_product_by_attribute
+- inform_budget
 entities:
-  - product_type
-  - brand
-  - price_range
-  - lens_type
-  - city
-
+- product_type
+- brand
+- price_range
+- lens_type
+- city
+- frame_color
+- frame_shape
+- frame_material
+- budget
 slots:
   product_type:
     type: text
     influence_conversation: true
     mappings:
-      - type: from_entity
-        entity: product_type
+    - type: from_entity
+      entity: product_type
   brand:
     type: text
     influence_conversation: true
     mappings:
-      - type: from_entity
-        entity: brand
+    - type: from_entity
+      entity: brand
   price_range:
     type: text
     influence_conversation: true
     mappings:
-      - type: from_entity
-        entity: price_range
+    - type: from_entity
+      entity: price_range
   lens_type:
     type: text
     influence_conversation: true
     mappings:
-      - type: from_entity
-        entity: lens_type
+    - type: from_entity
+      entity: lens_type
   city:
     type: text
     influence_conversation: true
     mappings:
-      - type: from_entity
-        entity: city
-
+    - type: from_entity
+      entity: city
+  frame_color:
+    type: text
+    influence_conversation: true
+    mappings:
+    - type: from_entity
+      entity: frame_color
+  frame_shape:
+    type: text
+    influence_conversation: true
+    mappings:
+    - type: from_entity
+      entity: frame_shape
+  frame_material:
+    type: text
+    influence_conversation: true
+    mappings:
+    - type: from_entity
+      entity: frame_material
+  budget:
+    type: text
+    influence_conversation: true
+    mappings:
+    - type: from_entity
+      entity: budget
 responses:
   utter_greet:
-    - text: "Selamat datang to Calisto Eyewear 👓\nHow can I assist you today?"
-      buttons:
-        - title: "Browse Eyewear"
-          payload: '/browse_eyewear'
-        - title: "Lens & Vision Solutions"
-          payload: '/lens_vision_solutions'
-        - title: "Find a Store"
-          payload: '/find_a_store'
-
+  - text: "Selamat datang to Calisto Eyewear \U0001F453\nHow can I assist you today?"
+    buttons:
+    - title: Browse Eyewear
+      payload: /browse_eyewear
+    - title: Lens & Vision Solutions
+      payload: /lens_vision_solutions
+    - title: Find a Store
+      payload: /find_a_store
   utter_ask_product_type:
-    - text: "What type of eyewear are you looking for?"
-      buttons:
-        - title: "Designer Frames"
-          payload: '/select_product_type{"product_type":"Designer Frames"}'
-        - title: "Luxury Sunglasses"
-          payload: '/select_product_type{"product_type":"Luxury Sunglasses"}'
-        - title: "Contact Lenses"
-          payload: '/select_product_type{"product_type":"Contact Lenses"}'
-
+  - text: What type of eyewear are you looking for?
+    buttons:
+    - title: Designer Frames
+      payload: /select_product_type{{"product_type":"Designer Frames"}}
+    - title: Luxury Sunglasses
+      payload: /select_product_type{{"product_type":"Luxury Sunglasses"}}
+    - title: Contact Lenses
+      payload: /select_product_type{{"product_type":"Contact Lenses"}}
   utter_ask_brand_designer_frames:
-    - text: "Which brand would you like to explore?"
-      buttons:
-        - title: "Bottega Veneta"
-          payload: '/select_brand{"brand":"Bottega Veneta"}'
-        - title: "Projekt Produkt"
-          payload: '/select_brand{"brand":"Projekt Produkt"}'
-        - title: "Bossini"
-          payload: '/select_brand{"brand":"Bossini"}'
-        - title: "Show All Brands"
-          payload: '/select_brand{"brand":"Show All Brands"}'
-
+  - text: Which brand would you like to explore?
+    buttons:
+    - title: Bottega Veneta
+      payload: /select_brand{{"brand":"Bottega Veneta"}}
+    - title: Projekt Produkt
+      payload: /select_brand{{"brand":"Projekt Produkt"}}
+    - title: Bossini
+      payload: /select_brand{{"brand":"Bossini"}}
+    - title: Show All Brands
+      payload: /select_brand{{"brand":"Show All Brands"}}
   utter_ask_brand_luxury_sunglasses:
-    - text: "What brand of sunglasses are you interested in?"
-      buttons:
-        - title: "Gucci"
-          payload: '/select_brand{"brand":"Gucci"}'
-        - title: "Saint Laurent"
-          payload: '/select_brand{"brand":"Saint Laurent"}'
-        - title: "Cartier"
-          payload: '/select_brand{"brand":"Cartier"}'
-
+  - text: What brand of sunglasses are you interested in?
+    buttons:
+    - title: Gucci
+      payload: /select_brand{{"brand":"Gucci"}}
+    - title: Saint Laurent
+      payload: /select_brand{{"brand":"Saint Laurent"}}
+    - title: Cartier
+      payload: /select_brand{{"brand":"Cartier"}}
   utter_ask_budget_range:
-    - text: "What is your budget range?"
-      buttons:
-        - title: "Under RM100"
-          payload: '/select_budget{"price_range":"Under RM100"}'
-        - title: "RM100 - RM250"
-          payload: '/select_budget{"price_range":"RM100 - RM250"}'
-        - title: "RM250 - RM300"
-          payload: '/select_budget{"price_range":"RM250 - RM300"}'
-        - title: "Above RM300"
-          payload: '/select_budget{"price_range":"Above RM300"}'
-
+  - text: What is your budget range?
+    buttons:
+    - title: Under RM100
+      payload: /select_budget{{"price_range":"Under RM100"}}
+    - title: RM100 - RM250
+      payload: /select_budget{{"price_range":"RM100 - RM250"}}
+    - title: RM250 - RM300
+      payload: /select_budget{{"price_range":"RM250 - RM300"}}
+    - title: Above RM300
+      payload: /select_budget{{"price_range":"Above RM300"}}
   utter_ask_try_frames:
-    - text: "Would you like to try these frames at a Calisto store?"
-      buttons:
-        - title: "Find Nearest Store"
-          payload: '/find_a_store'
-        - title: "Browse Other Eyewear"
-          payload: '/browse_eyewear'
-
+  - text: Would you like to try these frames at a Calisto store?
+    buttons:
+    - title: Find Nearest Store
+      payload: /find_a_store
+    - title: Browse Other Eyewear
+      payload: /browse_eyewear
   utter_ask_contact_lens_type:
-    - text: "What type of contact lenses are you interested in?"
-      buttons:
-        - title: "Daily Lenses"
-          payload: '/select_product_type{"product_type":"Daily Lenses"}'
-        - title: "Monthly Lenses"
-          payload: '/select_product_type{"product_type":"Monthly Lenses"}'
-        - title: "Multifocal Lenses"
-          payload: '/select_product_type{"product_type":"Multifocal Lenses"}'
-
+  - text: What type of contact lenses are you interested in?
+    buttons:
+    - title: Daily Lenses
+      payload: /select_product_type{{"product_type":"Daily Lenses"}}
+    - title: Monthly Lenses
+      payload: /select_product_type{{"product_type":"Monthly Lenses"}}
+    - title: Multifocal Lenses
+      payload: /select_product_type{{"product_type":"Multifocal Lenses"}}
   utter_ask_contact_lens_fitting:
-    - text: "Would you like help with contact lens fitting?"
-      buttons:
-        - title: "Find Store for Fitting"
-          payload: '/find_a_store'
-        - title: "Browse Eyewear"
-          payload: '/browse_eyewear'
-
+  - text: Would you like help with contact lens fitting?
+    buttons:
+    - title: Find Store for Fitting
+      payload: /find_a_store
+    - title: Browse Eyewear
+      payload: /browse_eyewear
+  utter_ask_budget_contact_lenses:
+  - text: "What is your budget for the contact lenses?"
   utter_ask_lens_type:
-    - text: "Which lens type would you like to learn about?"
-      buttons:
-        - title: "Single Vision Lenses"
-          payload: '/ask_lens_type{"lens_type":"Single Vision Lenses"}'
-        - title: "Progressive Lenses"
-          payload: '/ask_lens_type{"lens_type":"Progressive Lenses"}'
-        - title: "Blue Light Protection"
-          payload: '/ask_lens_type{"lens_type":"Blue Light Protection"}'
-        - title: "Photochromic Lenses"
-          payload: '/ask_lens_type{"lens_type":"Photochromic Lenses"}'
-
+  - text: Which lens type would you like to learn about?
+    buttons:
+    - title: Single Vision Lenses
+      payload: /ask_lens_type{{"lens_type":"Single Vision Lenses"}}
+    - title: Progressive Lenses
+      payload: /ask_lens_type{{"lens_type":"Progressive Lenses"}}
+    - title: Blue Light Protection
+      payload: /ask_lens_type{{"lens_type":"Blue Light Protection"}}
+    - title: Photochromic Lenses
+      payload: /ask_lens_type{{"lens_type":"Photochromic Lenses"}}
   utter_explain_lens:
-    - text: "Here is more information about {lens_type}..."
-
+  - text: Here is more information about {lens_type}...
+  utter_ask_budget:
+  - text: What is your budget for the lenses?
   utter_ask_eye_exam:
-    - text: "Would you like an eye examination?"
-      buttons:
-        - title: "Find Store for Eye Exam"
-          payload: '/find_a_store'
-        - title: "Learn About Another Lens Type"
-          payload: '/lens_vision_solutions'
-        - title: "Browse Eyewear"
-          payload: '/browse_eyewear'
-
+  - text: Would you like an eye examination?
+    buttons:
+    - title: Find Store for Eye Exam
+      payload: /find_a_store
+    - title: Learn About Another Lens Type
+      payload: /lens_vision_solutions
+    - title: Browse Eyewear
+      payload: /browse_eyewear
   utter_ask_city:
-    - text: "Which city or shopping mall are you looking for?"
-      buttons:
-        - title: "Aeon Mall Nilai"
-          payload: '/choose_city{"city":"Aeon Mall Nilai"}'
-        - title: "Lalaport Bukit Bintang"
-          payload: '/choose_city{"city":"Lalaport Bukit Bintang"}'
-        - title: "Melawati Mall"
-          payload: '/choose_city{"city":"Melawati Mall"}'
-        - title: "Mitsui Outlet Park"
-          payload: '/choose_city{"city":"Mitsui Outlet Park"}'
-
+  - text: Which city or shopping mall are you looking for?
+    buttons:
+    - title: Aeon Mall Nilai
+      payload: /choose_city{{"city":"Aeon Mall Nilai"}}
+    - title: Lalaport Bukit Bintang
+      payload: /choose_city{{"city":"Lalaport Bukit Bintang"}}
+    - title: Melawati Mall
+      payload: /choose_city{{"city":"Melawati Mall"}}
+    - title: Mitsui Outlet Park
+      payload: /choose_city{{"city":"Mitsui Outlet Park"}}
 actions:
-  - action_filter_products
-  - action_explain_lens
-  - action_find_store
-  - action_reset_eyewear_slots
-
+- action_filter_products
+- action_explain_lens
+- action_find_store
+- action_reset_eyewear_slots
+- action_document_search
+- action_search_product_by_attribute
+- action_filter_lenses
 session_config:
   session_expiration_time: 60
   carry_over_slots_to_new_session: true

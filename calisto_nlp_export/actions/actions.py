@@ -176,3 +176,114 @@ class ActionFindStore(Action):
             dispatcher.utter_message(text="Please select one of our available stores from the list.")
             
         return []
+
+
+
+class ActionSearchProductByAttribute(Action):
+    """Filters products by frame_color and frame_shape or free text user query."""
+    def name(self) -> Text:
+        return "action_search_product_by_attribute"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        logger.info("Executing action_search_product_by_attribute")
+
+        frame_color = tracker.get_slot("frame_color")
+        frame_shape = tracker.get_slot("frame_shape")
+        frame_material = tracker.get_slot("frame_material")
+        user_message = (tracker.latest_message.get('text') or "").lower()
+
+        if CATALOGUE_DF.empty:
+            dispatcher.utter_message(text="Our product catalogue is currently unavailable.")
+            return []
+
+        filtered_df = CATALOGUE_DF.copy()
+
+        if frame_color:
+            filtered_df = filtered_df[filtered_df['frame_color'].astype(str).str.contains(frame_color, case=False, na=False)]
+        
+        if frame_shape:
+            filtered_df = filtered_df[filtered_df['frame_shape'].astype(str).str.contains(frame_shape, case=False, na=False)]
+            
+        if frame_material:
+            filtered_df = filtered_df[filtered_df['frame_material'].astype(str).str.contains(frame_material, case=False, na=False)]
+
+        # fallback text fuzzy search if none of the slots triggered yet
+        if not frame_color and not frame_shape and not frame_material and len(user_message) > 3:
+            query_parts = user_message.split()
+            for part in query_parts:
+                if len(part) > 3 and part not in ["glasses", "sunglasses", "frames", "need", "want", "looking"]:
+                    mask = (
+                        filtered_df['frame_color'].astype(str).str.contains(part, case=False, na=False) |
+                        filtered_df['frame_shape'].astype(str).str.contains(part, case=False, na=False) |
+                        filtered_df['description'].astype(str).str.contains(part, case=False, na=False)
+                    )
+                    if not filtered_df[mask].empty:
+                        filtered_df = filtered_df[mask]
+
+        top_5 = filtered_df.head(5)
+
+        if top_5.empty:
+            logger.info("No query matches found in the catalog.")
+            dispatcher.utter_message(text="I couldn't find any products perfectly matching your description.")
+        else:
+            dispatcher.utter_message(text="Here are some options based on what you asked for:\n")
+            for _, row in top_5.iterrows():
+                name_val = row.get("product_name", "Unknown Frame")
+                color_val = row.get("frame_color", "") or ""
+                shape_val = row.get("frame_shape", "") or ""
+                price_val = row.get("price_myr", "N/A")
+                desc = f"{str(color_val).title()} {str(shape_val).title()} Frame".strip()
+                dispatcher.utter_message(text=f"‘ **{name_val}** ({desc}) - RM {price_val}")
+                
+        return []
+
+
+class ActionFilterLenses(Action):
+    """Filters lenses from the pre-loaded DataFrame based on user preferences."""
+    def name(self) -> Text:
+        return "action_filter_lenses"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        logger.info("Executing action_filter_lenses")
+        
+        lens_type = tracker.get_slot("lens_type")
+        price_range = tracker.get_slot("price_range")
+        
+        logger.info(f"Filtering with slots - lens_type: '{lens_type}', price_range: '{price_range}'")
+        
+        if CATALOGUE_DF.empty:
+            logger.error("Product catalogue DataFrame is empty. Sending error message to user.")
+            dispatcher.utter_message(text="Our product catalogue is currently unavailable. Please check back later.")
+            return []
+            
+        filtered_df = CATALOGUE_DF.copy()
+        
+        # Filter for products that are lenses
+        filtered_df = filtered_df[filtered_df['product_type'].str.contains("Lenses", case=False, na=False)]
+        
+        if lens_type:
+            filtered_df = filtered_df[filtered_df['description'].str.contains(lens_type, case=False, na=False)]
+            
+        if price_range:
+            filtered_df = filter_by_budget(filtered_df, price_range)
+            
+        top_5 = filtered_df.head(5)
+        
+        if top_5.empty:
+            logger.info("No lenses found matching criteria.")
+            dispatcher.utter_message(text="We couldn't find any lenses matching your precise criteria. Try exploring another type or budget limit.")
+        else:
+            logger.info(f"Found and returning {len(top_5)} products.")
+            dispatcher.utter_message(text="Here are some lenses that match your request:")
+            for _, row in top_5.iterrows():
+                name_val = row.get("product_name", "Unknown Lens")
+                price_val = row.get("price_myr", "N/A")
+                
+                dispatcher.utter_message(text=f"{name_val}\nPrice: RM{price_val}")
+                    
+        return []

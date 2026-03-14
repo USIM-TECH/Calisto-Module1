@@ -16,6 +16,18 @@ nlu:
       - I want to browse eyewear
       - show me glasses
       - looking for eyewear
+      - can you show me some glasses
+      - id like to look at frames
+      - what spectacles do you have
+      - show me your optical selection
+      - i need to buy glasses
+      - i want to see the eyewear catalog
+      - can you show me some glasses
+      - id like to look at frames
+      - what spectacles do you have
+      - show me your optical selection
+      - i need to buy glasses
+      - i want to see the eyewear catalog
 
   - intent: lens_vision_solutions
     examples: |
@@ -39,6 +51,16 @@ nlu:
       - Multifocal Lenses
       - I want [Designer Frames](product_type)
       - show me [Luxury Sunglasses](product_type)
+      - i need [Designer Frames](product_type) today
+      - prefer [Luxury Sunglasses](product_type)
+      - please show me [Contact Lenses](product_type)
+      - do you have [Multifocal Lenses](product_type)
+      - i'm interested in [Monthly Lenses](product_type)
+      - i need [Designer Frames](product_type) today
+      - prefer [Luxury Sunglasses](product_type)
+      - please show me [Contact Lenses](product_type)
+      - do you have [Multifocal Lenses](product_type)
+      - i'm interested in [Monthly Lenses](product_type)
 
   - intent: select_brand
     examples: |
@@ -50,6 +72,16 @@ nlu:
       - Saint Laurent
       - Cartier
       - I am looking for [Gucci](brand)
+      - do you stock [Dior](brand)?
+      - I want to see [Tom Ford](brand) glasses
+      - show me [Ray-Ban](brand)
+      - do you have [Oakley](brand) sunglasses
+      - looking for [Prada](brand) frames
+      - do you stock [Dior](brand)?
+      - I want to see [Tom Ford](brand) glasses
+      - show me [Ray-Ban](brand)
+      - do you have [Oakley](brand) sunglasses
+      - looking for [Prada](brand) frames
 
   - intent: select_budget
     examples: |
@@ -73,3 +105,27 @@ nlu:
       - Melawati Mall
       - Mitsui Outlet Park
       - [Aeon Mall Nilai](city)
+
+  - intent: search_product_by_attribute
+    examples: |
+      - i need [blue](frame_color) color glasses
+      - looking for [rectangular](frame_shape) framed glasses
+      - do you have [black](frame_color) frames
+      - show me [round](frame_shape) glasses
+      - I want [red](frame_color) [aviator](frame_shape) sunglasses
+      - [brown](frame_color) frames please
+      - searching for [square](frame_shape) eyeglasses
+      - what [cat-eye](frame_shape) glasses do you have?
+      - I prefer [gold](frame_color) frames
+      - show me [metal](frame_material) glasses in [blue](frame_color)
+      - I am looking for [rectangle](frame_shape) frames
+      - any [green](frame_color) glasses?
+      - i want to see [black](frame_color) [round](frame_shape) glasses
+      - [yellow](frame_color) colour spectacles
+
+  - intent: inform_budget
+    examples: |
+      - my budget is [100](budget)
+      - around [250](budget) dollars
+      - i can spend [500](budget)
+      - [300](budget)

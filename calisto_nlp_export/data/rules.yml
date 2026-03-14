@@ -27,9 +27,12 @@ rules:
       - intent: lens_vision_solutions
       - action: utter_ask_lens_type
 
-  - rule: Explain lens type
+  - rule: Fallback to Knowledge Base (RAG)
     steps:
-      - intent: ask_lens_type
-      - action: utter_explain_lens
-      - action: action_explain_lens
-      - action: utter_ask_eye_exam
+      - intent: nlu_fallback
+      - action: action_document_search
+
+  - rule: Search Product by Attribute
+    steps:
+      - intent: search_product_by_attribute
+      - action: action_search_product_by_attribute
