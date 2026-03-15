@@ -8,7 +8,31 @@ nlu:
       - hey
       - hello there
       - good morning
-      - greeting
+      - good afternoon
+      - good evening
+      - hey there
+      - hi there
+      - yo
+      - heyy
+      - hiii
+      - hi buddy
+      - hello calisto
+      - hello team
+      - assalamualaikum
+      - salam
+      - nice to meet you
+      - howdy
+      - greetings
+      - whats up
+      - sup
+      - morning
+      - evening
+      - can we start
+      - anyone there
+      - i need help
+      - i need assistance
+      - start
+      - lets begin
 
   - intent: browse_eyewear
     examples: |
@@ -22,24 +46,60 @@ nlu:
       - show me your optical selection
       - i need to buy glasses
       - i want to see the eyewear catalog
-      - can you show me some glasses
-      - id like to look at frames
-      - what spectacles do you have
-      - show me your optical selection
-      - i need to buy glasses
-      - i want to see the eyewear catalog
+      - show me sunglasses
+      - i need sunglasses
+      - i need a new pair of glasses
+      - let me see your frames
+      - show me your latest eyewear
+      - show eyewear collection
+      - show your products
+      - i am shopping for glasses
+      - i want to purchase eyewear
+      - help me find spectacles
+      - i want stylish specs
+      - do you have eyeglasses
+      - show me premium sunglasses
+      - i need shades
+      - let me browse sunglasses
+      - i am looking for men sunglasses
+      - i am looking for women sunglasses
+      - need computer glasses
+      - show all eyewear options
+      - help me choose eyewear
+      - can i see your eyewear range
+      - i want to explore your catalog
 
   - intent: lens_vision_solutions
     examples: |
       - Lens & Vision Solutions
       - show me lens options
       - I need lenses
+      - i want lens recommendations
+      - help me with vision solutions
+      - what lens types do you offer
+      - show me vision care options
+      - i need help choosing lenses
+      - tell me about lens solutions
+      - i want to know about eye lenses
+      - i am interested in lens upgrades
+      - recommend lenses for me
+      - show lens and vision plans
 
   - intent: find_a_store
     examples: |
       - Find a Store
       - find nearest store
       - store locator
+      - locate a store near me
+      - where is your nearest outlet
+      - find calisto store
+      - nearest branch please
+      - show nearby shops
+      - where can i visit your shop
+      - i want your store address
+      - show me outlets
+      - branch locator
+      - nearest calisto location
 
   - intent: select_product_type
     examples: |
@@ -56,11 +116,21 @@ nlu:
       - please show me [Contact Lenses](product_type)
       - do you have [Multifocal Lenses](product_type)
       - i'm interested in [Monthly Lenses](product_type)
-      - i need [Designer Frames](product_type) today
-      - prefer [Luxury Sunglasses](product_type)
-      - please show me [Contact Lenses](product_type)
-      - do you have [Multifocal Lenses](product_type)
-      - i'm interested in [Monthly Lenses](product_type)
+      - i would like [Daily Lenses](product_type)
+      - i want [Contact Lenses](product_type) for everyday use
+      - show [Luxury Sunglasses](product_type) collection
+      - i am looking for [Designer Frames](product_type)
+      - i need [Monthly Lenses](product_type)
+      - please suggest [Multifocal Lenses](product_type)
+      - can i see [Luxury Sunglasses](product_type)
+      - show only [Designer Frames](product_type)
+      - give me [Contact Lenses](product_type)
+      - i prefer [Daily Lenses](product_type)
+      - i need [Luxury Sunglasses](product_type) for outdoor use
+      - i want [Designer Frames](product_type) for office
+      - my choice is [Multifocal Lenses](product_type)
+      - select [Monthly Lenses](product_type)
+      - show options in [Contact Lenses](product_type)
 
   - intent: select_brand
     examples: |
@@ -77,11 +147,21 @@ nlu:
       - show me [Ray-Ban](brand)
       - do you have [Oakley](brand) sunglasses
       - looking for [Prada](brand) frames
-      - do you stock [Dior](brand)?
-      - I want to see [Tom Ford](brand) glasses
-      - show me [Ray-Ban](brand)
-      - do you have [Oakley](brand) sunglasses
-      - looking for [Prada](brand) frames
+      - i want [Cartier](brand)
+      - show [Saint Laurent](brand)
+      - i like [Bottega Veneta](brand)
+      - please open [Projekt Produkt](brand)
+      - any [Bossini](brand) available
+      - show all [Show All Brands](brand)
+      - display [Gucci](brand) models
+      - do you have [Prada](brand)
+      - i need [Ray-Ban](brand)
+      - can i check [Tom Ford](brand)
+      - show [Oakley](brand) sports glasses
+      - i am interested in [Dior](brand)
+      - filter by [Cartier](brand)
+      - only [Gucci](brand) please
+      - give me [Saint Laurent](brand) sunglasses
 
   - intent: select_budget
     examples: |
@@ -90,6 +170,16 @@ nlu:
       - RM250 - RM300
       - Above RM300
       - my budget is [Under RM100](price_range)
+      - budget [RM100 - RM250](price_range)
+      - keep it [RM250 - RM300](price_range)
+      - i can spend [Above RM300](price_range)
+      - show products [Under RM100](price_range)
+      - my range is [RM100 - RM250](price_range)
+      - i prefer [RM250 - RM300](price_range)
+      - anything in [Above RM300](price_range)
+      - i want options [Under RM100](price_range)
+      - can i get [RM100 - RM250](price_range)
+      - please show [Above RM300](price_range) collection
 
   - intent: ask_lens_type
     examples: |
@@ -97,6 +187,16 @@ nlu:
       - Progressive Lenses
       - Blue Light Protection
       - Photochromic Lenses
+      - tell me about single vision lenses
+      - i want progressive lenses
+      - i need blue light protection lenses
+      - what are photochromic lenses
+      - explain lens types
+      - compare single vision and progressive lenses
+      - show me blue light lenses
+      - recommend a lens type
+      - i want to learn about lens options
+      - which lens is best for me
 
   - intent: choose_city
     examples: |
@@ -105,6 +205,16 @@ nlu:
       - Melawati Mall
       - Mitsui Outlet Park
       - [Aeon Mall Nilai](city)
+      - [Lalaport Bukit Bintang](city)
+      - [Melawati Mall](city)
+      - [Mitsui Outlet Park](city)
+      - i want [Aeon Mall Nilai](city)
+      - choose [Lalaport Bukit Bintang](city)
+      - nearest to [Melawati Mall](city)
+      - store in [Mitsui Outlet Park](city)
+      - show outlet at [Aeon Mall Nilai](city)
+      - branch at [Melawati Mall](city)
+      - [Lalaport Bukit Bintang](city) branch please
 
   - intent: search_product_by_attribute
     examples: |
@@ -122,6 +232,21 @@ nlu:
       - any [green](frame_color) glasses?
       - i want to see [black](frame_color) [round](frame_shape) glasses
       - [yellow](frame_color) colour spectacles
+      - show [silver](frame_color) frames
+      - i need [transparent](frame_color) glasses
+      - give me [oval](frame_shape) frames
+      - i am looking for [wayfarer](frame_shape) style
+      - show [aviator](frame_shape) in [black](frame_color)
+      - any [round](frame_shape) in [gold](frame_color)
+      - i want [acetate](frame_material) frames
+      - show [titanium](frame_material) eyewear
+      - [metal](frame_material) [square](frame_shape) frames please
+      - [black](frame_color) [cat-eye](frame_shape) sunglasses
+      - [brown](frame_color) [rectangle](frame_shape) glasses
+      - do you have [blue](frame_color) [oval](frame_shape) options
+      - i prefer [titanium](frame_material) and [round](frame_shape)
+      - show [acetate](frame_material) in [green](frame_color)
+      - find [silver](frame_color) [aviator](frame_shape)
 
   - intent: inform_budget
     examples: |
@@ -129,6 +254,15 @@ nlu:
       - around [250](budget) dollars
       - i can spend [500](budget)
       - [300](budget)
+      - budget is [150](budget)
+      - i have [200](budget)
+      - my max is [350](budget)
+      - can spend up to [450](budget)
+      - keep it under [120](budget)
+      - maybe [280](budget)
+      - around rm [220](budget)
+      - i can go for [600](budget)
+
   - intent: ask_faq
     examples: |
       - what is your return policy?
@@ -143,3 +277,20 @@ nlu:
       - return policy
       - FAQ
       - what happens if my glasses break?
+      - can i return if the size does not fit
+      - how many days for return
+      - what is your exchange policy
+      - are there any shipping charges
+      - how long does delivery take
+      - can i cancel my order
+      - how do i track my order
+      - do you provide cash on delivery
+      - are your lenses under warranty
+      - what does the warranty cover
+      - how to contact customer support
+      - can i change my order after placing it
+      - what payment methods do you accept
+      - do you ship nationwide
+      - is there free shipping
+      - can i get invoice for my order
+      - what if i receive damaged glasses
