@@ -2,6 +2,7 @@ version: '3.1'
 intents:
 - greet
 - browse_eyewear
+- ask_faq
 - select_product_type
 - select_brand
 - select_budget
@@ -187,6 +188,8 @@ responses:
     - title: Mitsui Outlet Park
       payload: /choose_city{{"city":"Mitsui Outlet Park"}}
 actions:
+- action_ask_city
+- action_ask_brand
 - action_filter_products
 - action_explain_lens
 - action_find_store

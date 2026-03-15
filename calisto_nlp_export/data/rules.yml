@@ -9,7 +9,7 @@ rules:
   - rule: Find a store generic
     steps:
       - intent: find_a_store
-      - action: utter_ask_city
+      - action: action_ask_city
 
   - rule: Choose city for store
     steps:
@@ -36,3 +36,8 @@ rules:
     steps:
       - intent: search_product_by_attribute
       - action: action_search_product_by_attribute
+
+  - rule: Handle FAQ / Policies (RAG)
+    steps:
+      - intent: ask_faq
+      - action: action_document_search

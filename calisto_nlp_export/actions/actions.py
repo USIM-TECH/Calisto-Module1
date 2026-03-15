@@ -1,3 +1,5 @@
+import psycopg2
+from psycopg2.extras import DictCursor
 import pandas as pd
 import logging
 import os
@@ -11,27 +13,81 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Paths for the product catalogue
-PRODUCTION_CATALOGUE_PATH = "calisto_nlp_export/knowledge_base/calisto_product_catalog_500.csv"
-FALLBACK_CATALOGUE_PATH = "knowledge_base/calisto_product_catalog_500.csv"
 
-def load_catalogue() -> pd.DataFrame:
-    """Helper function to load the catalog CSV into a DataFrame."""
-    path = PRODUCTION_CATALOGUE_PATH if os.path.exists(PRODUCTION_CATALOGUE_PATH) else FALLBACK_CATALOGUE_PATH
-    
-    if not os.path.exists(path):
-        logger.error(f"Catalogue file not found at both paths: {PRODUCTION_CATALOGUE_PATH} and {FALLBACK_CATALOGUE_PATH}")
-        return pd.DataFrame()
-        
+# Database Configuration
+import os
+import psycopg2
+from psycopg2.extras import DictCursor
+
+DB_HOST = os.getenv("KB_DB_HOST", "localhost")
+DB_USER = os.getenv("KB_DB_USER", "calisto")
+DB_PASS = os.getenv("KB_DB_PASSWORD", "calisto")
+DB_NAME = os.getenv("KB_DB_NAME", "calisto_kb")
+DB_PORT = os.getenv("KB_DB_PORT", "5432")
+CATALOGUE_PATH = "/Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export/knowledge_base/calisto_product_catalog_500.csv"
+
+def get_db_connection():
+    return psycopg2.connect(
+        host=DB_HOST,
+        database=DB_NAME,
+        user=DB_USER,
+        password=DB_PASS,
+        port=DB_PORT
+    )
+
+def init_postgres_db():
     try:
-        df = pd.read_csv(path)
-        logger.info(f"Successfully loaded catalogue with {len(df)} products.")
-        return df
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS kb_products (
+                product_id TEXT PRIMARY KEY,
+                category TEXT NOT NULL,
+                product_name TEXT NOT NULL,
+                price_myr DOUBLE PRECISION NOT NULL,
+                store_location TEXT NOT NULL
+            )
+        ''')
+        cur.execute('SELECT COUNT(*) FROM kb_products')
+        count = cur.fetchone()[0]
+        if count == 0:
+            logger.info("Database empty, populating from CSV...")
+            if os.path.exists(CATALOGUE_PATH):
+                import pandas as pd
+                df = pd.read_csv(CATALOGUE_PATH)
+                for _, row in df.iterrows():
+                    cur.execute('''
+                        INSERT INTO kb_products (product_id, category, product_name, price_myr, store_location)
+                        VALUES (%s, %s, %s, %s, %s)
+                        ON CONFLICT (product_id) DO NOTHING
+                    ''', (row['Product_ID'], row['Category'], row['Product_Name'], row['Price_MYR'], row['Store_Location']))
+            else:
+                logger.error("Could not find calisto_product_catalog_500.csv to seed DB!")
+        conn.commit()
+        cur.close()
+        conn.close()
+        logger.info("PostgreSQL database initialized successfully.")
     except Exception as e:
-        logger.error(f"Failed to load catalogue: {e}")
-        return pd.DataFrame()
+        logger.error(f"Failed to initialize PostgreSQL DB: {e}")
 
-# Load catalogue once at server start to optimize performance
-CATALOGUE_DF = load_catalogue()
+# Run DB Init
+init_postgres_db()
+
+def get_budget_sql(price_range: str) -> tuple[str, list]:
+    if not price_range:
+        return "", []
+    budget_lower = price_range.lower().replace(" ", "").replace("–", "-")
+    if "underrm100" in budget_lower:
+        return " AND price_myr < 100", []
+    elif "rm100-rm250" in budget_lower:
+        return " AND price_myr >= 100 AND price_myr <= 250", []
+    elif "rm250-rm300" in budget_lower:
+        return " AND price_myr >= 250 AND price_myr <= 300", []
+    elif "aboverm300" in budget_lower:
+        return " AND price_myr > 300", []
+    return "", []
+
+
 
 
 def filter_by_budget(df: pd.DataFrame, budget_slot: Text) -> pd.DataFrame:
@@ -72,7 +128,7 @@ class ActionResetEyewearSlots(Action):
 
 
 class ActionFilterProducts(Action):
-    """Filters products from the pre-loaded DataFrame based on user preferences."""
+    """Filters products directly from PostgreSQL based on user preferences."""
     def name(self) -> Text:
         return "action_filter_products"
 
@@ -80,18 +136,53 @@ class ActionFilterProducts(Action):
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         
-        logger.info("Executing action_filter_products")
-        
         product_type = tracker.get_slot("product_type")
         brand = tracker.get_slot("brand")
         price_range = tracker.get_slot("price_range")
         
-        logger.info(f"Filtering with slots - product_type: '{product_type}', brand: '{brand}', price_range: '{price_range}'")
+        logger.info(f"DB Filtering - product_type: '{product_type}', brand: '{brand}', price_range: '{price_range}'")
         
-        if CATALOGUE_DF.empty:
-            logger.error("Product catalogue DataFrame is empty. Sending error message to user.")
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor(cursor_factory=DictCursor)
+            
+            query = "SELECT * FROM kb_products WHERE 1=1"
+            params = []
+            
+            if product_type:
+                query += " AND product_type ILIKE %s"
+                params.append(f"%{product_type}%")
+                
+            if brand and brand.lower() != "show all brands":
+                query += " AND brand ILIKE %s"
+                params.append(f"%{brand}%")
+                
+            if price_range:
+                budget_sql, _ = get_budget_sql(price_range)
+                query += budget_sql
+                
+            query += " LIMIT 5"
+            cur.execute(query, tuple(params))
+            results = cur.fetchall()
+            
+            if not results:
+                logger.info("No products found matching criteria in DB.")
+                dispatcher.utter_message(text="We couldn't find any eyewear matching your precise criteria. Try exploring another brand or budget limit.")
+            else:
+                logger.info(f"Found and returning {len(results)} products from DB.")
+                dispatcher.utter_message(text="Here are some products that match your request (DB):")
+                for row in results:
+                    name_val = row["product_name"]
+                    price_val = row["price_myr"]
+                    dispatcher.utter_message(text=f"• **{name_val}** - RM {price_val}")
+                    
+            cur.close()
+            conn.close()
+        except Exception as e:
+            logger.error(f"DB query failed: {e}")
             dispatcher.utter_message(text="Our product catalogue is currently unavailable. Please check back later.")
-            return []
+            
+        return []
             
         filtered_df = CATALOGUE_DF.copy()
         
@@ -149,8 +240,98 @@ class ActionExplainLens(Action):
         return []
 
 
+class ActionAskCity(Action):
+    """Dynamically asks for the city to find a store."""
+    def name(self) -> Text:
+        return "action_ask_city"
+        
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+            
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT DISTINCT city FROM kb_stores ORDER BY city ASC;")
+            cities = cur.fetchall()
+            cur.close()
+            conn.close()
+            
+            buttons = []
+            for (city_name,) in cities:
+                if not city_name: continue
+                title = city_name.title()
+                buttons.append({"title": title, "payload": f'/choose_city{{"city":"{city_name}"}}'})
+                
+            dispatcher.utter_message(text="Which city are you looking for?", buttons=buttons)
+        except Exception as e:
+            logger.error(f"Failed to fetch cities from DB: {e}")
+            dispatcher.utter_message(text="Which city are you looking for?")
+            
+        return []
+
+class ActionAskCity(Action):
+    """Dynamically asks for the city to find a store."""
+    def name(self) -> Text:
+        return "action_ask_city"
+        
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+            
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT DISTINCT city FROM kb_stores ORDER BY city ASC;")
+            cities = cur.fetchall()
+            cur.close()
+            conn.close()
+            
+            buttons = []
+            for (city_name,) in cities:
+                if not city_name: continue
+                title = city_name.title()
+                buttons.append({"title": title, "payload": f'/choose_city{{"city":"{city_name}"}}'})
+                
+            dispatcher.utter_message(text="Which city are you looking for?", buttons=buttons)
+        except Exception as e:
+            logger.error(f"Failed to fetch cities from DB: {e}")
+            dispatcher.utter_message(text="Which city are you looking for?")
+            
+        return []
+
+class ActionAskCity(Action):
+    """Dynamically asks for the city to find a store."""
+    def name(self) -> Text:
+        return "action_ask_city"
+        
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+            
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT DISTINCT city FROM kb_stores ORDER BY city ASC;")
+            cities = cur.fetchall()
+            cur.close()
+            conn.close()
+            
+            buttons = []
+            for (city_name,) in cities:
+                if not city_name: continue
+                title = city_name.title()
+                buttons.append({"title": title, "payload": f'/choose_city{{"city":"{city_name}"}}'})
+                
+            dispatcher.utter_message(text="Which city are you looking for?", buttons=buttons)
+        except Exception as e:
+            logger.error(f"Failed to fetch cities from DB: {e}")
+            dispatcher.utter_message(text="Which city are you looking for?")
+            
+        return []
+
 class ActionFindStore(Action):
-    """Finds store details based on a given city or mall name."""
+    """Finds store details based on a given city using Postgres."""
     def name(self) -> Text:
         return "action_find_store"
 
@@ -161,42 +342,149 @@ class ActionFindStore(Action):
         city = tracker.get_slot("city")
         logger.info(f"Executing action_find_store for city: {city}")
         
-        stores = {
-            "Aeon Mall Nilai": "No 2, Persiaran Pusat Bandar, Putra Point, Putra Nilai, 71800 Nilai, Negeri Sembilan",
-            "Lalaport Bukit Bintang": "No. 2, Jalan Hang Tuah, Bukit Bintang, 55100 Kuala Lumpur",
-            "Melawati Mall": "355, Jalan Bandar Melawati, Pusat Bandar Melawati, 53100 Kuala Lumpur",
-            "Mitsui Outlet Park": "Persiaran Komersial, KLIA, 64000 Sepang, Selangor"
-        }
-        
-        if city and city in stores:
-            address = stores[city]
-            dispatcher.utter_message(text=f"**Store:** {city}\n**Address:** {address}\n\n[Get Directions](#) | [Contact Store](#)")
-        else:
-            logger.warning(f"Store for city '{city}' not found.")
-            dispatcher.utter_message(text="Please select one of our available stores from the list.")
+        if not city:
+            dispatcher.utter_message(text="Please specify the city to find a store.")
+            return []
+            
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT name, phone, hours, address FROM kb_stores WHERE city ILIKE %s;", (f"%{city}%",))
+            stores = cur.fetchall()
+            cur.close()
+            conn.close()
+            
+            if stores:
+                dispatcher.utter_message(text=f"Here are the stores we found in **{city.title()}**:")
+                for store in stores:
+                    name, phone, hours, address = store
+                    msg = f"🛒 **{name}**\n📍 {address}\n⏰ {hours}\n📞 {phone}"
+                    dispatcher.utter_message(text=msg)
+            else:
+                dispatcher.utter_message(text=f"Sorry, we couldn't find any stores in {city.title()}.")
+                
+        except Exception as e:
+            logger.error(f"Failed to fetch stores for {city}: {e}")
+            dispatcher.utter_message(text="We are currently unable to retrieve the store list. Please try again later.")
+            
+        return []
+            
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT name, phone, hours, address FROM kb_stores WHERE city ILIKE %s;", (f"%{city}%",))
+            stores = cur.fetchall()
+            cur.close()
+            conn.close()
+            
+            if stores:
+                dispatcher.utter_message(text=f"Here are the stores we found in **{city.title()}**:")
+                for store in stores:
+                    name, phone, hours, address = store
+                    msg = f"🛒 **{name}**\n📍 {address}\n⏰ {hours}\n📞 {phone}"
+                    dispatcher.utter_message(text=msg)
+            else:
+                dispatcher.utter_message(text=f"Sorry, we couldn't find any stores in {city.title()}.")
+                
+        except Exception as e:
+            logger.error(f"Failed to fetch stores for {city}: {e}")
+            dispatcher.utter_message(text="We are currently unable to retrieve the store list. Please try again later.")
+            
+        return []
+            
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT name, phone, hours, address FROM kb_stores WHERE city ILIKE %s;", (f"%{city}%",))
+            stores = cur.fetchall()
+            cur.close()
+            conn.close()
+            
+            if stores:
+                dispatcher.utter_message(text=f"Here are the stores we found in **{city.title()}**:")
+                for store in stores:
+                    name, phone, hours, address = store
+                    msg = f"🛒 **{name}**\n📍 {address}\n⏰ {hours}\n📞 {phone}"
+                    dispatcher.utter_message(text=msg)
+            else:
+                dispatcher.utter_message(text=f"Sorry, we couldn't find any stores in {city.title()}.")
+                
+        except Exception as e:
+            logger.error(f"Failed to fetch stores for {city}: {e}")
+            dispatcher.utter_message(text="We are currently unable to retrieve the store list. Please try again later.")
             
         return []
 
 
 
 class ActionSearchProductByAttribute(Action):
-    """Filters products by frame_color and frame_shape or free text user query."""
+    """Filters products by attributes or free text user query directly from PostgreSQL."""
     def name(self) -> Text:
         return "action_search_product_by_attribute"
 
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-        logger.info("Executing action_search_product_by_attribute")
+        logger.info("Executing action_search_product_by_attribute via DB")
 
         frame_color = tracker.get_slot("frame_color")
         frame_shape = tracker.get_slot("frame_shape")
         frame_material = tracker.get_slot("frame_material")
         user_message = (tracker.latest_message.get('text') or "").lower()
 
-        if CATALOGUE_DF.empty:
-            dispatcher.utter_message(text="Our product catalogue is currently unavailable.")
-            return []
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor(cursor_factory=DictCursor)
+            
+            query = "SELECT * FROM kb_products WHERE 1=1"
+            params = []
+            
+            # Assuming these attributes might be buried in product_name since the table schema only explicitly shows category and product_name
+            # Fallback text fuzzy search if none of the explicit slots are used
+            fallback_used = False
+            
+            if frame_color:
+                query += " AND product_name ILIKE %s"
+                params.append(f"%{frame_color}%")
+                
+            if frame_shape:
+                query += " AND product_name ILIKE %s"
+                params.append(f"%{frame_shape}%")
+                
+            if frame_material:
+                query += " AND product_name ILIKE %s"
+                params.append(f"%{frame_material}%")
+                
+            if not frame_color and not frame_shape and not frame_material and len(user_message) > 3:
+                fallback_used = True
+                query_parts = user_message.split()
+                for part in query_parts:
+                    if len(part) > 3 and part not in ["glasses", "sunglasses", "frames", "need", "want", "looking"]:
+                        query += " AND product_name ILIKE %s"
+                        params.append(f"%{part}%")
+                        
+            query += " LIMIT 5"
+            cur.execute(query, tuple(params))
+            results = cur.fetchall()
+            cur.close()
+            conn.close()
+
+            if not results:
+                logger.info("No query matches found in the DB.")
+                dispatcher.utter_message(text="I couldn't find any products perfectly matching your description.")
+            else:
+                dispatcher.utter_message(text="Here are some options based on what you asked for:")
+                for index, row in enumerate(results):
+                    name_val = row["product_name"]
+                    price_val = row["price_myr"]
+                    msg = f"• **{name_val}** - RM {price_val}"
+                    dispatcher.utter_message(text=msg)
+
+        except Exception as e:
+            logger.error(f"DB attribute query failed: {e}")
+            dispatcher.utter_message(text="Our product catalogue is currently unavailable. Please try again later.")
+
+        return []
 
         filtered_df = CATALOGUE_DF.copy()
 
@@ -241,7 +529,7 @@ class ActionSearchProductByAttribute(Action):
 
 
 class ActionFilterLenses(Action):
-    """Filters lenses from the pre-loaded DataFrame based on user preferences."""
+    """Filters lenses from the CSV data directly."""
     def name(self) -> Text:
         return "action_filter_lenses"
 
@@ -249,41 +537,106 @@ class ActionFilterLenses(Action):
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         
-        logger.info("Executing action_filter_lenses")
+        import pandas as pd
+        import re
         
         lens_type = tracker.get_slot("lens_type")
         price_range = tracker.get_slot("price_range")
         
-        logger.info(f"Filtering with slots - lens_type: '{lens_type}', price_range: '{price_range}'")
+        logger.info(f"Pandas Lens Filter - config: '{lens_type}', '{price_range}'")
         
-        if CATALOGUE_DF.empty:
-            logger.error("Product catalogue DataFrame is empty. Sending error message to user.")
-            dispatcher.utter_message(text="Our product catalogue is currently unavailable. Please check back later.")
-            return []
+        try:
+            df = pd.read_csv(CATALOGUE_PATH)
             
-        filtered_df = CATALOGUE_DF.copy()
-        
-        # Filter for products that are lenses
-        filtered_df = filtered_df[filtered_df['product_type'].str.contains("Lenses", case=False, na=False)]
-        
-        if lens_type:
-            filtered_df = filtered_df[filtered_df['description'].str.contains(lens_type, case=False, na=False)]
+            mask = df['category'].str.contains('Lens', case=False, na=False) | df['product_type'].str.contains('Lens', case=False, na=False) | df['category'].str.contains('Contact', case=False, na=False)
             
-        if price_range:
-            filtered_df = filter_by_budget(filtered_df, price_range)
-            
-        top_5 = filtered_df.head(5)
-        
-        if top_5.empty:
-            logger.info("No lenses found matching criteria.")
-            dispatcher.utter_message(text="We couldn't find any lenses matching your precise criteria. Try exploring another type or budget limit.")
-        else:
-            logger.info(f"Found and returning {len(top_5)} products.")
-            dispatcher.utter_message(text="Here are some lenses that match your request:")
-            for _, row in top_5.iterrows():
-                name_val = row.get("product_name", "Unknown Lens")
-                price_val = row.get("price_myr", "N/A")
+            if lens_type:
+                lt = lens_type.lower().replace(" lenses", "").replace(" protection", "").strip()
+                lens_mask = (
+                    df['lens_type'].str.contains(lt, case=False, na=False) |
+                    df['lens_feature'].str.contains(lt, case=False, na=False) |
+                    df['product_name'].str.contains(lt, case=False, na=False) |
+                    df['description'].str.contains(lt, case=False, na=False)
+                )
+                mask = mask & lens_mask
                 
-                dispatcher.utter_message(text=f"{name_val}\nPrice: RM{price_val}")
+            if price_range:
+                pr = price_range.lower()
+                if "under rm" in pr:
+                    lim = float(re.sub(r'[^0-9.]', '', pr))
+                    mask = mask & (df['price_myr'] <= lim)
+                elif "over rm" in pr or "above rm" in pr:
+                    lim = float(re.sub(r'[^0-9.]', '', pr))
+                    mask = mask & (df['price_myr'] >= lim)
+                elif "-" in pr:
+                    parts = pr.split("-")
+                    if len(parts) == 2:
+                        l = float(re.sub(r'[^0-9.]', '', parts[0]))
+                        h = float(re.sub(r'[^0-9.]', '', parts[1]))
+                        mask = mask & (df['price_myr'] >= l) & (df['price_myr'] <= h)
+
+            results = df[mask].head(5)
+            
+            if results.empty:
+                dispatcher.utter_message(text=f"We couldn't find any lenses matching your criteria. Try adjusting the search.")
+            else:
+                dispatcher.utter_message(text="Here are some matching lenses:")
+                for _, row in results.iterrows():
+                    dispatcher.utter_message(text=f"• {row['product_name']} - RM {row['price_myr']}")
                     
+        except Exception as e:
+            logger.error(f"Lens query failed: {e}")
+            dispatcher.utter_message(text="Our product catalogue is temporarily unavailable.")
+            
+        return []
+
+
+class ActionAskBrand(Action):
+    """Provides product brands based on the product type from DB."""
+    def name(self) -> Text:
+        return "action_ask_brand"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        product_type = tracker.get_slot("product_type")
+        
+        # Connect to DB and get distinct brands for this product type
+        brands = []
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            
+            if product_type:
+                # Need to use split words for flexibility or use simple ILIKE
+                query = "SELECT DISTINCT brand FROM kb_products WHERE product_type ILIKE %s AND brand IS NOT NULL AND trim(brand) != ''"
+                cur.execute(query, (f"%{product_type}%",))
+            else:
+                query = "SELECT DISTINCT brand FROM kb_products WHERE brand IS NOT NULL AND trim(brand) != ''"
+                cur.execute(query)
+                
+            rows = cur.fetchall()
+            brands = [r[0] for r in rows if r[0]]
+            cur.close()
+            conn.close()
+        except Exception as e:
+            logging.error(f"Error fetching brands from DB: {e}")
+
+        # Ensure we only pick 4 to avoid too many buttons
+        brands = list(set(brands))[:4]
+
+        buttons = []
+        for b in brands:
+            buttons.append({"title": b.title(), "payload": f'/select_brand{{"brand":"{b}"}}'})
+        buttons.append({"title": "Show All Brands", "payload": '/select_brand{"brand":"Show All Brands"}'})
+        
+        if product_type and "contact" in product_type.lower():
+            text = "Which brand of contact lenses would you like to explore?"
+        elif product_type and "sunglasses" in product_type.lower():
+            text = "What brand of sunglasses are you interested in?"
+        else:
+            text = "Which brand would you like to explore?"
+            
+        dispatcher.utter_message(text=text, buttons=buttons)
         return []

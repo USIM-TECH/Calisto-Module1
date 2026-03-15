@@ -129,3 +129,17 @@ nlu:
       - around [250](budget) dollars
       - i can spend [500](budget)
       - [300](budget)
+  - intent: ask_faq
+    examples: |
+      - what is your return policy?
+      - do you offer refunds?
+      - how long can I return my glasses?
+      - what is the warranty on frames?
+      - can I exchange my sunglasses?
+      - what are your store policies?
+      - shipping times and costs?
+      - do you have a warranty?
+      - how to claim a refund
+      - return policy
+      - FAQ
+      - what happens if my glasses break?

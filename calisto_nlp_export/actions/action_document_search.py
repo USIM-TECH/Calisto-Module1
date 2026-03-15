@@ -1,26 +1,35 @@
-"""
-Calisto Eyewear – RAG Custom Action for Rasa
-Full pipeline: query preprocessing → hybrid retrieval (FAISS + BM25)
-→ intent-based filtering → re-ranking → response.
-"""
-
 import logging
+import os
+import psycopg2
 from typing import Any, Dict, List, Text
+from sentence_transformers import SentenceTransformer
 
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
 
-from actions.knowledge_base.config import RELEVANCE_THRESHOLD
-from actions.knowledge_base.hybrid_retriever import hybrid_search
-from actions.knowledge_base.indexer import KnowledgeSearcher
-from actions.knowledge_base.query_preprocessor import preprocess_query
-
 logger = logging.getLogger(__name__)
 
+# Preload embedding model
+EMBEDDING_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
+
+DB_HOST = os.getenv("KB_DB_HOST", "localhost")
+DB_USER = os.getenv("KB_DB_USER", "calisto")
+DB_PASS = os.getenv("KB_DB_PASSWORD", "calisto")
+DB_NAME = os.getenv("KB_DB_NAME", "calisto_kb")
+DB_PORT = os.getenv("KB_DB_PORT", "5432")
+
+def get_db_connection():
+    return psycopg2.connect(
+        host=DB_HOST,
+        database=DB_NAME,
+        user=DB_USER,
+        password=DB_PASS,
+        port=DB_PORT
+    )
 
 class ActionDocumentSearch(Action):
-    """Semantic + keyword hybrid search over Calisto Eyewear's knowledge base."""
-
+    """Semantic search over Calisto Eyewear's knowledge base via PostgreSQL pgvector."""
+    
     def name(self) -> Text:
         return "action_document_search"
 
@@ -33,60 +42,51 @@ class ActionDocumentSearch(Action):
 
         raw_query = tracker.latest_message.get("text", "")
         if not raw_query.strip():
-            dispatcher.utter_message(
-                text="Could you please rephrase your question? I didn't catch that."
-            )
+            dispatcher.utter_message(text="Could you please rephrase your question? I didn't catch that.")
             return []
 
-        # Extract intent info from Rasa NLU
-        intent_data = tracker.latest_message.get("intent", {})
-        intent_name = intent_data.get("name")
-        intent_confidence = intent_data.get("confidence", 0.0)
+        logger.info(f"DB Vector RAG query: '{raw_query}'")
 
-        # Step 1: Preprocess query
-        processed_query, entities = preprocess_query(raw_query)
-        logger.info(
-            "RAG query: raw='%s' → processed='%s' | intent=%s (%.2f) | entities=%s",
-            raw_query, processed_query, intent_name, intent_confidence, entities,
-        )
+        try:
+            vec = EMBEDDING_MODEL.encode(raw_query).tolist()
+            # Construct standard pgvector string format
+            vec_str = '[' + ','.join(map(str, vec)) + ']'
+            
+            conn = get_db_connection()
+            cur = conn.cursor()
+            
+            cur.execute('''
+                SELECT text, source, (embedding <=> %s::vector) AS distance 
+                FROM kb_document_embeddings 
+                ORDER BY distance ASC 
+                LIMIT 1;
+            ''', (vec_str,))
+            
+            result = cur.fetchone()
+            cur.close()
+            conn.close()
+            
+            if not result or result[2] > 0.65:
+                dispatcher.utter_message(
+                    text="I'm sorry, I couldn't find that information in the Calisto knowledge base. \n\n"
+                         "You can try rephrasing, or contact us at +60 1-800-22-5478 for help!"
+                )
+                return []
 
-        # Step 2: Hybrid search (FAISS + BM25 + intent filter + re-rank)
-        searcher = KnowledgeSearcher.get()
-        results = hybrid_search(
-            searcher=searcher,
-            bm25=searcher.bm25,
-            query=processed_query,
-            entities=entities,
-            intent_name=intent_name,
-            intent_confidence=intent_confidence,
-        )
+            answer = result[0].strip()
+            if ':' in answer and len(answer.split(':', 1)[0].split('.')) == 2:
+                answer = answer.split(':', 1)[1].strip()
 
-        # Step 3: Check relevance
-        if not results or results[0].get("final_score", 0) < RELEVANCE_THRESHOLD:
-            dispatcher.utter_message(
-                text="I'm sorry, I couldn't find that information in the Calisto knowledge base. 😔\n\n"
-                     "You can try rephrasing, or contact us at +60 1-800-22-5478 for help!"
-            )
-            return []
+            words = answer.split()
+            if len(words) > 150:
+                answer = " ".join(words[:150]) + " …"
+                
+            # Log successful query
+            logger.info(f"Matched FAQ source '{result[1]}' with distance {result[2]:.3f}")
+            dispatcher.utter_message(text=f"📄 {answer}")
+            
+        except Exception as e:
+            logger.error(f"Vector search failed: {e}")
+            dispatcher.utter_message(text="Our knowledge base is currently experiencing issues. Please try again later.")
 
-        # Step 4: Format best result
-        best = results[0]
-        answer = best["text"].strip()
-
-        # Cap at ~150 words so responses stay concise
-        words = answer.split()
-        if len(words) > 150:
-            answer = " ".join(words[:150]) + " …"
-
-        logger.info(
-            "RAG result: source=%s score=%.3f (faiss=%.3f bm25=%.3f kw=%.3f ent=%.3f)",
-            best.get("source", "?"),
-            best.get("final_score", 0),
-            best.get("_faiss_score", 0),
-            best.get("_bm25_score", 0),
-            best.get("_keyword_bonus", 0),
-            best.get("_entity_bonus", 0),
-        )
-
-        dispatcher.utter_message(text=f"📄 {answer}")
         return []
