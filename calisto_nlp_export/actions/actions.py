@@ -24,7 +24,7 @@ DB_USER = os.getenv("KB_DB_USER", "calisto")
 DB_PASS = os.getenv("KB_DB_PASSWORD", "calisto")
 DB_NAME = os.getenv("KB_DB_NAME", "calisto_kb")
 DB_PORT = os.getenv("KB_DB_PORT", "5432")
-CATALOGUE_PATH = "/Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export/knowledge_base/calisto_product_catalog_500.csv"
+CATALOGUE_PATH = os.getenv("KB_CATALOGUE_PATH", "knowledge_base/calisto_product_catalog_500.csv")
 
 def get_db_connection():
     return psycopg2.connect(

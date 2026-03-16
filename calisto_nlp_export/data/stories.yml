@@ -34,3 +34,15 @@ stories:
       - slot_was_set:
           - price_range
       - action: action_filter_lenses
+  - story: Direct Brand to Budget Flow
+    steps:
+      - intent: select_brand
+      - slot_was_set:
+          - brand
+      - action: utter_ask_budget_range
+      - intent: select_budget
+      - slot_was_set:
+          - price_range
+      - action: action_filter_products
+      - action: utter_ask_try_frames
+

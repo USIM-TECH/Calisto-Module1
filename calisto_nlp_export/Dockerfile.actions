@@ -3,7 +3,18 @@
 # ============================================================
 FROM rasa/rasa-sdk:3.6.2
 
-# Copy custom actions
+# Run as root to install requirements
+USER root
+
+# Intall the custom dependencies
+COPY action-requirements.txt /app/action-requirements.txt
+RUN pip install --no-cache-dir -r /app/action-requirements.txt
+
+# Copy custom actions and knowledge_base
 COPY actions/ /app/actions/
+COPY knowledge_base/ /app/knowledge_base/
+
+# Switch back
+USER 1001
 
 EXPOSE 5055
