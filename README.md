@@ -11,17 +11,13 @@ docker compose run --rm rasa train
 docker compose up -d --build
 ```
 
-### 2. Cloudflare tunnel
-
-```bash
-cloudflared tunnel --url http://localhost:3000
-```
-
 Rasa endpoints:
 - `http://localhost:5005`
 - `http://localhost:5055`
 
-### 3. Start the integration service
+
+
+### 2. Start the integration service
 
 ```bash
 cd chatbot-integrations
@@ -37,3 +33,13 @@ Integration service endpoints:
 - `http://localhost:3000/webhooks/whatsapp`
 - `http://localhost:3000/webhooks/instagram`
 - `http://localhost:3000/webhooks/messenger`
+
+
+
+
+
+### 3. Cloudflare tunnel
+
+```bash
+cloudflared tunnel --url http://localhost:3000
+```

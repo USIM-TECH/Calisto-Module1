@@ -1,30 +1,15 @@
 import axios from 'axios'
 import type { Logger } from './logger.js'
 
-/**
- * Calisto NLP Client
- * ==================
- * Connects to the Rasa NLP server directly via the REST webhook endpoint.
- * Sends user messages and returns the generated text responses.
- *
- * Rasa endpoint: POST {RASA_URL}/webhooks/rest/webhook
- * Request body:  { sender: string, message: string }
- * Response:      Array<{ text?: string, image?: string, buttons?: any[] }>
- */
 
 export interface NLPClientConfig {
-  /** Rasa server URL (default: http://localhost:5005) */
   rasaUrl: string
-  /** Request timeout in milliseconds (default: 10000) */
   timeout?: number
-  /** Fallback message when NLP is unreachable */
   fallbackMessage?: string
 }
 
 export interface NLPResponse {
-  /** Combined text from all Rasa reply objects */
   text: string
-  /** Raw reply objects from Rasa (may include images, buttons, etc.) */
   raw: Array<{ text?: string; image?: string; buttons?: any[] }>
 }
 
@@ -51,7 +36,6 @@ export class NLPClient {
     const timeout = this._config.timeout ?? 10_000
     const fallback = this._config.fallbackMessage ?? DEFAULT_FALLBACK
 
-    // Sanitise input before sending to the NLP service.
     const safeMessage = String(message).slice(0, 1000).trim()
     const safeSender = String(userId).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 50)
 
@@ -75,7 +59,7 @@ export class NLPClient {
         return { text: fallback, raw: [] }
       }
 
-      // Combine all text replies into a single response string
+
       const combinedText = replies
         .map((r) => r.text)
         .filter(Boolean)
@@ -93,9 +77,7 @@ export class NLPClient {
     }
   }
 
-  /**
-   * Check if the Rasa NLP service is reachable.
-   */
+
   public async healthCheck(): Promise<{ ok: boolean; status?: string }> {
     try {
       const response = await axios.get(`${this._config.rasaUrl}/health`, { timeout: 3000 })

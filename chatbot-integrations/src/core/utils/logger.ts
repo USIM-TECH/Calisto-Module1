@@ -1,7 +1,3 @@
-/**
- * Shared logger interface used across all integrations.
- * Replace with your preferred logger (winston, pino, etc.)
- */
 export interface Logger {
   info(message: string, ...args: any[]): void
   warn(message: string, ...args: any[]): void
@@ -16,7 +12,7 @@ export const createConsoleLogger = (prefix: string = ''): Logger => ({
   debug: (msg, ...args) => console.debug(`[DEBUG]${prefix ? ` [${prefix}]` : ''} ${msg}`, ...args),
 })
 
-/** Class-based console logger for convenience */
+
 export class ConsoleLogger implements Logger {
   private _prefix: string
   constructor(prefix: string = '') {

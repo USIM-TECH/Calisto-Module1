@@ -11,7 +11,7 @@
 
 export interface IncomingMessage {
   /** Which channel this arrived on */
-  channel: 'whatsapp' | 'instagram' | 'messenger' | 'x' | 'telegram'
+  channel: 'whatsapp' | 'instagram' | 'messenger' | 'x' | 'telegram' | 'website'
   /** Platform-specific sender ID */
   senderId: string
   /** Platform-specific conversation/thread ID */
@@ -101,22 +101,11 @@ export type OutgoingMessage =
   | OutgoingCardMessage
   | OutgoingChoiceMessage
 
-// ─── Message Handler (NLP hook point) ───────────────────
 
-/**
- * Implement this interface to connect your NLP / bot logic.
- *
- * The webhook layer calls `onMessage` when a message arrives.
- * Your handler processes it and calls the appropriate channel's
- * `sendMessage` to reply.
- *
- * This is the **future NLP connection point** — currently a no-op stub.
- */
+
 export interface MessageHandler {
   onMessage(message: IncomingMessage): Promise<void>
 }
-
-// ─── CRM Types ──────────────────────────────────────────
 
 export interface CrmContact {
   id: string
@@ -142,8 +131,6 @@ export interface CrmLead {
   createdAt: string
   updatedAt: string
 }
-
-// ─── Webhook Types ──────────────────────────────────────
 
 export interface WebhookRequest {
   method: string

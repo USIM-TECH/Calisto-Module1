@@ -1,9 +1,5 @@
 import { z } from 'zod'
 
-/**
- * WhatsApp payload schemas extracted from Botpress WhatsApp integration.
- * These validate incoming webhook payloads from the Meta Cloud API.
- */
 
 const WhatsAppContactSchema = z.object({
   wa_id: z.string(),
@@ -46,7 +42,7 @@ const WhatsAppMessageInteractiveSchema = z.union([
   }),
   z.object({
     type: z.literal('list_reply'),
-    list_reply: z.object({ id: z.string(), title: z.string(), description: z.string() }),
+    list_reply: z.object({ id: z.string(), title: z.string(), description: z.string().optional() }),
   }),
 ])
 

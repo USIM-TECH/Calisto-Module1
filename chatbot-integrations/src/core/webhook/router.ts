@@ -16,24 +16,11 @@ export interface WebhookRouterConfig {
   logger: Logger
 }
 
-/**
- * Express-based Webhook Router.
- * Routes incoming webhook requests to the appropriate channel handler.
- *
- * Expected endpoints:
- *   GET/POST /webhooks/whatsapp  → WhatsApp
- *   GET/POST /webhooks/instagram → Instagram
- *   GET/POST /webhooks/messenger → Messenger
- *   POST        /webhooks/telegram → Telegram
- *   GET/POST /webhooks/x         → X
- */
 export function createWebhookRouter(
   expressRouter: Router,
   config: WebhookRouterConfig
 ): Router {
   const { logger } = config
-
-  // ── Helper: Express req → WebhookRequest ────────────────────────
 
   function toWebhookRequest(req: Request): WebhookRequest {
     const headers: Record<string, string> = {}
@@ -44,9 +31,6 @@ export function createWebhookRouter(
         headers[key] = val.join(', ')
       }
     }
-
-    // For body, use the raw body (preserved by express.json verify callback)
-    // to ensure signature verification works correctly
     let body = ''
     if ((req as any).rawBody) {
       body = (req as any).rawBody
@@ -62,8 +46,6 @@ export function createWebhookRouter(
       body,
     }
   }
-
-  // ── WhatsApp ────────────────────────────────────────────────────
 
   if (config.whatsapp) {
     const whatsapp = config.whatsapp
@@ -84,7 +66,6 @@ export function createWebhookRouter(
     logger.info('WhatsApp webhook route registered: /webhooks/whatsapp')
   }
 
-  // ── Instagram ───────────────────────────────────────────────────
 
   if (config.instagram) {
     const instagram = config.instagram
@@ -104,8 +85,6 @@ export function createWebhookRouter(
     expressRouter.post('/webhooks/instagram', instagramHandler)
     logger.info('Instagram webhook route registered: /webhooks/instagram')
   }
-
-  // ── Messenger ───────────────────────────────────────────────────
 
   if (config.messenger) {
     const messenger = config.messenger
@@ -172,8 +151,6 @@ export function createWebhookRouter(
     expressRouter.post('/webhooks/x', xHandler)
     logger.info('X webhook route registered: /webhooks/x')
   }
-
-  // ── Health check ────────────────────────────────────────────────
 
   expressRouter.get('/health', (_req: Request, res: Response) => {
     res.json({

@@ -2,6 +2,7 @@ import type { IncomingMessage, OutgoingMessage } from '../core/types.js'
 import type { Logger } from '../core/utils/index.js'
 import { NLPClient } from '../core/utils/index.js'
 import type { MessageDeduplicator } from './message-deduplicator.js'
+import { mapNlpResponseToOutgoingMessages } from './rasa-outgoing.js'
 
 interface CreateNlpMessageHandlerProps {
   channelName: 'WhatsApp' | 'Instagram' | 'Messenger' | 'X' | 'Telegram'
@@ -45,31 +46,23 @@ export function createNlpMessageHandler({
     try {
       const nlpResponse = await nlpClient.getResponse(message.senderId, messageText)
       logger.info(`[${channelName}] Reply generated for ${senderLabel}`)
+      const outgoingMessages = mapNlpResponseToOutgoingMessages(nlpResponse)
 
-      // Send each Rasa reply object individually so buttons are preserved
-      for (const reply of nlpResponse.raw) {
-        if (!reply.text) continue
-
-        // If Rasa returned buttons and the channel supports rich messages, send as choice
-        if (reply.buttons && reply.buttons.length > 0 && sendMessage) {
-          const outgoing: OutgoingMessage = {
-            type: 'choice',
-            text: reply.text,
-            options: reply.buttons.map((btn: { title: string; payload: string }) => ({
-              label: btn.title,
-              value: btn.payload,
-            })),
-          }
-          logger.debug(`[${channelName}] Sending choice message with ${reply.buttons.length} buttons to ${senderLabel}`)
-          await sendMessage(message.senderId, outgoing)
-        } else {
-          await sendText(message.senderId, reply.text)
+      for (const outgoingMessage of outgoingMessages) {
+        if (outgoingMessage.type === 'choice' && sendMessage) {
+          logger.debug(`[${channelName}] Sending choice message with ${outgoingMessage.options.length} buttons to ${senderLabel}`)
+          await sendMessage(message.senderId, outgoingMessage)
+          continue
         }
-      }
 
-      // Fallback if raw was empty but text exists
-      if (nlpResponse.raw.length === 0 && nlpResponse.text) {
-        await sendText(message.senderId, nlpResponse.text)
+        if (outgoingMessage.type === 'text') {
+          await sendText(message.senderId, outgoingMessage.text)
+          continue
+        }
+
+        if (sendMessage) {
+          await sendMessage(message.senderId, outgoingMessage)
+        }
       }
     } catch (error: any) {
       logger.error(`[${channelName}] Failed to process message for ${senderLabel}: ${error.message}`)

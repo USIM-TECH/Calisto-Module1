@@ -16,11 +16,6 @@ export interface MessengerConfig {
   apiVersion?: string
 }
 
-/**
- * Messenger Channel Integration.
- * Extracted from Botpress Messenger integration with Botpress SDK dependencies removed.
- * Uses direct Meta Graph API calls via axios.
- */
 export class MessengerChannel {
   private _config: MessengerConfig
   private _logger: Logger
@@ -34,53 +29,40 @@ export class MessengerChannel {
     this._baseUrl = `https://graph.facebook.com/${version}`
   }
 
-  /** Register a callback for incoming messages */
   public onMessage(handler: (message: IncomingMessage) => Promise<void>) {
     this._onMessage = handler
   }
 
-  // ── Outgoing Messages ──────────────────────────────────────────────
-
-  /** Send a text message via Messenger Send API */
   public async sendText(recipientId: string, text: string): Promise<string> {
     return (await this.sendMessage(recipientId, { type: 'text', text })) ?? ''
   }
 
-  /** Send an image message */
   public async sendImage(recipientId: string, imageUrl: string): Promise<string> {
     return (await this.sendMessage(recipientId, { type: 'image', imageUrl })) ?? ''
   }
 
-  /** Send an audio message */
   public async sendAudio(recipientId: string, audioUrl: string): Promise<string> {
     return (await this.sendMessage(recipientId, { type: 'audio', audioUrl })) ?? ''
   }
 
-  /** Send a video message */
   public async sendVideo(recipientId: string, videoUrl: string): Promise<string> {
     return (await this.sendMessage(recipientId, { type: 'video', videoUrl })) ?? ''
   }
 
-  /** Send a file message */
   public async sendFile(recipientId: string, fileUrl: string): Promise<string> {
     return (await this.sendMessage(recipientId, { type: 'file', fileUrl })) ?? ''
   }
 
-  /** Send a location as Google Maps link */
   public async sendLocation(recipientId: string, latitude: number, longitude: number): Promise<string> {
     return (await this.sendMessage(recipientId, { type: 'location', latitude, longitude })) ?? ''
   }
 
-  /** Send an outgoing message (dispatches by type) */
   public async sendMessage(recipientId: string, message: OutgoingMessage): Promise<string | undefined> {
     return sendMessengerMessage(recipientId, message, this._logger, async (id, rawMessage) => {
       return this._sendViaApi(id, rawMessage)
     })
   }
 
-  // ── OAuth Helpers ──────────────────────────────────────────────────
-
-  /** Exchange authorization code for access token */
   public async exchangeAuthorizationCodeForAccessToken(code: string, redirectUri: string): Promise<string> {
     const query = new URLSearchParams({
       client_id: this._config.clientId,
@@ -94,7 +76,6 @@ export class MessengerChannel {
     return access_token
   }
 
-  /** Subscribe page to webhooks */
   public async subscribeToWebhooks(): Promise<void> {
     const response = await axios.post(
       `${this._baseUrl}/${this._config.pageId}/subscribed_apps`,
@@ -106,7 +87,6 @@ export class MessengerChannel {
     }
   }
 
-  /** Unsubscribe page from webhooks */
   public async unsubscribeFromWebhooks(): Promise<void> {
     const response = await axios.delete(
       `${this._baseUrl}/${this._config.pageId}/subscribed_apps`,
@@ -117,9 +97,6 @@ export class MessengerChannel {
     }
   }
 
-  // ── Webhook Handler ────────────────────────────────────────────────
-
-  /** Handle incoming webhook requests from Meta for Messenger */
   public async handleWebhook(req: WebhookRequest): Promise<WebhookResponse> {
     return handleMessengerWebhook({
       config: this._config,
@@ -130,8 +107,6 @@ export class MessengerChannel {
       },
     })
   }
-
-  // ── Private Helpers ────────────────────────────────────────────────
 
   private async _sendViaApi(recipientId: string, message: any): Promise<string> {
     const url = `${this._baseUrl}/me/messages`

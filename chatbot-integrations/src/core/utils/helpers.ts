@@ -1,9 +1,6 @@
 import crypto from 'crypto'
 
-/**
- * Validates Meta webhook signature (used by WhatsApp, Instagram, Messenger).
- * Extracted from Botpress integrations - preserves exact verification logic.
- */
+
 export function validateMetaSignature(
   rawBody: string,
   signature: string | undefined,
@@ -30,9 +27,6 @@ export function validateMetaSignature(
   return { valid: true }
 }
 
-/**
- * Splits an array into chunks of a given size.
- */
 export function chunkArray<T>(array: T[], chunkSize: number): T[][] {
   const chunks: T[][] = []
   if (chunkSize <= 0) return chunks
@@ -42,9 +36,6 @@ export function chunkArray<T>(array: T[], chunkSize: number): T[][] {
   return chunks
 }
 
-/**
- * Truncates a string to maxLength, adding ellipsis if truncated.
- */
 export function truncate(input: string, maxLength: number): string {
   let truncated = input.substring(0, maxLength)
   if (truncated.length < input.length) {
@@ -53,16 +44,12 @@ export function truncate(input: string, maxLength: number): string {
   return truncated
 }
 
-/**
- * Sleep utility.
- */
+
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-/**
- * Safe JSON parse that returns success/failure.
- */
+
 export function safeJsonParse(input: string | undefined): { data: any; success: true } | { data: null; success: false } {
   if (!input) return { data: null, success: false }
   try {
@@ -72,9 +59,7 @@ export function safeJsonParse(input: string | undefined): { data: any; success: 
   }
 }
 
-/**
- * Extracts file extension from a URL or filename.
- */
+
 export function extractFileExtension(input: string): string | undefined {
   const match = input.match(/\.([a-zA-Z0-9]+)(?:\?.*)?$/)
   return match ? `.${match[1]}` : undefined

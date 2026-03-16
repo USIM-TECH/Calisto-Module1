@@ -9,6 +9,7 @@ import { MessengerChannel } from '../integrations/channels/messenger/index.js'
 import { TelegramChannel } from '../integrations/channels/telegram/index.js'
 import { WhatsAppChannel } from '../integrations/channels/whatsapp/index.js'
 import { XChannel } from '../integrations/channels/x/index.js'
+import { WebsiteChannel } from '../integrations/channels/website/index.js'
 import { HubSpotClient } from '../integrations/crm/hubspot/index.js'
 import { createMessageDeduplicator, type MessageDeduplicator } from './message-deduplicator.js'
 import { createNlpMessageHandler } from './message-handler.js'
@@ -26,6 +27,7 @@ export interface AppDependencies {
   messenger?: MessengerChannel
   telegram?: TelegramChannel
   x?: XChannel
+  website: WebsiteChannel
   hubspot?: HubSpotClient
 }
 
@@ -49,6 +51,7 @@ export function createDependencies(): AppDependencies {
   let telegram: TelegramChannel | undefined
   let x: XChannel | undefined
   let hubspot: HubSpotClient | undefined
+  const website = new WebsiteChannel(nlpClient, logger)
 
   if (config.whatsapp) {
     whatsapp = new WhatsAppChannel(config.whatsapp, logger)
@@ -57,6 +60,7 @@ export function createDependencies(): AppDependencies {
       logger,
       nlpClient,
       sendText: (recipientId, text) => whatsapp!.sendMessage(recipientId, { type: 'text', text }),
+      sendMessage: (recipientId, message) => whatsapp!.sendMessage(recipientId, message),
       deduplicator,
     }))
     logger.info('WhatsApp channel enabled')
@@ -69,6 +73,7 @@ export function createDependencies(): AppDependencies {
       logger,
       nlpClient,
       sendText: (recipientId, text) => instagram!.sendTextMessage(recipientId, text),
+      sendMessage: (recipientId, message) => instagram!.sendMessage(recipientId, message),
       deduplicator,
     }))
     logger.info('Instagram channel enabled')
@@ -81,6 +86,7 @@ export function createDependencies(): AppDependencies {
       logger,
       nlpClient,
       sendText: (recipientId, text) => messenger!.sendText(recipientId, text),
+      sendMessage: (recipientId, message) => messenger!.sendMessage(recipientId, message),
       deduplicator,
     }))
     logger.info('Messenger channel enabled')
@@ -126,6 +132,7 @@ export function createDependencies(): AppDependencies {
     messenger,
     telegram,
     x,
+    website,
     hubspot,
   }
 }
