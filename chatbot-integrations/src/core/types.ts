@@ -14,8 +14,12 @@ export interface IncomingMessage {
   channel: 'whatsapp' | 'instagram' | 'messenger' | 'x' | 'telegram' | 'website'
   /** Platform-specific sender ID */
   senderId: string
+  /** Channel-specific source identifier, defaults to sender ID */
+  sourceId?: string
   /** Platform-specific conversation/thread ID */
   conversationId: string
+  /** Application lead identifier once persisted */
+  leadId?: string
   /** Sender display name (if available) */
   senderName?: string
   /** Message type */

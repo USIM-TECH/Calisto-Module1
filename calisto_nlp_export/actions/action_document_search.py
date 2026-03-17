@@ -1,25 +1,53 @@
-"""
-Calisto Eyewear – RAG Custom Action for Rasa
-Full pipeline: query preprocessing → hybrid retrieval (FAISS + BM25)
-→ intent-based filtering → re-ranking → response.
-"""
-
 import logging
+import re
 from typing import Any, Dict, List, Text
 
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
 
-from actions.knowledge_base.config import RELEVANCE_THRESHOLD
 from actions.knowledge_base.hybrid_retriever import hybrid_search
 from actions.knowledge_base.indexer import KnowledgeSearcher
-from actions.knowledge_base.query_preprocessor import preprocess_query
 
 logger = logging.getLogger(__name__)
 
 
+def _dedupe_sentences(text: str) -> str:
+    seen = set()
+    ordered: List[str] = []
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        cleaned = " ".join(sentence.split()).strip()
+        if not cleaned:
+            continue
+        key = cleaned.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        ordered.append(cleaned)
+    return " ".join(ordered)
+
+
+def _clean_retrieved_answer(text: str) -> str:
+    answer = " ".join(text.split()).strip()
+
+    # Prefer the answer portion if the chunk contains FAQ-style Q/A text.
+    if " A:" in answer:
+        answer = answer.split(" A:", 1)[1].strip()
+    if " Q:" in answer:
+        answer = answer.split(" Q:", 1)[0].strip()
+
+    # Remove a leading fragment when the chunk starts mid-sentence.
+    if answer.lower().startswith("location to process"):
+        answer = (
+            "Bring the item back to any Calisto store location to process a prompt "
+            "refund or exchange. " + answer
+        )
+
+    answer = _dedupe_sentences(answer)
+    return answer
+
+
 class ActionDocumentSearch(Action):
-    """Semantic + keyword hybrid search over Calisto Eyewear's knowledge base."""
+    """Search the local knowledge-base index instead of PostgreSQL."""
 
     def name(self) -> Text:
         return "action_document_search"
@@ -30,63 +58,69 @@ class ActionDocumentSearch(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-
-        raw_query = tracker.latest_message.get("text", "")
-        if not raw_query.strip():
+        raw_query = (tracker.latest_message.get("text") or "").strip()
+        if not raw_query:
             dispatcher.utter_message(
                 text="Could you please rephrase your question? I didn't catch that."
             )
             return []
 
-        # Extract intent info from Rasa NLU
-        intent_data = tracker.latest_message.get("intent", {})
-        intent_name = intent_data.get("name")
-        intent_confidence = intent_data.get("confidence", 0.0)
+        intent = tracker.latest_message.get("intent") or {}
+        entities = tracker.latest_message.get("entities") or []
+        entity_map: Dict[str, List[str]] = {}
+        for entity in entities:
+            entity_name = entity.get("entity")
+            entity_value = entity.get("value")
+            if entity_name and entity_value is not None:
+                entity_map.setdefault(entity_name, []).append(str(entity_value))
 
-        # Step 1: Preprocess query
-        processed_query, entities = preprocess_query(raw_query)
+        intent_name = intent.get("name")
+        intent_confidence = float(intent.get("confidence") or 0.0)
+
         logger.info(
-            "RAG query: raw='%s' → processed='%s' | intent=%s (%.2f) | entities=%s",
-            raw_query, processed_query, intent_name, intent_confidence, entities,
+            "Knowledge-base query: '%s' intent=%s confidence=%.3f",
+            raw_query,
+            intent_name,
+            intent_confidence,
         )
 
-        # Step 2: Hybrid search (FAISS + BM25 + intent filter + re-rank)
-        searcher = KnowledgeSearcher.get()
-        results = hybrid_search(
-            searcher=searcher,
-            bm25=searcher.bm25,
-            query=processed_query,
-            entities=entities,
-            intent_name=intent_name,
-            intent_confidence=intent_confidence,
-        )
-
-        # Step 3: Check relevance
-        if not results or results[0].get("final_score", 0) < RELEVANCE_THRESHOLD:
+        try:
+            searcher = KnowledgeSearcher.get()
+            results = hybrid_search(
+                query=raw_query,
+                searcher=searcher,
+                bm25=searcher.bm25,
+                entities=entity_map,
+                intent_name=intent_name,
+                intent_confidence=intent_confidence,
+            )
+        except Exception as exc:
+            logger.exception("Knowledge-base retrieval failed: %s", exc)
             dispatcher.utter_message(
-                text="I'm sorry, I couldn't find that information in the Calisto knowledge base. 😔\n\n"
-                     "You can try rephrasing, or contact us at +60 1-800-22-5478 for help!"
+                text="Our knowledge base is currently experiencing issues. Please try again later."
             )
             return []
 
-        # Step 4: Format best result
-        best = results[0]
-        answer = best["text"].strip()
+        if not results:
+            dispatcher.utter_message(
+                text=(
+                    "I'm sorry, I couldn't find that information in the Calisto knowledge base.\n\n"
+                    "You can try rephrasing, or contact us at +60 1-800-22-5478 for help!"
+                )
+            )
+            return []
 
-        # Cap at ~150 words so responses stay concise
+        best_result = results[0]
+        answer = _clean_retrieved_answer((best_result.get("text") or "").strip())
+
         words = answer.split()
         if len(words) > 150:
-            answer = " ".join(words[:150]) + " …"
+            answer = " ".join(words[:150]) + " ..."
 
         logger.info(
-            "RAG result: source=%s score=%.3f (faiss=%.3f bm25=%.3f kw=%.3f ent=%.3f)",
-            best.get("source", "?"),
-            best.get("final_score", 0),
-            best.get("_faiss_score", 0),
-            best.get("_bm25_score", 0),
-            best.get("_keyword_bonus", 0),
-            best.get("_entity_bonus", 0),
+            "Matched knowledge-base source '%s' with score %.3f",
+            best_result.get("source", "unknown"),
+            float(best_result.get("final_score", best_result.get("score", 0.0))),
         )
-
         dispatcher.utter_message(text=f"📄 {answer}")
         return []

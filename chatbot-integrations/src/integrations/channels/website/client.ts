@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import type { OutgoingMessage } from '../../../core/types.js'
-import { type Logger, type NLPClient } from '../../../core/utils/index.js'
-import { mapNlpResponseToOutgoingMessages } from '../../../app/rasa-outgoing.js'
+import type { IncomingMessage, OutgoingMessage } from '../../../core/types.js'
+import type { LeadOrchestrator } from '../../../app/lead-orchestrator.js'
+import type { Logger } from '../../../core/utils/index.js'
 
 const websiteChatRequestSchema = z.object({
   senderId: z.string().min(1).max(100).optional(),
@@ -15,15 +15,17 @@ export interface WebsiteChatRequest {
 
 export interface WebsiteChatResponse {
   senderId: string
+  leadId: string
+  conversationId: string
   messages: OutgoingMessage[]
 }
 
 export class WebsiteChannel {
-  private readonly _nlpClient: NLPClient
+  private readonly _orchestrator: LeadOrchestrator
   private readonly _logger: Logger
 
-  constructor(nlpClient: NLPClient, logger: Logger) {
-    this._nlpClient = nlpClient
+  constructor(orchestrator: LeadOrchestrator, logger: Logger) {
+    this._orchestrator = orchestrator
     this._logger = logger
   }
 
@@ -34,14 +36,27 @@ export class WebsiteChannel {
   public async handleChat(input: WebsiteChatRequest): Promise<WebsiteChatResponse> {
     const senderId = (input.senderId?.trim() || `website-${Date.now()}`).slice(0, 100)
     const message = input.message.trim()
-
-    this._logger.debug(`[Website] Sending to Rasa: sender="${senderId}", message="${message}"`)
-    const nlpResponse = await this._nlpClient.getResponse(senderId, message)
-    const messages = mapNlpResponseToOutgoingMessages(nlpResponse)
+    const conversationId = senderId
+    this._logger.debug(`[Website] Sending to orchestrator: sender="${senderId}", message="${message}"`)
+    const incomingMessage: IncomingMessage = {
+      channel: 'website',
+      senderId,
+      sourceId: senderId,
+      conversationId,
+      type: 'text',
+      text: message,
+      messageId: `web-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      rawPayload: input,
+    }
+    const result = await this._orchestrator.process(incomingMessage)
+    const leadId = result?.lead.id ?? senderId
 
     return {
       senderId,
-      messages,
+      leadId,
+      conversationId,
+      messages: result?.outgoingMessages ?? [],
     }
   }
 }

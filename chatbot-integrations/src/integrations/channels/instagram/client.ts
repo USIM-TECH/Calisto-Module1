@@ -21,14 +21,16 @@ export interface InstagramConfig {
 export class InstagramChannel {
   private _config: InstagramConfig
   private _logger: Logger
-  private _baseUrl: string
+  private _graphApiUrl: string
+  private _instagramApiUrl: string
   private _onMessage?: (message: IncomingMessage) => Promise<void>
 
   constructor(config: InstagramConfig, logger: Logger) {
     this._config = config
     this._logger = logger
     const version = config.apiVersion ?? 'v21.0'
-    this._baseUrl = `https://graph.instagram.com/${version}`
+    this._graphApiUrl = `https://graph.facebook.com/${version}`
+    this._instagramApiUrl = 'https://graph.instagram.com'
   }
 
 
@@ -64,7 +66,7 @@ export class InstagramChannel {
 
   public async replyToComment(commentId: string, text: string): Promise<string> {
     const fields = new URLSearchParams({ message: text })
-    const url = `${this._baseUrl}/${commentId}/replies?${fields.toString()}`
+    const url = `${this._graphApiUrl}/${commentId}/replies?${fields.toString()}`
     const response = await axios.post<{ id: string }>(url, {}, {
       headers: { Authorization: `Bearer ${this._config.accessToken}` },
     })
@@ -83,7 +85,7 @@ export class InstagramChannel {
       access_token: this._config.accessToken,
       fields: 'id,name,username',
     })
-    const url = `${this._baseUrl}/${instagramUserId}?${query.toString()}`
+    const url = `${this._graphApiUrl}/${instagramUserId}?${query.toString()}`
     const response = await axios.get(url)
     return response.data
   }
@@ -107,7 +109,7 @@ export class InstagramChannel {
       client_secret: this._config.clientSecret ?? '',
       access_token: shortLivedTokenData.access_token,
     })
-    res = await axios.get(`https://graph.instagram.com/access_token?${query.toString()}`)
+    res = await axios.get(`${this._instagramApiUrl}/access_token?${query.toString()}`)
     const { access_token, expires_in } = z.object({ access_token: z.string(), expires_in: z.number() }).parse(res.data)
 
     return { accessToken: access_token, expirationTime: Date.now() + expires_in * 1000 }
@@ -118,7 +120,7 @@ export class InstagramChannel {
       grant_type: 'ig_refresh_token',
       access_token: this._config.accessToken,
     })
-    const response = await axios.get(`https://graph.instagram.com/refresh_access_token?${query.toString()}`)
+    const response = await axios.get(`${this._instagramApiUrl}/refresh_access_token?${query.toString()}`)
     const { access_token, expires_in } = z.object({ access_token: z.string(), expires_in: z.number() }).parse(response.data)
     return { accessToken: access_token, expirationTime: Date.now() + expires_in * 1000 }
   }
@@ -136,10 +138,20 @@ export class InstagramChannel {
 
 
   private async _sendMessage(recipient: InstagramRecipientId, message: any): Promise<{ recipient_id: string; message_id: string }> {
-    const url = `${this._baseUrl}/${this._config.instagramId}/messages`
-    const response = await axios.post(url, { recipient, message }, {
+    const url = `${this._graphApiUrl}/${this._config.instagramId}/messages`
+    const payload = {
+      recipient,
+      messaging_type: 'RESPONSE',
+      message,
+    }
+
+    this._logger.debug(`[Instagram] Sending message to ${'id' in recipient ? recipient.id : recipient.comment_id}: ${JSON.stringify(message)}`)
+
+    const response = await axios.post(url, payload, {
       headers: { Authorization: `Bearer ${this._config.accessToken}` },
     })
+
+    this._logger.debug(`[Instagram] Send response: ${JSON.stringify(response.data)}`)
     return response.data
   }
 

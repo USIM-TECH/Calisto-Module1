@@ -1,159 +1,89 @@
 version: "3.1"
 
-# ============================================================
-# Calisto Eyewear (Malaysia) - Dialogue Rules
-# ============================================================
-
 rules:
+  - rule: Greet user at any time
+    steps:
+      - intent: greet
+      - action: utter_greet
 
-# ALWAYS-ON RULES
-- rule: Say greet whenever user greets
-  steps:
-    - intent: greet
-    - action: utter_greet
+  - rule: Start eyewear browse flow
+    steps:
+      - intent: browse_eyewear
+      - action: action_reset_eyewear_slots
+      - action: utter_ask_product_type
 
-- rule: Say goodbye whenever user says goodbye
-  steps:
-    - intent: goodbye
-    - action: utter_goodbye
+  - rule: Start pricing flow
+    steps:
+      - intent: ask_pricing
+      - action: utter_pricing_intro
 
-- rule: Handle NLU fallback (low confidence)
-  steps:
-    - intent: nlu_fallback
-    - action: utter_fallback
+  - rule: Product type selected for eyewear
+    steps:
+      - intent: select_product_type
+      - action: action_ask_brand
 
-- rule: Handle out-of-scope topics
-  steps:
-    - intent: out_of_scope
-    - action: utter_out_of_scope
+  - rule: Start lens and vision flow
+    steps:
+      - intent: lens_vision_solutions
+      - action: utter_ask_lens_type
 
-- rule: Respond to thank you
-  steps:
-    - intent: thank_you
-    - action: utter_thank_you
+  - rule: Lens type selected
+    steps:
+      - intent: ask_lens_type
+      - action: action_explain_lens
+      - action: utter_ask_budget_range
 
-# FAQ-STYLE SINGLE-TURN RULES
-- rule: Answer lens types question
-  steps:
-    - intent: ask_lens_types
-    - action: utter_lens_types_info
+  - rule: Find a store generic
+    steps:
+      - intent: find_a_store
+      - action: action_ask_city
 
-- rule: Answer lens pricing question
-  steps:
-    - intent: ask_lens_price
-    - action: utter_lens_price_info
+  - rule: Choose city for store
+    steps:
+      - intent: choose_city
+      - action: action_find_store
 
-- rule: Show all store locations
-  steps:
-    - intent: ask_store_location
-    - action: action_find_nearest_store
+  - rule: FAQ fallback to knowledge base
+    steps:
+      - intent: ask_faq
+      - action: action_document_search
 
-- rule: Face shape guide
-  steps:
-    - intent: check_face_shape
-    - action: utter_check_face_shape_help
+  - rule: Search product by attribute
+    steps:
+      - intent: search_product_by_attribute
+      - action: action_search_product_by_attribute
 
-- rule: Answer warranty question
-  steps:
-    - intent: ask_warranty
-    - action: utter_warranty_info
+  - rule: Start lead capture from booking
+    steps:
+      - intent: book_appointment
+      - action: utter_booking_intro
+      - action: lead_capture_form
+      - active_loop: lead_capture_form
 
-- rule: Answer return exchange question
-  steps:
-    - intent: ask_return_exchange
-    - action: utter_return_exchange_info
+  - rule: Start lead capture directly
+    steps:
+      - intent: capture_lead
+      - action: lead_capture_form
+      - active_loop: lead_capture_form
 
-- rule: Answer payment options question
-  steps:
-    - intent: ask_payment_options
-    - action: utter_payment_options_info
+  - rule: Continue lead capture from service interest
+    steps:
+      - intent: share_service_interest
+      - action: lead_capture_form
+      - active_loop: lead_capture_form
 
-# FORM: frame_search_form
-- rule: Activate frame search form on search_frames intent
-  steps:
-    - intent: search_frames
-    - action: frame_search_form
-    - active_loop: frame_search_form
+  - rule: Start lead capture for after sales
+    steps:
+      - intent: after_sales_support
+      - action: utter_after_sales_intro
+      - action: lead_capture_form
+      - active_loop: lead_capture_form
 
-- rule: Submit frame search form and recommend frames
-  condition:
-    - active_loop: frame_search_form
-  steps:
-    - action: frame_search_form
-    - active_loop: null
-    - slot_was_set:
-        - requested_slot: null
-    - action: action_recommend_frames
-
-# FORM: order_tracking_form
-- rule: Activate order tracking form
-  steps:
-    - intent: track_order
-    - action: order_tracking_form
-    - active_loop: order_tracking_form
-
-- rule: Submit order tracking form and check status
-  condition:
-    - active_loop: order_tracking_form
-  steps:
-    - action: order_tracking_form
-    - active_loop: null
-    - slot_was_set:
-        - requested_slot: null
-    - action: action_check_order_status
-
-# FORM: eye_test_form
-- rule: Activate eye test booking form
-  steps:
-    - intent: book_eye_test
-    - action: eye_test_form
-    - active_loop: eye_test_form
-
-- rule: Submit eye test form and confirm booking
-  condition:
-    - active_loop: eye_test_form
-  steps:
-    - action: eye_test_form
-    - active_loop: null
-    - slot_was_set:
-        - requested_slot: null
-    - action: utter_eye_test_booked
-
-# RAG – KNOWLEDGE BASE RETRIEVAL RULES
-- rule: Search knowledge base for company info
-  steps:
-    - intent: ask_company_info
-    - action: action_document_search
-
-- rule: Search knowledge base for services
-  steps:
-    - intent: ask_services
-    - action: action_document_search
-
-- rule: Search knowledge base for product info
-  steps:
-    - intent: ask_product_info
-    - action: action_document_search
-
-# Handle affirm outside of active forms
-- rule: Respond to affirm when no form active
-  condition:
-    - active_loop: null
-  steps:
-    - intent: affirm
-    - action: utter_affirm
-
-# Handle deny outside of active forms
-- rule: Respond to deny when no form active
-  condition:
-    - active_loop: null
-  steps:
-    - intent: deny
-    - action: utter_deny
-
-# When user provides city after being asked "which city?"
-- rule: Provide city after store location question
-  steps:
-    - action: action_find_nearest_store
-    - intent: inform
-    - action: action_find_nearest_store
+  - rule: Submit lead capture form
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - action: lead_capture_form
+      - active_loop: null
+      - action: action_qualify_lead
+      - action: action_submit_lead_capture

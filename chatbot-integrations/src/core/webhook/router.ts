@@ -6,6 +6,7 @@ import type { WhatsAppChannel } from '../../integrations/channels/whatsapp/clien
 import type { XChannel } from '../../integrations/channels/x/client.js'
 import type { Logger } from '../utils/index.js'
 import type { WebhookRequest } from '../types.js'
+import type { RuntimeStore } from '../../app/runtime-store.js'
 
 export interface WebhookRouterConfig {
   whatsapp?: WhatsAppChannel
@@ -14,13 +15,14 @@ export interface WebhookRouterConfig {
   telegram?: TelegramChannel
   x?: XChannel
   logger: Logger
+  runtimeStore: RuntimeStore
 }
 
 export function createWebhookRouter(
   expressRouter: Router,
   config: WebhookRouterConfig
 ): Router {
-  const { logger } = config
+  const { logger, runtimeStore } = config
 
   function toWebhookRequest(req: Request): WebhookRequest {
     const headers: Record<string, string> = {}
@@ -53,6 +55,14 @@ export function createWebhookRouter(
     const whatsappHandler = async (req: Request, res: Response) => {
       try {
         const webhookReq = toWebhookRequest(req)
+        runtimeStore.appendWebhookEvent({
+          channel: 'whatsapp',
+          direction: 'inbound',
+          path: req.path,
+          sourceId: req.ip ?? 'unknown',
+          conversationId: 'webhook',
+          payload: req.body,
+        })
         const result = await whatsapp.handleWebhook(webhookReq)
         res.status(result.status).send(result.body ?? '')
       } catch (error: any) {
@@ -73,6 +83,14 @@ export function createWebhookRouter(
     const instagramHandler = async (req: Request, res: Response) => {
       try {
         const webhookReq = toWebhookRequest(req)
+        runtimeStore.appendWebhookEvent({
+          channel: 'instagram',
+          direction: 'inbound',
+          path: req.path,
+          sourceId: req.ip ?? 'unknown',
+          conversationId: 'webhook',
+          payload: req.body,
+        })
         const result = await instagram.handleWebhook(webhookReq)
         res.status(result.status).send(result.body ?? '')
       } catch (error: any) {
@@ -92,6 +110,14 @@ export function createWebhookRouter(
     const messengerHandler = async (req: Request, res: Response) => {
       try {
         const webhookReq = toWebhookRequest(req)
+        runtimeStore.appendWebhookEvent({
+          channel: 'messenger',
+          direction: 'inbound',
+          path: req.path,
+          sourceId: req.ip ?? 'unknown',
+          conversationId: 'webhook',
+          payload: req.body,
+        })
         const result = await messenger.handleWebhook(webhookReq)
         res.status(result.status).send(result.body ?? '')
       } catch (error: any) {
@@ -111,6 +137,14 @@ export function createWebhookRouter(
     const telegramHandler = async (req: Request, res: Response) => {
       try {
         const webhookReq = toWebhookRequest(req)
+        runtimeStore.appendWebhookEvent({
+          channel: 'telegram',
+          direction: 'inbound',
+          path: req.path,
+          sourceId: req.ip ?? 'unknown',
+          conversationId: 'webhook',
+          payload: req.body,
+        })
         const result = await telegram.handleWebhook(webhookReq)
         if (result.headers) {
           for (const [key, value] of Object.entries(result.headers)) {
@@ -134,6 +168,14 @@ export function createWebhookRouter(
     const xHandler = async (req: Request, res: Response) => {
       try {
         const webhookReq = toWebhookRequest(req)
+        runtimeStore.appendWebhookEvent({
+          channel: 'x',
+          direction: 'inbound',
+          path: req.path,
+          sourceId: req.ip ?? 'unknown',
+          conversationId: 'webhook',
+          payload: req.body,
+        })
         const result = await x.handleWebhook(webhookReq)
         if (result.headers) {
           for (const [key, value] of Object.entries(result.headers)) {

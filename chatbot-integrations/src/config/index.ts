@@ -18,6 +18,13 @@ const optionalString = z.preprocess((value) => {
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   RASA_URL: z.string().default('http://localhost:5005'),
+  DATA_DIR: optionalString,
+  DEDUP_TTL_MS: z.coerce.number().int().positive().default(5 * 60 * 1000),
+
+  WEBSITE_AUTH_TOKEN: optionalString,
+  WEBSITE_ALLOWED_ORIGINS: optionalString,
+  WEBSITE_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(30),
+  WEBSITE_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
 
   WHATSAPP_ACCESS_TOKEN: optionalString,
   WHATSAPP_PHONE_NUMBER_ID: optionalString,
@@ -57,6 +64,14 @@ const envSchema = z.object({
 export interface AppConfig {
   port: number
   rasaUrl: string
+  dataDir: string
+  dedupTtlMs: number
+  website: {
+    authToken?: string
+    allowedOrigins: string[]
+    rateLimitMax: number
+    rateLimitWindowMs: number
+  }
   whatsapp?: WhatsAppConfig
   instagram?: InstagramConfig
   messenger?: MessengerConfig
@@ -71,6 +86,17 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   return {
     port: parsed.PORT,
     rasaUrl: parsed.RASA_URL,
+    dataDir: parsed.DATA_DIR ?? 'data/runtime',
+    dedupTtlMs: parsed.DEDUP_TTL_MS,
+    website: {
+      authToken: parsed.WEBSITE_AUTH_TOKEN,
+      allowedOrigins: (parsed.WEBSITE_ALLOWED_ORIGINS ?? '')
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+      rateLimitMax: parsed.WEBSITE_RATE_LIMIT_MAX,
+      rateLimitWindowMs: parsed.WEBSITE_RATE_LIMIT_WINDOW_MS,
+    },
     whatsapp: parsed.WHATSAPP_ACCESS_TOKEN && parsed.WHATSAPP_PHONE_NUMBER_ID && parsed.WHATSAPP_VERIFY_TOKEN
       ? {
           accessToken: parsed.WHATSAPP_ACCESS_TOKEN,

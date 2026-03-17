@@ -9,6 +9,7 @@ Rasa project used by the chatbot integration service.
 - `data/`: NLU, rules, and stories
 - `domain.yml`: intents, slots, forms, responses
 - `actions/actions.py`: custom actions and validators
+- `knowledge_base/`: local CSV, DOCX, PDF, and retrieval index files
 - `docker-compose.yml`: Rasa server + action server
 
 ```
@@ -34,7 +35,7 @@ calisto_nlp_export/
 └── calisto_rasa_client.js   ← Node.js integration example
 ```
 
-The custom actions still use in-memory catalog, order, and store data. That is suitable for demo and development only. Production readiness requires replacing those helpers with real backend/API calls.
+The current action layer reads from the local `knowledge_base/` folder. Product, brand, city, and store-location lookups come from `knowledge_base/calisto_product_catalog_500.csv`, while document Q&A uses the local FAISS/BM25 retrieval index under `knowledge_base/index/`. There is no PostgreSQL or external vector database dependency in the current branch.
 
 ## Setup & Run (Docker — Recommended)
 
@@ -56,6 +57,11 @@ This builds and starts two containers:
 | `action-server` | `rasa/rasa-sdk:3.6.2` | `5055` | Custom actions (Python) |
 
 The containers are connected via an internal Docker network (`calisto-net`). The Rasa server automatically loads the pre-trained model from `models/`.
+
+The action server reads its runtime knowledge from:
+- `knowledge_base/calisto_product_catalog_500.csv`
+- `knowledge_base/index/calisto.faiss`
+- `knowledge_base/index/calisto_meta.json`
 
 ### 2. Verify containers are running
 
@@ -106,10 +112,16 @@ docker compose down
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install rasa==3.6.21 rasa-sdk==3.6.2
+pip install -r requirements.txt
 
 chmod +x start.sh
 ./start.sh
+```
+
+If you run the action server directly, use:
+
+```bash
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 rasa run actions
 ```
 
 ---
@@ -133,7 +145,7 @@ chmod +x start.sh
 ```
 
 - **Rasa server** receives user messages, runs NLU classification, manages dialogue state
-- **Action server** executes custom Python actions (frame catalog lookup, order tracking, store locator)
+- **Action server** executes custom Python actions using the local knowledge base (catalog lookup, document retrieval, store locator)
 - Rasa calls the action server at `http://action-server:5055/webhook` (configured in `endpoints.yml`)
 
 ---
@@ -228,9 +240,9 @@ docker compose up -d --build
 
 ### Via local Python (requires Python 3.8–3.10)
 ```bash
-curl -X POST http://localhost:5005/webhooks/rest/webhook \
-  -H "Content-Type: application/json" \
-  -d '{"sender":"test-user","message":"hi"}'
+rasa train
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 rasa run actions
+rasa shell
 ```
 
 ---
@@ -244,9 +256,9 @@ curl -X POST http://localhost:5005/webhooks/rest/webhook \
 | Face shape advice | "I have a round face, what frames suit me?" |
 | Lens info | "what types of lenses do you have?" |
 | Lens pricing | "how much do progressive lenses cost?" |
-| Store locator | "find a store in Mumbai" |
+| Store locator | "find a store in Kuala Lumpur" |
 | Order tracking | "track my order ORD12345" |
-| Eye test booking | "book an eye test in Delhi" |
+| Eye test booking | "book an eye test in Nilai" |
 
 ---
 
@@ -259,3 +271,7 @@ curl -X POST http://localhost:5005/webhooks/rest/webhook \
 | Action server errors (`InvalidURL`) | Verify `endpoints.yml` has `url: "http://action-server:5055/webhook"` (no `${...}` syntax). |
 | Python version error (local setup) | Rasa 3.6.x needs Python 3.8–3.10. Use Docker instead. |
 | Port 5005 already in use | Stop existing containers: `docker compose down`, or kill the process: `lsof -ti :5005 \| xargs kill -9` |
+
+
+
+

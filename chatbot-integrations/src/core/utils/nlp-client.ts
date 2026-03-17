@@ -11,6 +11,10 @@ export interface NLPClientConfig {
 export interface NLPResponse {
   text: string
   raw: Array<{ text?: string; image?: string; buttons?: any[] }>
+  tracker?: {
+    latestIntent?: string
+    slots: Record<string, unknown>
+  }
 }
 
 const DEFAULT_FALLBACK = 'Sorry, something went wrong. Please try again.'
@@ -56,7 +60,7 @@ export class NLPClient {
 
       if (!Array.isArray(replies) || replies.length === 0) {
         this._logger.warn('[NLP] Rasa returned empty response')
-        return { text: fallback, raw: [] }
+        return { text: fallback, raw: [], tracker: await this.getTracker(safeSender) }
       }
 
 
@@ -70,10 +74,33 @@ export class NLPClient {
       return {
         text: combinedText || fallback,
         raw: replies,
+        tracker: await this.getTracker(safeSender),
       }
     } catch (error: any) {
       this._logger.error(`[NLP] Rasa error: ${error.message}`)
       return { text: fallback, raw: [] }
+    }
+  }
+
+  public async getTracker(userId: string): Promise<NLPResponse['tracker']> {
+    try {
+      const response = await axios.get(
+        `${this._config.rasaUrl}/conversations/${encodeURIComponent(userId)}/tracker`,
+        {
+          params: { include_events: 'NONE' },
+          timeout: 5000,
+        }
+      )
+
+      const slots = response.data?.slots && typeof response.data.slots === 'object'
+        ? response.data.slots as Record<string, unknown>
+        : {}
+      const latestIntent = response.data?.latest_message?.intent?.name
+
+      return { latestIntent, slots }
+    } catch (error: any) {
+      this._logger.warn(`[NLP] Failed to fetch tracker for ${userId}: ${error.message}`)
+      return undefined
     }
   }
 

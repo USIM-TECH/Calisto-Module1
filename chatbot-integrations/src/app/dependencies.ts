@@ -12,7 +12,9 @@ import { XChannel } from '../integrations/channels/x/index.js'
 import { WebsiteChannel } from '../integrations/channels/website/index.js'
 import { HubSpotClient } from '../integrations/crm/hubspot/index.js'
 import { createMessageDeduplicator, type MessageDeduplicator } from './message-deduplicator.js'
+import { LeadOrchestrator } from './lead-orchestrator.js'
 import { createNlpMessageHandler } from './message-handler.js'
+import { RuntimeStore } from './runtime-store.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -21,6 +23,8 @@ export interface AppDependencies {
   config: AppConfig
   logger: Logger
   deduplicator: MessageDeduplicator
+  runtimeStore: RuntimeStore
+  orchestrator: LeadOrchestrator
   nlpClient: NLPClient
   whatsapp?: WhatsAppChannel
   instagram?: InstagramChannel
@@ -40,7 +44,8 @@ export function createDependencies(): AppDependencies {
 
   const logger: Logger = new ConsoleLogger()
   const config = loadConfig()
-  const deduplicator = createMessageDeduplicator()
+  const runtimeStore = new RuntimeStore(config.dataDir)
+  const deduplicator = createMessageDeduplicator(runtimeStore, config.dedupTtlMs)
   const nlpClient = new NLPClient({ rasaUrl: config.rasaUrl }, logger)
 
   logger.info(`NLP client configured for ${config.rasaUrl}`)
@@ -51,17 +56,29 @@ export function createDependencies(): AppDependencies {
   let telegram: TelegramChannel | undefined
   let x: XChannel | undefined
   let hubspot: HubSpotClient | undefined
-  const website = new WebsiteChannel(nlpClient, logger)
+
+  if (config.hubspot) {
+    hubspot = new HubSpotClient(config.hubspot, logger)
+    logger.info('HubSpot client enabled')
+  }
+
+  const orchestrator = new LeadOrchestrator({
+    logger,
+    nlpClient,
+    deduplicator,
+    runtimeStore,
+    hubspot,
+  })
+  const website = new WebsiteChannel(orchestrator, logger)
 
   if (config.whatsapp) {
     whatsapp = new WhatsAppChannel(config.whatsapp, logger)
     whatsapp.onMessage(createNlpMessageHandler({
       channelName: 'WhatsApp',
       logger,
-      nlpClient,
+      orchestrator,
       sendText: (recipientId, text) => whatsapp!.sendMessage(recipientId, { type: 'text', text }),
       sendMessage: (recipientId, message) => whatsapp!.sendMessage(recipientId, message),
-      deduplicator,
     }))
     logger.info('WhatsApp channel enabled')
   }
@@ -71,10 +88,9 @@ export function createDependencies(): AppDependencies {
     instagram.onMessage(createNlpMessageHandler({
       channelName: 'Instagram',
       logger,
-      nlpClient,
+      orchestrator,
       sendText: (recipientId, text) => instagram!.sendTextMessage(recipientId, text),
       sendMessage: (recipientId, message) => instagram!.sendMessage(recipientId, message),
-      deduplicator,
     }))
     logger.info('Instagram channel enabled')
   }
@@ -84,10 +100,9 @@ export function createDependencies(): AppDependencies {
     messenger.onMessage(createNlpMessageHandler({
       channelName: 'Messenger',
       logger,
-      nlpClient,
+      orchestrator,
       sendText: (recipientId, text) => messenger!.sendText(recipientId, text),
       sendMessage: (recipientId, message) => messenger!.sendMessage(recipientId, message),
-      deduplicator,
     }))
     logger.info('Messenger channel enabled')
   }
@@ -97,10 +112,9 @@ export function createDependencies(): AppDependencies {
     telegram.onMessage(createNlpMessageHandler({
       channelName: 'Telegram',
       logger,
-      nlpClient,
+      orchestrator,
       sendText: (recipientId, text) => telegram!.sendTextMessage(recipientId, text),
       sendMessage: (recipientId, message) => telegram!.sendMessage(recipientId, message),
-      deduplicator,
     }))
     logger.info('Telegram channel enabled')
   }
@@ -110,22 +124,18 @@ export function createDependencies(): AppDependencies {
     x.onMessage(createNlpMessageHandler({
       channelName: 'X',
       logger,
-      nlpClient,
+      orchestrator,
       sendText: (recipientId, text) => x!.sendTextMessage(recipientId, text),
-      deduplicator,
     }))
     logger.info('X channel enabled')
-  }
-
-  if (config.hubspot) {
-    hubspot = new HubSpotClient(config.hubspot, logger)
-    logger.info('HubSpot client enabled')
   }
 
   return {
     config,
     logger,
     deduplicator,
+    runtimeStore,
+    orchestrator,
     nlpClient,
     whatsapp,
     instagram,

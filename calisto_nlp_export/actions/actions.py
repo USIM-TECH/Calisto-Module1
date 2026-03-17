@@ -1,708 +1,652 @@
-"""
-Calisto Eyewear (Malaysia) – Custom Rasa Actions
-==================================================
-Three primary actions + three form validators.
-
-Actions
--------
-- ActionRecommendFrames      → Suggests frames by style / gender / budget / face shape
-- ActionCheckOrderStatus     → Looks up order status by order_id slot
-- ActionFindNearestStore     → Returns store info for the given city slot
-
-Form Validators
----------------
-- ValidateFrameSearchForm
-- ValidateOrderTrackingForm
-- ValidateEyeTestForm
-
-Run with:  rasa run actions --actions actions.actions
-"""
-
-from __future__ import annotations
-
+import json
 import logging
+import os
 import re
-from difflib import get_close_matches
+import urllib.error
+import urllib.parse
+import urllib.request
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Text
 
-from rasa_sdk import Action, FormValidationAction, Tracker
+import pandas as pd
+from rasa_sdk import Action, Tracker
 from rasa_sdk.events import SlotSet
 from rasa_sdk.executor import CollectingDispatcher
-from rasa_sdk.types import DomainDict
+from rasa_sdk.forms import FormValidationAction
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ============================================================
-# Simulated Backend Data  (Malaysian context)
-# In production replace each _fetch_* method with a real
-# HTTP call to your order-management / product / store API.
-# ============================================================
-
-# ── Frame Catalogue (prices in RM) ──────────────────────────
-FRAME_CATALOG: Dict[str, Dict[str, List[Dict]]] = {
-    "round": {
-        "men": [
-            {"name": "Calisto Retro Round",   "price": 199, "material": "Acetate",        "color": "Tortoise",  "sku": "CAL-RR-M01"},
-            {"name": "Calisto Classic Circle","price": 249, "material": "Metal",           "color": "Gold",      "sku": "CAL-CC-M02"},
-            {"name": "Calisto Vintage Round", "price": 149, "material": "TR90",            "color": "Black",     "sku": "CAL-VR-M03"},
-        ],
-        "women": [
-            {"name": "Calisto Chic Round",    "price": 219, "material": "Acetate",        "color": "Rose Gold", "sku": "CAL-CR-W01"},
-            {"name": "Calisto Elegant Circle","price": 299, "material": "Premium Metal",  "color": "Silver",    "sku": "CAL-EC-W02"},
-            {"name": "Calisto Petite Round",  "price": 179, "material": "TR90",            "color": "Purple",    "sku": "CAL-PR-W03"},
-        ],
-        "unisex": [
-            {"name": "Calisto Neo Round",     "price": 169, "material": "TR90",            "color": "Matte Black","sku": "CAL-NR-U01"},
-        ],
-    },
-    "rectangular": {
-        "men": [
-            {"name": "Calisto Pro Rectangle", "price": 229, "material": "Titanium",       "color": "Gunmetal",  "sku": "CAL-PR-M01"},
-            {"name": "Calisto Sharp Edge",    "price": 189, "material": "Acetate",        "color": "Dark Brown","sku": "CAL-SE-M02"},
-        ],
-        "women": [
-            {"name": "Calisto Slim Rectangle","price": 199, "material": "Metal",           "color": "Rose Gold", "sku": "CAL-SR-W01"},
-        ],
-        "unisex": [
-            {"name": "Calisto Classic Rect",  "price": 149, "material": "TR90",            "color": "Black",     "sku": "CAL-CR-U01"},
-        ],
-    },
-    "square": {
-        "men": [
-            {"name": "Calisto Bold Square",   "price": 249, "material": "Acetate",        "color": "Black",     "sku": "CAL-BS-M01"},
-            {"name": "Calisto Power Square",  "price": 199, "material": "Metal",           "color": "Silver",    "sku": "CAL-PS-M02"},
-        ],
-        "women": [
-            {"name": "Calisto Fierce Square", "price": 229, "material": "Acetate",        "color": "Tortoise",  "sku": "CAL-FS-W01"},
-        ],
-        "unisex": [
-            {"name": "Calisto Urban Square",  "price": 179, "material": "TR90",            "color": "Blue",      "sku": "CAL-US-U01"},
-        ],
-    },
-    "cat-eye": {
-        "men": [],
-        "women": [
-            {"name": "Calisto Glamour Cat-Eye","price": 279, "material": "Acetate",       "color": "Cherry Red","sku": "CAL-GC-W01"},
-            {"name": "Calisto Retro Cat-Eye", "price": 229, "material": "Acetate",        "color": "Black-Gold","sku": "CAL-RC-W02"},
-            {"name": "Calisto Chic Cat-Eye",  "price": 199, "material": "TR90",            "color": "Leopard",   "sku": "CAL-CC-W03"},
-        ],
-        "unisex": [
-            {"name": "Calisto Modern Cat-Eye","price": 219, "material": "Metal",          "color": "Rose Gold", "sku": "CAL-MC-U01"},
-        ],
-    },
-    "aviator": {
-        "men": [
-            {"name": "Calisto Ace Aviator",   "price": 199, "material": "Metal",           "color": "Gold",      "sku": "CAL-AA-M01"},
-            {"name": "Calisto Sky Aviator",   "price": 249, "material": "Titanium",        "color": "Silver",    "sku": "CAL-SA-M02"},
-        ],
-        "women": [
-            {"name": "Calisto Femme Aviator", "price": 219, "material": "Metal",           "color": "Rose Gold", "sku": "CAL-FA-W01"},
-        ],
-        "unisex": [
-            {"name": "Calisto Classic Aviator","price": 169, "material": "Metal",          "color": "Gunmetal",  "sku": "CAL-CA-U01"},
-        ],
-    },
-    "wayfarer": {
-        "men": [
-            {"name": "Calisto Street Wayfarer","price": 179, "material": "Acetate",       "color": "Black",     "sku": "CAL-SW-M01"},
-        ],
-        "women": [
-            {"name": "Calisto Trend Wayfarer","price": 199, "material": "Acetate",        "color": "Tortoise",  "sku": "CAL-TW-W01"},
-        ],
-        "unisex": [
-            {"name": "Calisto Original Wayfarer","price": 169,"material": "Acetate",      "color": "Classic Black","sku": "CAL-OW-U01"},
-        ],
-    },
-    "oval": {
-        "men": [
-            {"name": "Calisto Smooth Oval",   "price": 189, "material": "TR90",            "color": "Brown",     "sku": "CAL-SO-M01"},
-        ],
-        "women": [
-            {"name": "Calisto Dainty Oval",   "price": 209, "material": "Metal",           "color": "Gold",      "sku": "CAL-DO-W01"},
-        ],
-        "unisex": [
-            {"name": "Calisto Neo Oval",       "price": 159, "material": "TR90",            "color": "Black",     "sku": "CAL-NO-U01"},
-        ],
-    },
-}
-
-FACE_SHAPE_STYLES: Dict[str, List[str]] = {
-    "round":   ["rectangular", "square", "wayfarer"],
-    "oval":    ["round", "aviator", "wayfarer", "cat-eye"],
-    "square":  ["round", "oval", "cat-eye"],
-    "heart":   ["wayfarer", "rectangular", "aviator"],
-    "diamond": ["oval", "cat-eye", "rectangular"],
-    "oblong":  ["aviator", "square", "wayfarer"],
-    # Malay synonyms map to same styles
-    "bulat":   ["rectangular", "square", "wayfarer"],
-    "persegi": ["round", "oval", "cat-eye"],
-}
-
-FEATURED_FRAMES = [
-    {"name": "Calisto Ace Aviator",    "price": 199, "material": "Metal",   "sku": "CAL-AA-M01"},
-    {"name": "Calisto Chic Round",     "price": 219, "material": "Acetate", "sku": "CAL-CR-W01"},
-    {"name": "Calisto Bold Square",    "price": 249, "material": "Acetate", "sku": "CAL-BS-M01"},
-    {"name": "Calisto Classic Aviator","price": 169, "material": "Metal",   "sku": "CAL-CA-U01"},
-]
-
-# ── Order Database ───────────────────────────────────────────
-ORDER_DATABASE: Dict[str, Dict] = {
-    "45821":          {"status": "Shipped",    "carrier": "J&T Express",  "tracking": "JT78234561MY",  "eta": "2 days",    "step": "Out for Delivery"},
-    "ORD12345":       {"status": "Processing", "carrier": "N/A",          "tracking": "N/A",            "eta": "5-7 days",  "step": "Quality Check in Progress"},
-    "78562":          {"status": "Delivered",  "carrier": "Pos Laju",     "tracking": "EN098765432MY",  "eta": "Delivered", "step": "Delivered on 5 March 2026"},
-    "CAL-2024-9876":  {"status": "Shipped",    "carrier": "Ninja Van",    "tracking": "NVMY12345",      "eta": "3 days",    "step": "In Transit - KL Hub"},
-    "CAL98231":       {"status": "Confirmed",  "carrier": "N/A",          "tracking": "N/A",            "eta": "7-10 days", "step": "Being Prepared at Warehouse"},
-    "ORD98765":       {"status": "Shipped",    "carrier": "J&T Express",  "tracking": "JT99112233MY",   "eta": "1 day",     "step": "Out for Delivery"},
-    "234567":         {"status": "Processing", "carrier": "N/A",          "tracking": "N/A",            "eta": "6-8 days",  "step": "Payment Confirmed"},
-}
-
-# ── Store Database (Malaysian locations) ─────────────────────
-STORE_DATABASE: Dict[str, List[Dict]] = {
-    "kuala lumpur": [
-        {"name": "Calisto – Pavilion KL",        "address": "Lot 3.12, Level 3, Pavilion KL, 168 Jalan Bukit Bintang, 55100 KL",           "phone": "+60 3-2110-1234", "hours": "Mon-Sun: 10AM-10PM"},
-        {"name": "Calisto – Mid Valley Megamall", "address": "Lot S-025, Level S, Mid Valley Megamall, Lingkaran Syed Putra, 59200 KL",     "phone": "+60 3-2282-5678", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "kl": [
-        {"name": "Calisto – Pavilion KL",        "address": "Lot 3.12, Level 3, Pavilion KL, 168 Jalan Bukit Bintang, 55100 KL",           "phone": "+60 3-2110-1234", "hours": "Mon-Sun: 10AM-10PM"},
-        {"name": "Calisto – Mid Valley Megamall", "address": "Lot S-025, Level S, Mid Valley Megamall, Lingkaran Syed Putra, 59200 KL",     "phone": "+60 3-2282-5678", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "bukit bintang": [
-        {"name": "Calisto – Pavilion KL",        "address": "Lot 3.12, Level 3, Pavilion KL, 168 Jalan Bukit Bintang, 55100 KL",           "phone": "+60 3-2110-1234", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "klcc": [
-        {"name": "Calisto – Suria KLCC",         "address": "Lot 221, Level 2, Suria KLCC, Jalan Ampang, 50088 KL",                         "phone": "+60 3-2161-9012", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "bangsar": [
-        {"name": "Calisto – Bangsar Village II", "address": "Lot G-15, Ground Floor, Bangsar Village II, Jalan Telawi, 59100 KL",           "phone": "+60 3-2287-3456", "hours": "Mon-Sun: 10AM-9PM"},
-    ],
-    "mid valley": [
-        {"name": "Calisto – Mid Valley Megamall", "address": "Lot S-025, Level S, Mid Valley Megamall, Lingkaran Syed Putra, 59200 KL",     "phone": "+60 3-2282-5678", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "pavilion": [
-        {"name": "Calisto – Pavilion KL",        "address": "Lot 3.12, Level 3, Pavilion KL, 168 Jalan Bukit Bintang, 55100 KL",           "phone": "+60 3-2110-1234", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "petaling jaya": [
-        {"name": "Calisto – One Utama",          "address": "Lot LG-313, LG Floor, 1 Utama Shopping Centre, Bandar Utama, 47800 PJ",       "phone": "+60 3-7722-7890", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "pj": [
-        {"name": "Calisto – One Utama",          "address": "Lot LG-313, LG Floor, 1 Utama Shopping Centre, Bandar Utama, 47800 PJ",       "phone": "+60 3-7722-7890", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "one utama": [
-        {"name": "Calisto – One Utama",          "address": "Lot LG-313, LG Floor, 1 Utama Shopping Centre, Bandar Utama, 47800 PJ",       "phone": "+60 3-7722-7890", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "subang jaya": [
-        {"name": "Calisto – Sunway Pyramid",     "address": "Lot LG1.89, LG1 Floor, Sunway Pyramid, 3 Jalan PJS 11/15, 47500 Subang Jaya", "phone": "+60 3-5612-6789", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "sunway": [
-        {"name": "Calisto – Sunway Pyramid",     "address": "Lot LG1.89, LG1 Floor, Sunway Pyramid, 3 Jalan PJS 11/15, 47500 Subang Jaya", "phone": "+60 3-5612-6789", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "shah alam": [
-        {"name": "Calisto – AEON Shah Alam",     "address": "Lot 2F-18, Level 2, AEON Mall Shah Alam, Seksyen 13, 40100 Shah Alam",         "phone": "+60 3-5519-4567", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "penang": [
-        {"name": "Calisto – Gurney Plaza",       "address": "Lot 170-G-43, Gurney Plaza, Persiaran Gurney, 10250 Georgetown, Penang",       "phone": "+60 4-228-1234", "hours": "Mon-Sun: 10AM-9:30PM"},
-        {"name": "Calisto – Queensbay Mall",     "address": "Lot LG-39, Queensbay Mall, 100 Persiaran Bayan Indah, 11900 Bayan Lepas",      "phone": "+60 4-645-5678", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "georgetown": [
-        {"name": "Calisto – Gurney Plaza",       "address": "Lot 170-G-43, Gurney Plaza, Persiaran Gurney, 10250 Georgetown, Penang",       "phone": "+60 4-228-1234", "hours": "Mon-Sun: 10AM-9:30PM"},
-    ],
-    "gurney plaza": [
-        {"name": "Calisto – Gurney Plaza",       "address": "Lot 170-G-43, Gurney Plaza, Persiaran Gurney, 10250 Georgetown, Penang",       "phone": "+60 4-228-1234", "hours": "Mon-Sun: 10AM-9:30PM"},
-    ],
-    "johor bahru": [
-        {"name": "Calisto – Mid Valley Southkey","address": "Lot G-023, Ground Floor, Mid Valley Southkey, Persiaran Southkey, 80150 JB",   "phone": "+60 7-338-9012", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "jb": [
-        {"name": "Calisto – Mid Valley Southkey","address": "Lot G-023, Ground Floor, Mid Valley Southkey, Persiaran Southkey, 80150 JB",   "phone": "+60 7-338-9012", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "ipoh": [
-        {"name": "Calisto – Ipoh Parade",        "address": "Lot LG-15, LG Floor, Ipoh Parade Mall, 105 Jalan Sultan Abdul Jalil, 30300 Ipoh","phone": "+60 5-255-3456", "hours": "Mon-Sun: 10AM-9PM"},
-    ],
-    "melaka": [
-        {"name": "Calisto – Dataran Pahlawan",   "address": "Lot L1-28, Level 1, Dataran Pahlawan Megamall, Jalan Merdeka, 75000 Melaka",   "phone": "+60 6-281-7890", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-    "kota kinabalu": [
-        {"name": "Calisto – Suria Sabah",        "address": "Lot L2-07, Level 2, Suria Sabah, 1 Jalan Tun Fuad Stephens, 88000 KK",        "phone": "+60 88-251-234", "hours": "Mon-Sun: 10AM-9:30PM"},
-    ],
-    "kuching": [
-        {"name": "Calisto – Vivacity Megamall",  "address": "Lot G-10, Ground Floor, Vivacity Megamall, Jalan Wan Alwi, 93350 Kuching",     "phone": "+60 82-367-567", "hours": "Mon-Sun: 10AM-10PM"},
-    ],
-}
-
-# City aliases / fuzzy matching map
-CITY_ALIASES: Dict[str, str] = {
-    "kuala lumpur": "kuala lumpur",
-    "kl": "kuala lumpur",
-    "bukit bintang": "bukit bintang",
-    "klcc": "klcc",
-    "bangsar": "bangsar",
-    "mid valley": "mid valley",
-    "pavilion": "pavilion",
-    "petaling jaya": "petaling jaya",
-    "pj": "petaling jaya",
-    "one utama": "one utama",
-    "subang jaya": "subang jaya",
-    "sunway": "sunway",
-    "shah alam": "shah alam",
-    "setia alam": "shah alam",
-    "penang": "penang",
-    "georgetown": "georgetown",
-    "gurney plaza": "gurney plaza",
-    "johor bahru": "johor bahru",
-    "jb": "johor bahru",
-    "johor": "johor bahru",
-    "ipoh": "ipoh",
-    "melaka": "melaka",
-    "malacca": "melaka",
-    "kota kinabalu": "kota kinabalu",
-    "kk": "kota kinabalu",
-    "kuching": "kuching",
-    "cyberjaya": "kuala lumpur",
-    "putrajaya": "kuala lumpur",
-    "seremban": "melaka",
-}
+CATALOGUE_PATH = os.getenv(
+    "KB_CATALOGUE_PATH",
+    "knowledge_base/calisto_product_catalog_500.csv",
+)
+BOOKING_URL = os.getenv("BOOKING_URL", "https://calisto.example.com/book")
 
 
-# ============================================================
-# Helpers
-# ============================================================
+class ServiceGateway:
+    """Thin backend adapter with CSV fallback for local development."""
 
-def _normalise_gender(gender: Optional[str]) -> str:
-    if not gender:
-        return "unisex"
-    g = gender.lower().strip()
-    if any(k in g for k in ("men", "male", "gents", "man", "lelaki", "jantan")):
-        return "men"
-    if any(k in g for k in ("women", "female", "ladies", "woman", "perempuan", "wanita")):
-        return "women"
-    return "unisex"
+    def __init__(self) -> None:
+        self.base_url = os.getenv("BACKEND_API_BASE_URL", "").rstrip("/")
+        self.api_key = os.getenv("BACKEND_API_KEY", "")
 
+    def enabled(self) -> bool:
+        return bool(self.base_url)
 
-def _parse_budget(budget: Optional[str]) -> Optional[int]:
-    if not budget:
-        return None
-    nums = re.findall(r"\d+", str(budget))
-    return int(nums[-1]) if nums else None
+    def _headers(self) -> Dict[str, str]:
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        return headers
 
+    def _request(self, method: str, endpoint: str, payload: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+        if not self.enabled():
+            return None
 
-def _fetch_order(order_id: str) -> Optional[Dict]:
-    """Simulate an order-management API lookup."""
-    key = order_id.strip().upper()
-    return ORDER_DATABASE.get(key) or ORDER_DATABASE.get(order_id.strip())
+        url = f"{self.base_url}{endpoint}"
+        data = None
+        if payload is not None:
+            data = json.dumps(payload).encode("utf-8")
 
+        request = urllib.request.Request(url, data=data, method=method, headers=self._headers())
+        try:
+            with urllib.request.urlopen(request, timeout=8) as response:
+                body = response.read().decode("utf-8")
+                return json.loads(body) if body else {}
+        except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError) as exc:
+            logger.warning("Backend request to %s failed: %s", url, exc)
+            return None
 
-def _fetch_stores(city: str) -> List[Dict]:
-    """Simulate a store-locator API lookup with fuzzy matching."""
-    city_lower = city.lower().strip()
+    def search_products(self, filters: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
+        response = self._request("POST", "/products/search", filters)
+        if not response:
+            return None
+        products = response.get("products")
+        return products if isinstance(products, list) else None
 
-    # Direct lookup
-    if city_lower in STORE_DATABASE:
-        return STORE_DATABASE[city_lower]
+    def search_stores(self, location: str) -> Optional[List[Dict[str, Any]]]:
+        response = self._request("POST", "/stores/search", {"location": location})
+        if not response:
+            return None
+        stores = response.get("stores")
+        return stores if isinstance(stores, list) else None
 
-    # Alias lookup
-    if city_lower in CITY_ALIASES:
-        alias = CITY_ALIASES[city_lower]
-        if alias in STORE_DATABASE:
-            return STORE_DATABASE[alias]
-
-    # Partial match
-    for key, stores in STORE_DATABASE.items():
-        if key in city_lower or city_lower in key:
-            return stores
-
-    # Fuzzy match against all known keys (aliases + store keys)
-    all_keys = list(CITY_ALIASES.keys()) + list(STORE_DATABASE.keys())
-    matches = get_close_matches(city_lower, all_keys, n=1, cutoff=0.6)
-    if matches:
-        matched = matches[0]
-        resolved = CITY_ALIASES.get(matched, matched)
-        if resolved in STORE_DATABASE:
-            return STORE_DATABASE[resolved]
-
-    return []
+    def submit_lead(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        return self._request("POST", "/leads", payload)
 
 
-# ============================================================
-# ACTION: action_recommend_frames
-# ============================================================
+gateway = ServiceGateway()
 
-class ActionRecommendFrames(Action):
-    """Recommends frames based on face shape, style, gender, and budget."""
 
+@lru_cache(maxsize=1)
+def load_catalogue() -> pd.DataFrame:
+    df = pd.read_csv(CATALOGUE_PATH).fillna("")
+    if "price_myr" in df.columns:
+        df["price_myr"] = pd.to_numeric(df["price_myr"], errors="coerce")
+    return df
+
+
+def filter_by_budget(df: pd.DataFrame, budget_slot: Text) -> pd.DataFrame:
+    if not budget_slot:
+        return df
+
+    budget_lower = str(budget_slot).lower().replace(" ", "").replace("–", "-")
+    if "underrm100" in budget_lower:
+        return df[df["price_myr"] < 100]
+    if "rm100-rm250" in budget_lower:
+        return df[(df["price_myr"] >= 100) & (df["price_myr"] <= 250)]
+    if "rm250-rm300" in budget_lower:
+        return df[(df["price_myr"] >= 250) & (df["price_myr"] <= 300)]
+    if "aboverm300" in budget_lower:
+        return df[df["price_myr"] > 300]
+
+    match_under = re.search(r"under\s*rm\s*(\d+(?:\.\d+)?)", str(budget_slot).lower())
+    if match_under:
+        return df[df["price_myr"] <= float(match_under.group(1))]
+
+    match_over = re.search(r"(?:over|above)\s*rm\s*(\d+(?:\.\d+)?)", str(budget_slot).lower())
+    if match_over:
+        return df[df["price_myr"] >= float(match_over.group(1))]
+
+    match_range = re.search(r"rm?\s*(\d+(?:\.\d+)?)\s*-\s*rm?\s*(\d+(?:\.\d+)?)", str(budget_slot).lower())
+    if match_range:
+        low = float(match_range.group(1))
+        high = float(match_range.group(2))
+        return df[(df["price_myr"] >= low) & (df["price_myr"] <= high)]
+
+    return df
+
+
+def format_product(row: pd.Series) -> str:
+    brand = row.get("brand") or "Unknown Brand"
+    name = row.get("product_name") or "Unknown Product"
+    price = row.get("price_myr")
+    city = row.get("city") or ""
+    store = row.get("store_location") or ""
+    suffix = f"\nLocation: {store}, {city}".rstrip(", ")
+    return f"{brand} - {name}\nPrice: RM{float(price):.2f}{suffix}"
+
+
+def unique_cities(df: pd.DataFrame) -> List[str]:
+    cities = [str(city).strip() for city in df["city"].tolist() if str(city).strip()]
+    return sorted(set(cities), key=str.lower)
+
+
+def search_store_rows(df: pd.DataFrame, city: str) -> pd.DataFrame:
+    return df[df["city"].astype(str).str.contains(city, case=False, na=False)][
+        ["store_location", "city"]
+    ].drop_duplicates()
+
+
+def titleize(value: Optional[str]) -> str:
+    return str(value or "").strip().title()
+
+
+def lead_buttons(preferred_service: Optional[str] = None) -> List[Dict[str, str]]:
+    payload = '/capture_lead'
+    if preferred_service:
+        safe_service = str(preferred_service).replace('"', '\\"')
+        payload = f'/capture_lead{{"preferred_service":"{safe_service}"}}'
+    return [
+        {"title": "Book Appointment", "payload": "/book_appointment"},
+        {"title": "Find Store", "payload": "/find_a_store"},
+        {"title": "Talk to Consultant", "payload": payload},
+    ]
+
+
+class ValidateLeadCaptureForm(FormValidationAction):
     def name(self) -> Text:
-        return "action_recommend_frames"
+        return "validate_lead_capture_form"
+
+    async def validate_lead_name(
+        self,
+        slot_value: Any,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> Dict[Text, Any]:
+        value = str(slot_value).strip()
+        if len(value) < 2:
+            dispatcher.utter_message(text="Please share a valid name with at least 2 characters.")
+            return {"lead_name": None}
+        return {"lead_name": value}
+
+    async def validate_contact_number(
+        self,
+        slot_value: Any,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> Dict[Text, Any]:
+        digits = re.sub(r"[^\d+]", "", str(slot_value))
+        if len(re.sub(r"\D", "", digits)) < 8:
+            dispatcher.utter_message(text="Please provide a valid phone number including area or country code.")
+            return {"contact_number": None}
+        return {"contact_number": digits}
+
+    async def validate_email(
+        self,
+        slot_value: Any,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> Dict[Text, Any]:
+        value = str(slot_value).strip()
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", value):
+            dispatcher.utter_message(text="Please provide a valid email address.")
+            return {"email": None}
+        return {"email": value.lower()}
+
+    async def validate_lead_location(
+        self,
+        slot_value: Any,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> Dict[Text, Any]:
+        value = str(slot_value).strip()
+        if len(value) < 2:
+            dispatcher.utter_message(text="Please share your city or area so we can route your inquiry properly.")
+            return {"lead_location": None}
+        return {"lead_location": value}
+
+    async def validate_preferred_service(
+        self,
+        slot_value: Any,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> Dict[Text, Any]:
+        value = str(slot_value).strip()
+        if len(value) < 3:
+            dispatcher.utter_message(text="Please tell us which product or service you are interested in.")
+            return {"preferred_service": None}
+        return {"preferred_service": value}
+
+    async def validate_purchase_timeline(
+        self,
+        slot_value: Any,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> Dict[Text, Any]:
+        value = str(slot_value).strip()
+        allowed = {
+            "this week": "This Week",
+            "within 2 weeks": "Within 2 Weeks",
+            "just exploring": "Just Exploring",
+        }
+        normalized = allowed.get(value.lower())
+        if normalized:
+            return {"purchase_timeline": normalized}
+
+        if len(value) < 3:
+            dispatcher.utter_message(text="Let me know if you are ready this week, within 2 weeks, or just exploring.")
+            return {"purchase_timeline": None}
+
+        return {"purchase_timeline": value}
+
+
+class ActionResetEyewearSlots(Action):
+    def name(self) -> Text:
+        return "action_reset_eyewear_slots"
 
     def run(
         self,
         dispatcher: CollectingDispatcher,
         tracker: Tracker,
-        domain: DomainDict,
+        domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        return [
+            SlotSet("product_type", None),
+            SlotSet("brand", None),
+            SlotSet("price_range", None),
+            SlotSet("frame_shape", None),
+            SlotSet("frame_color", None),
+            SlotSet("frame_material", None),
+            SlotSet("lens_type", None),
+            SlotSet("city", None),
+        ]
 
-        frame_style = tracker.get_slot("frame_style")
-        gender      = tracker.get_slot("gender")
-        budget      = tracker.get_slot("budget")
-        face_shape  = tracker.get_slot("face_shape")
 
-        logger.info(
-            "action_recommend_frames | style=%s gender=%s budget=%s face_shape=%s",
-            frame_style, gender, budget, face_shape,
-        )
+class ActionFilterProducts(Action):
+    def name(self) -> Text:
+        return "action_filter_products"
 
-        # ── Derive style from face shape when not given ──────
-        if not frame_style and face_shape:
-            shape_key   = face_shape.lower().strip()
-            suggestions = FACE_SHAPE_STYLES.get(shape_key, [])
-            if suggestions:
-                frame_style = suggestions[0]
-                style_list  = ", ".join(f"**{s}**" for s in suggestions)
-                dispatcher.utter_message(
-                    text=f"💡 For a **{face_shape}** face, we recommend: {style_list} frames.\n"
-                         f"Let me show you our **{frame_style}** collection!"
-                )
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        product_type = tracker.get_slot("product_type")
+        brand = tracker.get_slot("brand")
+        price_range = tracker.get_slot("price_range")
 
-        if not frame_style:
-            self._show_featured(dispatcher)
-            return []
-
-        gender_key   = _normalise_gender(gender)
-        budget_value = _parse_budget(budget)
-        style_key    = frame_style.lower().strip()
-
-        catalog_entry = FRAME_CATALOG.get(style_key, {})
-        candidates    = catalog_entry.get(gender_key, []) + catalog_entry.get("unisex", [])
-
-        if not candidates:
-            dispatcher.utter_message(
-                text=(
-                    f"I don't have exact **{frame_style}** frames for **{gender or 'you'}** right now, "
-                    f"but here are some of our hottest picks! 🌟"
-                )
-            )
-            self._show_featured(dispatcher)
-            return []
-
-        if budget_value:
-            within_budget = [f for f in candidates if f["price"] <= budget_value]
-            if within_budget:
-                candidates = within_budget
-            else:
+        backend_results = gateway.search_products({
+            "product_type": product_type,
+            "brand": brand,
+            "price_range": price_range,
+        })
+        if backend_results:
+            dispatcher.utter_message(text="Here are some products that match your request:")
+            for product in backend_results[:5]:
                 dispatcher.utter_message(
                     text=(
-                        f"Hmm, no **{frame_style}** frames exactly within RM{budget_value} right now. "
-                        f"Here are the closest options:"
+                        f"{product.get('brand', 'Brand')} - {product.get('product_name', 'Product')}\n"
+                        f"Price: RM{float(product.get('price_myr', 0) or 0):.2f}"
                     )
                 )
-
-        results = candidates[:3]
-        lines   = [f"👓 **{frame_style.title()} Frames** from Calisto:\n"]
-        for i, f in enumerate(results, 1):
-            lines.append(
-                f"{i}. **{f['name']}**\n"
-                f"   💰 RM{f['price']}  |  🔧 {f['material']}  |  🎨 {f['color']}\n"
-                f"   🏷️ SKU: {f['sku']}\n"
+            dispatcher.utter_message(
+                response="utter_next_step_product_help",
+                buttons=lead_buttons(str(product_type or brand or "")),
             )
-        lines.append(
-            "\nLike what you see? Visit a store to try them on, "
-            "or shall I help you find the nearest Calisto outlet? 😊"
+            return []
+
+        filtered_df = load_catalogue().copy()
+        if product_type and str(product_type).lower() != "contact lenses":
+            filtered_df = filtered_df[
+                filtered_df["product_type"].astype(str).str.contains(product_type, case=False, na=False)
+            ]
+        if brand and str(brand).lower() != "show all brands":
+            filtered_df = filtered_df[
+                filtered_df["brand"].astype(str).str.contains(brand, case=False, na=False)
+            ]
+        filtered_df = filter_by_budget(filtered_df, price_range)
+        top_5 = filtered_df.head(5)
+
+        if top_5.empty:
+            dispatcher.utter_message(
+                text="We could not find eyewear matching your criteria. Try another brand or budget."
+            )
+            return []
+
+        dispatcher.utter_message(text="Here are some products that match your request:")
+        for _, row in top_5.iterrows():
+            dispatcher.utter_message(text=format_product(row))
+        dispatcher.utter_message(
+            response="utter_next_step_product_help",
+            buttons=lead_buttons(str(product_type or brand or "")),
         )
-        dispatcher.utter_message(text="\n".join(lines))
         return []
 
-    @staticmethod
-    def _show_featured(dispatcher: CollectingDispatcher) -> None:
-        lines = ["🌟 **Calisto Top Picks:**\n"]
-        for i, f in enumerate(FEATURED_FRAMES, 1):
-            lines.append(f"{i}. **{f['name']}** – RM{f['price']} ({f['material']})  |  SKU: {f['sku']}")
-        lines.append("\nShop online at **www.calisto.com.my** or visit our store!")
-        dispatcher.utter_message(text="\n".join(lines))
 
-
-# ============================================================
-# ACTION: action_check_order_status
-# ============================================================
-
-class ActionCheckOrderStatus(Action):
-    """Retrieves the live status of a Calisto order."""
-
+class ActionExplainLens(Action):
     def name(self) -> Text:
-        return "action_check_order_status"
+        return "action_explain_lens"
 
     def run(
         self,
         dispatcher: CollectingDispatcher,
         tracker: Tracker,
-        domain: DomainDict,
+        domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        lens_type = tracker.get_slot("lens_type")
+        explanations = {
+            "Single Vision Lenses": "Single vision lenses have one prescription power across the lens and are ideal for distance or near correction.",
+            "Progressive Lenses": "Progressive lenses combine near, intermediate, and distance vision without visible lines.",
+            "Blue Light Protection": "Blue light lenses help reduce digital eye strain and filter high-energy visible light from screens.",
+            "Photochromic Lenses": "Photochromic lenses darken outdoors and turn clear indoors for all-day convenience.",
+        }
+        if lens_type in explanations:
+            dispatcher.utter_message(text=explanations[lens_type])
+        else:
+            dispatcher.utter_message(text="I can explain different lens solutions if you tell me which one you are considering.")
+        dispatcher.utter_message(
+            response="utter_next_step_lens_help",
+            buttons=[
+                {"title": "Set Budget", "payload": '/select_budget{"price_range":"RM100 - RM250"}'},
+                {"title": "Find Store", "payload": "/find_a_store"},
+                {"title": "Talk to Consultant", "payload": '/capture_lead{"preferred_service":"Lens Consultation"}'},
+            ],
+        )
+        return []
 
-        order_id = tracker.get_slot("order_id")
 
-        # Fallback: scan the latest message with regex when slot is empty
-        if not order_id:
-            text  = tracker.latest_message.get("text", "")
-            match = re.search(r"\b(CAL-\d{4}-\d{4}|[A-Za-z]{0,3}\d{5,10})\b", text)
-            if match:
-                order_id = match.group(1)
+class ActionAskCity(Action):
+    def name(self) -> Text:
+        return "action_ask_city"
 
-        if not order_id:
-            dispatcher.utter_message(
-                text=(
-                    "I need your **Order ID** to check the status. "
-                    "It looks like: `45821`, `ORD12345`, or `CAL-2024-9876`.\n"
-                    "Please share it and I'll check terus!"
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        cities = unique_cities(load_catalogue())
+        buttons = [
+            {"title": city.title(), "payload": f'/choose_city{{"city":"{city}"}}'}
+            for city in cities[:10]
+        ]
+        dispatcher.utter_message(text="Which city are you looking for?", buttons=buttons or None)
+        return []
+
+
+class ActionFindStore(Action):
+    def name(self) -> Text:
+        return "action_find_store"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        city = tracker.get_slot("city") or tracker.get_slot("lead_location")
+        if not city:
+            dispatcher.utter_message(text="Please specify the city to find a store.")
+            return []
+
+        backend_stores = gateway.search_stores(str(city))
+        if backend_stores:
+            dispatcher.utter_message(text=f"Here are the stores we found in {titleize(city)}:")
+            for store in backend_stores[:10]:
+                dispatcher.utter_message(
+                    text=f"{store.get('store_location', 'Calisto Store')}\nCity: {store.get('city', city)}"
                 )
+            dispatcher.utter_message(
+                text="Would you like to book a visit or speak with a consultant before you go?",
+                buttons=lead_buttons("Store Visit"),
             )
             return []
 
-        logger.info("action_check_order_status | order_id=%s", order_id)
-        order = _fetch_order(order_id)
+        stores = search_store_rows(load_catalogue(), str(city))
+        if stores.empty:
+            dispatcher.utter_message(text=f"I could not find any Calisto stores in {titleize(city)}.")
+            return []
 
-        STATUS_ICON = {
-            "Confirmed":   "✅",
-            "Processing":  "⚙️",
-            "Shipped":     "🚚",
-            "Delivered":   "✅",
+        dispatcher.utter_message(text=f"Here are the stores we found in {titleize(city)}:")
+        for _, row in stores.head(10).iterrows():
+            dispatcher.utter_message(text=f"{row.get('store_location', 'Calisto Store')}\nCity: {row.get('city', city)}")
+        dispatcher.utter_message(
+            text="Would you like to book a visit or speak with a consultant before you go?",
+            buttons=lead_buttons("Store Visit"),
+        )
+        return []
+
+
+class ActionSearchProductByAttribute(Action):
+    def name(self) -> Text:
+        return "action_search_product_by_attribute"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        frame_color = tracker.get_slot("frame_color")
+        frame_shape = tracker.get_slot("frame_shape")
+        frame_material = tracker.get_slot("frame_material")
+        user_message = (tracker.latest_message.get("text") or "").lower()
+
+        filtered_df = load_catalogue().copy()
+        if frame_color:
+            filtered_df = filtered_df[
+                filtered_df["frame_color"].astype(str).str.contains(frame_color, case=False, na=False)
+            ]
+        if frame_shape:
+            filtered_df = filtered_df[
+                filtered_df["frame_shape"].astype(str).str.contains(frame_shape, case=False, na=False)
+            ]
+        if frame_material:
+            filtered_df = filtered_df[
+                filtered_df["frame_material"].astype(str).str.contains(frame_material, case=False, na=False)
+            ]
+
+        if not frame_color and not frame_shape and not frame_material and len(user_message) > 3:
+            for part in user_message.split():
+                if len(part) <= 3:
+                    continue
+                mask = (
+                    filtered_df["frame_color"].astype(str).str.contains(part, case=False, na=False)
+                    | filtered_df["frame_shape"].astype(str).str.contains(part, case=False, na=False)
+                    | filtered_df["frame_material"].astype(str).str.contains(part, case=False, na=False)
+                    | filtered_df["description"].astype(str).str.contains(part, case=False, na=False)
+                    | filtered_df["product_name"].astype(str).str.contains(part, case=False, na=False)
+                )
+                if not filtered_df[mask].empty:
+                    filtered_df = filtered_df[mask]
+
+        top_5 = filtered_df.head(5)
+        if top_5.empty:
+            dispatcher.utter_message(text="I could not find products matching that description.")
+            return []
+
+        dispatcher.utter_message(text="Here are some options based on what you asked for:")
+        for _, row in top_5.iterrows():
+            details = " ".join(
+                part for part in [
+                    titleize(row.get("frame_color")),
+                    titleize(row.get("frame_shape")),
+                    titleize(row.get("frame_material")),
+                ]
+                if part
+            ).strip()
+            label = f"{row.get('product_name', 'Frame')} ({details})" if details else row.get("product_name", "Frame")
+            dispatcher.utter_message(text=f"{label} - RM {float(row.get('price_myr', 0) or 0):.2f}")
+        dispatcher.utter_message(
+            text="Want help narrowing these down?",
+            buttons=lead_buttons("Product Recommendation"),
+        )
+        return []
+
+
+class ActionFilterLenses(Action):
+    def name(self) -> Text:
+        return "action_filter_lenses"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        lens_type = tracker.get_slot("lens_type")
+        price_range = tracker.get_slot("price_range")
+
+        df = load_catalogue().copy()
+        mask = (
+            df["category"].astype(str).str.contains("Lens", case=False, na=False)
+            | df["product_type"].astype(str).str.contains("Lens", case=False, na=False)
+            | df["category"].astype(str).str.contains("Contact", case=False, na=False)
+        )
+        if lens_type:
+            needle = str(lens_type).lower().replace(" lenses", "").replace(" protection", "").strip()
+            mask = mask & (
+                df["lens_type"].astype(str).str.contains(needle, case=False, na=False)
+                | df["lens_feature"].astype(str).str.contains(needle, case=False, na=False)
+                | df["product_name"].astype(str).str.contains(needle, case=False, na=False)
+                | df["description"].astype(str).str.contains(needle, case=False, na=False)
+            )
+        results = filter_by_budget(df[mask], price_range).head(5)
+
+        if results.empty:
+            dispatcher.utter_message(text="We could not find any lenses matching your criteria.")
+            return []
+
+        dispatcher.utter_message(text="Here are some matching lenses:")
+        for _, row in results.iterrows():
+            dispatcher.utter_message(text=f"{row['product_name']} - RM {float(row['price_myr']):.2f}")
+        dispatcher.utter_message(
+            response="utter_next_step_lens_help",
+            buttons=lead_buttons(str(lens_type or "Lens Consultation")),
+        )
+        return []
+
+
+class ActionAskBrand(Action):
+    def name(self) -> Text:
+        return "action_ask_brand"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        product_type = tracker.get_slot("product_type")
+
+        df = load_catalogue().copy()
+        if product_type:
+            df = df[df["product_type"].astype(str).str.contains(str(product_type), case=False, na=False)]
+        brands = sorted(
+            {str(brand).strip() for brand in df["brand"].tolist() if str(brand).strip()},
+            key=str.lower,
+        )[:4]
+
+        buttons = [
+            {"title": brand.title(), "payload": f'/select_brand{{"brand":"{brand}"}}'}
+            for brand in brands
+        ]
+        buttons.append({"title": "Show All Brands", "payload": '/select_brand{"brand":"Show All Brands"}'})
+
+        if product_type and "contact" in str(product_type).lower():
+            text = "Which brand of contact lenses would you like to explore?"
+        elif product_type and "sunglasses" in str(product_type).lower():
+            text = "What brand of sunglasses are you interested in?"
+        else:
+            text = "Which brand would you like to explore?"
+
+        dispatcher.utter_message(text=text, buttons=buttons)
+        return []
+
+
+class ActionQualifyLead(Action):
+    def name(self) -> Text:
+        return "action_qualify_lead"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        lead_location = str(tracker.get_slot("lead_location") or "").strip()
+        preferred_service = str(tracker.get_slot("preferred_service") or tracker.get_slot("product_type") or "").strip()
+        email = str(tracker.get_slot("email") or "").strip()
+        contact_number = str(tracker.get_slot("contact_number") or "").strip()
+        purchase_timeline = str(tracker.get_slot("purchase_timeline") or "").strip().lower()
+
+        known_cities = {city.lower() for city in unique_cities(load_catalogue())}
+        location_match = any(city in lead_location.lower() for city in known_cities) if lead_location else False
+
+        if lead_location and not location_match:
+            status = "needs_review"
+        elif email and contact_number and preferred_service and purchase_timeline in {"this week", "within 2 weeks"}:
+            status = "qualified"
+        else:
+            status = "needs_review"
+
+        return [SlotSet("lead_status", status)]
+
+
+class ActionSubmitLeadCapture(Action):
+    def name(self) -> Text:
+        return "action_submit_lead_capture"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        payload = {
+            "name": tracker.get_slot("lead_name"),
+            "phone": tracker.get_slot("contact_number"),
+            "email": tracker.get_slot("email"),
+            "location": tracker.get_slot("lead_location"),
+            "preferred_service": tracker.get_slot("preferred_service") or tracker.get_slot("product_type"),
+            "purchase_timeline": tracker.get_slot("purchase_timeline"),
+            "lead_status": tracker.get_slot("lead_status"),
+            "latest_intent": tracker.latest_message.get("intent", {}).get("name"),
         }
 
-        if order:
-            icon = STATUS_ICON.get(order["status"], "🔍")
-            msg  = (
-                f"{icon} **Order #{order_id}**\n\n"
-                f"📦 Status: **{order['status']}**\n"
-                f"🚛 Carrier: {order['carrier']}\n"
-                f"🔢 Tracking No.: {order['tracking']}\n"
-                f"📅 ETA: {order['eta']}\n"
-                f"📍 Step: {order['step']}\n\n"
-                f"Track live on your carrier's website using the tracking number above."
-            )
-        else:
-            msg = (
-                f"❌ Order **#{order_id}** not found in our system.\n\n"
-                f"Please double-check the Order ID in your confirmation email/SMS. "
-                f"Need more help? WhatsApp us: **+60 12-XXX-XXXX** or call **1-800-XX-XXXX** (Toll Free, 9AM-9PM)."
-            )
-
-        dispatcher.utter_message(text=msg)
-        return [SlotSet("order_id", order_id)]
-
-
-# ============================================================
-# ACTION: action_find_nearest_store
-# ============================================================
-
-class ActionFindNearestStore(Action):
-    """Finds Calisto stores in the user's city."""
-
-    def name(self) -> Text:
-        return "action_find_nearest_store"
-
-    def run(
-        self,
-        dispatcher: CollectingDispatcher,
-        tracker: Tracker,
-        domain: DomainDict,
-    ) -> List[Dict[Text, Any]]:
-
-        city = tracker.get_slot("city")
-
-        # Fallback: scan latest message for a known city name
-        if not city:
-            text = tracker.latest_message.get("text", "")
-            city = self._detect_city(text)
-
-        if not city:
-            dispatcher.utter_message(text="Kat mana you sekarang? / Which city are you in? 🏙️ I'll find your nearest Calisto store.")
-            return []
-
-        logger.info("action_find_nearest_store | city=%s", city)
-        stores = _fetch_stores(city)
-
-        if stores:
-            lines = [f"🏪 **Calisto Stores near {city.title()}:**\n"]
-            for i, s in enumerate(stores, 1):
-                lines.append(
-                    f"{i}. **{s['name']}**\n"
-                    f"   📍 {s['address']}\n"
-                    f"   📞 {s['phone']}\n"
-                    f"   🕐 {s['hours']}\n"
-                )
-            lines.append("We recommend calling ahead / WhatsApp to confirm frame availability. Nak book eye test kat situ? 😊")
-            dispatcher.utter_message(text="\n".join(lines))
-        else:
+        response = gateway.submit_lead(payload)
+        status = tracker.get_slot("lead_status")
+        if status == "qualified":
             dispatcher.utter_message(
                 text=(
-                    f"We don't have a store in **{city.title()}** yet — but we're growing fast! 😊\n\n"
-                    f"In the meantime:\n"
-                    f"• 🛒 **Shop Online:** www.calisto.com.my (Free shipping seluruh Malaysia!)\n"
-                    f"• 🏠 **Home Trial:** We deliver 5 frames to try at home — no cost!\n"
-                    f"• 📱 **WhatsApp:** +60 12-XXX-XXXX\n\n"
-                    f"Current stores: KL · PJ · Subang · Shah Alam · Penang · JB · Ipoh · Melaka · KK · Kuching"
-                )
+                    "Thanks, your request is qualified and our team will follow up shortly.\n"
+                    f"You can also book directly here: {BOOKING_URL}"
+                ),
+                buttons=[
+                    {"title": "Book Appointment", "payload": "/book_appointment"},
+                    {"title": "Find Store", "payload": "/find_a_store"},
+                    {"title": "Browse Eyewear", "payload": "/browse_eyewear"},
+                ],
             )
-
-        return [SlotSet("city", city.title())]
-
-    @staticmethod
-    def _detect_city(text: str) -> Optional[str]:
-        text_lower = text.lower()
-        # Check aliases first (handles KL, PJ, JB, etc.)
-        for alias, canonical in CITY_ALIASES.items():
-            if alias in text_lower:
-                return canonical.title()
-        # Then check store database keys
-        for key in STORE_DATABASE:
-            if key in text_lower:
-                return key.title()
-        # Fuzzy match the whole input against known city names
-        all_keys = list(CITY_ALIASES.keys()) + list(STORE_DATABASE.keys())
-        matches = get_close_matches(text_lower.strip(), all_keys, n=1, cutoff=0.6)
-        if matches:
-            matched = matches[0]
-            return CITY_ALIASES.get(matched, matched).title()
-        return None
-
-
-# ============================================================
-# FORM VALIDATOR: frame_search_form
-# ============================================================
-
-class ValidateFrameSearchForm(FormValidationAction):
-    """Validates and normalises slots for frame_search_form."""
-
-    def name(self) -> Text:
-        return "validate_frame_search_form"
-
-    def validate_gender(
-        self,
-        slot_value: Any,
-        dispatcher: CollectingDispatcher,
-        tracker: Tracker,
-        domain: DomainDict,
-    ) -> Dict[Text, Any]:
-        if slot_value:
-            normalised = _normalise_gender(slot_value)
-            return {"gender": normalised}
-        return {"gender": slot_value}
-
-    def validate_budget(
-        self,
-        slot_value: Any,
-        dispatcher: CollectingDispatcher,
-        tracker: Tracker,
-        domain: DomainDict,
-    ) -> Dict[Text, Any]:
-        if slot_value:
-            value = _parse_budget(slot_value)
-            if value:
-                return {"budget": str(value)}
-        return {"budget": slot_value}
-
-    def validate_frame_style(
-        self,
-        slot_value: Any,
-        dispatcher: CollectingDispatcher,
-        tracker: Tracker,
-        domain: DomainDict,
-    ) -> Dict[Text, Any]:
-        known = list(FRAME_CATALOG.keys())
-        if slot_value and any(k in slot_value.lower() for k in known):
-            return {"frame_style": slot_value}
-        return {"frame_style": slot_value}
-
-
-# ============================================================
-# FORM VALIDATOR: order_tracking_form
-# ============================================================
-
-class ValidateOrderTrackingForm(FormValidationAction):
-    """Validates order_id format in order_tracking_form."""
-
-    def name(self) -> Text:
-        return "validate_order_tracking_form"
-
-    def validate_order_id(
-        self,
-        slot_value: Any,
-        dispatcher: CollectingDispatcher,
-        tracker: Tracker,
-        domain: DomainDict,
-    ) -> Dict[Text, Any]:
-        if slot_value:
-            cleaned = str(slot_value).strip().upper()
-            # Accept standard formats
-            if re.match(r"^(CAL-\d{4}-\d{4}|[A-Z]{0,3}\d{5,10})$", cleaned):
-                return {"order_id": cleaned}
-            # Try to extract from verbose input
-            m = re.search(r"\b(CAL-\d{4}-\d{4}|[A-Za-z]{0,3}\d{5,10})\b", str(slot_value))
-            if m:
-                return {"order_id": m.group(1).upper()}
-        dispatcher.utter_message(
-            text=(
-                "That doesn't look like a valid Order ID. "
-                "Expected format: `45821`, `ORD12345`, or `CAL-2024-9876`."
-            )
-        )
-        return {"order_id": None}
-
-
-# ============================================================
-# FORM VALIDATOR: eye_test_form
-# ============================================================
-
-class ValidateEyeTestForm(FormValidationAction):
-    """Validates slots for the eye test booking form."""
-
-    def name(self) -> Text:
-        return "validate_eye_test_form"
-
-    def validate_city(
-        self,
-        slot_value: Any,
-        dispatcher: CollectingDispatcher,
-        tracker: Tracker,
-        domain: DomainDict,
-    ) -> Dict[Text, Any]:
-        if not slot_value:
-            return {"city": None}
-
-        stores = _fetch_stores(slot_value)
-        if stores:
+        else:
             dispatcher.utter_message(
-                text=f"Great! We have a Calisto store in **{slot_value.title()}**. "
-                     f"Let's book your eye test there. 👓"
+                response="utter_lead_not_qualified",
+                buttons=[
+                    {"title": "Find Store", "payload": "/find_a_store"},
+                    {"title": "Browse Eyewear", "payload": "/browse_eyewear"},
+                    {"title": "Ask Another Question", "payload": "/ask_faq"},
+                ],
             )
-            return {"city": slot_value.title()}
 
-        available_cities = "KL, PJ, Subang Jaya, Shah Alam, Penang, JB, Ipoh, Melaka, KK, Kuching"
-        dispatcher.utter_message(
-            text=(
-                f"Sorry, no store in **{slot_value.title()}** yet. "
-                f"We're available in: {available_cities}. "
-                f"Which city works for you? / Mana satu yang okay?"
-            )
-        )
-        return {"city": None}
-
-    def validate_appointment_date(
-        self,
-        slot_value: Any,
-        dispatcher: CollectingDispatcher,
-        tracker: Tracker,
-        domain: DomainDict,
-    ) -> Dict[Text, Any]:
-        if slot_value and str(slot_value).strip():
-            return {"appointment_date": slot_value}
-        dispatcher.utter_message(text="Please provide a valid date (e.g. 15 March, next Monday, esok, Sabtu ni).")
-        return {"appointment_date": None}
-
-    def validate_appointment_time(
-        self,
-        slot_value: Any,
-        dispatcher: CollectingDispatcher,
-        tracker: Tracker,
-        domain: DomainDict,
-    ) -> Dict[Text, Any]:
-        if slot_value and str(slot_value).strip():
-            return {"appointment_time": slot_value}
-        dispatcher.utter_message(text="Please provide a valid time (e.g. 10:00 AM, 2:30 PM / pukul 10 pagi).")
-        return {"appointment_time": None}
+        if response and response.get("lead_id"):
+            dispatcher.utter_message(text=f"Reference ID: {response['lead_id']}")
+        return []

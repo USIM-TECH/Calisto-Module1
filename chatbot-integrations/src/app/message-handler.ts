@@ -1,16 +1,13 @@
 import type { IncomingMessage, OutgoingMessage } from '../core/types.js'
 import type { Logger } from '../core/utils/index.js'
-import { NLPClient } from '../core/utils/index.js'
-import type { MessageDeduplicator } from './message-deduplicator.js'
-import { mapNlpResponseToOutgoingMessages } from './rasa-outgoing.js'
+import type { LeadOrchestrator } from './lead-orchestrator.js'
 
 interface CreateNlpMessageHandlerProps {
   channelName: 'WhatsApp' | 'Instagram' | 'Messenger' | 'X' | 'Telegram'
   logger: Logger
-  nlpClient: NLPClient
+  orchestrator: LeadOrchestrator
   sendText: (recipientId: string, text: string) => Promise<unknown>
   sendMessage?: (recipientId: string, message: OutgoingMessage) => Promise<unknown>
-  deduplicator: MessageDeduplicator
 }
 
 function redactSenderId(senderId: string): string {
@@ -24,29 +21,21 @@ function redactSenderId(senderId: string): string {
 export function createNlpMessageHandler({
   channelName,
   logger,
-  nlpClient,
+  orchestrator,
   sendText,
   sendMessage,
-  deduplicator,
 }: CreateNlpMessageHandlerProps) {
   return async (message: IncomingMessage): Promise<void> => {
-    const messageText = message.text || message.interactive?.title
     const senderLabel = redactSenderId(message.senderId)
 
-    if (!deduplicator.shouldProcess(message)) {
-      logger.warn(`[${channelName}] Ignoring duplicate message ${message.messageId} from ${senderLabel}`)
-      return
-    }
-
-    if (!messageText) {
-      logger.warn(`[${channelName}] Ignoring non-text message from ${senderLabel}`)
-      return
-    }
-
     try {
-      const nlpResponse = await nlpClient.getResponse(message.senderId, messageText)
+      const result = await orchestrator.process(message)
+      if (!result) {
+        return
+      }
+
       logger.info(`[${channelName}] Reply generated for ${senderLabel}`)
-      const outgoingMessages = mapNlpResponseToOutgoingMessages(nlpResponse)
+      const outgoingMessages = result.outgoingMessages
 
       for (const outgoingMessage of outgoingMessages) {
         if (outgoingMessage.type === 'choice' && sendMessage) {
