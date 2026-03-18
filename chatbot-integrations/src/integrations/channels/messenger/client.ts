@@ -63,6 +63,15 @@ export class MessengerChannel {
     })
   }
 
+  public async getUserProfile(messengerUserId: string): Promise<{ id: string; first_name?: string; last_name?: string; name?: string }> {
+    const query = new URLSearchParams({
+      access_token: this._config.pageAccessToken,
+      fields: 'id,first_name,last_name,name',
+    })
+    const response = await axios.get(`${this._baseUrl}/${messengerUserId}?${query.toString()}`)
+    return response.data
+  }
+
   public async exchangeAuthorizationCodeForAccessToken(code: string, redirectUri: string): Promise<string> {
     const query = new URLSearchParams({
       client_id: this._config.clientId,
@@ -126,6 +135,18 @@ export class MessengerChannel {
 
   private async _processMessagingItem(item: any): Promise<void> {
     const incoming = normalizeMessengerMessagingItem(item)
+    if (!incoming.senderName) {
+      try {
+        const profile = await this.getUserProfile(incoming.senderId)
+        const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim()
+        incoming.senderName = profile.name
+          ?? fullName
+          ?? incoming.senderName
+      } catch (error: any) {
+        this._logger.warn(`[Messenger] Failed to fetch sender profile for ${incoming.senderId}: ${error.message}`)
+      }
+    }
+
     if (this._onMessage) {
       await this._onMessage(incoming)
     } else {

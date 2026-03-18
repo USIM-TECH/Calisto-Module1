@@ -6,6 +6,7 @@
 
 ```bash
 cd calisto_nlp_export
+docker compose build --no-cache rasa
 mkdir -p models
 docker compose run --rm rasa train
 docker compose up -d --build

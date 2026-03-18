@@ -11,10 +11,8 @@ import { WhatsAppChannel } from '../integrations/channels/whatsapp/index.js'
 import { XChannel } from '../integrations/channels/x/index.js'
 import { WebsiteChannel } from '../integrations/channels/website/index.js'
 import { HubSpotClient } from '../integrations/crm/hubspot/index.js'
-import { createMessageDeduplicator, type MessageDeduplicator } from './message-deduplicator.js'
-import { LeadOrchestrator } from './lead-orchestrator.js'
+import { createMessageDeduplicator, type MessageDeduplicator, LeadOrchestrator, RuntimeStore } from '../leads/index.js'
 import { createNlpMessageHandler } from './message-handler.js'
-import { RuntimeStore } from './runtime-store.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

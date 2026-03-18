@@ -8,9 +8,18 @@ export interface NLPClientConfig {
   fallbackMessage?: string
 }
 
+export interface NLPRequestMetadata {
+  channel?: string
+  senderName?: string
+  sourceId?: string
+  email?: string
+  phone?: string
+  location?: string
+}
+
 export interface NLPResponse {
   text: string
-  raw: Array<{ text?: string; image?: string; buttons?: any[] }>
+  raw: Array<{ text?: string; image?: string; buttons?: any[]; custom?: Record<string, unknown> }>
   tracker?: {
     latestIntent?: string
     slots: Record<string, unknown>
@@ -35,7 +44,7 @@ export class NLPClient {
    * @param message  - The message text to process
    * @returns        - NLPResponse with combined text and raw reply objects
    */
-  public async getResponse(userId: string, message: string): Promise<NLPResponse> {
+  public async getResponse(userId: string, message: string, metadata?: NLPRequestMetadata): Promise<NLPResponse> {
     const rasaUrl = this._config.rasaUrl
     const timeout = this._config.timeout ?? 10_000
     const fallback = this._config.fallbackMessage ?? DEFAULT_FALLBACK
@@ -52,11 +61,11 @@ export class NLPClient {
 
       const response = await axios.post(
         `${rasaUrl}/webhooks/rest/webhook`,
-        { sender: safeSender, message: safeMessage },
+        { sender: safeSender, message: safeMessage, metadata },
         { timeout }
       )
 
-      const replies: Array<{ text?: string; image?: string; buttons?: any[] }> = response.data
+      const replies: Array<{ text?: string; image?: string; buttons?: any[]; custom?: Record<string, unknown> }> = response.data
 
       if (!Array.isArray(replies) || replies.length === 0) {
         this._logger.warn('[NLP] Rasa returned empty response')

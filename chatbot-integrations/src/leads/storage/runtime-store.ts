@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 import path from 'path'
-import type { IncomingMessage } from '../core/types.js'
+import type { IncomingMessage } from '../../core/types.js'
 import { FileJsonStore } from './file-json-store.js'
 import type {
   ConversationMessageRecord,
@@ -8,7 +8,7 @@ import type {
   LeadRecord,
   RuntimeDataShape,
   WebhookEventRecord,
-} from './records.js'
+} from '../types/records.js'
 
 function nowIso(): string {
   return new Date().toISOString()

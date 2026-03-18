@@ -1,5 +1,5 @@
-import type { IncomingMessage } from '../core/types.js'
-import type { RuntimeStore } from './runtime-store.js'
+import type { IncomingMessage } from '../../core/types.js'
+import type { RuntimeStore } from '../storage/runtime-store.js'
 
 export interface MessageDeduplicator {
   shouldProcess(message: IncomingMessage): boolean

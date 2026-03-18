@@ -138,10 +138,10 @@ Website chat supports:
 
 ## Important Files
 
-- [lead-orchestrator.ts](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/src/app/lead-orchestrator.ts)
-- [runtime-store.ts](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/src/app/runtime-store.ts)
-- [records.ts](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/src/app/records.ts)
-- [file-json-store.ts](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/src/app/file-json-store.ts)
+- [lead-orchestrator.ts](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/src/leads/orchestration/lead-orchestrator.ts)
+- [runtime-store.ts](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/src/leads/storage/runtime-store.ts)
+- [records.ts](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/src/leads/types/records.ts)
+- [file-json-store.ts](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/src/leads/storage/file-json-store.ts)
 - [create-app.ts](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/src/app/create-app.ts)
 - [dependencies.ts](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/src/app/dependencies.ts)
 

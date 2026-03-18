@@ -43,7 +43,7 @@ export class TelegramChannel {
       return undefined
     }
 
-    const response = await axios.post(`${this._baseUrl}/sendMessage`, payload)
+    const response = await axios.post(`${this._baseUrl}/${payload.method}`, payload.payload)
     return response.data?.result?.message_id?.toString()
   }
 
