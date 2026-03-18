@@ -69,6 +69,33 @@ nlu:
       - can i see your eyewear range
       - i want to explore your catalog
 
+  - intent: search_product
+    examples: |
+      - i want [gucci](brand) [glasses](product_type) [under 300](budget)
+      - show me [rayban](brand) [sunglasses](product_type) [below 500](budget)
+      - looking for [prada](brand) [frames](product_type) [around 250](budget)
+      - i need [oakley](brand) [sunglasses](product_type) [above 300](budget)
+      - [gucci](brand) [designer frames](product_type) [under 400](budget)
+      - cheap [bossini](brand) [glasses](product_type) [below 150](budget)
+      - [cartier](brand) [luxury sunglasses](product_type) [above 1000](budget)
+      - i want [black](frame_color) [gucci](brand) [sunglasses](product_type) [under 300](budget)
+      - show me [black](frame_color) [ray-ban](brand) [sunglasses](product_type) [below 450](budget)
+      - find [brown](frame_color) [prada](brand) [frames](product_type) [between 250 and 500](budget)
+      - i want [metal](frame_material) [oakley](brand) [sunglasses](product_type) [above 300](budget)
+      - show [round](frame_shape) [gucci](brand) [glasses](product_type) [under 350](budget)
+      - looking for [cartier](brand) [frames](product_type)
+      - do you have [rayban](brand) [sunglasses](product_type)
+      - i need [black](frame_color) [designer frames](product_type)
+      - show me [gucci](brand) [frames](product_type) [rm300](budget)
+      - i want [oakley](brand) [shades](product_type) [below 600](budget)
+      - find [spectacles](product_type) from [bossini](brand) [under 200](budget)
+      - any [blue](frame_color) [aviator](frame_shape) [sunglasses](product_type) [below 500](budget)
+      - show me [acetate](frame_material) [prada](brand) [glasses](product_type) [under 450](budget)
+      - i want [gucci](brand) [eyeglasses](product_type) [between 300 and 450](budget)
+      - find [black](frame_color) [luxury sunglasses](product_type) from [cartier](brand)
+      - looking for [designer frames](product_type) by [saint laurent](brand) [around 800](budget)
+      - i need [contact lenses](product_type) from [acuvue](brand) [under 200](budget)
+
   - intent: lens_vision_solutions
     examples: |
       - Lens & Vision Solutions
@@ -258,6 +285,130 @@ nlu:
       - i have [200](budget)
       - my max is [350](budget)
       - can spend up to [450](budget)
+      - keep it [under 300](budget)
+      - show me options [below 500](budget)
+      - i need something [above 300](budget)
+      - i can do [between 250 and 400](budget)
+      - make it [around 250](budget)
+      - my budget is [rm300](budget)
+
+  - regex: budget
+    examples: |
+      - (?i)(?:under|below|less than)\s*rm?\s*\d+(?:\.\d+)?
+      - (?i)(?:above|over|more than)\s*rm?\s*\d+(?:\.\d+)?
+      - (?i)(?:between|from)\s*rm?\s*\d+(?:\.\d+)?\s*(?:and|-|to)\s*rm?\s*\d+(?:\.\d+)?
+      - (?i)(?:around|about|approx(?:imately)?)\s*rm?\s*\d+(?:\.\d+)?
+      - (?i)rm\s*\d+(?:\.\d+)?
+
+  - regex: price_range
+    examples: |
+      - (?i)under\s*rm\s*100
+      - (?i)rm\s*100\s*-\s*rm\s*250
+      - (?i)rm\s*250\s*-\s*rm\s*300
+      - (?i)above\s*rm\s*300
+
+  - lookup: brand
+    examples: |
+      - Gucci
+      - Ray-Ban
+      - Prada
+      - Oakley
+      - Bossini
+      - Cartier
+      - Saint Laurent
+      - Dior
+      - Tom Ford
+      - Bottega Veneta
+      - Projekt Produkt
+      - Acuvue
+
+  - lookup: product_type
+    examples: |
+      - Designer Frames
+      - Luxury Sunglasses
+      - Contact Lenses
+      - Daily Lenses
+      - Monthly Lenses
+      - Multifocal Lenses
+      - glasses
+      - frames
+      - eyeglasses
+      - spectacles
+      - sunglasses
+      - shades
+
+  - lookup: frame_color
+    examples: |
+      - black
+      - blue
+      - brown
+      - gold
+      - green
+      - red
+      - silver
+      - transparent
+      - yellow
+
+  - synonym: Gucci
+    examples: |
+      - gucci
+
+  - synonym: Ray-Ban
+    examples: |
+      - rayban
+      - ray ban
+
+  - synonym: Prada
+    examples: |
+      - prada
+
+  - synonym: Oakley
+    examples: |
+      - oakley
+
+  - synonym: Bossini
+    examples: |
+      - bossini
+
+  - synonym: Cartier
+    examples: |
+      - cartier
+
+  - synonym: Saint Laurent
+    examples: |
+      - saint laurent
+
+  - synonym: Designer Frames
+    examples: |
+      - glasses
+      - frames
+      - eyeglasses
+      - spectacles
+      - designer frames
+
+  - synonym: Luxury Sunglasses
+    examples: |
+      - sunglasses
+      - shades
+      - luxury sunglasses
+
+  - synonym: Contact Lenses
+    examples: |
+      - contacts
+      - contact lens
+      - contact lenses
+
+  - synonym: "300"
+    examples: |
+      - rm300
+
+  - synonym: under 300
+    examples: |
+      - below 300
+
+  - synonym: Black
+    examples: |
+      - black
 
   - intent: capture_lead
     examples: |

@@ -915,7 +915,7 @@ export function renderCustomerWebchatHtml(): string {
         }
       });
 
-      appendBubble('Welcome to Calisto Eyewear. Send “hi” to get started.', 'bot');
+      appendBubble('Chat ready. Send "hi" to start a live bot conversation.', 'bot');
     </script>
   </body>
 </html>`
