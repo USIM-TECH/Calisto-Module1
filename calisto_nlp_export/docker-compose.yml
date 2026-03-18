@@ -16,9 +16,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: >
-      sh -lc 'LATEST_MODEL=$$(ls -t /app/models/*.tar.gz | head -n1) &&
-      exec rasa run --enable-api --cors "*" --model "$$LATEST_MODEL" --endpoints endpoints.docker.yml --credentials credentials.yml --port 5005'
+    entrypoint: ["/bin/sh"]
+    command:
+      - -lc
+      - exec rasa run --enable-api --cors "*" --model "`ls -t /app/models/*.tar.gz | head -n1`" --endpoints endpoints.docker.yml --credentials credentials.yml --port 5005
     ports:
       - "5005:5005"
     depends_on:
