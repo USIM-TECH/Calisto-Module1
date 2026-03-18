@@ -68,6 +68,26 @@ nlu:
       - help me choose eyewear
       - can i see your eyewear range
       - i want to explore your catalog
+      - i want to check your frames
+      - let me browse your products
+      - show me what you have
+      - i want to see your collection
+      - can you recommend some eyewear
+      - i need help picking glasses
+      - what eyewear do you recommend
+      - help me find frames
+      - i want to shop for spectacles
+      - show me your best sellers
+      - show me some options
+      - got any frames
+      - need glasses
+      - want new specs
+      - can i see what frames you have
+      - show me some nice frames
+      - any recommended glasses
+      - let me see your optical frames
+      - show me frame options
+      - i want to see your eyewear options
 
   - intent: search_product
     examples: |
@@ -95,6 +115,26 @@ nlu:
       - find [black](frame_color) [luxury sunglasses](product_type) from [cartier](brand)
       - looking for [designer frames](product_type) by [saint laurent](brand) [around 800](budget)
       - i need [contact lenses](product_type) from [acuvue](brand) [under 200](budget)
+      - show me [designer frames](product_type) in [black](frame_color)
+      - i need [sunglasses](product_type) under [500](budget)
+      - find [contact lenses](product_type) around [200](budget)
+      - i want [frames](product_type) below [300](budget)
+      - show me [gucci](brand) options under [500](budget)
+      - recommend [designer frames](product_type) under [400](budget)
+      - find me [brown](frame_color) [glasses](product_type)
+      - do you have [acetate](frame_material) [frames](product_type)
+      - i need [cat-eye](frame_shape) [designer frames](product_type)
+      - show [contact lenses](product_type) for daily wear
+      - show me [black](frame_color) [frames](product_type) under [400](budget)
+      - need [designer frames](product_type) around [300](budget)
+      - any [ray-ban](brand) [sunglasses](product_type) under [600](budget)
+      - looking for [lightweight](frame_material) [frames](product_type)
+      - want [round](frame_shape) [glasses](product_type)
+      - i need [brown](frame_color) [sunglasses](product_type) for [driving](use_case)
+      - show me [contact lenses](product_type) for [daily wear](use_case)
+      - find [office](use_case) [glasses](product_type) under [500](budget)
+      - recommend [black](frame_color) [designer frames](product_type) for [formal](use_case) use
+      - show me [prada](brand) [designer frames](product_type) in [black](frame_color)
 
   - intent: lens_vision_solutions
     examples: |
@@ -111,6 +151,19 @@ nlu:
       - i am interested in lens upgrades
       - recommend lenses for me
       - show lens and vision plans
+      - i need help with my lenses
+      - what lens solutions do you have
+      - help me choose the right lenses
+      - i want vision correction options
+      - show me lens recommendations
+      - what lenses are suitable for screen use
+      - i need blue light lenses
+      - i want progressive lens options
+      - i need help with eye strain from screens
+      - what lenses do you suggest for office work
+      - lens options for reading and distance
+      - i need vision lenses for work
+      - can you suggest better lenses for daily use
 
   - intent: find_a_store
     examples: |
@@ -127,6 +180,82 @@ nlu:
       - show me outlets
       - branch locator
       - nearest calisto location
+      - i want a store in [Kuala Lumpur](city)
+      - show me a store in [Kuala Lumpur](city)
+      - i need a store in [Kuala Lumpur](city)
+      - find a store in [Kuala Lumpur](city)
+      - find me a store in [Kuala Lumpur](city)
+      - store in [Kuala Lumpur](city)
+      - any store in [Kuala Lumpur](city)
+      - where is your store in [Kuala Lumpur](city)
+      - i want a store in [Nilai](city)
+      - find a store in [Nilai](city)
+      - show me stores in [Kuala Lumpur](city)
+      - do you have a branch in [Kuala Lumpur](city)
+      - i want to visit your [Kuala Lumpur](city) branch
+      - where can i find your [Kuala Lumpur](city) outlet
+      - i am in [Kuala Lumpur](city), show me your stores
+      - i want a store in kuala lumpur
+      - show me a store in kuala lumpur
+      - find a store in kuala lumpur
+      - store in kuala lumpur
+      - i need a store in kuala lumpur
+      - i want a store in kl
+      - find a store in kl
+      - store in kl
+      - show me your stores in kl
+      - where is your kuala lumpur branch
+      - do you have a shop in kuala lumpur
+      - show me your kuala lumpur outlets
+      - i am in kl, show me your stores
+      - nearest store in kuala lumpur
+      - nearest calisto store in kuala lumpur
+      - where can i find a calisto store in kuala lumpur
+      - i want to visit a store in kuala lumpur
+      - can you show me stores in kuala lumpur
+      - store location in kuala lumpur
+      - i want a calisto store in kuala lumpur
+      - where is your store
+      - where are your stores located
+      - where is your shop
+      - where can i find your outlet
+      - can i visit your shop
+      - where is the closest calisto store
+      - which branch is nearest
+      - find the closest outlet
+      - nearest store near me
+      - show me your nearest branch
+      - i need a nearby outlet
+      - any branch near me
+      - where can i try frames in person
+      - i want to visit a calisto branch
+      - where can i find your stores
+      - i need your branch address
+      - show me your store addresses
+      - is there a calisto store in bukit bintang
+      - is there a store at lalaport bukit bintang
+      - show me your melawati mall branch
+      - do you have an outlet at aeon mall nilai
+      - find a store at mitsui outlet park
+      - show me stores in nilai
+      - branch in nilai
+      - store at melawati mall
+      - i want your kuala lumpur outlet address
+      - where is your kl outlet
+      - branch near bukit bintang
+      - nearest outlet in kuala lumpur
+      - store around kuala lumpur
+      - i need a store location
+      - nearest store pls
+      - store near bukit bintang pls
+      - any outlet in kl city centre
+      - branch at lalaport?
+      - store at aeon nilai?
+      - melawati mall outlet?
+      - where can i visit today
+      - i want to drop by your store
+      - find me a store for frame fitting
+      - store to try glasses near me
 
   - intent: select_product_type
     examples: |
@@ -224,9 +353,24 @@ nlu:
       - recommend a lens type
       - i want to learn about lens options
       - which lens is best for me
+      - i need single vision lenses
+      - i want multifocal lenses
+      - i need reading lenses
+      - suggest lenses for screen work
+      - i need lenses for computer use
+      - what is the difference between progressive and single vision
+      - do you have lenses for blue light protection
+      - best lenses for office use
+      - lenses for digital screens
+      - reading lenses please
+      - what lens should i choose
+      - need lens recommendation
 
   - intent: choose_city
     examples: |
+      - [Kuala Lumpur](city)
+      - [KL](city)
+      - [Nilai](city)
       - Aeon Mall Nilai
       - Lalaport Bukit Bintang
       - Melawati Mall
@@ -242,6 +386,87 @@ nlu:
       - show outlet at [Aeon Mall Nilai](city)
       - branch at [Melawati Mall](city)
       - [Lalaport Bukit Bintang](city) branch please
+      - [Kuala Lumpur](city) branch please
+      - show me [Kuala Lumpur](city)
+      - branch in [KL](city)
+      - store in [Nilai](city)
+      - [Aeon Mall Nilai](city) please
+      - [Melawati Mall](city) please
+      - [Mitsui Outlet Park](city) please
+      - [Bukit Bintang](city)
+      - [KL City Centre](city)
+      - [Lalaport](city)
+      - [Aeon Nilai](city)
+
+  - lookup: city
+    examples: |
+      - Kuala Lumpur
+      - KL
+      - Nilai
+      - Bukit Bintang
+      - KL City Centre
+      - Lalaport Bukit Bintang
+      - Lalaport
+      - Melawati Mall
+      - Aeon Mall Nilai
+      - Aeon Nilai
+      - Mitsui Outlet Park
+
+  - lookup: use_case
+    examples: |
+      - office
+      - screen
+      - computer
+      - driving
+      - daily wear
+      - travel
+      - fashion
+      - sports
+      - formal
+      - work
+      - reading
+      - gaming
+      - outdoor
+      - screen time
+      - eye strain
+
+  - lookup: urgency
+    examples: |
+      - urgent
+      - today
+      - this week
+      - within 2 weeks
+      - as soon as possible
+
+  - regex: order_id
+    examples: |
+      - (?i)[A-Z]{2,5}-?\d{3,8}
+
+  - synonym: Kuala Lumpur
+    examples: |
+      - KL
+      - kl
+      - kuala lumpur
+
+  - synonym: screen
+    examples: |
+      - computer
+      - screen time
+      - office
+      - work
+      - gaming
+      - eye strain
+
+  - synonym: daily wear
+    examples: |
+      - everyday
+      - daily use
+      - regular use
+
+  - synonym: driving
+    examples: |
+      - outdoor
+      - travel
 
   - intent: search_product_by_attribute
     examples: |
@@ -415,48 +640,61 @@ nlu:
       - i want to leave my details
       - contact me please
       - i want a consultant to call me
-      - boleh ambil detail saya
-      - saya nak tinggalkan maklumat
-      - 请联系我
-      - 我想留下资料
+      - please take my details
+      - i want someone from your team to contact me
+      - let me share my details
+      - i want to leave my contact details
+      - please have your team reach out to me
+      - can someone call me back
+      - i want to speak with a consultant
+      - i need a sales consultant to contact me
+      - can your team contact me
+      - please call me
+      - i want someone to reach out
+      - get someone from calisto to contact me
 
   - intent: share_name
     examples: |
       - my name is [Darshan](lead_name)
       - i am [Aisyah](lead_name)
       - this is [John Tan](lead_name)
-      - nama saya [Farah](lead_name)
-      - saya [Daniel Lee](lead_name)
-      - 我叫[王小明](lead_name)
-      - 我是[陈美玲](lead_name)
+      - i'm [Farah](lead_name)
+      - you can call me [Daniel Lee](lead_name)
+      - this is [Sarah Lim](lead_name)
+      - i am [Jason Wong](lead_name)
+      - [John Tan](lead_name)
 
   - intent: share_phone
     examples: |
       - my number is [0123456789](contact_number)
       - call me at [60123456789](contact_number)
       - you can reach me on [0198877665](contact_number)
-      - nombor saya [0171234567](contact_number)
-      - boleh hubungi saya di [60199887766](contact_number)
-      - 我的电话是[0127788990](contact_number)
+      - my phone number is [0171234567](contact_number)
+      - reach me at [60199887766](contact_number)
+      - my contact is [0127788990](contact_number)
+      - [0123456789](contact_number)
+      - [60123456789](contact_number)
 
   - intent: share_email
     examples: |
       - my email is [darshan@example.com](email)
       - use [support@calisto.my](email)
       - email me at [john.tan@gmail.com](email)
-      - emel saya [farah@contoh.my](email)
-      - boleh guna [sales@calisto.com](email)
-      - 我的邮箱是[chen@example.com](email)
+      - you can use [farah@contoh.my](email)
+      - my email address is [sales@calisto.com](email)
+      - [chen@example.com](email)
+      - contact me at [hello@sample.com](email)
 
   - intent: share_location
     examples: |
       - i am in [Kuala Lumpur](lead_location)
       - located in [Petaling Jaya](lead_location)
       - my area is [Nilai](lead_location)
-      - saya di [Shah Alam](lead_location)
-      - lokasi saya [Johor Bahru](lead_location)
-      - 我在[吉隆坡](lead_location)
-      - 我住在[八打灵再也](lead_location)
+      - i live in [Shah Alam](lead_location)
+      - my location is [Johor Bahru](lead_location)
+      - i am based in [Kuala Lumpur](lead_location)
+      - i am from [Nilai](lead_location)
+      - i am located in [Kuala Lumpur](lead_location)
 
   - intent: share_service_interest
     examples: |
@@ -466,10 +704,12 @@ nlu:
       - i need [After-sales Support](preferred_service)
       - show me [Designer Frames](preferred_service)
       - i want [Luxury Sunglasses](preferred_service)
-      - saya perlukan [Lens Consultation](preferred_service)
-      - saya mahu [Eyewear Recommendation](preferred_service)
-      - 我需要[After-sales Support](preferred_service)
-      - 我想要[Store Visit](preferred_service)
+      - i need help with [Designer Frames](preferred_service)
+      - i'm interested in [Luxury Sunglasses](preferred_service)
+      - i want a [Store Visit](preferred_service)
+      - i need [After-sales Support](preferred_service)
+      - i want [Contact Lenses](preferred_service)
+      - [Lens Consultation](preferred_service)
 
   - intent: share_timeline
     examples: |
@@ -479,9 +719,11 @@ nlu:
       - i need it [this week](purchase_timeline)
       - maybe [within 2 weeks](purchase_timeline)
       - i am [just exploring](purchase_timeline)
-      - saya perlukan minggu ini [This Week](purchase_timeline)
-      - hanya survey dulu [Just Exploring](purchase_timeline)
-      - 我想[This Week](purchase_timeline)决定
+      - i want to buy [this week](purchase_timeline)
+      - i will decide [within 2 weeks](purchase_timeline)
+      - i am only [just exploring](purchase_timeline)
+      - probably [this week](purchase_timeline)
+      - maybe [just exploring](purchase_timeline)
 
   - intent: ask_pricing
     examples: |
@@ -490,10 +732,20 @@ nlu:
       - how much are your frames
       - what is the price range
       - can you share pricing
-      - saya nak tahu harga
-      - berapa harga frame
-      - 请问价格多少
-      - 我想看价钱
+      - how much does it cost
+      - what do your sunglasses cost
+      - show me the price for contact lenses
+      - how much are designer frames
+      - can i get the pricing for lenses
+      - what is the cost of your eyewear
+      - tell me the price of frames
+      - i want to check your price list
+      - price for gucci frames
+      - how much for contact lenses
+      - frame price pls
+      - price for sunglasses under rm500
+      - what is your price for eye test
+      - how expensive are your designer frames
 
   - intent: book_appointment
     examples: |
@@ -501,10 +753,118 @@ nlu:
       - book eye test
       - schedule a consultation
       - i need an appointment
-      - saya nak book appointment
-      - tempah pemeriksaan mata
-      - 我要预约
-      - 预约验光
+      - book a store visit
+      - book an eye check
+      - i want to schedule an eye test
+      - can i book a fitting appointment
+      - arrange a consultation for me
+      - i want to visit the store and book a slot
+      - schedule an appointment for glasses
+      - can i reserve an appointment
+      - book me in this week
+      - can i come for an eye test tomorrow
+      - reserve a slot for me
+      - i need to book a frame fitting
+      - help me book a store visit
+      - i want to book in kl
+
+  - intent: reschedule_appointment
+    examples: |
+      - i need to reschedule my appointment
+      - can i change my appointment time
+      - i want to move my booking
+      - help me reschedule my eye test
+      - can i postpone my appointment
+      - i need to shift my store visit
+      - reschedule my consultation
+      - i want to change my appointment date
+      - move my booking to another day
+      - can i change my eye test slot
+      - i need a different appointment time
+      - change my store visit booking
+
+  - intent: order_tracking
+    examples: |
+      - i want to track my order
+      - can you check my order status
+      - where is my order
+      - help me track order [ORD-1024](order_id)
+      - my order number is [CAL-8891](order_id)
+      - i need an update on order [INV-12345](order_id)
+      - check order [ORD7788](order_id)
+      - order status please
+      - any update on my order
+      - where is my glasses order
+      - can you track my purchase
+      - my order is late
+      - i have not received my order yet
+
+  - intent: warranty_claim
+    examples: |
+      - i need to claim warranty
+      - how do i claim warranty
+      - my frame has an issue and i need warranty help
+      - can you help with a warranty claim
+      - i need warranty support for my glasses
+      - i have a product defect
+      - my glasses broke and i need warranty help
+      - can i submit a warranty request
+      - my frame is damaged
+      - my glasses arm broke
+      - lens coating has an issue
+      - i think this should be under warranty
+      - can i replace this under warranty
+
+  - intent: human_handoff
+    examples: |
+      - i want to speak to a human
+      - connect me to an agent
+      - let me talk to a consultant
+      - can a real person contact me
+      - i need human support
+      - i want to talk to your team
+      - transfer me to a consultant
+      - i need someone from sales to call me
+      - real person please
+      - can i talk to staff
+      - i need an actual person
+      - let me speak to sales
+      - not the bot, i want a consultant
+
+  - intent: store_hours
+    examples: |
+      - what time does your store open
+      - what are your store hours
+      - when do you close
+      - what time does the kuala lumpur branch close
+      - store opening hours
+      - what are your mall timings
+      - are you open today
+      - what time is the nilai outlet open
+      - opening hours for bukit bintang branch
+      - what time do you open in kl
+      - what time do you shut
+      - are you still open now
+      - store hours for melawati mall
+
+  - intent: product_recommendation
+    examples: |
+      - recommend glasses for [office](use_case) use
+      - i need frames for [screen](use_case) time
+      - what do you recommend for [driving](use_case)
+      - suggest eyewear for [daily wear](use_case)
+      - recommend sunglasses for [travel](use_case)
+      - i want stylish frames for [fashion](use_case)
+      - what glasses are good for [computer](use_case) work
+      - suggest something for [sports](use_case)
+      - recommend contact lenses for [daily wear](use_case)
+      - what eyewear is best for [formal](use_case) use
+      - i need good glasses for [work](use_case)
+      - what would suit [screen time](use_case)
+      - suggest frames for [reading](use_case)
+      - recommend sunglasses for [outdoor](use_case) use
+      - what is best for [eye strain](use_case)
+      - can you suggest something for [gaming](use_case)
 
   - intent: after_sales_support
     examples: |
@@ -512,10 +872,19 @@ nlu:
       - warranty help
       - help with my order
       - i need service after purchase
-      - saya perlukan bantuan selepas jualan
-      - semak waranti saya
-      - 我要售后服务
-      - 保修帮助
+      - i need warranty support
+      - can you help with my warranty
+      - i need help after buying my glasses
+      - i want support for my order
+      - i need help with fitting after purchase
+      - can someone help with my exchange
+      - i need help with my purchase
+      - i have a post-purchase issue
+      - my glasses feel loose
+      - i need frame adjustment help
+      - can i exchange this frame
+      - my order arrived damaged
+      - i need help after i bought my glasses
 
   - intent: affirm
     examples: |
@@ -523,22 +892,21 @@ nlu:
       - yup
       - okay
       - sure
-      - ya
-      - boleh
-      - 是
+      - of course
+      - definitely
+      - sounds good
+      - please do
 
   - intent: deny
     examples: |
       - no
       - nope
       - not now
-      - tak
-      - tidak
-      - 不是
-      - keep it under [120](budget)
-      - maybe [280](budget)
-      - around rm [220](budget)
-      - i can go for [600](budget)
+      - no thanks
+      - don't do that
+      - i don't want that
+      - maybe later
+      - not interested
 
   - intent: ask_faq
     examples: |

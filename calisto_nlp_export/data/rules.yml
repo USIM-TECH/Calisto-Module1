@@ -47,6 +47,11 @@ rules:
       - intent: find_a_store
       - action: action_ask_city
 
+  - rule: Answer store hours
+    steps:
+      - intent: store_hours
+      - action: action_handle_store_hours
+
   - rule: Choose city for store
     steps:
       - intent: choose_city
@@ -66,6 +71,11 @@ rules:
     steps:
       - intent: search_product
       - action: action_filter_products
+
+  - rule: Recommend products by use case
+    steps:
+      - intent: product_recommendation
+      - action: action_recommend_products
 
   - rule: Start lead capture from booking
     steps:
@@ -93,6 +103,38 @@ rules:
     steps:
       - intent: after_sales_support
       - action: utter_after_sales_intro
+      - action: action_prefill_lead_capture
+      - action: lead_capture_form
+      - active_loop: lead_capture_form
+
+  - rule: Start lead capture for order tracking
+    steps:
+      - intent: order_tracking
+      - action: utter_order_tracking_intro
+      - action: action_prefill_lead_capture
+      - action: lead_capture_form
+      - active_loop: lead_capture_form
+
+  - rule: Start lead capture for warranty support
+    steps:
+      - intent: warranty_claim
+      - action: utter_warranty_intro
+      - action: action_prefill_lead_capture
+      - action: lead_capture_form
+      - active_loop: lead_capture_form
+
+  - rule: Start lead capture for human handoff
+    steps:
+      - intent: human_handoff
+      - action: utter_handoff_intro
+      - action: action_prefill_lead_capture
+      - action: lead_capture_form
+      - active_loop: lead_capture_form
+
+  - rule: Start lead capture for appointment reschedule
+    steps:
+      - intent: reschedule_appointment
+      - action: utter_reschedule_intro
       - action: action_prefill_lead_capture
       - action: lead_capture_form
       - active_loop: lead_capture_form

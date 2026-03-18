@@ -16,10 +16,18 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    entrypoint: ["/bin/sh"]
+    entrypoint: ["rasa"]
     command:
-      - -lc
-      - exec rasa run --enable-api --cors "*" --model "`ls -t /app/models/*.tar.gz | head -n1`" --endpoints endpoints.docker.yml --credentials credentials.yml --port 5005
+      - run
+      - --enable-api
+      - --cors
+      - "*"
+      - --endpoints
+      - endpoints.docker.yml
+      - --credentials
+      - credentials.yml
+      - --port
+      - "5005"
     ports:
       - "5005:5005"
     depends_on:

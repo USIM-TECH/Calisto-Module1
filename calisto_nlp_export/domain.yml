@@ -11,8 +11,11 @@ intents:
   - ask_lens_type
   - lens_vision_solutions
   - find_a_store
+  - store_hours
   - choose_city
+  - search_product
   - search_product_by_attribute
+  - product_recommendation
   - inform_budget
   - capture_lead
   - share_name
@@ -22,7 +25,11 @@ intents:
   - share_service_interest
   - share_timeline
   - book_appointment
+  - reschedule_appointment
   - after_sales_support
+  - order_tracking
+  - warranty_claim
+  - human_handoff
   - affirm
   - deny
 
@@ -32,6 +39,9 @@ entities:
   - price_range
   - lens_type
   - city
+  - use_case
+  - urgency
+  - order_id
   - frame_color
   - frame_shape
   - frame_material
@@ -74,6 +84,24 @@ slots:
     mappings:
       - type: from_entity
         entity: city
+  use_case:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: use_case
+  urgency:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: urgency
+  order_id:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: order_id
   frame_color:
     type: text
     influence_conversation: true
@@ -244,6 +272,9 @@ responses:
   utter_ask_city:
     - text: "Which city or mall should I check for you?"
 
+  utter_store_hours_general:
+    - text: "Most Calisto stores typically follow mall operating hours, usually around 10:00 AM to 10:00 PM daily. If you tell me the city or mall, I can point you to the right location."
+
   utter_next_step_product_help:
     - text: "I can help you shortlist more options, find a nearby store, or arrange a consultation."
 
@@ -255,6 +286,21 @@ responses:
 
   utter_after_sales_intro:
     - text: "I can help with warranty, fitting adjustments, order follow-up, or general after-sales support. Before we continue, I need a few contact details so the right team can follow up."
+
+  utter_order_tracking_intro:
+    - text: "I can help with order follow-up. If you have an order reference, share it, or leave your details and our team will check the latest update for you."
+
+  utter_warranty_intro:
+    - text: "I can help with warranty and post-purchase issues. Please share a few contact details so our support team can review your case."
+
+  utter_handoff_intro:
+    - text: "Sure. I can connect you with a consultant. I just need a few contact details so the right person can reach you."
+
+  utter_reschedule_intro:
+    - text: "I can help with appointment changes. Please share your contact details and our team will help reschedule your visit."
+
+  utter_handoff_ack:
+    - text: "I’ve flagged this for a human consultant. You can also share more details about what you need, and I’ll pass that along."
 
   utter_ask_lead_name:
     - text: "First, may I have your name?"
@@ -297,9 +343,11 @@ responses:
 actions:
   - action_ask_city
   - action_ask_brand
+  - action_handle_store_hours
   - action_filter_products
   - action_explain_lens
   - action_find_store
+  - action_recommend_products
   - action_prefill_lead_capture
   - action_reset_eyewear_slots
   - action_document_search

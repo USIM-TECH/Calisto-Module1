@@ -341,6 +341,36 @@ def latest_metadata(tracker: Tracker) -> Dict[str, Any]:
     return metadata if isinstance(metadata, dict) else {}
 
 
+def infer_service_from_intent(tracker: Tracker) -> str:
+    intent_name = str(tracker.latest_message.get("intent", {}).get("name") or "").strip()
+    service_map = {
+        "book_appointment": "Appointment Booking",
+        "reschedule_appointment": "Appointment Reschedule",
+        "after_sales_support": "After-sales Support",
+        "order_tracking": "Order Tracking",
+        "warranty_claim": "Warranty Support",
+        "human_handoff": "Consultant Support",
+    }
+    if intent_name in service_map:
+        return service_map[intent_name]
+    return ""
+
+
+def infer_product_type_from_use_case(use_case: str) -> str:
+    lowered = str(use_case or "").lower()
+    if any(token in lowered for token in ["screen", "computer", "office", "work"]):
+        return "Designer Frames"
+    if any(token in lowered for token in ["drive", "driving", "sun", "outdoor", "travel"]):
+        return "Luxury Sunglasses"
+    if any(token in lowered for token in ["daily", "everyday", "contact", "comfort"]):
+        return "Contact Lenses"
+    if any(token in lowered for token in ["sport", "active", "running", "cycling"]):
+        return "Luxury Sunglasses"
+    if any(token in lowered for token in ["fashion", "stylish", "premium", "formal"]):
+        return "Designer Frames"
+    return ""
+
+
 class ActionPrefillLeadCapture(Action):
     def name(self) -> Text:
         return "action_prefill_lead_capture"
@@ -359,6 +389,7 @@ class ActionPrefillLeadCapture(Action):
             "contact_number": metadata.get("phone"),
             "email": metadata.get("email"),
             "lead_location": metadata.get("location"),
+            "preferred_service": metadata.get("preferred_service") or infer_service_from_intent(tracker),
         }
 
         for slot_name, value in slot_mappings.items():
@@ -601,6 +632,32 @@ class ActionAskCity(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        resolved_city = tracker.get_slot("city") or tracker.get_slot("lead_location")
+        if resolved_city:
+            city = str(resolved_city)
+            backend_stores = gateway.search_stores(city)
+            if backend_stores:
+                for store in backend_stores[:6]:
+                    emit_store_card(
+                        dispatcher,
+                        str(store.get("store_location", "Calisto Store")),
+                        str(store.get("city", city)),
+                    )
+                return [SlotSet("city", city)]
+
+            stores = search_store_rows(load_catalogue(), city)
+            if stores.empty:
+                dispatcher.utter_message(text=f"I could not find any Calisto stores in {titleize(city)}.")
+                return [SlotSet("city", city)]
+
+            for _, row in stores.head(6).iterrows():
+                emit_store_card(
+                    dispatcher,
+                    str(row.get("store_location", "Calisto Store")),
+                    str(row.get("city", city)),
+                )
+            return [SlotSet("city", city)]
+
         cities = unique_cities(load_catalogue())
         buttons = [
             {"title": city.title(), "payload": f'/choose_city{{"city":"{city}"}}'}
@@ -647,6 +704,113 @@ class ActionFindStore(Action):
                 str(row.get('city', city)),
             )
         return []
+
+
+class ActionHandleStoreHours(Action):
+    def name(self) -> Text:
+        return "action_handle_store_hours"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        city = tracker.get_slot("city") or tracker.get_slot("lead_location")
+        if city:
+            dispatcher.utter_message(
+                text=(
+                    f"Most Calisto stores in {titleize(str(city))} typically follow mall operating hours, "
+                    "usually around 10:00 AM to 10:00 PM daily. I recommend confirming before visiting."
+                ),
+                buttons=[
+                    {"title": "Show Stores", "payload": f'/choose_city{{"city":"{city}"}}'},
+                    {"title": "Book Visit", "payload": "/book_appointment"},
+                ],
+            )
+            return []
+
+        dispatcher.utter_message(
+            response="utter_store_hours_general",
+            buttons=[
+                {"title": "Find Store", "payload": "/find_a_store"},
+                {"title": "Book Visit", "payload": "/book_appointment"},
+            ],
+        )
+        return []
+
+
+class ActionRecommendProducts(Action):
+    def name(self) -> Text:
+        return "action_recommend_products"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        entities = latest_entity_values(tracker)
+        use_case = entities.get("use_case") or tracker.get_slot("use_case")
+        budget = entities.get("budget") or tracker.get_slot("budget") or tracker.get_slot("price_range")
+        brand = entities.get("brand") or tracker.get_slot("brand")
+        requested_type = entities.get("product_type") or tracker.get_slot("product_type")
+
+        inferred_type = requested_type or infer_product_type_from_use_case(str(use_case or ""))
+        filtered_df = load_catalogue().copy()
+
+        if inferred_type:
+            filtered_df = filtered_df[
+                filtered_df["product_type"].astype(str).str.contains(str(inferred_type), case=False, na=False)
+            ]
+        if brand:
+            filtered_df = filtered_df[
+                filtered_df["brand"].astype(str).str.contains(str(brand), case=False, na=False)
+            ]
+        if use_case:
+            use_case_text = str(use_case)
+            mask = (
+                filtered_df["description"].astype(str).str.contains(use_case_text, case=False, na=False)
+                | filtered_df["product_name"].astype(str).str.contains(use_case_text, case=False, na=False)
+                | filtered_df["lens_feature"].astype(str).str.contains(use_case_text, case=False, na=False)
+            )
+            if not filtered_df[mask].empty:
+                filtered_df = filtered_df[mask]
+
+        filtered_df = filter_by_budget(filtered_df, budget)
+        results = filtered_df.head(4)
+
+        if results.empty:
+            dispatcher.utter_message(
+                text=(
+                    "I could not find a strong match yet. Tell me your preferred product type, budget, or use case "
+                    "such as office use, driving, daily wear, or fashion."
+                ),
+                buttons=[
+                    {"title": "Browse Eyewear", "payload": "/browse_eyewear"},
+                    {"title": "Check Pricing", "payload": "/ask_pricing"},
+                    {"title": "Talk to Consultant", "payload": '/capture_lead{"preferred_service":"Eyewear Recommendation"}'},
+                ],
+            )
+            return []
+
+        intro_bits = []
+        if inferred_type:
+            intro_bits.append(str(inferred_type))
+        if use_case:
+            intro_bits.append(f"for {str(use_case).strip()}")
+        if budget:
+            intro_bits.append(f"within {str(budget).strip()}")
+        intro_text = " ".join(intro_bits).strip()
+        if intro_text:
+            dispatcher.utter_message(text=f"Here are a few recommendations {intro_text}:")
+        else:
+            dispatcher.utter_message(text="Here are a few product recommendations for you:")
+
+        for _, row in results.iterrows():
+            emit_product_card(dispatcher, row.to_dict(), str(inferred_type or "Eyewear Recommendation"))
+
+        return [SlotSet("product_type", inferred_type)] if inferred_type else []
 
 
 class ActionSearchProductByAttribute(Action):
@@ -823,6 +987,9 @@ class ActionSubmitLeadCapture(Action):
             "location": tracker.get_slot("lead_location"),
             "preferred_service": tracker.get_slot("preferred_service") or tracker.get_slot("product_type"),
             "purchase_timeline": tracker.get_slot("purchase_timeline"),
+            "order_id": tracker.get_slot("order_id"),
+            "use_case": tracker.get_slot("use_case"),
+            "urgency": tracker.get_slot("urgency"),
             "lead_status": tracker.get_slot("lead_status"),
             "latest_intent": tracker.latest_message.get("intent", {}).get("name"),
         }
@@ -847,7 +1014,7 @@ class ActionSubmitLeadCapture(Action):
                 buttons=[
                     {"title": "Find Store", "payload": "/find_a_store"},
                     {"title": "Browse Eyewear", "payload": "/browse_eyewear"},
-                    {"title": "Ask Another Question", "payload": "/ask_faq"},
+                    {"title": "Ask Another Question", "payload": "/greet"},
                 ],
             )
 
