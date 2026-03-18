@@ -79,12 +79,11 @@
       "conversationId": "website-user-demo",
       "qualificationStatus": "needs_review",
       "crmStatus": "pending",
-      "lastMessageAt": "2026-03-17T08:58:49.839Z",
+      "lastMessageAt": "2026-03-18T05:33:27.020Z",
       "createdAt": "2026-03-17T03:37:47.737Z",
-      "updatedAt": "2026-03-17T08:58:49.973Z",
-      "lastIntent": "choose_city",
-      "preferredService": "Luxury Sunglasses",
-      "location": "Kuala Lumpur"
+      "updatedAt": "2026-03-18T05:33:27.167Z",
+      "lastIntent": "capture_lead",
+      "preferredService": "Designer Frames"
     },
     {
       "id": "lead_b82bc9f6-5a98-4131-92c7-87795b5e7122",
@@ -117,6 +116,19 @@
       "lastIntent": "choose_city",
       "preferredService": "Luxury Sunglasses",
       "location": "Kuala Lumpur"
+    },
+    {
+      "id": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+      "channel": "website",
+      "sourceId": "verify-webchat-cards",
+      "conversationId": "verify-webchat-cards",
+      "qualificationStatus": "needs_review",
+      "crmStatus": "pending",
+      "lastMessageAt": "2026-03-18T05:17:47.041Z",
+      "createdAt": "2026-03-18T05:17:38.275Z",
+      "updatedAt": "2026-03-18T05:17:47.137Z",
+      "preferredService": "Designer Frames",
+      "lastIntent": "select_budget"
     }
   ],
   "conversations": [
@@ -5719,7 +5731,7 @@
       "channel": "website",
       "sourceId": "website-user-demo",
       "createdAt": "2026-03-17T03:37:47.745Z",
-      "updatedAt": "2026-03-17T08:58:50.005Z",
+      "updatedAt": "2026-03-18T05:33:27.178Z",
       "messages": [
         {
           "direction": "inbound",
@@ -6765,6 +6777,935 @@
           "text": "Would you like to book a visit or speak with a consultant before you go?",
           "messageType": "choice",
           "timestamp": "2026-03-17T08:58:50.005Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773810391475",
+          "text": "hi",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:06:31.475Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_5a1d8ae4-5c61-4489-b667-5b626d80d26d",
+          "text": "Selamat datang to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:06:31.941Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773810447892",
+          "text": "hi",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:07:27.892Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_3b562e54-778a-4903-9b72-ddd6e6cf2f17",
+          "text": "Selamat datang to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:07:27.995Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773810450182",
+          "text": "/browse_eyewear",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:07:30.182Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_24575e16-1b97-44b4-9e51-d954e239621e",
+          "text": "Great. What are you shopping for today?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:07:30.333Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773810451781",
+          "text": "/select_product_type{\"product_type\":\"Designer Frames\"}",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:07:31.781Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_9fa54c43-06f1-4461-ac73-9b736f5b91bc",
+          "text": "Which brand would you like to explore?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:07:31.895Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773810453216",
+          "text": "/select_brand{\"brand\":\"Bausch & Lomb\"}",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:07:33.216Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_728d01cc-8e08-494b-9728-c8433b940228",
+          "text": "To narrow this down properly, what budget range are you comfortable with?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:07:33.327Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773810455198",
+          "text": "/select_budget{\"price_range\":\"Above RM300\"}",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:07:35.198Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_e017b1f5-e1f4-4220-aa67-5dc6d370e6a6",
+          "text": "Here are some products that match your request:",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:07:35.306Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_7ad0154a-dc51-4434-9163-214789247d84",
+          "text": "Would you like to try these frames at a Calisto store?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:07:35.314Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773810459447",
+          "text": "/book_appointment",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:07:39.447Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_4b807e9b-87ed-4469-b062-06be8c39e0eb",
+          "text": "I can help you book an appointment for an eye test, fitting, or consultation. Before I do that, I just need a few contact details so our team can reach you.",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:07:39.568Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_99403aad-c1e8-4417-8b48-fae99b02af90",
+          "text": "First, may I have your name?",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:07:39.576Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773810465349",
+          "text": "Aswanth B",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:07:45.349Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_43d71e4c-17dc-41d9-9566-44a5f043cb25",
+          "text": "What is the best WhatsApp or phone number for our team to reach you on?",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:07:45.436Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773810472707",
+          "text": "7395918838",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:07:52.707Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_40627bc0-dc20-414b-8609-1b01fb24645f",
+          "text": "What email address should we use for quotations or follow-up?",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:07:52.816Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773810486740",
+          "text": "aswanthb2006@gmail.com",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:08:06.740Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_7f73cb83-658a-4e53-82dd-077446429bcf",
+          "text": "Which area or city are you located in, so we can route you to the right team or store?",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:08:06.844Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773810491724",
+          "text": "penang",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:08:11.724Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_5af80ec8-e3c7-4874-b3b9-359fdc3c9aee",
+          "text": "How soon are you planning to make a decision or visit a store?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:08:11.844Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773810493997",
+          "text": "/share_timeline{\"purchase_timeline\":\"Just Exploring\"}",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:08:13.997Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_84849312-da27-478e-a4a3-79087b12777c",
+          "text": "Thank you. We have captured your inquiry and our team will review the best next step for you.",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:08:14.130Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773810496264",
+          "text": "/browse_eyewear",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:08:16.264Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_883df445-3f38-4611-bf1a-8ba8deb10938",
+          "text": "Great. What are you shopping for today?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:08:16.389Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773810505849",
+          "text": "i need gucci glasses under 500",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:08:25.849Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_1f3f1b08-0394-47dc-ac9e-5086ef119ae0",
+          "text": "Here are some products that match your request:",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:08:25.967Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811346795",
+          "text": "hi",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:22:26.795Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_f1295fe0-2d78-40dc-9f2f-a6c2e6c39535",
+          "text": "Selamat datang to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:22:26.887Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811348405",
+          "text": "/ask_pricing",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:22:28.405Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_5b61e259-6a10-4d79-8716-b60b0b760215",
+          "text": "Sure. I can help with pricing for frames, sunglasses, contact lenses, and lens upgrades. Which category do you want pricing for?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:22:28.494Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811349654",
+          "text": "/share_service_interest{\"preferred_service\":\"Luxury Sunglasses\"}",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:22:29.654Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_32db35f1-0f2a-4162-880f-ac58777ca29c",
+          "text": "Thank you. We have captured your inquiry and our team will review the best next step for you.",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:22:29.799Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811356987",
+          "text": "/find_a_store",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:22:36.987Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_6d4b2ebd-2d91-41f9-976a-4df758c006dc",
+          "text": "Which city are you looking for?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:22:37.071Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811357721",
+          "text": "/choose_city{\"city\":\"Kuala Lumpur\"}",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:22:37.721Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_e84d35b1-6c96-4d16-84b1-e344fa908483",
+          "text": "Sorry, something went wrong. Please try again.",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:22:37.817Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811669828",
+          "text": "hi",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:27:49.828Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_e431f366-ab44-4a64-85d4-4c50eaa95de9",
+          "text": "Sorry, something went wrong. Please try again.",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:27:49.900Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811747763",
+          "text": "hi",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:29:07.763Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_8f96502e-d72f-4fcc-a42a-a97621e4d742",
+          "text": "Sorry, something went wrong. Please try again.",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:29:07.837Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811892132",
+          "text": "hi",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:31:32.132Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_f8ac139a-ed8f-4058-a8c1-0664d1fe912d",
+          "text": "Selamat datang to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:31:32.605Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811894264",
+          "text": "/browse_eyewear",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:31:34.264Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_3bbc9c28-4f05-460e-9a8a-8c312b6517ee",
+          "text": "Great. What are you shopping for today?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:31:34.402Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811895050",
+          "text": "/select_product_type{\"product_type\":\"Designer Frames\"}",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:31:35.050Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_83d27d5e-133d-40d5-be60-f58a82a63255",
+          "text": "Sorry, something went wrong. Please try again.",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:31:35.143Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811934405",
+          "text": "hi",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:32:14.405Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_02ed22b6-cc14-4a22-98cc-298882db182b",
+          "text": "Selamat datang to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:32:14.529Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811936980",
+          "text": "/browse_eyewear",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:32:16.980Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_606da2e5-964b-4805-a556-b4db83ec4462",
+          "text": "Great. What are you shopping for today?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:32:17.106Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811937631",
+          "text": "/select_product_type{\"product_type\":\"Designer Frames\"}",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:32:17.631Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_306c1deb-e78e-4854-8f2b-6a6628a07e92",
+          "text": "Which brand would you like to explore?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:32:17.723Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811939145",
+          "text": "/select_brand{\"brand\":\"Acuvue\"}",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:32:19.145Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_5dfcef13-585c-4c51-8f95-a2fad737099d",
+          "text": "To narrow this down properly, what budget range are you comfortable with?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:32:19.255Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811941013",
+          "text": "/select_budget{\"price_range\":\"Above RM300\"}",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:32:21.013Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_d37b3dff-d6e9-41cb-be2d-c351068296d8",
+          "text": "Here are some products that match your request:",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:32:21.118Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_acdfbf52-64db-4682-873d-622d6e6de907",
+          "messageType": "card",
+          "timestamp": "2026-03-18T05:32:21.126Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_a53dc380-a30d-40b2-88ab-ca5dece6295c",
+          "messageType": "card",
+          "timestamp": "2026-03-18T05:32:21.135Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_4dbf1732-785a-4575-9d7c-613866d9b0a5",
+          "messageType": "card",
+          "timestamp": "2026-03-18T05:32:21.143Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_10f981ca-00f8-456d-901c-ec1708b5ca82",
+          "messageType": "card",
+          "timestamp": "2026-03-18T05:32:21.151Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_27f2e974-1129-40c4-a330-c2df985008b1",
+          "messageType": "card",
+          "timestamp": "2026-03-18T05:32:21.159Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_3ea99b65-8693-472f-906f-dcca82413956",
+          "text": "Would you like to try these frames at a Calisto store?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:32:21.167Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811953640",
+          "text": "i need gucci glasses under 500",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:32:33.640Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_2aeff200-8a1e-480c-9212-b37796bf547c",
+          "text": "Here are some products that match your request:",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:32:33.761Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_d957113c-766b-4a34-ad65-9b4c8c2eb5c9",
+          "messageType": "card",
+          "timestamp": "2026-03-18T05:32:33.776Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_e711c238-1c48-445a-b1b4-5d4904fb6939",
+          "messageType": "card",
+          "timestamp": "2026-03-18T05:32:33.788Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773812007020",
+          "text": "/capture_lead{\"preferred_service\":\"Designer Frames\"}",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:33:27.020Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_8127cba8-63d0-4f24-8df2-969ba14a3880",
+          "text": "First, may I have your name?",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:33:27.178Z",
           "metadata": {
             "channel": "website",
             "sourceId": "website-user-demo",
@@ -8932,2246 +9873,162 @@
           }
         }
       ]
+    },
+    {
+      "id": "verify-webchat-cards",
+      "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+      "channel": "website",
+      "sourceId": "verify-webchat-cards",
+      "createdAt": "2026-03-18T05:17:38.285Z",
+      "updatedAt": "2026-03-18T05:17:47.155Z",
+      "messages": [
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811058262",
+          "text": "/select_product_type{\"product_type\":\"Designer Frames\"}",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:17:38.262Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "verify-webchat-cards",
+            "conversationId": "verify-webchat-cards",
+            "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_a665dad0-9477-4c31-8868-63497d3a1c9d",
+          "text": "Which brand would you like to explore?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:17:38.355Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "verify-webchat-cards",
+            "conversationId": "verify-webchat-cards",
+            "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811059051",
+          "text": "/browse_eyewear",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:17:39.051Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "verify-webchat-cards",
+            "conversationId": "verify-webchat-cards",
+            "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_323b2f33-e4b1-4123-a84e-ba387d141403",
+          "text": "Great. What are you shopping for today?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:17:39.144Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "verify-webchat-cards",
+            "conversationId": "verify-webchat-cards",
+            "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811059574",
+          "text": "/select_brand{\"brand\":\"Bausch & Lomb\"}",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:17:39.574Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "verify-webchat-cards",
+            "conversationId": "verify-webchat-cards",
+            "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_2eb37af4-4aaf-48c1-a4d8-6e3a762e697c",
+          "text": "To narrow this down properly, what budget range are you comfortable with?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:17:39.657Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "verify-webchat-cards",
+            "conversationId": "verify-webchat-cards",
+            "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811059869",
+          "text": "hi",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:17:39.869Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "verify-webchat-cards",
+            "conversationId": "verify-webchat-cards",
+            "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_579a0189-645f-4dd0-b6dc-b80e6ada86c1",
+          "text": "Selamat datang to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:17:39.931Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "verify-webchat-cards",
+            "conversationId": "verify-webchat-cards",
+            "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773811067041",
+          "text": "/select_budget{\"price_range\":\"Above RM300\"}",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:17:47.041Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "verify-webchat-cards",
+            "conversationId": "verify-webchat-cards",
+            "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_217f28ed-3ff5-4d68-bf69-84c48d7fa350",
+          "text": "Here are some products that match your request:",
+          "messageType": "text",
+          "timestamp": "2026-03-18T05:17:47.146Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "verify-webchat-cards",
+            "conversationId": "verify-webchat-cards",
+            "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_5c1fda5d-82df-4b47-9eb6-e7b36d7dfa86",
+          "text": "Great. What are you shopping for today?",
+          "messageType": "choice",
+          "timestamp": "2026-03-18T05:17:47.155Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "verify-webchat-cards",
+            "conversationId": "verify-webchat-cards",
+            "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd"
+          }
+        }
+      ]
     }
   ],
   "webhookEvents": [
-    {
-      "id": "evt_16cc07a8-7605-4c71-ba19-cec927c37a27",
-      "receivedAt": "2026-03-17T04:58:02.359Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773723482106,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773723481646,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTQyMzEyMzQ2NjMyNjE2MzU1OTAyMTAzMTcxODkxMgZDZD",
-                  "text": "hii"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_b5195e7e-31e5-4684-8097-ab4beca4f51b",
-      "receivedAt": "2026-03-17T04:58:02.802Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "sender": {
-          "id": "2442016496259306"
-        },
-        "recipient": {
-          "id": "17841480398532472"
-        },
-        "timestamp": 1773723481646,
-        "message": {
-          "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTQyMzEyMzQ2NjMyNjE2MzU1OTAyMTAzMTcxODkxMgZDZD",
-          "text": "hii"
-        }
-      }
-    },
-    {
-      "id": "evt_53efacfc-4fbc-419e-977a-398a2f0b097e",
-      "receivedAt": "2026-03-17T04:58:02.906Z",
-      "channel": "instagram",
-      "direction": "outbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "metadata": {
-          "channel": "instagram",
-          "sourceId": "2442016496259306",
-          "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-          "conversationId": "2442016496259306"
-        },
-        "messages": [
-          {
-            "type": "choice",
-            "text": "Selamat datang to Calisto Eyewear 👓\nHow can I assist you today?",
-            "options": [
-              {
-                "label": "Browse Eyewear",
-                "value": "/browse_eyewear"
-              },
-              {
-                "label": "Lens & Vision Solutions",
-                "value": "/lens_vision_solutions"
-              },
-              {
-                "label": "Find a Store",
-                "value": "/find_a_store"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_211d467b-a011-4cfc-af8c-1bdce94749ba",
-      "receivedAt": "2026-03-17T04:58:03.076Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773723482845,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773723482818,
-                "message_edit": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTQyMzEyMzQ2NjMyNjE2MzU1OTAyMTAzMTcxODkxMgZDZD",
-                  "num_edit": 0
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_387f4ff5-5bc4-4fea-b64c-c3a413e14be1",
-      "receivedAt": "2026-03-17T04:58:03.821Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "sender": {
-          "id": "2442016496259306"
-        },
-        "recipient": {
-          "id": "17841480398532472"
-        },
-        "timestamp": 1773723482818
-      }
-    },
-    {
-      "id": "evt_a937c559-158f-4390-adca-4f7bc95f7cd6",
-      "receivedAt": "2026-03-17T05:08:40.577Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773724120365,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773723523809,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTQyMzkwMTIzNDA1MzgwNjg3NzQ4NDcwNDA3MTY4MAZDZD",
-                  "text": "hii"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_a51daaaf-a051-4931-993c-88ebb309ef0e",
-      "receivedAt": "2026-03-17T05:08:41.066Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "sender": {
-          "id": "2442016496259306"
-        },
-        "recipient": {
-          "id": "17841480398532472"
-        },
-        "timestamp": 1773723523809,
-        "message": {
-          "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTQyMzkwMTIzNDA1MzgwNjg3NzQ4NDcwNDA3MTY4MAZDZD",
-          "text": "hii"
-        }
-      }
-    },
-    {
-      "id": "evt_1fb4d810-a490-406f-bc44-309e2849e794",
-      "receivedAt": "2026-03-17T05:08:41.167Z",
-      "channel": "instagram",
-      "direction": "outbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "metadata": {
-          "channel": "instagram",
-          "sourceId": "2442016496259306",
-          "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-          "conversationId": "2442016496259306"
-        },
-        "messages": [
-          {
-            "type": "choice",
-            "text": "Selamat datang to Calisto Eyewear 👓\nHow can I assist you today?",
-            "options": [
-              {
-                "label": "Browse Eyewear",
-                "value": "/browse_eyewear"
-              },
-              {
-                "label": "Lens & Vision Solutions",
-                "value": "/lens_vision_solutions"
-              },
-              {
-                "label": "Find a Store",
-                "value": "/find_a_store"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_f388da68-adbb-4ba6-b086-43b44714ad6f",
-      "receivedAt": "2026-03-17T05:08:43.018Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773724122788,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773724122771,
-                "message_edit": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTQyMzkwMTIzNDA1MzgwNjg3NzQ4NDcwNDA3MTY4MAZDZD",
-                  "num_edit": 0
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_8b3454e4-4212-4f94-bfe1-be59ef0eca7f",
-      "receivedAt": "2026-03-17T05:08:43.427Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "sender": {
-          "id": "2442016496259306"
-        },
-        "recipient": {
-          "id": "17841480398532472"
-        },
-        "timestamp": 1773724122771
-      }
-    },
-    {
-      "id": "evt_97f95d23-cd24-41c8-b988-a5f64d856383",
-      "receivedAt": "2026-03-17T05:08:44.061Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773724123769,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773723549605,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTQyNDM3NzA5MTAwNDc0NTUxNjAyMTU0NTE3Mjk5MgZDZD",
-                  "text": "hello"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_cdaf533d-a6a1-4d9a-9be7-0dd947ab4d51",
-      "receivedAt": "2026-03-17T05:08:44.390Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "sender": {
-          "id": "2442016496259306"
-        },
-        "recipient": {
-          "id": "17841480398532472"
-        },
-        "timestamp": 1773723549605,
-        "message": {
-          "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTQyNDM3NzA5MTAwNDc0NTUxNjAyMTU0NTE3Mjk5MgZDZD",
-          "text": "hello"
-        }
-      }
-    },
-    {
-      "id": "evt_c7d0fadb-607d-4de1-83a7-f4509e8f1354",
-      "receivedAt": "2026-03-17T05:08:44.467Z",
-      "channel": "instagram",
-      "direction": "outbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "metadata": {
-          "channel": "instagram",
-          "sourceId": "2442016496259306",
-          "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-          "conversationId": "2442016496259306"
-        },
-        "messages": [
-          {
-            "type": "choice",
-            "text": "Selamat datang to Calisto Eyewear 👓\nHow can I assist you today?",
-            "options": [
-              {
-                "label": "Browse Eyewear",
-                "value": "/browse_eyewear"
-              },
-              {
-                "label": "Lens & Vision Solutions",
-                "value": "/lens_vision_solutions"
-              },
-              {
-                "label": "Find a Store",
-                "value": "/find_a_store"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_3e88c0f7-4b28-499c-9cda-dd547c9ed48d",
-      "receivedAt": "2026-03-17T05:08:45.952Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773724125679,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773724125659,
-                "message_edit": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTQyNDM3NzA5MTAwNDc0NTUxNjAyMTU0NTE3Mjk5MgZDZD",
-                  "num_edit": 0
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_9418c867-92f5-480b-8f16-f158b44ea36c",
-      "receivedAt": "2026-03-17T05:09:01.326Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773724141127,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773724141099,
-                "message_edit": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTQzNTI3NDQ5MzM3MTA1MzY5MDkwNjg0MTQ0ODQ0OAZDZD",
-                  "num_edit": 0
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_04213297-1b8a-4ee1-8b61-e1236e2d7e8f",
-      "receivedAt": "2026-03-17T05:09:01.342Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773724140758,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773724140355,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTQzNTI3NDQ5MzM3MTA1MzY5MDkwNjg0MTQ0ODQ0OAZDZD",
-                  "text": "hello"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_b8d648fb-d014-4686-aaa2-6463393abea7",
-      "receivedAt": "2026-03-17T05:09:01.725Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "sender": {
-          "id": "2442016496259306"
-        },
-        "recipient": {
-          "id": "17841480398532472"
-        },
-        "timestamp": 1773724140355,
-        "message": {
-          "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTQzNTI3NDQ5MzM3MTA1MzY5MDkwNjg0MTQ0ODQ0OAZDZD",
-          "text": "hello"
-        }
-      }
-    },
-    {
-      "id": "evt_8a59df17-7c3a-4551-a772-e598bf2b60a8",
-      "receivedAt": "2026-03-17T05:09:01.796Z",
-      "channel": "instagram",
-      "direction": "outbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "metadata": {
-          "channel": "instagram",
-          "sourceId": "2442016496259306",
-          "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-          "conversationId": "2442016496259306"
-        },
-        "messages": [
-          {
-            "type": "choice",
-            "text": "Selamat datang to Calisto Eyewear 👓\nHow can I assist you today?",
-            "options": [
-              {
-                "label": "Browse Eyewear",
-                "value": "/browse_eyewear"
-              },
-              {
-                "label": "Lens & Vision Solutions",
-                "value": "/lens_vision_solutions"
-              },
-              {
-                "label": "Find a Store",
-                "value": "/find_a_store"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_7b391388-ba7d-4963-ba10-214f4568a13f",
-      "receivedAt": "2026-03-17T06:42:16.720Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {}
-    },
-    {
-      "id": "evt_f03fa097-9adf-4455-9f71-ac7597da759c",
-      "receivedAt": "2026-03-17T06:43:58.404Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {}
-    },
-    {
-      "id": "evt_216ac757-dc8f-457b-834b-29a898b07b9a",
-      "receivedAt": "2026-03-17T06:44:26.483Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "contacts": [
-                    {
-                      "profile": {
-                        "name": "Ds"
-                      },
-                      "wa_id": "918098916533"
-                    }
-                  ],
-                  "messages": [
-                    {
-                      "from": "918098916533",
-                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0I2RDI4NTk1MjM2MjVEOTNEMUYA",
-                      "timestamp": "1773729865",
-                      "text": {
-                        "body": "hi"
-                      },
-                      "type": "text"
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_473a2863-66bc-40b6-b25d-a0b632517792",
-      "receivedAt": "2026-03-17T06:44:26.525Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/messages/whatsapp",
-      "sourceId": "918098916533",
-      "conversationId": "918098916533",
-      "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
-      "payload": {
-        "from": "918098916533",
-        "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0I2RDI4NTk1MjM2MjVEOTNEMUYA",
-        "timestamp": "1773729865",
-        "type": "text",
-        "text": {
-          "body": "hi"
-        }
-      }
-    },
-    {
-      "id": "evt_1377fafd-6bbb-40a3-b4b8-fe7d1778b95c",
-      "receivedAt": "2026-03-17T06:44:26.629Z",
-      "channel": "whatsapp",
-      "direction": "outbound",
-      "path": "/messages/whatsapp",
-      "sourceId": "918098916533",
-      "conversationId": "918098916533",
-      "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
-      "payload": {
-        "metadata": {
-          "channel": "whatsapp",
-          "sourceId": "918098916533",
-          "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
-          "conversationId": "918098916533"
-        },
-        "messages": [
-          {
-            "type": "choice",
-            "text": "Selamat datang to Calisto Eyewear 👓\nHow can I assist you today?",
-            "options": [
-              {
-                "label": "Browse Eyewear",
-                "value": "/browse_eyewear"
-              },
-              {
-                "label": "Lens & Vision Solutions",
-                "value": "/lens_vision_solutions"
-              },
-              {
-                "label": "Find a Store",
-                "value": "/find_a_store"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_a61b8df5-10c0-42f8-b95d-e0b32decd466",
-      "receivedAt": "2026-03-17T06:47:04.249Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "contacts": [
-                    {
-                      "profile": {
-                        "name": "Ds"
-                      },
-                      "wa_id": "918098916533"
-                    }
-                  ],
-                  "messages": [
-                    {
-                      "from": "918098916533",
-                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0IyOTRCOUFERjJGOEFBN0M5RDMA",
-                      "timestamp": "1773730022",
-                      "text": {
-                        "body": "hii"
-                      },
-                      "type": "text"
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_93d92429-5086-4354-9f4b-bc2fde4f3f7a",
-      "receivedAt": "2026-03-17T06:47:04.286Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/messages/whatsapp",
-      "sourceId": "918098916533",
-      "conversationId": "918098916533",
-      "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
-      "payload": {
-        "from": "918098916533",
-        "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0IyOTRCOUFERjJGOEFBN0M5RDMA",
-        "timestamp": "1773730022",
-        "type": "text",
-        "text": {
-          "body": "hii"
-        }
-      }
-    },
-    {
-      "id": "evt_095817b3-1632-4b75-8130-7e59bc7be9f2",
-      "receivedAt": "2026-03-17T06:47:04.353Z",
-      "channel": "whatsapp",
-      "direction": "outbound",
-      "path": "/messages/whatsapp",
-      "sourceId": "918098916533",
-      "conversationId": "918098916533",
-      "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
-      "payload": {
-        "metadata": {
-          "channel": "whatsapp",
-          "sourceId": "918098916533",
-          "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
-          "conversationId": "918098916533"
-        },
-        "messages": [
-          {
-            "type": "choice",
-            "text": "Selamat datang to Calisto Eyewear 👓\nHow can I assist you today?",
-            "options": [
-              {
-                "label": "Browse Eyewear",
-                "value": "/browse_eyewear"
-              },
-              {
-                "label": "Lens & Vision Solutions",
-                "value": "/lens_vision_solutions"
-              },
-              {
-                "label": "Find a Store",
-                "value": "/find_a_store"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_27b4376b-92f3-45cd-8ea7-ae2a1d0201a2",
-      "receivedAt": "2026-03-17T06:47:06.976Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSOTVGMDc1N0YzMkZCNzFEMUVGAA==",
-                      "status": "sent",
-                      "timestamp": "1773730026",
-                      "recipient_id": "918098916533",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_a10c7629-d561-4d1b-8a43-05133832698f",
-      "receivedAt": "2026-03-17T06:47:07.215Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSOTVGMDc1N0YzMkZCNzFEMUVGAA==",
-                      "status": "delivered",
-                      "timestamp": "1773730026",
-                      "recipient_id": "918098916533",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_2e31f6eb-fe90-42bf-ae52-391226b79db5",
-      "receivedAt": "2026-03-17T06:47:07.758Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSOTVGMDc1N0YzMkZCNzFEMUVGAA==",
-                      "status": "read",
-                      "timestamp": "1773730026",
-                      "recipient_id": "918098916533",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_d0938d41-97ab-4db0-afaa-348d28d2d148",
-      "receivedAt": "2026-03-17T06:49:50.154Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730189756,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730189075,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU0Njg1MzY4NDM2NTE3Mzc1MDY3NDk4NDI3MTg3MgZDZD",
-                  "text": "hello"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_28129692-bd7f-426b-84c5-e551fd0558f4",
-      "receivedAt": "2026-03-17T06:49:51.063Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730190472,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730189075,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU0Njg1MzY4NDM2NTE3Mzc1MDY3NDk4NDI3MTg3MgZDZD",
-                  "text": "hello"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_ef59022a-499f-48e6-af53-013faf7fa43e",
-      "receivedAt": "2026-03-17T06:49:51.078Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730190607,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730190578,
-                "message_edit": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU0Njg1MzY4NDM2NTE3Mzc1MDY3NDk4NDI3MTg3MgZDZD",
-                  "num_edit": 0
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_2a737617-a03e-44a8-b96e-5a58dd8f6f15",
-      "receivedAt": "2026-03-17T06:49:51.677Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730191380,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730189075,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU0Njg1MzY4NDM2NTE3Mzc1MDY3NDk4NDI3MTg3MgZDZD",
-                  "text": "hello"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_78d595d7-311d-476d-a3f4-72bb7965fbaf",
-      "receivedAt": "2026-03-17T06:49:52.598Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730192013,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730189075,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU0Njg1MzY4NDM2NTE3Mzc1MDY3NDk4NDI3MTg3MgZDZD",
-                  "text": "hello"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_7dd08bce-7de7-4d02-9d2a-feeb9350ec60",
-      "receivedAt": "2026-03-17T06:49:53.228Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730193009,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730189075,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU0Njg1MzY4NDM2NTE3Mzc1MDY3NDk4NDI3MTg3MgZDZD",
-                  "text": "hello"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_cf3035cc-2a48-4ef3-b329-c0d41c19c124",
-      "receivedAt": "2026-03-17T06:49:54.824Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730193850,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730189075,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU0Njg1MzY4NDM2NTE3Mzc1MDY3NDk4NDI3MTg3MgZDZD",
-                  "text": "hello"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_41389a58-f099-4429-ae74-a53164b12e19",
-      "receivedAt": "2026-03-17T06:49:55.549Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730195224,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730189075,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU0Njg1MzY4NDM2NTE3Mzc1MDY3NDk4NDI3MTg3MgZDZD",
-                  "text": "hello"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_5f9b69f0-c875-404b-a69c-985dcca736d9",
-      "receivedAt": "2026-03-17T06:50:05.391Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730205130,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730189075,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU0Njg1MzY4NDM2NTE3Mzc1MDY3NDk4NDI3MTg3MgZDZD",
-                  "text": "hello"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_55e37346-de0e-4cc6-95ed-42c4ada73b17",
-      "receivedAt": "2026-03-17T06:51:09.732Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730269361,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730189075,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU0Njg1MzY4NDM2NTE3Mzc1MDY3NDk4NDI3MTg3MgZDZD",
-                  "text": "hello"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_7af1c9c4-4a46-4624-8526-80072ab356f1",
-      "receivedAt": "2026-03-17T06:51:29.738Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730289496,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730189075,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU0Njg1MzY4NDM2NTE3Mzc1MDY3NDk4NDI3MTg3MgZDZD",
-                  "text": "hello"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_1f5f4684-3ac6-44d4-aef7-a7bdede269c4",
-      "receivedAt": "2026-03-17T06:52:15.904Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730335525,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730189075,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU0Njg1MzY4NDM2NTE3Mzc1MDY3NDk4NDI3MTg3MgZDZD",
-                  "text": "hello"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_b7d9c35c-d30e-4351-a2c4-c476467144a2",
-      "receivedAt": "2026-03-17T06:53:05.813Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730385602,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730385227,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU1MDQ3MjA0ODU1OTE5MzUyNDQ1MTk2MzU2ODEyOAZDZD",
-                  "text": "hello"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_19ac8311-81a4-4dbb-8a0b-5fbf0264a01e",
-      "receivedAt": "2026-03-17T06:53:06.217Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "sender": {
-          "id": "2442016496259306"
-        },
-        "recipient": {
-          "id": "17841480398532472"
-        },
-        "timestamp": 1773730385227,
-        "message": {
-          "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU1MDQ3MjA0ODU1OTE5MzUyNDQ1MTk2MzU2ODEyOAZDZD",
-          "text": "hello"
-        }
-      }
-    },
-    {
-      "id": "evt_c74ef17d-2d4e-4baa-b7e5-f4e7a6c221de",
-      "receivedAt": "2026-03-17T06:53:06.313Z",
-      "channel": "instagram",
-      "direction": "outbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "metadata": {
-          "channel": "instagram",
-          "sourceId": "2442016496259306",
-          "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-          "conversationId": "2442016496259306"
-        },
-        "messages": [
-          {
-            "type": "choice",
-            "text": "Selamat datang to Calisto Eyewear 👓\nHow can I assist you today?",
-            "options": [
-              {
-                "label": "Browse Eyewear",
-                "value": "/browse_eyewear"
-              },
-              {
-                "label": "Lens & Vision Solutions",
-                "value": "/lens_vision_solutions"
-              },
-              {
-                "label": "Find a Store",
-                "value": "/find_a_store"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_cf0b8ccc-6b7d-4b8d-94ab-7e899850ed70",
-      "receivedAt": "2026-03-17T06:53:06.379Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730386149,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730386129,
-                "message_edit": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU1MDQ3MjA0ODU1OTE5MzUyNDQ1MTk2MzU2ODEyOAZDZD",
-                  "num_edit": 0
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_4164bc18-05ae-45f9-8790-bb54be3a90d3",
-      "receivedAt": "2026-03-17T06:53:06.729Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "sender": {
-          "id": "2442016496259306"
-        },
-        "recipient": {
-          "id": "17841480398532472"
-        },
-        "timestamp": 1773730386129
-      }
-    },
-    {
-      "id": "evt_be0e753b-dfe2-4d46-8b4b-2f2faf22b1d0",
-      "receivedAt": "2026-03-17T06:53:18.051Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730397732,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730189075,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU0Njg1MzY4NDM2NTE3Mzc1MDY3NDk4NDI3MTg3MgZDZD",
-                  "text": "hello"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_0e9f114b-43e3-418d-8eef-09d84c898ae6",
-      "receivedAt": "2026-03-17T06:53:18.700Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "sender": {
-          "id": "2442016496259306"
-        },
-        "recipient": {
-          "id": "17841480398532472"
-        },
-        "timestamp": 1773730189075,
-        "message": {
-          "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU0Njg1MzY4NDM2NTE3Mzc1MDY3NDk4NDI3MTg3MgZDZD",
-          "text": "hello"
-        }
-      }
-    },
-    {
-      "id": "evt_2f35ce91-a5a3-454f-9b6f-688a5f3d0c50",
-      "receivedAt": "2026-03-17T06:53:18.769Z",
-      "channel": "instagram",
-      "direction": "outbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "metadata": {
-          "channel": "instagram",
-          "sourceId": "2442016496259306",
-          "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-          "conversationId": "2442016496259306"
-        },
-        "messages": [
-          {
-            "type": "choice",
-            "text": "Selamat datang to Calisto Eyewear 👓\nHow can I assist you today?",
-            "options": [
-              {
-                "label": "Browse Eyewear",
-                "value": "/browse_eyewear"
-              },
-              {
-                "label": "Lens & Vision Solutions",
-                "value": "/lens_vision_solutions"
-              },
-              {
-                "label": "Find a Store",
-                "value": "/find_a_store"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_9de5cda9-8303-4def-ad55-d99c10f7f7c5",
-      "receivedAt": "2026-03-17T06:53:20.874Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730400574,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730400549,
-                "message_edit": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU0Njg1MzY4NDM2NTE3Mzc1MDY3NDk4NDI3MTg3MgZDZD",
-                  "num_edit": 0
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_9a90d852-2fcb-4773-ae87-7244d1252aec",
-      "receivedAt": "2026-03-17T06:56:38.557Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730598152,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730597732,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU1NDM5MjA4Mzk5ODk0NjE4MTAzNzI0NjM4MjA4MAZDZD",
-                  "text": "hiiiii"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_c088e6fe-194d-4ad0-a132-e1d75a802b0c",
-      "receivedAt": "2026-03-17T06:56:38.920Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730598695,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730598677,
-                "message_edit": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU1NDM5MjA4Mzk5ODk0NjE4MTAzNzI0NjM4MjA4MAZDZD",
-                  "num_edit": 0
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_cb518b14-5667-468f-81a7-42494a8871f9",
-      "receivedAt": "2026-03-17T06:56:39.030Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "sender": {
-          "id": "2442016496259306"
-        },
-        "recipient": {
-          "id": "17841480398532472"
-        },
-        "timestamp": 1773730597732,
-        "message": {
-          "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU1NDM5MjA4Mzk5ODk0NjE4MTAzNzI0NjM4MjA4MAZDZD",
-          "text": "hiiiii"
-        }
-      }
-    },
-    {
-      "id": "evt_cc6b10e2-9cb3-4bb1-be5c-a00c32ce70e8",
-      "receivedAt": "2026-03-17T06:56:39.110Z",
-      "channel": "instagram",
-      "direction": "outbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "metadata": {
-          "channel": "instagram",
-          "sourceId": "2442016496259306",
-          "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-          "conversationId": "2442016496259306"
-        },
-        "messages": [
-          {
-            "type": "choice",
-            "text": "Selamat datang to Calisto Eyewear 👓\nHow can I assist you today?",
-            "options": [
-              {
-                "label": "Browse Eyewear",
-                "value": "/browse_eyewear"
-              },
-              {
-                "label": "Lens & Vision Solutions",
-                "value": "/lens_vision_solutions"
-              },
-              {
-                "label": "Find a Store",
-                "value": "/find_a_store"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_e1828eac-6c22-4ede-be71-f1b96f0fccf4",
-      "receivedAt": "2026-03-17T07:02:05.213Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730924791,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730924374,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU2MDQxNzU2OTAxMDY3OTM5ODkxNjk4MTUyMjQzMgZDZD",
-                  "text": "hii"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_54c96878-ef58-4283-8abc-b5666c02e9f6",
-      "receivedAt": "2026-03-17T07:02:05.383Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773730925129,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773730925109,
-                "message_edit": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU2MDQxNzU2OTAxMDY3OTM5ODkxNjk4MTUyMjQzMgZDZD",
-                  "num_edit": 0
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_1a4f93d3-4de9-42b7-b28e-784a07c55623",
-      "receivedAt": "2026-03-17T07:02:05.650Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "sender": {
-          "id": "2442016496259306"
-        },
-        "recipient": {
-          "id": "17841480398532472"
-        },
-        "timestamp": 1773730924374,
-        "message": {
-          "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU2MDQxNzU2OTAxMDY3OTM5ODkxNjk4MTUyMjQzMgZDZD",
-          "text": "hii"
-        }
-      }
-    },
-    {
-      "id": "evt_96c8bcd8-00e9-4a2a-9071-8b83c1fbc503",
-      "receivedAt": "2026-03-17T07:02:05.747Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "sender": {
-          "id": "2442016496259306"
-        },
-        "recipient": {
-          "id": "17841480398532472"
-        },
-        "timestamp": 1773730925109
-      }
-    },
-    {
-      "id": "evt_0b826966-b333-4e7c-870e-fd624f87089b",
-      "receivedAt": "2026-03-17T07:02:05.769Z",
-      "channel": "instagram",
-      "direction": "outbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "metadata": {
-          "channel": "instagram",
-          "sourceId": "2442016496259306",
-          "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-          "conversationId": "2442016496259306"
-        },
-        "messages": [
-          {
-            "type": "choice",
-            "text": "Selamat datang to Calisto Eyewear 👓\nHow can I assist you today?",
-            "options": [
-              {
-                "label": "Browse Eyewear",
-                "value": "/browse_eyewear"
-              },
-              {
-                "label": "Lens & Vision Solutions",
-                "value": "/lens_vision_solutions"
-              },
-              {
-                "label": "Find a Store",
-                "value": "/find_a_store"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_da3de0bf-8268-4623-9df8-0eb2af2add5e",
-      "receivedAt": "2026-03-17T07:04:45.315Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773731084927,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773731084514,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU2MzM3MTYxNzA0ODI4NjM1MjMzNjI0NzMyNDY3MgZDZD",
-                  "text": "hiii"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_f6a6de2d-457c-4ee5-b7e6-46a09dcd78b9",
-      "receivedAt": "2026-03-17T07:04:45.524Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773731085259,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773731085241,
-                "message_edit": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU2MzM3MTYxNzA0ODI4NjM1MjMzNjI0NzMyNDY3MgZDZD",
-                  "num_edit": 0
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_b0d02cbd-68db-4bec-ad51-37dfc51bdf5c",
-      "receivedAt": "2026-03-17T07:04:45.796Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "sender": {
-          "id": "2442016496259306"
-        },
-        "recipient": {
-          "id": "17841480398532472"
-        },
-        "timestamp": 1773731084514,
-        "message": {
-          "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU2MzM3MTYxNzA0ODI4NjM1MjMzNjI0NzMyNDY3MgZDZD",
-          "text": "hiii"
-        }
-      }
-    },
-    {
-      "id": "evt_cf63f6ba-1442-4961-b414-76e617a6d282",
-      "receivedAt": "2026-03-17T07:04:45.860Z",
-      "channel": "instagram",
-      "direction": "outbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "metadata": {
-          "channel": "instagram",
-          "sourceId": "2442016496259306",
-          "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-          "conversationId": "2442016496259306"
-        },
-        "messages": [
-          {
-            "type": "choice",
-            "text": "Selamat datang to Calisto Eyewear 👓\nHow can I assist you today?",
-            "options": [
-              {
-                "label": "Browse Eyewear",
-                "value": "/browse_eyewear"
-              },
-              {
-                "label": "Lens & Vision Solutions",
-                "value": "/lens_vision_solutions"
-              },
-              {
-                "label": "Find a Store",
-                "value": "/find_a_store"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_1ba722c4-0251-4120-ace0-267119cc356f",
-      "receivedAt": "2026-03-17T07:05:11.816Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773731111596,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773731111197,
-                "message": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU2Mzg2MzgzMjQ3OTYzNTgzNjEzNDkxMzczNjcwNAZDZD",
-                  "text": "hellooooo"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_d46c7f58-b2a4-4c1a-b995-ea845047cb57",
-      "receivedAt": "2026-03-17T07:05:12.337Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "sender": {
-          "id": "2442016496259306"
-        },
-        "recipient": {
-          "id": "17841480398532472"
-        },
-        "timestamp": 1773731111197,
-        "message": {
-          "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU2Mzg2MzgzMjQ3OTYzNTgzNjEzNDkxMzczNjcwNAZDZD",
-          "text": "hellooooo"
-        }
-      }
-    },
-    {
-      "id": "evt_7f077d32-fcc6-4082-b71e-226d3d76e203",
-      "receivedAt": "2026-03-17T07:05:12.404Z",
-      "channel": "instagram",
-      "direction": "outbound",
-      "path": "/messages/instagram",
-      "sourceId": "2442016496259306",
-      "conversationId": "2442016496259306",
-      "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-      "payload": {
-        "metadata": {
-          "channel": "instagram",
-          "sourceId": "2442016496259306",
-          "leadId": "lead_e9066b49-f01f-40ed-80f0-4214ba46de5a",
-          "conversationId": "2442016496259306"
-        },
-        "messages": [
-          {
-            "type": "choice",
-            "text": "Selamat datang to Calisto Eyewear 👓\nHow can I assist you today?",
-            "options": [
-              {
-                "label": "Browse Eyewear",
-                "value": "/browse_eyewear"
-              },
-              {
-                "label": "Lens & Vision Solutions",
-                "value": "/lens_vision_solutions"
-              },
-              {
-                "label": "Find a Store",
-                "value": "/find_a_store"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_5581edd1-27d6-4f7c-a00c-239e01dea85e",
-      "receivedAt": "2026-03-17T07:05:13.007Z",
-      "channel": "instagram",
-      "direction": "inbound",
-      "path": "/webhooks/instagram",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "instagram",
-        "entry": [
-          {
-            "time": 1773731112383,
-            "id": "17841480398532472",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "2442016496259306"
-                },
-                "recipient": {
-                  "id": "17841480398532472"
-                },
-                "timestamp": 1773731112361,
-                "message_edit": {
-                  "mid": "aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTU2Mzg2MzgzMjQ3OTYzNTgzNjEzNDkxMzczNjcwNAZDZD",
-                  "num_edit": 0
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_29c7d842-0245-43ee-9eab-b53272d7c90c",
-      "receivedAt": "2026-03-17T07:11:43.960Z",
-      "channel": "messenger",
-      "direction": "inbound",
-      "path": "/webhooks/messenger",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {}
-    },
-    {
-      "id": "evt_52932537-5c25-4668-b4ce-37991b4017b7",
-      "receivedAt": "2026-03-17T07:12:21.505Z",
-      "channel": "messenger",
-      "direction": "inbound",
-      "path": "/webhooks/messenger",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "page",
-        "entry": [
-          {
-            "time": 1773731541011,
-            "id": "937322599474110",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "26075470422093403"
-                },
-                "recipient": {
-                  "id": "937322599474110"
-                },
-                "timestamp": 1773731540168,
-                "message": {
-                  "mid": "m_T4pjR-Bx8fh7fFMHTJ7AVL2wdkI3AM_-I6t-uNJVb9C8SxLBXlUfsMPu_FMoo1tWeKbkF3WqtZVfTN7dtW-ztw",
-                  "text": "hello"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_05d3284f-4490-431a-a4c1-b0c5632ff749",
-      "receivedAt": "2026-03-17T07:12:22.245Z",
-      "channel": "messenger",
-      "direction": "inbound",
-      "path": "/messages/messenger",
-      "sourceId": "26075470422093403",
-      "conversationId": "26075470422093403",
-      "leadId": "lead_b82bc9f6-5a98-4131-92c7-87795b5e7122",
-      "payload": {
-        "sender": {
-          "id": "26075470422093403"
-        },
-        "recipient": {
-          "id": "937322599474110"
-        },
-        "timestamp": 1773731540168,
-        "message": {
-          "mid": "m_T4pjR-Bx8fh7fFMHTJ7AVL2wdkI3AM_-I6t-uNJVb9C8SxLBXlUfsMPu_FMoo1tWeKbkF3WqtZVfTN7dtW-ztw",
-          "text": "hello"
-        }
-      }
-    },
-    {
-      "id": "evt_2071ebd0-f4e5-4c7d-808c-331e6dfd4030",
-      "receivedAt": "2026-03-17T07:12:22.343Z",
-      "channel": "messenger",
-      "direction": "outbound",
-      "path": "/messages/messenger",
-      "sourceId": "26075470422093403",
-      "conversationId": "26075470422093403",
-      "leadId": "lead_b82bc9f6-5a98-4131-92c7-87795b5e7122",
-      "payload": {
-        "metadata": {
-          "channel": "messenger",
-          "sourceId": "26075470422093403",
-          "leadId": "lead_b82bc9f6-5a98-4131-92c7-87795b5e7122",
-          "conversationId": "26075470422093403"
-        },
-        "messages": [
-          {
-            "type": "choice",
-            "text": "Selamat datang to Calisto Eyewear 👓\nHow can I assist you today?",
-            "options": [
-              {
-                "label": "Browse Eyewear",
-                "value": "/browse_eyewear"
-              },
-              {
-                "label": "Lens & Vision Solutions",
-                "value": "/lens_vision_solutions"
-              },
-              {
-                "label": "Find a Store",
-                "value": "/find_a_store"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_7cb82e75-aaf8-4018-a1fb-660fb12ab098",
-      "receivedAt": "2026-03-17T07:12:26.419Z",
-      "channel": "messenger",
-      "direction": "inbound",
-      "path": "/webhooks/messenger",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "page",
-        "entry": [
-          {
-            "time": 1773731546043,
-            "id": "937322599474110",
-            "messaging": [
-              {
-                "sender": {
-                  "id": "26075470422093403"
-                },
-                "recipient": {
-                  "id": "937322599474110"
-                },
-                "timestamp": 1773731543867,
-                "read": {
-                  "watermark": 1773731543614
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
     {
       "id": "evt_4bbaa560-d27f-45f8-84df-a4155f82aa83",
       "receivedAt": "2026-03-17T07:12:26.434Z",
@@ -48192,72 +47049,1983 @@
           }
         ]
       }
+    },
+    {
+      "id": "evt_6b297c51-0a36-4bb2-89af-81e12de81f11",
+      "receivedAt": "2026-03-18T05:06:31.528Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "hi"
+      }
+    },
+    {
+      "id": "evt_0dcd15ea-8750-4c26-8939-225a2639822c",
+      "receivedAt": "2026-03-18T05:06:31.951Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Selamat datang to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+            "options": [
+              {
+                "label": "Browse Eyewear",
+                "value": "/browse_eyewear"
+              },
+              {
+                "label": "Check Pricing",
+                "value": "/ask_pricing"
+              },
+              {
+                "label": "Book Appointment",
+                "value": "/book_appointment"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_ea06832f-f943-4314-834a-851a0e1b10c1",
+      "receivedAt": "2026-03-18T05:07:27.950Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "hi"
+      }
+    },
+    {
+      "id": "evt_5274a193-61f4-4d82-bed8-18b6da7b3b50",
+      "receivedAt": "2026-03-18T05:07:28.003Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Selamat datang to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+            "options": [
+              {
+                "label": "Browse Eyewear",
+                "value": "/browse_eyewear"
+              },
+              {
+                "label": "Check Pricing",
+                "value": "/ask_pricing"
+              },
+              {
+                "label": "Book Appointment",
+                "value": "/book_appointment"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_3e58f2d1-3118-4ffa-b85b-c70c4823bde5",
+      "receivedAt": "2026-03-18T05:07:30.237Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/browse_eyewear"
+      }
+    },
+    {
+      "id": "evt_1f131f69-4ef1-4fbd-9313-3bcafff13b68",
+      "receivedAt": "2026-03-18T05:07:30.340Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Great. What are you shopping for today?",
+            "options": [
+              {
+                "label": "Designer Frames",
+                "value": "/select_product_type{\"product_type\":\"Designer Frames\"}"
+              },
+              {
+                "label": "Luxury Sunglasses",
+                "value": "/select_product_type{\"product_type\":\"Luxury Sunglasses\"}"
+              },
+              {
+                "label": "Contact Lenses",
+                "value": "/select_product_type{\"product_type\":\"Contact Lenses\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_e73d6ff1-e107-4c04-8989-aa298b295b71",
+      "receivedAt": "2026-03-18T05:07:31.832Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/select_product_type{\"product_type\":\"Designer Frames\"}"
+      }
+    },
+    {
+      "id": "evt_09bc2da2-045d-4570-9f74-40c0afeed30d",
+      "receivedAt": "2026-03-18T05:07:31.903Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Which brand would you like to explore?",
+            "options": [
+              {
+                "label": "Acuvue",
+                "value": "/select_brand{\"brand\":\"Acuvue\"}"
+              },
+              {
+                "label": "Bausch & Lomb",
+                "value": "/select_brand{\"brand\":\"Bausch & Lomb\"}"
+              },
+              {
+                "label": "Bossini",
+                "value": "/select_brand{\"brand\":\"Bossini\"}"
+              },
+              {
+                "label": "Bottega Veneta",
+                "value": "/select_brand{\"brand\":\"Bottega Veneta\"}"
+              },
+              {
+                "label": "Show All Brands",
+                "value": "/select_brand{\"brand\":\"Show All Brands\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_b56a85a2-70d1-4fe3-ae84-92c8d9fe0765",
+      "receivedAt": "2026-03-18T05:07:33.269Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/select_brand{\"brand\":\"Bausch & Lomb\"}"
+      }
+    },
+    {
+      "id": "evt_10fa6008-fa82-4080-8dbd-f941f35a95d8",
+      "receivedAt": "2026-03-18T05:07:33.335Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "To narrow this down properly, what budget range are you comfortable with?",
+            "options": [
+              {
+                "label": "Under RM100",
+                "value": "/select_budget{\"price_range\":\"Under RM100\"}"
+              },
+              {
+                "label": "RM100 - RM250",
+                "value": "/select_budget{\"price_range\":\"RM100 - RM250\"}"
+              },
+              {
+                "label": "RM250 - RM300",
+                "value": "/select_budget{\"price_range\":\"RM250 - RM300\"}"
+              },
+              {
+                "label": "Above RM300",
+                "value": "/select_budget{\"price_range\":\"Above RM300\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_68c770f2-23ba-4d59-8597-bfb74d73dead",
+      "receivedAt": "2026-03-18T05:07:35.251Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/select_budget{\"price_range\":\"Above RM300\"}"
+      }
+    },
+    {
+      "id": "evt_92a44761-df04-4656-992e-58cffff9d4c4",
+      "receivedAt": "2026-03-18T05:07:35.323Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "Here are some products that match your request:"
+          },
+          {
+            "type": "choice",
+            "text": "Would you like to try these frames at a Calisto store?",
+            "options": [
+              {
+                "label": "Find Nearest Store",
+                "value": "/find_a_store"
+              },
+              {
+                "label": "Book Appointment",
+                "value": "/book_appointment"
+              },
+              {
+                "label": "Talk to Consultant",
+                "value": "/capture_lead"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_4f67c974-e471-4c1e-9a75-287d17b08f02",
+      "receivedAt": "2026-03-18T05:07:39.502Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/book_appointment"
+      }
+    },
+    {
+      "id": "evt_18b39db4-b423-49cb-83e2-55127d6d804d",
+      "receivedAt": "2026-03-18T05:07:39.584Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "I can help you book an appointment for an eye test, fitting, or consultation. Before I do that, I just need a few contact details so our team can reach you."
+          },
+          {
+            "type": "text",
+            "text": "First, may I have your name?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_264c6a3e-e1d8-4dd6-8c74-6ce3ff4bff80",
+      "receivedAt": "2026-03-18T05:07:45.388Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "Aswanth B"
+      }
+    },
+    {
+      "id": "evt_6eb0ffef-121b-4465-8405-652dc6887e5e",
+      "receivedAt": "2026-03-18T05:07:45.445Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "What is the best WhatsApp or phone number for our team to reach you on?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_089de195-9314-461b-990d-b61a46fc6ec4",
+      "receivedAt": "2026-03-18T05:07:52.765Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "7395918838"
+      }
+    },
+    {
+      "id": "evt_6e0a7a68-437d-41cf-bf6a-61520f9530d5",
+      "receivedAt": "2026-03-18T05:07:52.824Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "What email address should we use for quotations or follow-up?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_49c1e10e-a081-4019-8b89-1b04cb8da29a",
+      "receivedAt": "2026-03-18T05:08:06.792Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "aswanthb2006@gmail.com"
+      }
+    },
+    {
+      "id": "evt_982d13db-c7fc-4b5a-a450-6c5911c13814",
+      "receivedAt": "2026-03-18T05:08:06.852Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "Which area or city are you located in, so we can route you to the right team or store?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_b7e05107-4830-4089-9329-036ccad4004e",
+      "receivedAt": "2026-03-18T05:08:11.777Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "penang"
+      }
+    },
+    {
+      "id": "evt_0703bf51-20a6-45c0-99d0-28b9ccf2dbae",
+      "receivedAt": "2026-03-18T05:08:11.852Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "How soon are you planning to make a decision or visit a store?",
+            "options": [
+              {
+                "label": "This Week",
+                "value": "/share_timeline{\"purchase_timeline\":\"This Week\"}"
+              },
+              {
+                "label": "Within 2 Weeks",
+                "value": "/share_timeline{\"purchase_timeline\":\"Within 2 Weeks\"}"
+              },
+              {
+                "label": "Just Exploring",
+                "value": "/share_timeline{\"purchase_timeline\":\"Just Exploring\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_9c8a439c-c1d1-4929-a04e-6bcaadf25186",
+      "receivedAt": "2026-03-18T05:08:14.050Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/share_timeline{\"purchase_timeline\":\"Just Exploring\"}"
+      }
+    },
+    {
+      "id": "evt_8951e191-b272-419e-93cd-ff54cb9bd029",
+      "receivedAt": "2026-03-18T05:08:14.138Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Thank you. We have captured your inquiry and our team will review the best next step for you.",
+            "options": [
+              {
+                "label": "Find Store",
+                "value": "/find_a_store"
+              },
+              {
+                "label": "Browse Eyewear",
+                "value": "/browse_eyewear"
+              },
+              {
+                "label": "Ask Another Question",
+                "value": "/ask_faq"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_c8ceb1d2-da35-45b1-9071-b972c1891887",
+      "receivedAt": "2026-03-18T05:08:16.316Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/browse_eyewear"
+      }
+    },
+    {
+      "id": "evt_38134d92-7871-4538-8dca-ce95cc270cc1",
+      "receivedAt": "2026-03-18T05:08:16.397Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Great. What are you shopping for today?",
+            "options": [
+              {
+                "label": "Designer Frames",
+                "value": "/select_product_type{\"product_type\":\"Designer Frames\"}"
+              },
+              {
+                "label": "Luxury Sunglasses",
+                "value": "/select_product_type{\"product_type\":\"Luxury Sunglasses\"}"
+              },
+              {
+                "label": "Contact Lenses",
+                "value": "/select_product_type{\"product_type\":\"Contact Lenses\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_6a111e34-5ec7-4273-9adf-c7038203559c",
+      "receivedAt": "2026-03-18T05:08:25.909Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "i need gucci glasses under 500"
+      }
+    },
+    {
+      "id": "evt_31c182ad-8574-45a3-820d-8604573d971b",
+      "receivedAt": "2026-03-18T05:08:25.975Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "Here are some products that match your request:"
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_7469af13-4611-4316-ada1-fc386a88316b",
+      "receivedAt": "2026-03-18T05:17:38.294Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "verify-webchat-cards",
+      "conversationId": "verify-webchat-cards",
+      "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+      "payload": {
+        "senderId": "verify-webchat-cards",
+        "message": "/select_product_type{\"product_type\":\"Designer Frames\"}"
+      }
+    },
+    {
+      "id": "evt_31a1c619-aeed-4b86-8d07-768d01b0b5db",
+      "receivedAt": "2026-03-18T05:17:38.363Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "verify-webchat-cards",
+      "conversationId": "verify-webchat-cards",
+      "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "verify-webchat-cards",
+          "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+          "conversationId": "verify-webchat-cards"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Which brand would you like to explore?",
+            "options": [
+              {
+                "label": "Acuvue",
+                "value": "/select_brand{\"brand\":\"Acuvue\"}"
+              },
+              {
+                "label": "Bausch & Lomb",
+                "value": "/select_brand{\"brand\":\"Bausch & Lomb\"}"
+              },
+              {
+                "label": "Bossini",
+                "value": "/select_brand{\"brand\":\"Bossini\"}"
+              },
+              {
+                "label": "Bottega Veneta",
+                "value": "/select_brand{\"brand\":\"Bottega Veneta\"}"
+              },
+              {
+                "label": "Show All Brands",
+                "value": "/select_brand{\"brand\":\"Show All Brands\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_705d9c57-d0f1-4651-b90f-cfed8a616b34",
+      "receivedAt": "2026-03-18T05:17:39.082Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "verify-webchat-cards",
+      "conversationId": "verify-webchat-cards",
+      "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+      "payload": {
+        "senderId": "verify-webchat-cards",
+        "message": "/browse_eyewear"
+      }
+    },
+    {
+      "id": "evt_4b1415f9-04e0-4694-ba2f-f80762c36911",
+      "receivedAt": "2026-03-18T05:17:39.151Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "verify-webchat-cards",
+      "conversationId": "verify-webchat-cards",
+      "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "verify-webchat-cards",
+          "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+          "conversationId": "verify-webchat-cards"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Great. What are you shopping for today?",
+            "options": [
+              {
+                "label": "Designer Frames",
+                "value": "/select_product_type{\"product_type\":\"Designer Frames\"}"
+              },
+              {
+                "label": "Luxury Sunglasses",
+                "value": "/select_product_type{\"product_type\":\"Luxury Sunglasses\"}"
+              },
+              {
+                "label": "Contact Lenses",
+                "value": "/select_product_type{\"product_type\":\"Contact Lenses\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_9e5518af-dc7c-4a08-92fc-70a3ae78f116",
+      "receivedAt": "2026-03-18T05:17:39.600Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "verify-webchat-cards",
+      "conversationId": "verify-webchat-cards",
+      "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+      "payload": {
+        "senderId": "verify-webchat-cards",
+        "message": "/select_brand{\"brand\":\"Bausch & Lomb\"}"
+      }
+    },
+    {
+      "id": "evt_0f95e4d4-7e66-4767-aa85-876f04166042",
+      "receivedAt": "2026-03-18T05:17:39.666Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "verify-webchat-cards",
+      "conversationId": "verify-webchat-cards",
+      "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "verify-webchat-cards",
+          "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+          "conversationId": "verify-webchat-cards"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "To narrow this down properly, what budget range are you comfortable with?",
+            "options": [
+              {
+                "label": "Under RM100",
+                "value": "/select_budget{\"price_range\":\"Under RM100\"}"
+              },
+              {
+                "label": "RM100 - RM250",
+                "value": "/select_budget{\"price_range\":\"RM100 - RM250\"}"
+              },
+              {
+                "label": "RM250 - RM300",
+                "value": "/select_budget{\"price_range\":\"RM250 - RM300\"}"
+              },
+              {
+                "label": "Above RM300",
+                "value": "/select_budget{\"price_range\":\"Above RM300\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_4979a8e2-7540-436b-b6a7-7b689c7835a3",
+      "receivedAt": "2026-03-18T05:17:39.897Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "verify-webchat-cards",
+      "conversationId": "verify-webchat-cards",
+      "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+      "payload": {
+        "senderId": "verify-webchat-cards",
+        "message": "hi"
+      }
+    },
+    {
+      "id": "evt_51a97151-2d6b-4efb-971e-142254352c28",
+      "receivedAt": "2026-03-18T05:17:39.940Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "verify-webchat-cards",
+      "conversationId": "verify-webchat-cards",
+      "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "verify-webchat-cards",
+          "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+          "conversationId": "verify-webchat-cards"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Selamat datang to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+            "options": [
+              {
+                "label": "Browse Eyewear",
+                "value": "/browse_eyewear"
+              },
+              {
+                "label": "Check Pricing",
+                "value": "/ask_pricing"
+              },
+              {
+                "label": "Book Appointment",
+                "value": "/book_appointment"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_d5c53210-fc03-4615-a75e-199553382c35",
+      "receivedAt": "2026-03-18T05:17:47.077Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "verify-webchat-cards",
+      "conversationId": "verify-webchat-cards",
+      "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+      "payload": {
+        "senderId": "verify-webchat-cards",
+        "message": "/select_budget{\"price_range\":\"Above RM300\"}"
+      }
+    },
+    {
+      "id": "evt_b0e75402-7cf9-439e-b9c6-131cc5dad932",
+      "receivedAt": "2026-03-18T05:17:47.164Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "verify-webchat-cards",
+      "conversationId": "verify-webchat-cards",
+      "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "verify-webchat-cards",
+          "leadId": "lead_145b32ae-d1fb-4b78-a790-2ee7138060fd",
+          "conversationId": "verify-webchat-cards"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "Here are some products that match your request:"
+          },
+          {
+            "type": "choice",
+            "text": "Great. What are you shopping for today?",
+            "options": [
+              {
+                "label": "Designer Frames",
+                "value": "/select_product_type{\"product_type\":\"Designer Frames\"}"
+              },
+              {
+                "label": "Luxury Sunglasses",
+                "value": "/select_product_type{\"product_type\":\"Luxury Sunglasses\"}"
+              },
+              {
+                "label": "Contact Lenses",
+                "value": "/select_product_type{\"product_type\":\"Contact Lenses\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_dea33af5-b84f-4203-8a5b-99ac0283b1c7",
+      "receivedAt": "2026-03-18T05:22:26.828Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "hi"
+      }
+    },
+    {
+      "id": "evt_89e88035-14e3-42bd-9ee4-6fa5b5571bad",
+      "receivedAt": "2026-03-18T05:22:26.897Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Selamat datang to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+            "options": [
+              {
+                "label": "Browse Eyewear",
+                "value": "/browse_eyewear"
+              },
+              {
+                "label": "Check Pricing",
+                "value": "/ask_pricing"
+              },
+              {
+                "label": "Book Appointment",
+                "value": "/book_appointment"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_e974f2bd-8b88-485a-a500-1e4745620623",
+      "receivedAt": "2026-03-18T05:22:28.433Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/ask_pricing"
+      }
+    },
+    {
+      "id": "evt_fb70e213-42af-4f6d-a248-37274eeb5590",
+      "receivedAt": "2026-03-18T05:22:28.504Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Sure. I can help with pricing for frames, sunglasses, contact lenses, and lens upgrades. Which category do you want pricing for?",
+            "options": [
+              {
+                "label": "Frames",
+                "value": "/share_service_interest{\"preferred_service\":\"Designer Frames\"}"
+              },
+              {
+                "label": "Sunglasses",
+                "value": "/share_service_interest{\"preferred_service\":\"Luxury Sunglasses\"}"
+              },
+              {
+                "label": "Lenses",
+                "value": "/share_service_interest{\"preferred_service\":\"Lens Consultation\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_1427a8b1-d7b9-46d7-bcb8-a7ff782dce5b",
+      "receivedAt": "2026-03-18T05:22:29.681Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/share_service_interest{\"preferred_service\":\"Luxury Sunglasses\"}"
+      }
+    },
+    {
+      "id": "evt_5ce62fd3-53b0-4856-8eb1-ee895af78d67",
+      "receivedAt": "2026-03-18T05:22:29.808Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Thank you. We have captured your inquiry and our team will review the best next step for you.",
+            "options": [
+              {
+                "label": "Find Store",
+                "value": "/find_a_store"
+              },
+              {
+                "label": "Browse Eyewear",
+                "value": "/browse_eyewear"
+              },
+              {
+                "label": "Ask Another Question",
+                "value": "/ask_faq"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_bbaa9298-224c-4fc8-92be-f873e80747c3",
+      "receivedAt": "2026-03-18T05:22:37.013Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/find_a_store"
+      }
+    },
+    {
+      "id": "evt_14f0e153-8423-4457-8b71-194c4c75692c",
+      "receivedAt": "2026-03-18T05:22:37.079Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Which city are you looking for?",
+            "options": [
+              {
+                "label": "Kuala Lumpur",
+                "value": "/choose_city{\"city\":\"Kuala Lumpur\"}"
+              },
+              {
+                "label": "Nilai",
+                "value": "/choose_city{\"city\":\"Nilai\"}"
+              },
+              {
+                "label": "Sepang",
+                "value": "/choose_city{\"city\":\"Sepang\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_4312e849-68d6-4aec-8e05-1bb0d7ded510",
+      "receivedAt": "2026-03-18T05:22:37.747Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/choose_city{\"city\":\"Kuala Lumpur\"}"
+      }
+    },
+    {
+      "id": "evt_809031e8-f290-4af6-a503-cf5d304c908f",
+      "receivedAt": "2026-03-18T05:22:37.827Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "Sorry, something went wrong. Please try again."
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_6644e026-5034-488b-9996-c944025b500e",
+      "receivedAt": "2026-03-18T05:27:49.870Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "hi"
+      }
+    },
+    {
+      "id": "evt_a847ea68-9160-4a3a-baba-952292609804",
+      "receivedAt": "2026-03-18T05:27:49.909Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "Sorry, something went wrong. Please try again."
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_4411fe88-db03-491c-a2e6-c68ffecd6fe6",
+      "receivedAt": "2026-03-18T05:29:07.815Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "hi"
+      }
+    },
+    {
+      "id": "evt_8ab4e11e-3626-40d9-9346-6213a4fe880c",
+      "receivedAt": "2026-03-18T05:29:07.845Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "Sorry, something went wrong. Please try again."
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_5e9d5a69-a177-4252-9e23-92f7049e18b9",
+      "receivedAt": "2026-03-18T05:31:32.192Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "hi"
+      }
+    },
+    {
+      "id": "evt_1560f5d0-d7a4-4a3c-866c-3ca6538d309b",
+      "receivedAt": "2026-03-18T05:31:32.618Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Selamat datang to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+            "options": [
+              {
+                "label": "Browse Eyewear",
+                "value": "/browse_eyewear"
+              },
+              {
+                "label": "Check Pricing",
+                "value": "/ask_pricing"
+              },
+              {
+                "label": "Book Appointment",
+                "value": "/book_appointment"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_1eb809a0-ed3a-47d8-9672-14561f44454a",
+      "receivedAt": "2026-03-18T05:31:34.315Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/browse_eyewear"
+      }
+    },
+    {
+      "id": "evt_2e133bfb-139c-4482-87b2-18b64e398014",
+      "receivedAt": "2026-03-18T05:31:34.410Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Great. What are you shopping for today?",
+            "options": [
+              {
+                "label": "Designer Frames",
+                "value": "/select_product_type{\"product_type\":\"Designer Frames\"}"
+              },
+              {
+                "label": "Luxury Sunglasses",
+                "value": "/select_product_type{\"product_type\":\"Luxury Sunglasses\"}"
+              },
+              {
+                "label": "Contact Lenses",
+                "value": "/select_product_type{\"product_type\":\"Contact Lenses\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_13279e64-5c76-4277-b1ef-254b5f4e04e7",
+      "receivedAt": "2026-03-18T05:31:35.104Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/select_product_type{\"product_type\":\"Designer Frames\"}"
+      }
+    },
+    {
+      "id": "evt_53aa63cb-10b2-4f26-9240-5d0b4ebbfb8b",
+      "receivedAt": "2026-03-18T05:31:35.152Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "Sorry, something went wrong. Please try again."
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_1d6013f8-a31f-41bf-90ba-2dab12aa07d8",
+      "receivedAt": "2026-03-18T05:32:14.475Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "hi"
+      }
+    },
+    {
+      "id": "evt_5519123f-22ab-4678-a38d-2384a599abb7",
+      "receivedAt": "2026-03-18T05:32:14.537Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Selamat datang to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+            "options": [
+              {
+                "label": "Browse Eyewear",
+                "value": "/browse_eyewear"
+              },
+              {
+                "label": "Check Pricing",
+                "value": "/ask_pricing"
+              },
+              {
+                "label": "Book Appointment",
+                "value": "/book_appointment"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_e9ad366a-ffe7-401f-b731-f01648034c1c",
+      "receivedAt": "2026-03-18T05:32:17.031Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/browse_eyewear"
+      }
+    },
+    {
+      "id": "evt_83073485-e332-4bf9-a9d1-087f8452ae0e",
+      "receivedAt": "2026-03-18T05:32:17.114Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Great. What are you shopping for today?",
+            "options": [
+              {
+                "label": "Designer Frames",
+                "value": "/select_product_type{\"product_type\":\"Designer Frames\"}"
+              },
+              {
+                "label": "Luxury Sunglasses",
+                "value": "/select_product_type{\"product_type\":\"Luxury Sunglasses\"}"
+              },
+              {
+                "label": "Contact Lenses",
+                "value": "/select_product_type{\"product_type\":\"Contact Lenses\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_0671cdd3-0eeb-474a-a1e3-cd537217dead",
+      "receivedAt": "2026-03-18T05:32:17.667Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/select_product_type{\"product_type\":\"Designer Frames\"}"
+      }
+    },
+    {
+      "id": "evt_8ec20370-4ba0-44de-9961-4c18b9c79b61",
+      "receivedAt": "2026-03-18T05:32:17.730Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Which brand would you like to explore?",
+            "options": [
+              {
+                "label": "Acuvue",
+                "value": "/select_brand{\"brand\":\"Acuvue\"}"
+              },
+              {
+                "label": "Bausch & Lomb",
+                "value": "/select_brand{\"brand\":\"Bausch & Lomb\"}"
+              },
+              {
+                "label": "Bossini",
+                "value": "/select_brand{\"brand\":\"Bossini\"}"
+              },
+              {
+                "label": "Bottega Veneta",
+                "value": "/select_brand{\"brand\":\"Bottega Veneta\"}"
+              },
+              {
+                "label": "Show All Brands",
+                "value": "/select_brand{\"brand\":\"Show All Brands\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_49b5f859-482a-466c-a5ba-f7f2b82d7ba1",
+      "receivedAt": "2026-03-18T05:32:19.194Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/select_brand{\"brand\":\"Acuvue\"}"
+      }
+    },
+    {
+      "id": "evt_fc5a3c0e-5b5b-4b2e-ba3a-6cde086c90a1",
+      "receivedAt": "2026-03-18T05:32:19.263Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "To narrow this down properly, what budget range are you comfortable with?",
+            "options": [
+              {
+                "label": "Under RM100",
+                "value": "/select_budget{\"price_range\":\"Under RM100\"}"
+              },
+              {
+                "label": "RM100 - RM250",
+                "value": "/select_budget{\"price_range\":\"RM100 - RM250\"}"
+              },
+              {
+                "label": "RM250 - RM300",
+                "value": "/select_budget{\"price_range\":\"RM250 - RM300\"}"
+              },
+              {
+                "label": "Above RM300",
+                "value": "/select_budget{\"price_range\":\"Above RM300\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_b5b197f8-73e7-4185-8a64-0081f61a17dd",
+      "receivedAt": "2026-03-18T05:32:21.062Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/select_budget{\"price_range\":\"Above RM300\"}"
+      }
+    },
+    {
+      "id": "evt_ce5fad58-c58b-40a4-abd3-2158db55f7ff",
+      "receivedAt": "2026-03-18T05:32:21.176Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "Here are some products that match your request:"
+          },
+          {
+            "type": "card",
+            "title": "Acuvue - RayBan Premium Frame 11",
+            "subtitle": "Price: RM684.93\n\nCategory: Designer Frames\n\nSpecs: Acetate • Aviator • Gold\n\nAvailability: Low Stock\n\nRating: 4.4/5\n\nStore: Aeon Mall Nilai, Nilai",
+            "imageUrl": "https://dummyimage.com/1200x628/312e81/eef2ff&text=DESIGNER%20FRAMES%0A%0AACUVUE%20RAYBAN%20PREMIUM%20FRAME%2011",
+            "actions": [
+              {
+                "type": "url",
+                "title": "Open Store Map",
+                "value": "https://maps.google.com/?q=Aeon%20Mall%20Nilai%2C%20Nilai%2C%20Calisto%20Eyewear"
+              },
+              {
+                "type": "postback",
+                "title": "Book Visit",
+                "value": "/book_appointment"
+              },
+              {
+                "type": "postback",
+                "title": "Consult Now",
+                "value": "/capture_lead{\"preferred_service\":\"Designer Frames\"}"
+              }
+            ]
+          },
+          {
+            "type": "card",
+            "title": "Acuvue - Prada Premium Frame 72",
+            "subtitle": "Price: RM880.94\n\nCategory: Designer Frames\n\nSpecs: Metal • Round • Silver\n\nAvailability: In Stock\n\nRating: 4.7/5\n\nStore: Aeon Mall Nilai, Nilai",
+            "imageUrl": "https://dummyimage.com/1200x628/312e81/eef2ff&text=DESIGNER%20FRAMES%0A%0AACUVUE%20PRADA%20PREMIUM%20FRAME%2072",
+            "actions": [
+              {
+                "type": "url",
+                "title": "Open Store Map",
+                "value": "https://maps.google.com/?q=Aeon%20Mall%20Nilai%2C%20Nilai%2C%20Calisto%20Eyewear"
+              },
+              {
+                "type": "postback",
+                "title": "Book Visit",
+                "value": "/book_appointment"
+              },
+              {
+                "type": "postback",
+                "title": "Consult Now",
+                "value": "/capture_lead{\"preferred_service\":\"Designer Frames\"}"
+              }
+            ]
+          },
+          {
+            "type": "card",
+            "title": "Acuvue - Persol Premium Frame 90",
+            "subtitle": "Price: RM676.52\n\nCategory: Designer Frames\n\nSpecs: Metal • Cat-Eye • Gold\n\nAvailability: Low Stock\n\nRating: 4.4/5\n\nStore: Mitsui Outlet Park, Sepang",
+            "imageUrl": "https://dummyimage.com/1200x628/312e81/eef2ff&text=DESIGNER%20FRAMES%0A%0AACUVUE%20PERSOL%20PREMIUM%20FRAME%2090",
+            "actions": [
+              {
+                "type": "url",
+                "title": "Open Store Map",
+                "value": "https://maps.google.com/?q=Mitsui%20Outlet%20Park%2C%20Sepang%2C%20Calisto%20Eyewear"
+              },
+              {
+                "type": "postback",
+                "title": "Book Visit",
+                "value": "/book_appointment"
+              },
+              {
+                "type": "postback",
+                "title": "Consult Now",
+                "value": "/capture_lead{\"preferred_service\":\"Designer Frames\"}"
+              }
+            ]
+          },
+          {
+            "type": "card",
+            "title": "Acuvue - Persol Premium Frame 125",
+            "subtitle": "Price: RM496.70\n\nCategory: Designer Frames\n\nSpecs: Acetate • Rectangle • Black\n\nAvailability: Low Stock\n\nRating: 4.3/5\n\nStore: Mitsui Outlet Park, Sepang",
+            "imageUrl": "https://dummyimage.com/1200x628/312e81/eef2ff&text=DESIGNER%20FRAMES%0A%0AACUVUE%20PERSOL%20PREMIUM%20FRAME%2012",
+            "actions": [
+              {
+                "type": "url",
+                "title": "Open Store Map",
+                "value": "https://maps.google.com/?q=Mitsui%20Outlet%20Park%2C%20Sepang%2C%20Calisto%20Eyewear"
+              },
+              {
+                "type": "postback",
+                "title": "Book Visit",
+                "value": "/book_appointment"
+              },
+              {
+                "type": "postback",
+                "title": "Consult Now",
+                "value": "/capture_lead{\"preferred_service\":\"Designer Frames\"}"
+              }
+            ]
+          },
+          {
+            "type": "card",
+            "title": "Acuvue - Bossini Premium Frame 134",
+            "subtitle": "Price: RM539.48\n\nCategory: Designer Frames\n\nSpecs: Titanium • Cat-Eye • Gold\n\nAvailability: In Stock\n\nRating: 4.7/5\n\nStore: Mitsui Outlet Park, Sepang",
+            "imageUrl": "https://dummyimage.com/1200x628/312e81/eef2ff&text=DESIGNER%20FRAMES%0A%0AACUVUE%20BOSSINI%20PREMIUM%20FRAME%201",
+            "actions": [
+              {
+                "type": "url",
+                "title": "Open Store Map",
+                "value": "https://maps.google.com/?q=Mitsui%20Outlet%20Park%2C%20Sepang%2C%20Calisto%20Eyewear"
+              },
+              {
+                "type": "postback",
+                "title": "Book Visit",
+                "value": "/book_appointment"
+              },
+              {
+                "type": "postback",
+                "title": "Consult Now",
+                "value": "/capture_lead{\"preferred_service\":\"Designer Frames\"}"
+              }
+            ]
+          },
+          {
+            "type": "choice",
+            "text": "Would you like to try these frames at a Calisto store?",
+            "options": [
+              {
+                "label": "Find Nearest Store",
+                "value": "/find_a_store"
+              },
+              {
+                "label": "Book Appointment",
+                "value": "/book_appointment"
+              },
+              {
+                "label": "Talk to Consultant",
+                "value": "/capture_lead"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_72a99dad-f477-48f4-9542-ab4f033e06b2",
+      "receivedAt": "2026-03-18T05:32:33.701Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "i need gucci glasses under 500"
+      }
+    },
+    {
+      "id": "evt_9c5dde9b-70bb-4cfc-a8d9-bf58ae9c1598",
+      "receivedAt": "2026-03-18T05:32:33.796Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "Here are some products that match your request:"
+          },
+          {
+            "type": "card",
+            "title": "Gucci - Gentle Monster Premium Frame 82",
+            "subtitle": "Price: RM495.45\n\nCategory: Designer Frames\n\nSpecs: Acetate • Rectangle • Tortoise\n\nAvailability: Low Stock\n\nRating: 4.7/5\n\nStore: Aeon Mall Nilai, Nilai",
+            "imageUrl": "https://dummyimage.com/1200x628/312e81/eef2ff&text=DESIGNER%20FRAMES%0A%0AGUCCI%20GENTLE%20MONSTER%20PREMIUM%20F",
+            "actions": [
+              {
+                "type": "url",
+                "title": "Open Store Map",
+                "value": "https://maps.google.com/?q=Aeon%20Mall%20Nilai%2C%20Nilai%2C%20Calisto%20Eyewear"
+              },
+              {
+                "type": "postback",
+                "title": "Book Visit",
+                "value": "/book_appointment"
+              },
+              {
+                "type": "postback",
+                "title": "Consult Now",
+                "value": "/capture_lead{\"preferred_service\":\"Designer Frames\"}"
+              }
+            ]
+          },
+          {
+            "type": "card",
+            "title": "Gucci - Persol Premium Frame 97",
+            "subtitle": "Price: RM449.77\n\nCategory: Designer Frames\n\nSpecs: Acetate • Cat-Eye • Silver\n\nAvailability: In Stock\n\nRating: 4.1/5\n\nStore: Melawati Mall, Kuala Lumpur",
+            "imageUrl": "https://dummyimage.com/1200x628/312e81/eef2ff&text=DESIGNER%20FRAMES%0A%0AGUCCI%20PERSOL%20PREMIUM%20FRAME%2097",
+            "actions": [
+              {
+                "type": "url",
+                "title": "Open Store Map",
+                "value": "https://maps.google.com/?q=Melawati%20Mall%2C%20Kuala%20Lumpur%2C%20Calisto%20Eyewear"
+              },
+              {
+                "type": "postback",
+                "title": "Book Visit",
+                "value": "/book_appointment"
+              },
+              {
+                "type": "postback",
+                "title": "Consult Now",
+                "value": "/capture_lead{\"preferred_service\":\"Designer Frames\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_509e55ce-a0e4-48ca-ae53-9128007afe9f",
+      "receivedAt": "2026-03-18T05:33:27.072Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "/capture_lead{\"preferred_service\":\"Designer Frames\"}"
+      }
+    },
+    {
+      "id": "evt_9512741c-b38d-4d9a-a741-e2b955f89977",
+      "receivedAt": "2026-03-18T05:33:27.208Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "First, may I have your name?"
+          }
+        ]
+      }
     }
   ],
   "deduplication": [
     {
-      "key": "whatsapp:wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0IyN0Y3MURBMjg1NkFCRDJFQzUA",
-      "seenAt": 1773804532274
+      "key": "website:web-1773811747763",
+      "seenAt": 1773811747763
     },
     {
-      "key": "messenger:m_bZEiKc82OoCjrvnkMNbnPb2wdkI3AM_-I6t-uNJVb9BTaHCNkdqH747mLMkgv4Dpd7NA78CAqnFT3rm5zQvdGA",
-      "seenAt": 1773804541316
+      "key": "website:web-1773811892132",
+      "seenAt": 1773811892132
     },
     {
-      "key": "messenger:m_nY3hvpFb4lIWnVc6hSiZ172wdkI3AM_-I6t-uNJVb9DXNh1_DUvB-QiKaupnb2J8qj7uCVkHIi5P7Cy5kcXerQ",
-      "seenAt": 1773804547739
+      "key": "website:web-1773811894264",
+      "seenAt": 1773811894264
     },
     {
-      "key": "messenger:m_Nm6mm5hH2_iSg0rp8S1lE72wdkI3AM_-I6t-uNJVb9B2Sp_kk4J02i5rcDbwWKcsDJHV3Z5bX6kc7Gsm5sq2ew",
-      "seenAt": 1773804552860
+      "key": "website:web-1773811895050",
+      "seenAt": 1773811895050
     },
     {
-      "key": "messenger:m_WblhjpikkN6bIMV7DXHJrL2wdkI3AM_-I6t-uNJVb9AnMIoggVeEOL9hagtF_QJYD21jY1Vu2G91EWPSjeiKww",
-      "seenAt": 1773804557979
+      "key": "website:web-1773811934405",
+      "seenAt": 1773811934405
     },
     {
-      "key": "messenger:m_h-DzJFTPLd0LXdjxvoNx3r2wdkI3AM_-I6t-uNJVb9BT83sexPjUD_IQm-2ep88flU_7lNBv0IPgfDXoqKXqAA",
-      "seenAt": 1773804562793
+      "key": "website:web-1773811936980",
+      "seenAt": 1773811936980
     },
     {
-      "key": "messenger:m_ImociUDHxyvBjhsEYAtyxb2wdkI3AM_-I6t-uNJVb9Aue2sIusFq0RwCkyzFGcveyyuig2srEOLxOog-QP8ydQ",
-      "seenAt": 1773804602529
+      "key": "website:web-1773811937631",
+      "seenAt": 1773811937631
     },
     {
-      "key": "messenger:m_hVBOmu4jUuPYRaATCZ0gur2wdkI3AM_-I6t-uNJVb9CPFqS34EEQMHuzytQJMH65OpYnKKao248bgYGVPeAH_g",
-      "seenAt": 1773804607292
+      "key": "website:web-1773811939145",
+      "seenAt": 1773811939145
     },
     {
-      "key": "telegram:101",
-      "seenAt": 1773804681944
+      "key": "website:web-1773811941013",
+      "seenAt": 1773811941013
     },
     {
-      "key": "telegram:4600746306530479430",
-      "seenAt": 1773804686082
+      "key": "website:web-1773811953640",
+      "seenAt": 1773811953640
     },
     {
-      "key": "telegram:4600746306985775386",
-      "seenAt": 1773804690695
-    },
-    {
-      "key": "telegram:4600746303051280379",
-      "seenAt": 1773804696186
-    },
-    {
-      "key": "telegram:4600746304481641623",
-      "seenAt": 1773804700483
-    },
-    {
-      "key": "telegram:4600746307220875430",
-      "seenAt": 1773804711618
-    },
-    {
-      "key": "telegram:4600746306069433564",
-      "seenAt": 1773804716774
-    },
-    {
-      "key": "telegram:4600746303323340439",
-      "seenAt": 1773804726314
+      "key": "website:web-1773812007020",
+      "seenAt": 1773812007020
     }
   ]
 }
