@@ -47,6 +47,11 @@ stories:
       - action: action_filter_products
       - action: utter_ask_try_frames
 
+  - story: Combined product search flow
+    steps:
+      - intent: search_product
+      - action: action_filter_products
+
   - story: Lead capture happy path
     steps:
       - intent: book_appointment

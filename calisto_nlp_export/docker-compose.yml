@@ -16,14 +16,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    command: >
+      sh -lc 'LATEST_MODEL=$$(ls -t /app/models/*.tar.gz | head -n1) &&
+      exec rasa run --enable-api --cors "*" --model "$$LATEST_MODEL" --endpoints endpoints.docker.yml --credentials credentials.yml --port 5005'
     ports:
       - "5005:5005"
     depends_on:
       - action-server
     volumes:
       - ./models:/app/models
-    environment:
-      - ACTION_ENDPOINT_URL=http://action-server:5055/webhook
     networks:
       - calisto-net
 

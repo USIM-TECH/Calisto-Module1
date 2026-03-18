@@ -91,7 +91,8 @@ def filter_by_budget(df: pd.DataFrame, budget_slot: Text) -> pd.DataFrame:
     if not budget_slot:
         return df
 
-    budget_lower = str(budget_slot).lower().replace(" ", "").replace("–", "-")
+    budget_text = str(budget_slot).strip()
+    budget_lower = budget_text.lower().replace(" ", "").replace("–", "-")
     if "underrm100" in budget_lower:
         return df[df["price_myr"] < 100]
     if "rm100-rm250" in budget_lower:
@@ -101,19 +102,29 @@ def filter_by_budget(df: pd.DataFrame, budget_slot: Text) -> pd.DataFrame:
     if "aboverm300" in budget_lower:
         return df[df["price_myr"] > 300]
 
-    match_under = re.search(r"under\s*rm\s*(\d+(?:\.\d+)?)", str(budget_slot).lower())
+    match_under = re.search(r"(?:under|below|lessthan)\s*(?:rm)?\s*(\d+(?:\.\d+)?)", budget_lower)
     if match_under:
         return df[df["price_myr"] <= float(match_under.group(1))]
 
-    match_over = re.search(r"(?:over|above)\s*rm\s*(\d+(?:\.\d+)?)", str(budget_slot).lower())
+    match_over = re.search(r"(?:over|above|morethan)\s*(?:rm)?\s*(\d+(?:\.\d+)?)", budget_lower)
     if match_over:
         return df[df["price_myr"] >= float(match_over.group(1))]
 
-    match_range = re.search(r"rm?\s*(\d+(?:\.\d+)?)\s*-\s*rm?\s*(\d+(?:\.\d+)?)", str(budget_slot).lower())
+    match_range = re.search(r"(?:between|from)?\s*(?:rm)?\s*(\d+(?:\.\d+)?)\s*(?:and|-|to)\s*(?:rm)?\s*(\d+(?:\.\d+)?)", budget_lower)
     if match_range:
         low = float(match_range.group(1))
         high = float(match_range.group(2))
         return df[(df["price_myr"] >= low) & (df["price_myr"] <= high)]
+
+    match_around = re.search(r"(?:around|about|approx(?:imately)?)\s*(?:rm)?\s*(\d+(?:\.\d+)?)", budget_lower)
+    if match_around:
+        center = float(match_around.group(1))
+        return df[(df["price_myr"] >= center - 50) & (df["price_myr"] <= center + 50)]
+
+    match_numeric = re.search(r"\b(\d+(?:\.\d+)?)\b", budget_text)
+    if match_numeric:
+        value = float(match_numeric.group(1))
+        return df[df["price_myr"] <= value]
 
     return df
 
@@ -126,6 +137,30 @@ def format_product(row: pd.Series) -> str:
     store = row.get("store_location") or ""
     suffix = f"\nLocation: {store}, {city}".rstrip(", ")
     return f"{brand} - {name}\nPrice: RM{float(price):.2f}{suffix}"
+
+
+def latest_entity_values(tracker: Tracker) -> Dict[str, Any]:
+    values: Dict[str, Any] = {}
+    for entity in tracker.latest_message.get("entities", []):
+        entity_name = entity.get("entity")
+        if entity_name:
+            values[entity_name] = entity.get("value")
+    return values
+
+
+def format_product_list(rows: pd.DataFrame, heading: str) -> str:
+    lines = [heading, ""]
+    for index, (_, row) in enumerate(rows.iterrows(), start=1):
+        brand = titleize(row.get("brand")) or "Calisto"
+        product_name = str(row.get("product_name") or "Frame").strip()
+        location_parts = [str(row.get("store_location") or "").strip(), str(row.get("city") or "").strip()]
+        location = ", ".join(part for part in location_parts if part)
+        lines.append(f"{index}. {brand} - {product_name}")
+        lines.append(f"Price: RM{float(row.get('price_myr', 0) or 0):.2f}")
+        if location:
+            lines.append(f"Location: {location}")
+        lines.append("")
+    return "\n".join(lines).strip()
 
 
 def unique_cities(df: pd.DataFrame) -> List[str]:
@@ -280,27 +315,33 @@ class ActionFilterProducts(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        product_type = tracker.get_slot("product_type")
-        brand = tracker.get_slot("brand")
-        price_range = tracker.get_slot("price_range")
+        entities = latest_entity_values(tracker)
+        product_type = entities.get("product_type") or tracker.get_slot("product_type")
+        brand = entities.get("brand") or tracker.get_slot("brand")
+        price_range = (
+            entities.get("price_range")
+            or entities.get("budget")
+            or tracker.get_slot("price_range")
+            or tracker.get_slot("budget")
+        )
+        frame_color = entities.get("frame_color") or tracker.get_slot("frame_color")
+        frame_shape = entities.get("frame_shape") or tracker.get_slot("frame_shape")
+        frame_material = entities.get("frame_material") or tracker.get_slot("frame_material")
 
         backend_results = gateway.search_products({
             "product_type": product_type,
             "brand": brand,
             "price_range": price_range,
+            "frame_color": frame_color,
+            "frame_shape": frame_shape,
+            "frame_material": frame_material,
         })
         if backend_results:
-            dispatcher.utter_message(text="Here are some products that match your request:")
-            for product in backend_results[:5]:
-                dispatcher.utter_message(
-                    text=(
-                        f"{product.get('brand', 'Brand')} - {product.get('product_name', 'Product')}\n"
-                        f"Price: RM{float(product.get('price_myr', 0) or 0):.2f}"
-                    )
-                )
+            backend_df = pd.DataFrame(backend_results).fillna("")
+            formatted = format_product_list(backend_df.head(5), "Here are some products that match your request:")
             dispatcher.utter_message(
-                response="utter_next_step_product_help",
-                buttons=lead_buttons(str(product_type or brand or "")),
+                text=formatted,
+                buttons=lead_buttons(str(product_type or brand or "Product Recommendation")),
             )
             return []
 
@@ -313,6 +354,18 @@ class ActionFilterProducts(Action):
             filtered_df = filtered_df[
                 filtered_df["brand"].astype(str).str.contains(brand, case=False, na=False)
             ]
+        if frame_color:
+            filtered_df = filtered_df[
+                filtered_df["frame_color"].astype(str).str.contains(str(frame_color), case=False, na=False)
+            ]
+        if frame_shape:
+            filtered_df = filtered_df[
+                filtered_df["frame_shape"].astype(str).str.contains(str(frame_shape), case=False, na=False)
+            ]
+        if frame_material:
+            filtered_df = filtered_df[
+                filtered_df["frame_material"].astype(str).str.contains(str(frame_material), case=False, na=False)
+            ]
         filtered_df = filter_by_budget(filtered_df, price_range)
         top_5 = filtered_df.head(5)
 
@@ -322,12 +375,9 @@ class ActionFilterProducts(Action):
             )
             return []
 
-        dispatcher.utter_message(text="Here are some products that match your request:")
-        for _, row in top_5.iterrows():
-            dispatcher.utter_message(text=format_product(row))
         dispatcher.utter_message(
-            response="utter_next_step_product_help",
-            buttons=lead_buttons(str(product_type or brand or "")),
+            text=format_product_list(top_5, "Here are some products that match your request:"),
+            buttons=lead_buttons(str(product_type or brand or "Product Recommendation")),
         )
         return []
 

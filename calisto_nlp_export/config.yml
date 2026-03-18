@@ -21,6 +21,12 @@ pipeline:
 - name: RegexFeaturizer
   case_sensitive: false
 
+  # 2b. Extract regex and lookup-based entities such as budget and brands
+- name: RegexEntityExtractor
+  use_lookup_tables: true
+  use_regexes: true
+  use_word_boundaries: true
+
   # 3. Lexical / syntactic features
 - name: LexicalSyntacticFeaturizer
 

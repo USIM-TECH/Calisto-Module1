@@ -74,14 +74,11 @@
       "channel": "website",
       "sourceId": "website-user-demo",
       "conversationId": "website-user-demo",
-      "qualificationStatus": "needs_review",
+      "qualificationStatus": "new",
       "crmStatus": "pending",
-      "lastMessageAt": "2026-03-17T03:41:13.655Z",
+      "lastMessageAt": "2026-03-18T03:29:58.450Z",
       "createdAt": "2026-03-17T03:37:47.737Z",
-      "updatedAt": "2026-03-17T03:41:13.773Z",
-      "lastIntent": "choose_city",
-      "preferredService": "Contact Lenses",
-      "location": "Sepang"
+      "updatedAt": "2026-03-18T03:29:58.515Z"
     }
   ],
   "conversations": [
@@ -2348,7 +2345,7 @@
       "channel": "website",
       "sourceId": "website-user-demo",
       "createdAt": "2026-03-17T03:37:47.745Z",
-      "updatedAt": "2026-03-17T03:41:13.792Z",
+      "updatedAt": "2026-03-18T03:29:58.523Z",
       "messages": [
         {
           "direction": "inbound",
@@ -2707,6 +2704,84 @@
           "text": "Would you like to book a visit or speak with a consultant before you go?",
           "messageType": "choice",
           "timestamp": "2026-03-17T03:41:13.792Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773802847209",
+          "text": "hi",
+          "messageType": "text",
+          "timestamp": "2026-03-18T03:00:47.209Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_c396926a-771a-465c-b889-6680cc0a2579",
+          "text": "Sorry, something went wrong. Please try again.",
+          "messageType": "text",
+          "timestamp": "2026-03-18T03:00:47.269Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773802859044",
+          "text": "hii",
+          "messageType": "text",
+          "timestamp": "2026-03-18T03:00:59.044Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_489716a7-6789-4abc-bcbc-3fce03b1b17c",
+          "text": "Sorry, something went wrong. Please try again.",
+          "messageType": "text",
+          "timestamp": "2026-03-18T03:00:59.097Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "web-1773804598450",
+          "text": "hi",
+          "messageType": "text",
+          "timestamp": "2026-03-18T03:29:58.450Z",
+          "metadata": {
+            "channel": "website",
+            "sourceId": "website-user-demo",
+            "conversationId": "website-user-demo",
+            "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_8659f2cf-667f-4ed9-b70b-e23b05a141a4",
+          "text": "Sorry, something went wrong. Please try again.",
+          "messageType": "text",
+          "timestamp": "2026-03-18T03:29:58.523Z",
           "metadata": {
             "channel": "website",
             "sourceId": "website-user-demo",
@@ -22423,72 +22498,126 @@
         },
         "timestamp": 1773719120156
       }
+    },
+    {
+      "id": "evt_0373e3d1-40eb-43f1-a495-88950381efff",
+      "receivedAt": "2026-03-18T03:00:47.239Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "hi"
+      }
+    },
+    {
+      "id": "evt_c15169ee-a882-49f2-be6b-396ca43b1dc6",
+      "receivedAt": "2026-03-18T03:00:47.276Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "Sorry, something went wrong. Please try again."
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_13dcbe7d-dc53-4283-9b0f-5726648ae17e",
+      "receivedAt": "2026-03-18T03:00:59.078Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "hii"
+      }
+    },
+    {
+      "id": "evt_18d21980-cfb5-4ec4-a3e9-b79ebd007ec1",
+      "receivedAt": "2026-03-18T03:00:59.104Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "Sorry, something went wrong. Please try again."
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_4b4e5e94-9ccb-4ae6-9423-b906c57d9311",
+      "receivedAt": "2026-03-18T03:29:58.494Z",
+      "channel": "website",
+      "direction": "inbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "senderId": "website-user-demo",
+        "message": "hi"
+      }
+    },
+    {
+      "id": "evt_84bbc1c7-7383-4d24-8ce9-a03a6a7d1249",
+      "receivedAt": "2026-03-18T03:29:58.531Z",
+      "channel": "website",
+      "direction": "outbound",
+      "path": "/messages/website",
+      "sourceId": "website-user-demo",
+      "conversationId": "website-user-demo",
+      "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+      "payload": {
+        "metadata": {
+          "channel": "website",
+          "sourceId": "website-user-demo",
+          "leadId": "lead_ba43b4e5-b85a-4776-8cb3-92f1468dd0cc",
+          "conversationId": "website-user-demo"
+        },
+        "messages": [
+          {
+            "type": "text",
+            "text": "Sorry, something went wrong. Please try again."
+          }
+        ]
+      }
     }
   ],
   "deduplication": [
     {
-      "key": "website:web-1773718841030",
-      "seenAt": 1773718841030
-    },
-    {
-      "key": "website:web-1773718845912",
-      "seenAt": 1773718845912
-    },
-    {
-      "key": "website:web-1773718849702",
-      "seenAt": 1773718849702
-    },
-    {
-      "key": "website:web-1773718853105",
-      "seenAt": 1773718853105
-    },
-    {
-      "key": "website:web-1773718856200",
-      "seenAt": 1773718856200
-    },
-    {
-      "key": "website:web-1773718871867",
-      "seenAt": 1773718871867
-    },
-    {
-      "key": "website:web-1773718873655",
-      "seenAt": 1773718873655
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE3Mzk1OTE4ODM4FQIAEhgUM0JCRTY2REQwNjk5QzNEMUY1MDAA",
-      "seenAt": 1773718941487
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE3Mzk1OTE4ODM4FQIAEhgUM0IzNDQ5QUIxRkY0NUM1OTZCNTYA",
-      "seenAt": 1773718949778
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE3Mzk1OTE4ODM4FQIAEhgUM0JERDM0NDU4Nzc2QjQ2OTQ1RUIA",
-      "seenAt": 1773718955946
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE3Mzk1OTE4ODM4FQIAEhgUM0I1MUY3MUVGODRDNkQxOTAyRTcA",
-      "seenAt": 1773718966539
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE3Mzk1OTE4ODM4FQIAEhgUM0JGMEJEMDNGQThCQzY3RDA1REIA",
-      "seenAt": 1773718973674
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE3Mzk1OTE4ODM4FQIAEhgUM0I2MTNCMUQ3NTNBMDcwNzRDMUYA",
-      "seenAt": 1773718983664
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE3Mzk1OTE4ODM4FQIAEhgUM0I2RTgxRDNCRDhCQ0JEMzc3OTIA",
-      "seenAt": 1773718988171
-    },
-    {
-      "key": "instagram:aWdfZAG1faXRlbToxOklHTWVzc2FnZAUlEOjE3ODQxNDgwMzk4NTMyNDcyOjM0MDI4MjM2Njg0MTcxMDMwMTI0NDI3NjAyOTczNzY1Nzc2NjkyODozMjcxOTM0MjY0MzcyNzcxODAzMzYyNjE2NzUxOTQ3Nzc2MAZDZD",
-      "seenAt": 1773719119626
-    },
-    {
-      "key": "instagram:",
-      "seenAt": 1773719120444
+      "key": "website:web-1773804598450",
+      "seenAt": 1773804598450
     }
   ]
 }
