@@ -46,7 +46,6 @@ stories:
           - price_range
       - action: action_filter_products
       - action: utter_ask_try_frames
-
   - story: Combined product search flow
     steps:
       - intent: search_product

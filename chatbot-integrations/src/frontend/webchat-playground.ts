@@ -125,6 +125,46 @@ export function renderWebchatPlaygroundHtml(): string {
         border-radius: 14px;
         display: block;
       }
+      .card-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .card-item {
+        border: 1px solid #dbe3f0;
+        background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+        border-radius: 16px;
+        padding: 14px;
+      }
+      .card-title {
+        font-size: 0.92rem;
+        font-weight: 800;
+        color: #111827;
+        margin-bottom: 6px;
+      }
+      .card-subtitle {
+        white-space: pre-line;
+        color: #4b5563;
+        font-size: 0.82rem;
+        line-height: 1.55;
+      }
+      .card-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .card-action {
+        border: 1px solid #dbe3f0;
+        background: #ffffff;
+        color: #0f172a;
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-decoration: none;
+        cursor: pointer;
+      }
     </style>
     <script>
       const messagesEl = document.getElementById('messages');
@@ -202,6 +242,56 @@ export function renderWebchatPlaygroundHtml(): string {
         bubble.appendChild(choices);
       }
 
+      function appendCardBubble(message) {
+        const bubble = appendBubble('', 'outbound');
+        const list = document.createElement('div');
+        list.className = 'card-list';
+
+        const card = document.createElement('div');
+        card.className = 'card-item';
+
+        const title = document.createElement('div');
+        title.className = 'card-title';
+        title.textContent = message.title || 'Result';
+        card.appendChild(title);
+
+        if (message.subtitle) {
+          const subtitle = document.createElement('div');
+          subtitle.className = 'card-subtitle';
+          subtitle.textContent = message.subtitle;
+          card.appendChild(subtitle);
+        }
+
+        if ((message.actions || []).length) {
+          const actions = document.createElement('div');
+          actions.className = 'card-actions';
+
+          (message.actions || []).forEach((action) => {
+            if (action.type === 'url') {
+              const link = document.createElement('a');
+              link.className = 'card-action';
+              link.href = action.value;
+              link.target = '_blank';
+              link.rel = 'noreferrer';
+              link.textContent = action.title;
+              actions.appendChild(link);
+            } else {
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.className = 'card-action';
+              button.textContent = action.title;
+              button.addEventListener('click', () => sendMessage(action.value, action.title));
+              actions.appendChild(button);
+            }
+          });
+
+          card.appendChild(actions);
+        }
+
+        list.appendChild(card);
+        bubble.appendChild(list);
+      }
+
       async function sendMessage(rawValue, visibleText) {
         const text = String(rawValue || '').trim();
         const senderId = String(senderIdInput.value || '').trim() || 'website-demo-user';
@@ -228,6 +318,8 @@ export function renderWebchatPlaygroundHtml(): string {
           for (const message of payload.messages || []) {
             if (message.type === 'choice') {
               appendChoiceBubble(message);
+            } else if (message.type === 'card') {
+              appendCardBubble(message);
             } else if (message.type === 'image') {
               appendImageBubble(message.imageUrl);
             } else if (message.type === 'text') {
@@ -540,6 +632,40 @@ export function renderCustomerWebchatHtml(): string {
         color: var(--muted);
         font-size: 0.8rem;
       }
+      .chat-card {
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 16px;
+      }
+      .chat-card-title {
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 6px;
+      }
+      .chat-card-subtitle {
+        white-space: pre-line;
+        color: #475569;
+        font-size: 0.92rem;
+        line-height: 1.6;
+      }
+      .chat-card-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+      .chat-card-action {
+        border-radius: 999px;
+        border: 1px solid rgba(251, 146, 60, 0.35);
+        background: rgba(255, 247, 237, 0.95);
+        color: #c2410c;
+        font-size: 0.78rem;
+        font-weight: 800;
+        padding: 8px 12px;
+        text-decoration: none;
+        cursor: pointer;
+      }
 
       @media (max-width: 920px) {
         .shell {
@@ -660,6 +786,52 @@ export function renderCustomerWebchatHtml(): string {
         bubble.appendChild(choices);
       }
 
+      function appendCardBubble(message) {
+        const bubble = appendBubble('', 'bot');
+        const card = document.createElement('div');
+        card.className = 'chat-card';
+
+        const title = document.createElement('div');
+        title.className = 'chat-card-title';
+        title.textContent = message.title || 'Result';
+        card.appendChild(title);
+
+        if (message.subtitle) {
+          const subtitle = document.createElement('div');
+          subtitle.className = 'chat-card-subtitle';
+          subtitle.textContent = message.subtitle;
+          card.appendChild(subtitle);
+        }
+
+        if ((message.actions || []).length) {
+          const actions = document.createElement('div');
+          actions.className = 'chat-card-actions';
+
+          (message.actions || []).forEach((action) => {
+            if (action.type === 'url') {
+              const link = document.createElement('a');
+              link.className = 'chat-card-action';
+              link.href = action.value;
+              link.target = '_blank';
+              link.rel = 'noreferrer';
+              link.textContent = action.title;
+              actions.appendChild(link);
+            } else {
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.className = 'chat-card-action';
+              button.textContent = action.title;
+              button.addEventListener('click', () => sendMessage(action.value, action.title));
+              actions.appendChild(button);
+            }
+          });
+
+          card.appendChild(actions);
+        }
+
+        bubble.appendChild(card);
+      }
+
       async function sendMessage(rawValue, visibleText) {
         const text = String(rawValue || '').trim();
         if (!text) return;
@@ -684,6 +856,8 @@ export function renderCustomerWebchatHtml(): string {
           for (const message of payload.messages || []) {
             if (message.type === 'choice') {
               appendChoiceBubble(message);
+            } else if (message.type === 'card') {
+              appendCardBubble(message);
             } else if (message.type === 'image') {
               appendImageBubble(message.imageUrl);
             } else if (message.type === 'text') {

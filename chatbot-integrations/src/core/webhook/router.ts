@@ -6,7 +6,7 @@ import type { WhatsAppChannel } from '../../integrations/channels/whatsapp/clien
 import type { XChannel } from '../../integrations/channels/x/client.js'
 import type { Logger } from '../utils/index.js'
 import type { WebhookRequest } from '../types.js'
-import type { RuntimeStore } from '../../app/runtime-store.js'
+import type { RuntimeStore } from '../../leads/index.js'
 
 export interface WebhookRouterConfig {
   whatsapp?: WhatsAppChannel

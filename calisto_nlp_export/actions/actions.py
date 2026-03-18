@@ -178,16 +178,197 @@ def titleize(value: Optional[str]) -> str:
     return str(value or "").strip().title()
 
 
+def build_maps_url(*parts: Any) -> str:
+    query = ", ".join(str(part).strip() for part in parts if str(part).strip())
+    return f"https://maps.google.com/?q={urllib.parse.quote(query)}"
+
+
+def build_placeholder_image(label: str, theme: str = "eyewear") -> str:
+    themes = {
+        "eyewear": {
+            "bg": "1f2937",
+            "fg": "f9fafb",
+            "prefix": "CALISTO EYEWEAR",
+        },
+        "designer_frames": {
+            "bg": "312e81",
+            "fg": "eef2ff",
+            "prefix": "DESIGNER FRAMES",
+        },
+        "sunglasses": {
+            "bg": "7c2d12",
+            "fg": "fffbeb",
+            "prefix": "LUXURY SUNGLASSES",
+        },
+        "contact_lenses": {
+            "bg": "075985",
+            "fg": "ecfeff",
+            "prefix": "CONTACT LENSES",
+        },
+        "store": {
+            "bg": "0f766e",
+            "fg": "f0fdfa",
+            "prefix": "VISIT A STORE",
+        },
+        "lens": {
+            "bg": "1d4ed8",
+            "fg": "eff6ff",
+            "prefix": "LENS SOLUTIONS",
+        },
+        "appointment": {
+            "bg": "c2410c",
+            "fg": "fff7ed",
+            "prefix": "BOOK A VISIT",
+        },
+    }
+    config = themes.get(theme, themes["eyewear"])
+    safe_label = urllib.parse.quote((label[:30] or "Calisto Eyewear").upper())
+    prefix = urllib.parse.quote(config["prefix"])
+    return (
+        f"https://dummyimage.com/1200x628/{config['bg']}/{config['fg']}"
+        f"&text={prefix}%0A%0A{safe_label}"
+    )
+
+
+def choose_product_image_theme(product_type: str, preferred_service: Optional[str]) -> str:
+    product_type_lower = str(product_type or "").lower()
+    preferred_service_lower = str(preferred_service or "").lower()
+
+    if "contact" in product_type_lower:
+        return "contact_lenses"
+    if "sunglass" in product_type_lower:
+        return "sunglasses"
+    if "designer" in product_type_lower or "frame" in product_type_lower:
+        return "designer_frames"
+    if "appointment" in preferred_service_lower or "visit" in preferred_service_lower:
+        return "appointment"
+    if "lens" in product_type_lower or "lens" in preferred_service_lower:
+        return "lens"
+    return "eyewear"
+
+
 def lead_buttons(preferred_service: Optional[str] = None) -> List[Dict[str, str]]:
     payload = '/capture_lead'
     if preferred_service:
         safe_service = str(preferred_service).replace('"', '\\"')
         payload = f'/capture_lead{{"preferred_service":"{safe_service}"}}'
     return [
-        {"title": "Book Appointment", "payload": "/book_appointment"},
+        {"title": "Book Visit", "payload": "/book_appointment"},
         {"title": "Find Store", "payload": "/find_a_store"},
-        {"title": "Talk to Consultant", "payload": payload},
+        {"title": "Consult Now", "payload": payload},
     ]
+
+
+def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any], preferred_service: Optional[str]) -> None:
+    brand = str(product.get("brand") or "Brand").strip()
+    name = str(product.get("product_name") or "Product").strip()
+    price = float(product.get("price_myr", 0) or 0)
+    product_type = str(product.get("product_type") or product.get("category") or "").strip()
+    material = titleize(product.get("frame_material"))
+    shape = titleize(product.get("frame_shape"))
+    color = titleize(product.get("frame_color"))
+    stock = str(product.get("stock_status") or "").replace("_", " ").title()
+    rating = product.get("rating")
+    store_location = str(product.get("store_location") or "").strip()
+    city = str(product.get("city") or "").strip()
+
+    detail_parts = [part for part in [material, shape, color] if part]
+    subtitle_sections = [
+        f"Price: RM{price:.2f}",
+        f"Category: {product_type}" if product_type else "",
+        f"Specs: {' • '.join(detail_parts)}" if detail_parts else "",
+        f"Availability: {stock}" if stock else "",
+        f"Rating: {rating}/5" if rating not in (None, "") else "",
+        f"Store: {store_location}, {city}".strip(", ") if (store_location or city) else "",
+    ]
+
+    actions = []
+    if store_location or city:
+        actions.append({
+            "type": "url",
+            "title": "Open Store Map",
+            "value": build_maps_url(store_location, city, "Calisto Eyewear"),
+        })
+    actions.append({"type": "postback", "title": "Book Visit", "value": "/book_appointment"})
+    actions.append({
+        "type": "postback",
+        "title": "Consult Now",
+        "value": lead_buttons(preferred_service)[-1]["payload"],
+    })
+
+    theme = choose_product_image_theme(product_type, preferred_service)
+
+    dispatcher.utter_message(
+        json_message={
+            "type": "card",
+            "title": f"{brand} - {name}",
+            "subtitle": "\n\n".join(line for line in subtitle_sections if line),
+            "imageUrl": build_placeholder_image(f"{brand} {name}", theme),
+            "actions": actions,
+        }
+    )
+
+
+def emit_store_card(dispatcher: CollectingDispatcher, store_location: str, city: str) -> None:
+    dispatcher.utter_message(
+        json_message={
+            "type": "card",
+            "title": store_location or "Calisto Store",
+            "subtitle": "\n".join([
+                f"City: {city}" if city else "",
+                "Get directions or continue to book a visit.",
+            ]).strip(),
+            "imageUrl": build_placeholder_image(f"{store_location or 'Calisto Store'} {city}", "store"),
+            "actions": [
+                {
+                    "type": "url",
+                    "title": "Map",
+                    "value": build_maps_url(store_location, city, "Calisto Eyewear"),
+                },
+                {
+                    "type": "postback",
+                    "title": "Book Visit",
+                    "value": '/capture_lead{"preferred_service":"Store Visit"}',
+                },
+            ],
+        }
+    )
+
+
+def latest_metadata(tracker: Tracker) -> Dict[str, Any]:
+    latest_message = tracker.latest_message if isinstance(tracker.latest_message, dict) else {}
+    metadata = latest_message.get("metadata")
+    return metadata if isinstance(metadata, dict) else {}
+
+
+class ActionPrefillLeadCapture(Action):
+    def name(self) -> Text:
+        return "action_prefill_lead_capture"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        metadata = latest_metadata(tracker)
+        events: List[Dict[Text, Any]] = []
+
+        slot_mappings = {
+            "lead_name": metadata.get("senderName"),
+            "contact_number": metadata.get("phone"),
+            "email": metadata.get("email"),
+            "lead_location": metadata.get("location"),
+        }
+
+        for slot_name, value in slot_mappings.items():
+            if tracker.get_slot(slot_name):
+                continue
+            normalized = str(value).strip() if isinstance(value, str) else ""
+            if normalized:
+                events.append(SlotSet(slot_name, normalized))
+
+        return events
 
 
 class ValidateLeadCaptureForm(FormValidationAction):
@@ -337,12 +518,9 @@ class ActionFilterProducts(Action):
             "frame_material": frame_material,
         })
         if backend_results:
-            backend_df = pd.DataFrame(backend_results).fillna("")
-            formatted = format_product_list(backend_df.head(5), "Here are some products that match your request:")
-            dispatcher.utter_message(
-                text=formatted,
-                buttons=lead_buttons(str(product_type or brand or "Product Recommendation")),
-            )
+            dispatcher.utter_message(text="Here are some products that match your request:")
+            for product in backend_results[:4]:
+                emit_product_card(dispatcher, product, str(product_type or brand or ""))
             return []
 
         filtered_df = load_catalogue().copy()
@@ -375,10 +553,9 @@ class ActionFilterProducts(Action):
             )
             return []
 
-        dispatcher.utter_message(
-            text=format_product_list(top_5, "Here are some products that match your request:"),
-            buttons=lead_buttons(str(product_type or brand or "Product Recommendation")),
-        )
+        dispatcher.utter_message(text="Here are some products that match your request:")
+        for _, row in top_5.iterrows():
+            emit_product_card(dispatcher, row.to_dict(), str(product_type or brand or ""))
         return []
 
 
@@ -450,15 +627,12 @@ class ActionFindStore(Action):
 
         backend_stores = gateway.search_stores(str(city))
         if backend_stores:
-            dispatcher.utter_message(text=f"Here are the stores we found in {titleize(city)}:")
-            for store in backend_stores[:10]:
-                dispatcher.utter_message(
-                    text=f"{store.get('store_location', 'Calisto Store')}\nCity: {store.get('city', city)}"
+            for store in backend_stores[:6]:
+                emit_store_card(
+                    dispatcher,
+                    str(store.get('store_location', 'Calisto Store')),
+                    str(store.get('city', city)),
                 )
-            dispatcher.utter_message(
-                text="Would you like to book a visit or speak with a consultant before you go?",
-                buttons=lead_buttons("Store Visit"),
-            )
             return []
 
         stores = search_store_rows(load_catalogue(), str(city))
@@ -466,13 +640,12 @@ class ActionFindStore(Action):
             dispatcher.utter_message(text=f"I could not find any Calisto stores in {titleize(city)}.")
             return []
 
-        dispatcher.utter_message(text=f"Here are the stores we found in {titleize(city)}:")
-        for _, row in stores.head(10).iterrows():
-            dispatcher.utter_message(text=f"{row.get('store_location', 'Calisto Store')}\nCity: {row.get('city', city)}")
-        dispatcher.utter_message(
-            text="Would you like to book a visit or speak with a consultant before you go?",
-            buttons=lead_buttons("Store Visit"),
-        )
+        for _, row in stores.head(6).iterrows():
+            emit_store_card(
+                dispatcher,
+                str(row.get('store_location', 'Calisto Store')),
+                str(row.get('city', city)),
+            )
         return []
 
 
@@ -524,22 +697,8 @@ class ActionSearchProductByAttribute(Action):
             dispatcher.utter_message(text="I could not find products matching that description.")
             return []
 
-        dispatcher.utter_message(text="Here are some options based on what you asked for:")
         for _, row in top_5.iterrows():
-            details = " ".join(
-                part for part in [
-                    titleize(row.get("frame_color")),
-                    titleize(row.get("frame_shape")),
-                    titleize(row.get("frame_material")),
-                ]
-                if part
-            ).strip()
-            label = f"{row.get('product_name', 'Frame')} ({details})" if details else row.get("product_name", "Frame")
-            dispatcher.utter_message(text=f"{label} - RM {float(row.get('price_myr', 0) or 0):.2f}")
-        dispatcher.utter_message(
-            text="Want help narrowing these down?",
-            buttons=lead_buttons("Product Recommendation"),
-        )
+            emit_product_card(dispatcher, row.to_dict(), "Product Recommendation")
         return []
 
 
@@ -576,13 +735,8 @@ class ActionFilterLenses(Action):
             dispatcher.utter_message(text="We could not find any lenses matching your criteria.")
             return []
 
-        dispatcher.utter_message(text="Here are some matching lenses:")
         for _, row in results.iterrows():
-            dispatcher.utter_message(text=f"{row['product_name']} - RM {float(row['price_myr']):.2f}")
-        dispatcher.utter_message(
-            response="utter_next_step_lens_help",
-            buttons=lead_buttons(str(lens_type or "Lens Consultation")),
-        )
+            emit_product_card(dispatcher, row.to_dict(), str(lens_type or "Lens Consultation"))
         return []
 
 

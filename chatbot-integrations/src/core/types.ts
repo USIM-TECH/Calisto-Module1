@@ -1,48 +1,36 @@
-/**
- * Shared types for the integration layer.
- *
- * These define the contract between channel integrations and whatever
- * NLP/bot logic you connect upstream. The integrations receive messages
- * and emit IncomingMessage events; your bot logic processes them and
- * calls the channel's sendMessage to reply.
- */
-
-// ─── Incoming Messages ──────────────────────────────────
-
 export interface IncomingMessage {
-  /** Which channel this arrived on */
+
   channel: 'whatsapp' | 'instagram' | 'messenger' | 'x' | 'telegram' | 'website'
-  /** Platform-specific sender ID */
+
   senderId: string
-  /** Channel-specific source identifier, defaults to sender ID */
+
   sourceId?: string
-  /** Platform-specific conversation/thread ID */
+
   conversationId: string
-  /** Application lead identifier once persisted */
+
   leadId?: string
-  /** Sender display name (if available) */
+
   senderName?: string
-  /** Message type */
+
   type: 'text' | 'image' | 'audio' | 'video' | 'file' | 'location' | 'interactive' | 'reaction' | 'unknown'
-  /** Text content (for text messages) */
+
   text?: string
-  /** Media URL (for image/audio/video/file) */
+
   mediaUrl?: string
-  /** Media MIME type */
+
   mimeType?: string
-  /** Location data */
+
   location?: { latitude: number; longitude: number; address?: string; name?: string }
-  /** Interactive reply data (button/list selection) */
+
   interactive?: { type: string; id: string; title: string }
-  /** Platform-specific message ID */
+
   messageId: string
-  /** Timestamp */
+
   timestamp: string
-  /** Raw platform payload for advanced use */
+
   rawPayload: any
 }
 
-// ─── Outgoing Messages ──────────────────────────────────
 
 export interface OutgoingTextMessage {
   type: 'text'

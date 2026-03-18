@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { IncomingMessage, OutgoingMessage } from '../../../core/types.js'
-import type { LeadOrchestrator } from '../../../app/lead-orchestrator.js'
+import type { LeadOrchestrator } from '../../../leads/index.js'
 import type { Logger } from '../../../core/utils/index.js'
 
 const websiteChatRequestSchema = z.object({

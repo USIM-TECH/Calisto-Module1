@@ -147,9 +147,21 @@ export class InstagramChannel {
 
     this._logger.debug(`[Instagram] Sending message to ${'id' in recipient ? recipient.id : recipient.comment_id}: ${JSON.stringify(message)}`)
 
-    const response = await axios.post(url, payload, {
-      headers: { Authorization: `Bearer ${this._config.accessToken}` },
-    })
+    let response
+    try {
+      response = await axios.post(url, payload, {
+        headers: { Authorization: `Bearer ${this._config.accessToken}` },
+      })
+    } catch (error: any) {
+      const errorBody = error?.response?.data
+      const errorStatus = error?.response?.status
+      if (errorBody) {
+        this._logger.error(`[Instagram] Send failed${errorStatus ? ` (${errorStatus})` : ''}: ${JSON.stringify(errorBody)}`)
+      } else {
+        this._logger.error(`[Instagram] Send failed: ${error?.message ?? 'Unknown error'}`)
+      }
+      throw error
+    }
 
     this._logger.debug(`[Instagram] Send response: ${JSON.stringify(response.data)}`)
     return response.data
@@ -159,6 +171,15 @@ export class InstagramChannel {
     const incoming = normalizeInstagramMessagingItem(item)
     if (!incoming) {
       return
+    }
+
+    if (!incoming.senderName) {
+      try {
+        const profile = await this.getUserProfile(incoming.senderId)
+        incoming.senderName = profile.name || profile.username || incoming.senderName
+      } catch (error: any) {
+        this._logger.warn(`[Instagram] Failed to fetch sender profile for ${incoming.senderId}: ${error.message}`)
+      }
     }
 
     if (this._onMessage) {

@@ -1,11 +1,11 @@
 import crypto from 'crypto'
-import type { IncomingMessage, OutgoingMessage } from '../core/types.js'
-import type { NLPClient, Logger } from '../core/utils/index.js'
-import type { HubSpotClient } from '../integrations/crm/hubspot/index.js'
+import type { IncomingMessage, OutgoingMessage } from '../../core/types.js'
+import type { NLPClient, Logger } from '../../core/utils/index.js'
+import type { HubSpotClient } from '../../integrations/crm/hubspot/index.js'
 import type { MessageDeduplicator } from './message-deduplicator.js'
 import { mapNlpResponseToOutgoingMessages } from './rasa-outgoing.js'
-import type { LeadRecord } from './records.js'
-import { RuntimeStore } from './runtime-store.js'
+import type { LeadRecord } from '../types/records.js'
+import { RuntimeStore } from '../storage/runtime-store.js'
 
 interface LeadOrchestratorOptions {
   logger: Logger
@@ -66,6 +66,46 @@ function deriveChannelPhone(message: IncomingMessage): string | undefined {
     return normalized || undefined
   }
   return undefined
+}
+
+function deriveMessageLeadSnapshot(message: IncomingMessage): Partial<Pick<LeadRecord, 'leadName' | 'email' | 'phone' | 'location'>> {
+  const raw = message.rawPayload && typeof message.rawPayload === 'object'
+    ? message.rawPayload as Record<string, unknown>
+    : {}
+  const telegramMessage = raw.message && typeof raw.message === 'object'
+    ? raw.message as Record<string, unknown>
+    : undefined
+  const telegramContact = telegramMessage?.contact && typeof telegramMessage.contact === 'object'
+    ? telegramMessage.contact as Record<string, unknown>
+    : undefined
+  const telegramContactName = telegramContact
+    ? normalizeText([telegramContact.first_name, telegramContact.last_name].filter((part) => typeof part === 'string' && part.trim()).join(' '))
+    : undefined
+
+  return {
+    leadName: normalizeText(message.senderName ?? raw.name ?? telegramContactName),
+    email: normalizeText(raw.email),
+    phone: normalizeText(raw.phone ?? telegramContact?.phone_number),
+    location: normalizeText(raw.location),
+  }
+}
+
+function deriveNlpMetadata(message: IncomingMessage): Record<string, string> | undefined {
+  const raw = message.rawPayload && typeof message.rawPayload === 'object'
+    ? message.rawPayload as Record<string, unknown>
+    : {}
+
+  const metadata = {
+    channel: normalizeText(message.channel),
+    senderName: normalizeText(message.senderName),
+    sourceId: normalizeText(message.sourceId ?? message.senderId),
+    email: normalizeText(raw.email),
+    phone: normalizeText(raw.phone),
+    location: normalizeText(raw.location),
+  }
+
+  const entries = Object.entries(metadata).filter(([, value]) => value)
+  return entries.length ? Object.fromEntries(entries) as Record<string, string> : undefined
 }
 
 function nextOutboundMessageId(): string {
@@ -129,20 +169,47 @@ export class LeadOrchestrator {
       payload: message.rawPayload,
     })
 
+    const messageSnapshot = deriveMessageLeadSnapshot(message)
+    const preNlpSnapshot: Partial<LeadRecord> = {}
+    if (messageSnapshot.leadName) {
+      preNlpSnapshot.leadName = messageSnapshot.leadName
+    }
+    if (messageSnapshot.email) {
+      preNlpSnapshot.email = messageSnapshot.email
+    }
+    if (messageSnapshot.phone ?? deriveChannelPhone(message)) {
+      preNlpSnapshot.phone = messageSnapshot.phone ?? deriveChannelPhone(message)
+    }
+    if (messageSnapshot.location) {
+      preNlpSnapshot.location = messageSnapshot.location
+    }
+    const leadWithMessageData = Object.keys(preNlpSnapshot).length
+      ? (this._runtimeStore.updateLead(lead.id, preNlpSnapshot) ?? lead)
+      : lead
+
     if (!messageText) {
       this._logger.warn(`[${message.channel}] Ignoring non-text message for lead ${lead.id}`)
       return {
-        lead,
+        lead: leadWithMessageData,
         outgoingMessages: [],
       }
     }
 
-    const nlpResponse = await this._nlpClient.getResponse(message.senderId, messageText)
+    const nlpResponse = await this._nlpClient.getResponse(message.senderId, messageText, deriveNlpMetadata(message))
     const trackerSnapshot = deriveLeadSnapshot(nlpResponse.tracker)
-    if (!trackerSnapshot.phone) {
-      trackerSnapshot.phone = deriveChannelPhone(message)
+    if (!trackerSnapshot.leadName) {
+      trackerSnapshot.leadName = messageSnapshot.leadName
     }
-    const updatedLead = this._runtimeStore.updateLead(lead.id, trackerSnapshot) ?? lead
+    if (!trackerSnapshot.email) {
+      trackerSnapshot.email = messageSnapshot.email
+    }
+    if (!trackerSnapshot.phone) {
+      trackerSnapshot.phone = messageSnapshot.phone ?? deriveChannelPhone(message)
+    }
+    if (!trackerSnapshot.location) {
+      trackerSnapshot.location = messageSnapshot.location
+    }
+    const updatedLead = this._runtimeStore.updateLead(lead.id, trackerSnapshot) ?? leadWithMessageData
     const outgoingMessages = mapNlpResponseToOutgoingMessages(nlpResponse)
 
     for (const outgoingMessage of outgoingMessages) {

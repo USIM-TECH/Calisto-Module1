@@ -51,10 +51,22 @@ export async function sendInstagramMessage(
       const response = await sendRawMessage({ id: recipientId }, buildInstagramChoiceMessage(message))
       return response.message_id
     }
+    case 'card': {
+      const response = await sendRawMessage({ id: recipientId }, { text: normalizeCardToText(message) })
+      return response.message_id
+    }
     default:
       logger.warn(`Unsupported outgoing message type for Instagram: ${(message as any).type}`)
       return undefined
   }
+}
+
+function normalizeCardToText(message: Extract<OutgoingMessage, { type: 'card' }>): string {
+  return [
+    message.title,
+    message.subtitle,
+    message.actions?.map((action) => `${action.title}: ${action.value}`).join('\n'),
+  ].filter(Boolean).join('\n\n')
 }
 
 export function buildInstagramChoiceMessage(message: Extract<OutgoingMessage, { type: 'choice' }>): TextMessageWithQuickReplies {

@@ -1,4 +1,4 @@
-import type { ConversationRecord, ConversationMessageRecord, LeadRecord } from '../app/records.js'
+import type { ConversationRecord, ConversationMessageRecord, LeadRecord } from '../leads/index.js'
 
 interface LeadsSummary {
   leads: { total: number; qualified: number; pendingSync: number }

@@ -189,8 +189,6 @@ responses:
           payload: /ask_pricing
         - title: Book Appointment
           payload: /book_appointment
-    - text: "Selamat datang ke Calisto Eyewear.\nSaya boleh bantu anda semak produk, harga, cawangan, atau atur konsultasi. Apa yang anda perlukan dahulu?"
-    - text: "欢迎来到 Calisto Eyewear。\n我可以帮您了解产品、价格、门店，或安排咨询。您想先做哪一项？"
 
   utter_pricing_intro:
     - text: "Sure. I can help with pricing for frames, sunglasses, contact lenses, and lens upgrades. Which category do you want pricing for?"
@@ -254,19 +252,15 @@ responses:
     - text: "If you want, I can help you compare more lens options, find a store, or arrange a consultation."
 
   utter_booking_intro:
-    - text: "I can help you book an appointment for an eye test, fitting, or consultation. Let me collect a few details first."
-    - text: "Saya boleh bantu tempah janji temu untuk pemeriksaan mata, fitting, atau konsultasi. Saya perlukan beberapa maklumat dahulu."
-    - text: "我可以帮您预约验光、试戴或咨询。先收集几个资料。"
+    - text: "I can help you book an appointment for an eye test, fitting, or consultation. Before I do that, I just need a few contact details so our team can reach you."
 
   utter_after_sales_intro:
-    - text: "I can help with warranty, fitting adjustments, order follow-up, or general after-sales support. Let me capture your details first."
-    - text: "Saya boleh bantu untuk after-sales, waranti, pelarasan, atau semakan pesanan. Saya akan ambil maklumat anda dahulu."
-    - text: "我可以协助售后、保修、调整或订单跟进。先收集您的资料。"
+    - text: "I can help with warranty, fitting adjustments, order follow-up, or general after-sales support. Before we continue, I need a few contact details so the right team can follow up."
 
   utter_ask_lead_name:
-    - text: "To get started, may I have your name?"
+    - text: "First, may I have your name?"
   utter_ask_contact_number:
-    - text: "What is the best WhatsApp or phone number for our team to reach you?"
+    - text: "What is the best WhatsApp or phone number for our team to reach you on?"
   utter_ask_email:
     - text: "What email address should we use for quotations or follow-up?"
   utter_ask_lead_location:
@@ -293,7 +287,7 @@ responses:
           payload: /share_timeline{"purchase_timeline":"Just Exploring"}
 
   utter_lead_capture_complete:
-    - text: "Thanks. I have captured your details and our team will follow up shortly."
+    - text: "Thanks. I have your contact details and our team will follow up shortly."
 
   utter_lead_not_qualified:
     - text: "Thank you. We have captured your inquiry and our team will review the best next step for you."
@@ -307,6 +301,7 @@ actions:
   - action_filter_products
   - action_explain_lens
   - action_find_store
+  - action_prefill_lead_capture
   - action_reset_eyewear_slots
   - action_document_search
   - action_search_product_by_attribute

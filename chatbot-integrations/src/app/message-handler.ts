@@ -1,6 +1,6 @@
 import type { IncomingMessage, OutgoingMessage } from '../core/types.js'
 import type { Logger } from '../core/utils/index.js'
-import type { LeadOrchestrator } from './lead-orchestrator.js'
+import type { LeadOrchestrator } from '../leads/index.js'
 
 interface CreateNlpMessageHandlerProps {
   channelName: 'WhatsApp' | 'Instagram' | 'Messenger' | 'X' | 'Telegram'

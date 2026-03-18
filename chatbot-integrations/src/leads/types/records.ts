@@ -1,4 +1,4 @@
-import type { IncomingMessage } from '../core/types.js'
+import type { IncomingMessage } from '../../core/types.js'
 
 export interface LeadRecord {
   id: string

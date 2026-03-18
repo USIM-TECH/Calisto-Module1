@@ -12,6 +12,14 @@ export function normalizeXOutgoingText(message: OutgoingMessage): string | undef
       ].join('\n')
     case 'location':
       return `https://www.google.com/maps/search/?api=1&query=${message.latitude},${message.longitude}`
+    case 'card':
+      return [
+        message.title,
+        '',
+        message.subtitle ?? '',
+        '',
+        ...(message.actions ?? []).map((action) => `${action.title}: ${action.value}`),
+      ].filter(Boolean).join('\n')
     default:
       return undefined
   }
