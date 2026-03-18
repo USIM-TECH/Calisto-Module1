@@ -61,6 +61,15 @@ export async function sendInstagramMessage(
   }
 }
 
+function formatInstagramChoiceText(message: Extract<OutgoingMessage, { type: 'choice' }>): string {
+  if (!message.options.length) {
+    return message.text
+  }
+
+  const optionsText = message.options.map((option, index) => `${index + 1}. ${option.label}`).join('\n')
+  return `${message.text}\n\nChoose an option:\n${optionsText}`
+}
+
 function normalizeCardToText(message: Extract<OutgoingMessage, { type: 'card' }>): string {
   return [
     message.title,
@@ -75,11 +84,11 @@ export function buildInstagramChoiceMessage(message: Extract<OutgoingMessage, { 
   }
 
   if (message.options.length > 13) {
-    return { text: `${message.text}\n\n${message.options.map((option) => `- ${option.label}`).join('\n')}` }
+    return { text: formatInstagramChoiceText(message) }
   }
 
   return {
-    text: message.text,
+    text: formatInstagramChoiceText(message),
     quick_replies: message.options.map((option) => ({
       content_type: 'text',
       title: option.label,

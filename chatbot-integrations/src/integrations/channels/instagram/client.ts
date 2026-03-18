@@ -21,7 +21,6 @@ export interface InstagramConfig {
 export class InstagramChannel {
   private _config: InstagramConfig
   private _logger: Logger
-  private _graphApiUrl: string
   private _instagramApiUrl: string
   private _onMessage?: (message: IncomingMessage) => Promise<void>
 
@@ -29,8 +28,7 @@ export class InstagramChannel {
     this._config = config
     this._logger = logger
     const version = config.apiVersion ?? 'v21.0'
-    this._graphApiUrl = `https://graph.facebook.com/${version}`
-    this._instagramApiUrl = 'https://graph.instagram.com'
+    this._instagramApiUrl = `https://graph.instagram.com/${version}`
   }
 
 
@@ -66,7 +64,7 @@ export class InstagramChannel {
 
   public async replyToComment(commentId: string, text: string): Promise<string> {
     const fields = new URLSearchParams({ message: text })
-    const url = `${this._graphApiUrl}/${commentId}/replies?${fields.toString()}`
+    const url = `${this._instagramApiUrl}/${commentId}/replies?${fields.toString()}`
     const response = await axios.post<{ id: string }>(url, {}, {
       headers: { Authorization: `Bearer ${this._config.accessToken}` },
     })
@@ -85,7 +83,7 @@ export class InstagramChannel {
       access_token: this._config.accessToken,
       fields: 'id,name,username',
     })
-    const url = `${this._graphApiUrl}/${instagramUserId}?${query.toString()}`
+    const url = `${this._instagramApiUrl}/${instagramUserId}?${query.toString()}`
     const response = await axios.get(url)
     return response.data
   }
@@ -138,7 +136,7 @@ export class InstagramChannel {
 
 
   private async _sendMessage(recipient: InstagramRecipientId, message: any): Promise<{ recipient_id: string; message_id: string }> {
-    const url = `${this._graphApiUrl}/${this._config.instagramId}/messages`
+    const url = `${this._instagramApiUrl}/${this._config.instagramId}/messages`
     const payload = {
       recipient,
       messaging_type: 'RESPONSE',

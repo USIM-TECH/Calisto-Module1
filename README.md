@@ -34,7 +34,7 @@ Integration service endpoints:
 - `http://localhost:3000/webhooks/whatsapp`
 - `http://localhost:3000/webhooks/instagram`
 - `http://localhost:3000/webhooks/messenger`
-- `http://localhost:3000/webchat/message`
+- `http://localhost:3000/webchat`
 - `http://localhost:3000/webchat/test`
 - `http://localhost:3000/reports/leads-dashboard`
 

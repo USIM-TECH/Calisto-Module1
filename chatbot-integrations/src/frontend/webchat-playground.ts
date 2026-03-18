@@ -136,6 +136,14 @@ export function renderWebchatPlaygroundHtml(): string {
         border-radius: 16px;
         padding: 14px;
       }
+      .card-media {
+        width: calc(100% + 28px);
+        margin: -14px -14px 14px;
+        display: block;
+        border-radius: 16px 16px 0 0;
+        object-fit: cover;
+        max-height: 220px;
+      }
       .card-title {
         font-size: 0.92rem;
         font-weight: 800;
@@ -249,6 +257,14 @@ export function renderWebchatPlaygroundHtml(): string {
 
         const card = document.createElement('div');
         card.className = 'card-item';
+
+        if (message.imageUrl) {
+          const image = document.createElement('img');
+          image.className = 'card-media';
+          image.src = message.imageUrl;
+          image.alt = message.title || 'Card image';
+          card.appendChild(image);
+        }
 
         const title = document.createElement('div');
         title.className = 'card-title';
@@ -638,6 +654,14 @@ export function renderCustomerWebchatHtml(): string {
         border-radius: 20px;
         padding: 16px;
       }
+      .chat-card-media {
+        width: calc(100% + 32px);
+        margin: -16px -16px 16px;
+        display: block;
+        border-radius: 20px 20px 0 0;
+        object-fit: cover;
+        max-height: 240px;
+      }
       .chat-card-title {
         font-weight: 800;
         color: #0f172a;
@@ -790,6 +814,14 @@ export function renderCustomerWebchatHtml(): string {
         const bubble = appendBubble('', 'bot');
         const card = document.createElement('div');
         card.className = 'chat-card';
+
+        if (message.imageUrl) {
+          const image = document.createElement('img');
+          image.className = 'chat-card-media';
+          image.src = message.imageUrl;
+          image.alt = message.title || 'Card image';
+          card.appendChild(image);
+        }
 
         const title = document.createElement('div');
         title.className = 'chat-card-title';
