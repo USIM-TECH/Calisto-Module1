@@ -24,6 +24,7 @@ export interface LeadSnapshot {
   phone?: string
   preferredService?: string
   location?: string
+  responseStyle?: LeadRecord['responseStyle']
   qualificationStatus: LeadRecord['qualificationStatus']
   lastIntent?: string
 }

@@ -41,12 +41,13 @@
       "senderName": "Ds",
       "qualificationStatus": "new",
       "crmStatus": "pending",
-      "lastMessageAt": "1773978124",
+      "lastMessageAt": "1773997804",
       "createdAt": "2026-03-16T08:48:23.424Z",
-      "updatedAt": "2026-03-20T03:42:05.965Z",
+      "updatedAt": "2026-03-20T09:10:06.044Z",
       "phone": "918098916533",
       "leadName": "Ds",
-      "lastIntent": "greet"
+      "lastIntent": "greet",
+      "responseStyle": "casual"
     },
     {
       "id": "lead_8084b2e7-1ad1-460a-9564-2bc1d3beb8e1",
@@ -130,12 +131,12 @@
       "senderName": "Vaibhav",
       "qualificationStatus": "needs_review",
       "crmStatus": "pending",
-      "lastMessageAt": "1773978472",
+      "lastMessageAt": "1773978941",
       "createdAt": "2026-03-19T03:40:09.847Z",
-      "updatedAt": "2026-03-20T03:47:53.253Z",
+      "updatedAt": "2026-03-20T03:55:42.930Z",
       "leadName": "Vaibhav",
       "phone": "919597493595",
-      "lastIntent": "select_product_type",
+      "lastIntent": "nlu_fallback",
       "preferredService": "Luxury Sunglasses"
     },
     {
@@ -4363,7 +4364,7 @@
       "channel": "whatsapp",
       "sourceId": "918098916533",
       "createdAt": "2026-03-16T08:48:23.427Z",
-      "updatedAt": "2026-03-20T03:42:05.976Z",
+      "updatedAt": "2026-03-20T09:10:06.058Z",
       "messages": [
         {
           "direction": "inbound",
@@ -9363,6 +9364,162 @@
           "text": "Welcome to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
           "messageType": "choice",
           "timestamp": "2026-03-20T03:42:05.976Z",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "918098916533",
+            "conversationId": "918098916533",
+            "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0IzOTk1M0I0NTYxMjE5MUQyMkYA",
+          "text": "hi",
+          "messageType": "text",
+          "timestamp": "1773641143",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "918098916533",
+            "conversationId": "918098916533",
+            "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_a5b048e2-a4ce-4cc3-bfdc-85b4f8fb5e57",
+          "text": "Welcome to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+          "messageType": "choice",
+          "timestamp": "2026-03-20T04:05:40.718Z",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "918098916533",
+            "conversationId": "918098916533",
+            "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0IwRUI3QjgyRDI3Nzk4RTJCMkEA",
+          "text": "hii",
+          "messageType": "text",
+          "timestamp": "1773995798",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "918098916533",
+            "conversationId": "918098916533",
+            "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_8ec7a6d3-fac0-4d12-a72a-63ea2ed846e7",
+          "text": "Welcome to Calisto Eyewear.\nWhether you want to browse collections, compare pricing, find a store, or arrange a consultation, I can help. What would you like to start with?",
+          "messageType": "choice",
+          "timestamp": "2026-03-20T08:36:39.964Z",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "918098916533",
+            "conversationId": "918098916533",
+            "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0I3M0Y2NTdCRDg5N0QyMzhCMDMA",
+          "text": "/browse_eyewear",
+          "messageType": "interactive",
+          "timestamp": "1773995839",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "918098916533",
+            "conversationId": "918098916533",
+            "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_4cda749e-2a6a-446d-a50e-c1c85f3eeaf6",
+          "text": "Great. I can open the collection by category to keep things focused. Which one would you like to browse first?",
+          "messageType": "choice",
+          "timestamp": "2026-03-20T08:37:20.897Z",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "918098916533",
+            "conversationId": "918098916533",
+            "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0IxN0U3Q0M4Nzk1QUFFNDQ2QkMA",
+          "text": "hi",
+          "messageType": "text",
+          "timestamp": "1773996103",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "918098916533",
+            "conversationId": "918098916533",
+            "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_0446717a-5d6a-48e6-90d9-9012c09e9bb8",
+          "text": "*Ds*\nWelcome to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+          "messageType": "choice",
+          "timestamp": "2026-03-20T08:41:44.032Z",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "918098916533",
+            "conversationId": "918098916533",
+            "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0JEOTBFRUU2RjZCRkE4RUNEOTEA",
+          "text": "hi",
+          "messageType": "text",
+          "timestamp": "1773996218",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "918098916533",
+            "conversationId": "918098916533",
+            "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_98db1315-c8c5-477f-8bf8-3f7fedc9d1b4",
+          "text": "Hi *Ds*\n\nWelcome to Calisto Eyewear.\nI can help you explore products, review pricing, find a nearby store, or arrange a consultation. Where would you like to start?",
+          "messageType": "choice",
+          "timestamp": "2026-03-20T08:43:39.124Z",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "918098916533",
+            "conversationId": "918098916533",
+            "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0I1NEJGOTdBRjY4QTYwM0U0MDgA",
+          "text": "hey",
+          "messageType": "text",
+          "timestamp": "1773997804",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "918098916533",
+            "conversationId": "918098916533",
+            "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_842d0e40-e98e-4380-a559-94a77af0fd94",
+          "text": "Hi *Ds*\n\nWelcome to Calisto Eyewear.\nI can help you explore products, review pricing, find a nearby store, or arrange a consultation. Where would you like to start?",
+          "messageType": "choice",
+          "timestamp": "2026-03-20T09:10:06.058Z",
           "metadata": {
             "channel": "whatsapp",
             "sourceId": "918098916533",
@@ -14579,7 +14736,7 @@
       "channel": "whatsapp",
       "sourceId": "919597493595",
       "createdAt": "2026-03-19T03:40:09.857Z",
-      "updatedAt": "2026-03-20T03:47:53.266Z",
+      "updatedAt": "2026-03-20T03:55:42.942Z",
       "messages": [
         {
           "direction": "inbound",
@@ -15319,6 +15476,84 @@
           "text": "What brand of sunglasses are you interested in?",
           "messageType": "choice",
           "timestamp": "2026-03-20T03:47:53.266Z",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "919597493595",
+            "conversationId": "919597493595",
+            "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0IwMkFGQzZDNENDMzZGMzFCM0MA",
+          "text": "/select_brand{\"brand\":\"Acuvue\"}",
+          "messageType": "interactive",
+          "timestamp": "1773978865",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "919597493595",
+            "conversationId": "919597493595",
+            "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_2b98d265-a4e2-48d9-949e-333486b80a4f",
+          "text": "To narrow this down properly, what budget range are you comfortable with?",
+          "messageType": "choice",
+          "timestamp": "2026-03-20T03:54:27.061Z",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "919597493595",
+            "conversationId": "919597493595",
+            "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0JGODBBQjA0QkFDRUY1RDVGQjkA",
+          "text": "bye",
+          "messageType": "text",
+          "timestamp": "1773978928",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "919597493595",
+            "conversationId": "919597493595",
+            "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_e2e42477-8d8f-4a3c-9981-074f982f4de9",
+          "text": "Welcome to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+          "messageType": "choice",
+          "timestamp": "2026-03-20T03:55:28.936Z",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "919597493595",
+            "conversationId": "919597493595",
+            "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f"
+          }
+        },
+        {
+          "direction": "inbound",
+          "messageId": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0I2QURGNTFDQzNDNTZDRTMyNDkA",
+          "text": "bye",
+          "messageType": "text",
+          "timestamp": "1773978941",
+          "metadata": {
+            "channel": "whatsapp",
+            "sourceId": "919597493595",
+            "conversationId": "919597493595",
+            "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f"
+          }
+        },
+        {
+          "direction": "outbound",
+          "messageId": "out_173ac963-460b-43a2-9ca7-a7bc33dba4e8",
+          "text": "Great. This is the product browsing flow. Which category would you like to explore first?",
+          "messageType": "choice",
+          "timestamp": "2026-03-20T03:55:42.942Z",
           "metadata": {
             "channel": "whatsapp",
             "sourceId": "919597493595",
@@ -16931,2651 +17166,6 @@
     }
   ],
   "webhookEvents": [
-    {
-      "id": "evt_9293c786-fd43-47c6-8a39-b810a6ea8e29",
-      "receivedAt": "2026-03-19T03:42:48.847Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSQjczMDI2NTEyQTY0NzVCOTcyAA==",
-                      "status": "read",
-                      "timestamp": "1773891768",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_ff384f85-5a14-4064-8f58-58f9dd246264",
-      "receivedAt": "2026-03-19T03:42:49.394Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSQ0M0ODFDQjU5MEQzMjU0Qzk5AA==",
-                      "status": "delivered",
-                      "timestamp": "1773891768",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_3911b956-f79e-4f41-9679-290da340b2ee",
-      "receivedAt": "2026-03-19T03:42:49.521Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSQ0M0ODFDQjU5MEQzMjU0Qzk5AA==",
-                      "status": "read",
-                      "timestamp": "1773891768",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_fa439c61-ffe6-41f5-be3e-df609c8ed72b",
-      "receivedAt": "2026-03-19T03:42:49.647Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSODJEQTkyNjE2MTVDQzk5MDBGAA==",
-                      "status": "sent",
-                      "timestamp": "1773891768",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_3971999f-05b3-4f26-a731-576f68b78ba0",
-      "receivedAt": "2026-03-19T03:42:50.065Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSODJEQTkyNjE2MTVDQzk5MDBGAA==",
-                      "status": "delivered",
-                      "timestamp": "1773891769",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_f1bae5ff-2316-4c75-ba63-05602c27c3ab",
-      "receivedAt": "2026-03-19T03:42:50.084Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSODJEQTkyNjE2MTVDQzk5MDBGAA==",
-                      "status": "read",
-                      "timestamp": "1773891769",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_6e1d8880-5754-4a56-a671-f885857bf755",
-      "receivedAt": "2026-03-19T03:42:52.254Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "contacts": [
-                    {
-                      "profile": {
-                        "name": "Janis Rebekah"
-                      },
-                      "wa_id": "917305321711"
-                    }
-                  ],
-                  "messages": [
-                    {
-                      "context": {
-                        "from": "15551466896",
-                        "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSMDNDQTA5MkQwRkM4QUVDRkNEAA=="
-                      },
-                      "from": "917305321711",
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAEhgWM0VCMDc2QTQyODUzQkVGNzE3QTQwOQA=",
-                      "timestamp": "1773891771",
-                      "type": "interactive",
-                      "interactive": {
-                        "type": "button_reply",
-                        "button_reply": {
-                          "id": "/browse_eyewear",
-                          "title": "Browse Eyewear"
-                        }
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_8b18f0a5-47ba-4079-8642-7b28e4947161",
-      "receivedAt": "2026-03-19T03:42:52.307Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/messages/whatsapp",
-      "sourceId": "917305321711",
-      "conversationId": "917305321711",
-      "leadId": "lead_ea513cc0-211c-4b07-b0f4-22e08e90ed1d",
-      "payload": {
-        "from": "917305321711",
-        "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAEhgWM0VCMDc2QTQyODUzQkVGNzE3QTQwOQA=",
-        "timestamp": "1773891771",
-        "type": "interactive",
-        "context": {
-          "from": "15551466896",
-          "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSMDNDQTA5MkQwRkM4QUVDRkNEAA=="
-        },
-        "interactive": {
-          "type": "button_reply",
-          "button_reply": {
-            "id": "/browse_eyewear",
-            "title": "Browse Eyewear"
-          }
-        }
-      }
-    },
-    {
-      "id": "evt_6ab9de11-986e-4a38-a91d-3b23db5946ac",
-      "receivedAt": "2026-03-19T03:42:52.425Z",
-      "channel": "whatsapp",
-      "direction": "outbound",
-      "path": "/messages/whatsapp",
-      "sourceId": "917305321711",
-      "conversationId": "917305321711",
-      "leadId": "lead_ea513cc0-211c-4b07-b0f4-22e08e90ed1d",
-      "payload": {
-        "metadata": {
-          "channel": "whatsapp",
-          "sourceId": "917305321711",
-          "leadId": "lead_ea513cc0-211c-4b07-b0f4-22e08e90ed1d",
-          "conversationId": "917305321711"
-        },
-        "messages": [
-          {
-            "type": "choice",
-            "text": "Great. What are you shopping for today?",
-            "options": [
-              {
-                "label": "Designer Frames",
-                "value": "/select_product_type{\"product_type\":\"Designer Frames\"}"
-              },
-              {
-                "label": "Luxury Sunglasses",
-                "value": "/select_product_type{\"product_type\":\"Luxury Sunglasses\"}"
-              },
-              {
-                "label": "Contact Lenses",
-                "value": "/select_product_type{\"product_type\":\"Contact Lenses\"}"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_bcb1b350-7396-4acd-90f1-f4324ff7633d",
-      "receivedAt": "2026-03-19T03:42:53.330Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "contacts": [
-                    {
-                      "profile": {
-                        "name": "Vaibhav"
-                      },
-                      "wa_id": "919597493595"
-                    }
-                  ],
-                  "messages": [
-                    {
-                      "from": "919597493595",
-                      "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0I3RDkwMDY5NUFDMTM4MDc0MzUA",
-                      "timestamp": "1773891772",
-                      "text": {
-                        "body": "what is the store timing"
-                      },
-                      "type": "text"
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_961e9874-45b6-4bfb-bde2-6ddea6824706",
-      "receivedAt": "2026-03-19T03:42:53.389Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/messages/whatsapp",
-      "sourceId": "919597493595",
-      "conversationId": "919597493595",
-      "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f",
-      "payload": {
-        "from": "919597493595",
-        "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0I3RDkwMDY5NUFDMTM4MDc0MzUA",
-        "timestamp": "1773891772",
-        "type": "text",
-        "text": {
-          "body": "what is the store timing"
-        }
-      }
-    },
-    {
-      "id": "evt_fbc1d3d1-1ca8-47f5-a299-b26535ed6816",
-      "receivedAt": "2026-03-19T03:42:53.504Z",
-      "channel": "whatsapp",
-      "direction": "outbound",
-      "path": "/messages/whatsapp",
-      "sourceId": "919597493595",
-      "conversationId": "919597493595",
-      "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f",
-      "payload": {
-        "metadata": {
-          "channel": "whatsapp",
-          "sourceId": "919597493595",
-          "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f",
-          "conversationId": "919597493595"
-        },
-        "messages": [
-          {
-            "type": "choice",
-            "text": "Most Calisto stores in Kuala Lumpur typically follow mall operating hours, usually around 10:00 AM to 10:00 PM daily. I recommend confirming before visiting.",
-            "options": [
-              {
-                "label": "Show Stores",
-                "value": "/choose_city{\"city\":\"Kuala Lumpur\"}"
-              },
-              {
-                "label": "Book Visit",
-                "value": "/book_appointment"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_808c5937-13cd-4580-a64d-d5160bea5c75",
-      "receivedAt": "2026-03-19T03:42:53.854Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSRURCRjk4REU5QTZCRkZDNDI1AA==",
-                      "status": "sent",
-                      "timestamp": "1773891773",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_7a7db5df-4a1c-4100-9a20-caea763e172f",
-      "receivedAt": "2026-03-19T03:42:54.185Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSRURCRjk4REU5QTZCRkZDNDI1AA==",
-                      "status": "delivered",
-                      "timestamp": "1773891773",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_38cf5c5e-4a29-489d-b777-36229ccae015",
-      "receivedAt": "2026-03-19T03:42:54.415Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSRURCRjk4REU5QTZCRkZDNDI1AA==",
-                      "status": "read",
-                      "timestamp": "1773891773",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_7e55a236-a0f3-41bf-8471-b7ea4196ead6",
-      "receivedAt": "2026-03-19T03:42:55.086Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAERgSM0Y0QTdDOTlFQkE2NUU5ODkxAA==",
-                      "status": "sent",
-                      "timestamp": "1773891774",
-                      "recipient_id": "919597493595",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_3b1d57c0-6156-40fc-bcdb-399acfe001a0",
-      "receivedAt": "2026-03-19T03:42:55.716Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAERgSM0Y0QTdDOTlFQkE2NUU5ODkxAA==",
-                      "status": "read",
-                      "timestamp": "1773891775",
-                      "recipient_id": "919597493595",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_35d80252-8e63-4f87-93be-0a496ac94321",
-      "receivedAt": "2026-03-19T03:42:55.736Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAERgSM0Y0QTdDOTlFQkE2NUU5ODkxAA==",
-                      "status": "delivered",
-                      "timestamp": "1773891775",
-                      "recipient_id": "919597493595",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_aa6694cb-0bd2-4187-a293-a9776ccfd19c",
-      "receivedAt": "2026-03-19T03:43:03.694Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "contacts": [
-                    {
-                      "profile": {
-                        "name": "Aswanth_B_IT"
-                      },
-                      "wa_id": "917395918838"
-                    }
-                  ],
-                  "messages": [
-                    {
-                      "context": {
-                        "from": "15551466896",
-                        "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSODJEQTkyNjE2MTVDQzk5MDBGAA=="
-                      },
-                      "from": "917395918838",
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAEhgUM0I4MDhDNUQwNEM0RTgwQTYyQjgA",
-                      "timestamp": "1773891782",
-                      "type": "interactive",
-                      "interactive": {
-                        "type": "list_reply",
-                        "list_reply": {
-                          "id": "/select_budget{\"price_range\":\"RM250 - RM300\"}",
-                          "title": "RM250 - RM300"
-                        }
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_83d4df5e-1116-4118-a34c-3938fc482d21",
-      "receivedAt": "2026-03-19T03:43:03.759Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/messages/whatsapp",
-      "sourceId": "917395918838",
-      "conversationId": "917395918838",
-      "leadId": "lead_683b644c-43dd-46a7-a912-7bc3dc76f616",
-      "payload": {
-        "from": "917395918838",
-        "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAEhgUM0I4MDhDNUQwNEM0RTgwQTYyQjgA",
-        "timestamp": "1773891782",
-        "type": "interactive",
-        "context": {
-          "from": "15551466896",
-          "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSODJEQTkyNjE2MTVDQzk5MDBGAA=="
-        },
-        "interactive": {
-          "type": "list_reply",
-          "list_reply": {
-            "id": "/select_budget{\"price_range\":\"RM250 - RM300\"}",
-            "title": "RM250 - RM300"
-          }
-        }
-      }
-    },
-    {
-      "id": "evt_682b1b83-50c5-409b-b723-005540e8e73e",
-      "receivedAt": "2026-03-19T03:43:03.881Z",
-      "channel": "whatsapp",
-      "direction": "outbound",
-      "path": "/messages/whatsapp",
-      "sourceId": "917395918838",
-      "conversationId": "917395918838",
-      "leadId": "lead_683b644c-43dd-46a7-a912-7bc3dc76f616",
-      "payload": {
-        "metadata": {
-          "channel": "whatsapp",
-          "sourceId": "917395918838",
-          "leadId": "lead_683b644c-43dd-46a7-a912-7bc3dc76f616",
-          "conversationId": "917395918838"
-        },
-        "messages": [
-          {
-            "type": "text",
-            "text": "We could not find eyewear matching your criteria. Try another brand or budget."
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_6e97ee03-e8ed-4e91-9021-9f830a27f740",
-      "receivedAt": "2026-03-19T03:43:05.565Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSMzNGRjRBMDQ2ODRFRUY3M0Y1AA==",
-                      "status": "sent",
-                      "timestamp": "1773891785",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_62616aec-9248-4ec2-a562-c44a35ae3a4b",
-      "receivedAt": "2026-03-19T03:43:06.041Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSMzNGRjRBMDQ2ODRFRUY3M0Y1AA==",
-                      "status": "read",
-                      "timestamp": "1773891785",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_85186f15-2729-4189-acc8-5184bf814ad7",
-      "receivedAt": "2026-03-19T03:43:06.063Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSMzNGRjRBMDQ2ODRFRUY3M0Y1AA==",
-                      "status": "delivered",
-                      "timestamp": "1773891785",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_41dcfc04-bb38-4e47-9a88-3a03ac850811",
-      "receivedAt": "2026-03-19T03:43:08.548Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "contacts": [
-                    {
-                      "profile": {
-                        "name": "Janis Rebekah"
-                      },
-                      "wa_id": "917305321711"
-                    }
-                  ],
-                  "messages": [
-                    {
-                      "from": "917305321711",
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAEhgWM0VCMDE4RUQwMjlEMThCMzJGNjFDOQA=",
-                      "timestamp": "1773891787",
-                      "text": {
-                        "body": "im looking for sunglasses under 500"
-                      },
-                      "type": "text"
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_1a53b3f2-6173-4b13-aa5b-33cdfe6a4c7c",
-      "receivedAt": "2026-03-19T03:43:08.607Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/messages/whatsapp",
-      "sourceId": "917305321711",
-      "conversationId": "917305321711",
-      "leadId": "lead_ea513cc0-211c-4b07-b0f4-22e08e90ed1d",
-      "payload": {
-        "from": "917305321711",
-        "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAEhgWM0VCMDE4RUQwMjlEMThCMzJGNjFDOQA=",
-        "timestamp": "1773891787",
-        "type": "text",
-        "text": {
-          "body": "im looking for sunglasses under 500"
-        }
-      }
-    },
-    {
-      "id": "evt_35c5a6b0-a65a-447e-9d8a-2fba1ca0a595",
-      "receivedAt": "2026-03-19T03:43:08.764Z",
-      "channel": "whatsapp",
-      "direction": "outbound",
-      "path": "/messages/whatsapp",
-      "sourceId": "917305321711",
-      "conversationId": "917305321711",
-      "leadId": "lead_ea513cc0-211c-4b07-b0f4-22e08e90ed1d",
-      "payload": {
-        "metadata": {
-          "channel": "whatsapp",
-          "sourceId": "917305321711",
-          "leadId": "lead_ea513cc0-211c-4b07-b0f4-22e08e90ed1d",
-          "conversationId": "917305321711"
-        },
-        "messages": [
-          {
-            "type": "text",
-            "text": "Here are some products that match your request:"
-          },
-          {
-            "type": "card",
-            "title": "Oakley - Prada Luxe Sunglasses 203",
-            "subtitle": "Price: RM494.29\n\nCategory: Luxury Sunglasses\n\nSpecs: Metal • Round • Gold\n\nAvailability: In Stock\n\nRating: 4.5/5\n\nStore: Aeon Mall Nilai, Nilai",
-            "imageUrl": "https://dummyimage.com/1200x628/7c2d12/fffbeb&text=LUXURY%20SUNGLASSES%0A%0AOAKLEY%20PRADA%20LUXE%20SUNGLASSES%202",
-            "actions": [
-              {
-                "type": "url",
-                "title": "Open Store Map",
-                "value": "https://maps.google.com/?q=Aeon%20Mall%20Nilai%2C%20Nilai%2C%20Calisto%20Eyewear"
-              },
-              {
-                "type": "postback",
-                "title": "Book Visit",
-                "value": "/book_appointment"
-              },
-              {
-                "type": "postback",
-                "title": "Consult Now",
-                "value": "/capture_lead{\"preferred_service\":\"Luxury Sunglasses\"}"
-              }
-            ]
-          },
-          {
-            "type": "card",
-            "title": "Gentle Monster - Projekt Produkt Luxe Sunglasses 219",
-            "subtitle": "Price: RM490.19\n\nCategory: Luxury Sunglasses\n\nSpecs: Metal • Cat-Eye • Black\n\nAvailability: In Stock\n\nRating: 4.3/5\n\nStore: Lalaport Bukit Bintang, Kuala Lumpur",
-            "imageUrl": "https://dummyimage.com/1200x628/7c2d12/fffbeb&text=LUXURY%20SUNGLASSES%0A%0AGENTLE%20MONSTER%20PROJEKT%20PRODUKT",
-            "actions": [
-              {
-                "type": "url",
-                "title": "Open Store Map",
-                "value": "https://maps.google.com/?q=Lalaport%20Bukit%20Bintang%2C%20Kuala%20Lumpur%2C%20Calisto%20Eyewear"
-              },
-              {
-                "type": "postback",
-                "title": "Book Visit",
-                "value": "/book_appointment"
-              },
-              {
-                "type": "postback",
-                "title": "Consult Now",
-                "value": "/capture_lead{\"preferred_service\":\"Luxury Sunglasses\"}"
-              }
-            ]
-          },
-          {
-            "type": "card",
-            "title": "Cartier - Projekt Produkt Luxe Sunglasses 220",
-            "subtitle": "Price: RM413.35\n\nCategory: Luxury Sunglasses\n\nSpecs: Acetate • Round • Tortoise\n\nAvailability: Low Stock\n\nRating: 4.6/5\n\nStore: Lalaport Bukit Bintang, Kuala Lumpur",
-            "imageUrl": "https://dummyimage.com/1200x628/7c2d12/fffbeb&text=LUXURY%20SUNGLASSES%0A%0ACARTIER%20PROJEKT%20PRODUKT%20LUXE%20S",
-            "actions": [
-              {
-                "type": "url",
-                "title": "Open Store Map",
-                "value": "https://maps.google.com/?q=Lalaport%20Bukit%20Bintang%2C%20Kuala%20Lumpur%2C%20Calisto%20Eyewear"
-              },
-              {
-                "type": "postback",
-                "title": "Book Visit",
-                "value": "/book_appointment"
-              },
-              {
-                "type": "postback",
-                "title": "Consult Now",
-                "value": "/capture_lead{\"preferred_service\":\"Luxury Sunglasses\"}"
-              }
-            ]
-          },
-          {
-            "type": "card",
-            "title": "Persol - Cartier Luxe Sunglasses 226",
-            "subtitle": "Price: RM495.52\n\nCategory: Luxury Sunglasses\n\nSpecs: Titanium • Round • Gold\n\nAvailability: Low Stock\n\nRating: 4.8/5\n\nStore: Melawati Mall, Kuala Lumpur",
-            "imageUrl": "https://dummyimage.com/1200x628/7c2d12/fffbeb&text=LUXURY%20SUNGLASSES%0A%0APERSOL%20CARTIER%20LUXE%20SUNGLASSES",
-            "actions": [
-              {
-                "type": "url",
-                "title": "Open Store Map",
-                "value": "https://maps.google.com/?q=Melawati%20Mall%2C%20Kuala%20Lumpur%2C%20Calisto%20Eyewear"
-              },
-              {
-                "type": "postback",
-                "title": "Book Visit",
-                "value": "/book_appointment"
-              },
-              {
-                "type": "postback",
-                "title": "Consult Now",
-                "value": "/capture_lead{\"preferred_service\":\"Luxury Sunglasses\"}"
-              }
-            ]
-          },
-          {
-            "type": "card",
-            "title": "Bossini - Bausch & Lomb Luxe Sunglasses 227",
-            "subtitle": "Price: RM406.38\n\nCategory: Luxury Sunglasses\n\nSpecs: Acetate • Aviator • Brown\n\nAvailability: Low Stock\n\nRating: 4.9/5\n\nStore: Aeon Mall Nilai, Nilai",
-            "imageUrl": "https://dummyimage.com/1200x628/7c2d12/fffbeb&text=LUXURY%20SUNGLASSES%0A%0ABOSSINI%20BAUSCH%20%26%20LOMB%20LUXE%20SUN",
-            "actions": [
-              {
-                "type": "url",
-                "title": "Open Store Map",
-                "value": "https://maps.google.com/?q=Aeon%20Mall%20Nilai%2C%20Nilai%2C%20Calisto%20Eyewear"
-              },
-              {
-                "type": "postback",
-                "title": "Book Visit",
-                "value": "/book_appointment"
-              },
-              {
-                "type": "postback",
-                "title": "Consult Now",
-                "value": "/capture_lead{\"preferred_service\":\"Luxury Sunglasses\"}"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_9558aab9-1327-4784-bff8-6f33ae504bd7",
-      "receivedAt": "2026-03-19T03:43:10.344Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSMEI1QUQ4MjQxQzM5RDJGQUJCAA==",
-                      "status": "delivered",
-                      "timestamp": "1773891790",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_41e93e0d-ddb6-4a8c-bda3-fec04826fbb9",
-      "receivedAt": "2026-03-19T03:43:10.388Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSMEI1QUQ4MjQxQzM5RDJGQUJCAA==",
-                      "status": "sent",
-                      "timestamp": "1773891789",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_cc73d9d4-df64-409b-b39c-7a58d23415f2",
-      "receivedAt": "2026-03-19T03:43:10.643Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSMEI1QUQ4MjQxQzM5RDJGQUJCAA==",
-                      "status": "read",
-                      "timestamp": "1773891790",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_43244bcc-8c34-4a73-b231-52f07a9b5d29",
-      "receivedAt": "2026-03-19T03:43:11.458Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSMEY5OEQ4MUZDNzYyRkNENzkzAA==",
-                      "status": "sent",
-                      "timestamp": "1773891791",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_975b21a5-ce0d-431b-85ac-ff67452c4761",
-      "receivedAt": "2026-03-19T03:43:11.526Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "contacts": [
-                    {
-                      "profile": {
-                        "name": "Aswanth_B_IT"
-                      },
-                      "wa_id": "917395918838"
-                    }
-                  ],
-                  "messages": [
-                    {
-                      "context": {
-                        "from": "15551466896",
-                        "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSODJEQTkyNjE2MTVDQzk5MDBGAA=="
-                      },
-                      "from": "917395918838",
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAEhgUM0I1NDA2RjExQTRDN0JBNzRBQjIA",
-                      "timestamp": "1773891790",
-                      "type": "interactive",
-                      "interactive": {
-                        "type": "list_reply",
-                        "list_reply": {
-                          "id": "/select_budget{\"price_range\":\"Above RM300\"}",
-                          "title": "Above RM300"
-                        }
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_aa58570b-ca20-49f7-a68c-72676c9713b0",
-      "receivedAt": "2026-03-19T03:43:11.579Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/messages/whatsapp",
-      "sourceId": "917395918838",
-      "conversationId": "917395918838",
-      "leadId": "lead_683b644c-43dd-46a7-a912-7bc3dc76f616",
-      "payload": {
-        "from": "917395918838",
-        "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAEhgUM0I1NDA2RjExQTRDN0JBNzRBQjIA",
-        "timestamp": "1773891790",
-        "type": "interactive",
-        "context": {
-          "from": "15551466896",
-          "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSODJEQTkyNjE2MTVDQzk5MDBGAA=="
-        },
-        "interactive": {
-          "type": "list_reply",
-          "list_reply": {
-            "id": "/select_budget{\"price_range\":\"Above RM300\"}",
-            "title": "Above RM300"
-          }
-        }
-      }
-    },
-    {
-      "id": "evt_821d0004-c26e-4b36-b5ea-4dcf0955e1ca",
-      "receivedAt": "2026-03-19T03:43:11.735Z",
-      "channel": "whatsapp",
-      "direction": "outbound",
-      "path": "/messages/whatsapp",
-      "sourceId": "917395918838",
-      "conversationId": "917395918838",
-      "leadId": "lead_683b644c-43dd-46a7-a912-7bc3dc76f616",
-      "payload": {
-        "metadata": {
-          "channel": "whatsapp",
-          "sourceId": "917395918838",
-          "leadId": "lead_683b644c-43dd-46a7-a912-7bc3dc76f616",
-          "conversationId": "917395918838"
-        },
-        "messages": [
-          {
-            "type": "card",
-            "title": "Calisto Vision - Vision Lens Solution 453",
-            "subtitle": "Price: RM438.53\n\nCategory: Lens Solutions\n\nAvailability: Low Stock\n\nRating: 4.9/5\n\nStore: Melawati Mall, Kuala Lumpur",
-            "imageUrl": "https://dummyimage.com/1200x628/1d4ed8/eff6ff&text=LENS%20SOLUTIONS%0A%0ACALISTO%20VISION%20VISION%20LENS%20SOL",
-            "actions": [
-              {
-                "type": "url",
-                "title": "Open Store Map",
-                "value": "https://maps.google.com/?q=Melawati%20Mall%2C%20Kuala%20Lumpur%2C%20Calisto%20Eyewear"
-              },
-              {
-                "type": "postback",
-                "title": "Book Visit",
-                "value": "/book_appointment"
-              },
-              {
-                "type": "postback",
-                "title": "Consult Now",
-                "value": "/capture_lead{\"preferred_service\":\"Lens Consultation\"}"
-              }
-            ]
-          },
-          {
-            "type": "card",
-            "title": "Calisto Vision - Vision Lens Solution 455",
-            "subtitle": "Price: RM353.32\n\nCategory: Lens Solutions\n\nAvailability: In Stock\n\nRating: 4.6/5\n\nStore: Melawati Mall, Kuala Lumpur",
-            "imageUrl": "https://dummyimage.com/1200x628/1d4ed8/eff6ff&text=LENS%20SOLUTIONS%0A%0ACALISTO%20VISION%20VISION%20LENS%20SOL",
-            "actions": [
-              {
-                "type": "url",
-                "title": "Open Store Map",
-                "value": "https://maps.google.com/?q=Melawati%20Mall%2C%20Kuala%20Lumpur%2C%20Calisto%20Eyewear"
-              },
-              {
-                "type": "postback",
-                "title": "Book Visit",
-                "value": "/book_appointment"
-              },
-              {
-                "type": "postback",
-                "title": "Consult Now",
-                "value": "/capture_lead{\"preferred_service\":\"Lens Consultation\"}"
-              }
-            ]
-          },
-          {
-            "type": "card",
-            "title": "Calisto Vision - Vision Lens Solution 458",
-            "subtitle": "Price: RM406.93\n\nCategory: Lens Solutions\n\nAvailability: In Stock\n\nRating: 4.8/5\n\nStore: Aeon Mall Nilai, Nilai",
-            "imageUrl": "https://dummyimage.com/1200x628/1d4ed8/eff6ff&text=LENS%20SOLUTIONS%0A%0ACALISTO%20VISION%20VISION%20LENS%20SOL",
-            "actions": [
-              {
-                "type": "url",
-                "title": "Open Store Map",
-                "value": "https://maps.google.com/?q=Aeon%20Mall%20Nilai%2C%20Nilai%2C%20Calisto%20Eyewear"
-              },
-              {
-                "type": "postback",
-                "title": "Book Visit",
-                "value": "/book_appointment"
-              },
-              {
-                "type": "postback",
-                "title": "Consult Now",
-                "value": "/capture_lead{\"preferred_service\":\"Lens Consultation\"}"
-              }
-            ]
-          },
-          {
-            "type": "card",
-            "title": "Calisto Vision - Vision Lens Solution 460",
-            "subtitle": "Price: RM384.22\n\nCategory: Lens Solutions\n\nAvailability: Low Stock\n\nRating: 4.4/5\n\nStore: Lalaport Bukit Bintang, Kuala Lumpur",
-            "imageUrl": "https://dummyimage.com/1200x628/1d4ed8/eff6ff&text=LENS%20SOLUTIONS%0A%0ACALISTO%20VISION%20VISION%20LENS%20SOL",
-            "actions": [
-              {
-                "type": "url",
-                "title": "Open Store Map",
-                "value": "https://maps.google.com/?q=Lalaport%20Bukit%20Bintang%2C%20Kuala%20Lumpur%2C%20Calisto%20Eyewear"
-              },
-              {
-                "type": "postback",
-                "title": "Book Visit",
-                "value": "/book_appointment"
-              },
-              {
-                "type": "postback",
-                "title": "Consult Now",
-                "value": "/capture_lead{\"preferred_service\":\"Lens Consultation\"}"
-              }
-            ]
-          },
-          {
-            "type": "card",
-            "title": "Calisto Vision - Vision Lens Solution 464",
-            "subtitle": "Price: RM349.38\n\nCategory: Lens Solutions\n\nAvailability: Low Stock\n\nRating: 4.8/5\n\nStore: Aeon Mall Nilai, Nilai",
-            "imageUrl": "https://dummyimage.com/1200x628/1d4ed8/eff6ff&text=LENS%20SOLUTIONS%0A%0ACALISTO%20VISION%20VISION%20LENS%20SOL",
-            "actions": [
-              {
-                "type": "url",
-                "title": "Open Store Map",
-                "value": "https://maps.google.com/?q=Aeon%20Mall%20Nilai%2C%20Nilai%2C%20Calisto%20Eyewear"
-              },
-              {
-                "type": "postback",
-                "title": "Book Visit",
-                "value": "/book_appointment"
-              },
-              {
-                "type": "postback",
-                "title": "Consult Now",
-                "value": "/capture_lead{\"preferred_service\":\"Lens Consultation\"}"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_aae6979a-23a0-44b3-9b06-1827424667b4",
-      "receivedAt": "2026-03-19T03:43:11.744Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSMEY5OEQ4MUZDNzYyRkNENzkzAA==",
-                      "status": "delivered",
-                      "timestamp": "1773891791",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_2df8d30a-e8f0-492b-a0cd-6261b0d2b50f",
-      "receivedAt": "2026-03-19T03:43:12.502Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSRTRENERERURDNkYxQjRGMjBEAA==",
-                      "status": "sent",
-                      "timestamp": "1773891792",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_36a959b5-9d3c-404a-b0dd-f2315079824f",
-      "receivedAt": "2026-03-19T03:43:12.650Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSMEY5OEQ4MUZDNzYyRkNENzkzAA==",
-                      "status": "read",
-                      "timestamp": "1773891791",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_730ce871-55de-4f5e-9c27-358760360cc2",
-      "receivedAt": "2026-03-19T03:43:12.686Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSRTRENERERURDNkYxQjRGMjBEAA==",
-                      "status": "delivered",
-                      "timestamp": "1773891792",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_984a8e37-a330-403f-b15b-a78d4dd120b9",
-      "receivedAt": "2026-03-19T03:43:13.305Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSNzgwQzVFODhBRjA3QTU1MzJEAA==",
-                      "status": "sent",
-                      "timestamp": "1773891792",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_9e83c937-5866-42ed-816e-1ab1aed017db",
-      "receivedAt": "2026-03-19T03:43:13.602Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSRTRENERERURDNkYxQjRGMjBEAA==",
-                      "status": "read",
-                      "timestamp": "1773891792",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_0d8295f8-36a9-48dd-9ffd-7025b7eb74df",
-      "receivedAt": "2026-03-19T03:43:14.060Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSMzZGOEU4MDYyMTJDQzQ1Mzc2AA==",
-                      "status": "sent",
-                      "timestamp": "1773891793",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_6a4125c6-4bb1-4608-956e-9b092f7417de",
-      "receivedAt": "2026-03-19T03:43:14.283Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSNzgwQzVFODhBRjA3QTU1MzJEAA==",
-                      "status": "delivered",
-                      "timestamp": "1773891793",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_f1b743ef-b3eb-4845-82ac-98e51cd8a065",
-      "receivedAt": "2026-03-19T03:43:14.319Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSNzgwQzVFODhBRjA3QTU1MzJEAA==",
-                      "status": "read",
-                      "timestamp": "1773891793",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_6b66774e-71ef-4f50-9007-b0410f1abbe9",
-      "receivedAt": "2026-03-19T03:43:14.400Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSMzZGOEU4MDYyMTJDQzQ1Mzc2AA==",
-                      "status": "delivered",
-                      "timestamp": "1773891793",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_eb05048e-954b-496f-b793-c3fe870df049",
-      "receivedAt": "2026-03-19T03:43:14.420Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSMzZGOEU4MDYyMTJDQzQ1Mzc2AA==",
-                      "status": "delivered",
-                      "timestamp": "1773891793",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_a7d1c5a0-6191-422c-b25f-01db727762a5",
-      "receivedAt": "2026-03-19T03:43:14.459Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSMzZGOEU4MDYyMTJDQzQ1Mzc2AA==",
-                      "status": "read",
-                      "timestamp": "1773891794",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_1a1f149e-d509-4ee2-a398-e188c58f642f",
-      "receivedAt": "2026-03-19T03:43:14.472Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSNUU3RjczOTJEOTEzODI0QzNBAA==",
-                      "status": "sent",
-                      "timestamp": "1773891794",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_bec017b0-a972-47b3-b842-e2704fa4b120",
-      "receivedAt": "2026-03-19T03:43:14.721Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSNzgwQzVFODhBRjA3QTU1MzJEAA==",
-                      "status": "delivered",
-                      "timestamp": "1773891793",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_4d291994-0a16-41d9-8e52-22432374cc0c",
-      "receivedAt": "2026-03-19T03:43:14.814Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSRTI3OTk0Nzc4NjEyM0EzOTQ4AA==",
-                      "status": "sent",
-                      "timestamp": "1773891794",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_bd09b5a8-a373-4e11-ac54-ab907081840e",
-      "receivedAt": "2026-03-19T03:43:15.179Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSMDFERjUyMkZBNjVBNzEyMTM4AA==",
-                      "status": "sent",
-                      "timestamp": "1773891794",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_1d1fdab4-028a-4b2b-8061-225bbd0aebdf",
-      "receivedAt": "2026-03-19T03:43:15.202Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSNjlGNDEyOTg2QTZBRTJERkMwAA==",
-                      "status": "sent",
-                      "timestamp": "1773891794",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_fa5946e4-8dd3-40bd-b741-df8cb8f5b811",
-      "receivedAt": "2026-03-19T03:43:15.288Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSNUU3RjczOTJEOTEzODI0QzNBAA==",
-                      "status": "delivered",
-                      "timestamp": "1773891794",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_5ea01ad0-ba75-4341-9b33-eeec6e91cdde",
-      "receivedAt": "2026-03-19T03:43:15.595Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSNTZCNjI4QTQ5RDIzNDE1RkY3AA==",
-                      "status": "sent",
-                      "timestamp": "1773891795",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_2a8f1e37-4522-4bdf-8d86-c697dc911d7b",
-      "receivedAt": "2026-03-19T03:43:15.647Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSRTI3OTk0Nzc4NjEyM0EzOTQ4AA==",
-                      "status": "delivered",
-                      "timestamp": "1773891794",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_65cd01fb-6ac1-4ec8-a5f1-f703bfe599c7",
-      "receivedAt": "2026-03-19T03:43:15.667Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSNjlGNDEyOTg2QTZBRTJERkMwAA==",
-                      "status": "delivered",
-                      "timestamp": "1773891795",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_ecf99125-3588-4d52-8d5e-e3a28c7f52c7",
-      "receivedAt": "2026-03-19T03:43:15.688Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSNUU3RjczOTJEOTEzODI0QzNBAA==",
-                      "status": "read",
-                      "timestamp": "1773891794",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_f57963c6-cd86-4f72-abf7-f794de1642e0",
-      "receivedAt": "2026-03-19T03:43:15.705Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSNjlGNDEyOTg2QTZBRTJERkMwAA==",
-                      "status": "delivered",
-                      "timestamp": "1773891794",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_3c7847be-af2a-4f3c-bcc6-4f3c6a911704",
-      "receivedAt": "2026-03-19T03:43:15.735Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3Mzk1OTE4ODM4FQIAERgSRTI3OTk0Nzc4NjEyM0EzOTQ4AA==",
-                      "status": "read",
-                      "timestamp": "1773891794",
-                      "recipient_id": "917395918838",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "id": "evt_2115bf65-7c18-4b3c-87f2-aa0adcac30cd",
-      "receivedAt": "2026-03-19T03:43:15.798Z",
-      "channel": "whatsapp",
-      "direction": "inbound",
-      "path": "/webhooks/whatsapp",
-      "sourceId": "::1",
-      "conversationId": "webhook",
-      "payload": {
-        "object": "whatsapp_business_account",
-        "entry": [
-          {
-            "id": "1251034199984102",
-            "changes": [
-              {
-                "value": {
-                  "messaging_product": "whatsapp",
-                  "metadata": {
-                    "display_phone_number": "15551466896",
-                    "phone_number_id": "986501291217162"
-                  },
-                  "statuses": [
-                    {
-                      "id": "wamid.HBgMOTE3MzA1MzIxNzExFQIAERgSNjlGNDEyOTg2QTZBRTJERkMwAA==",
-                      "status": "read",
-                      "timestamp": "1773891795",
-                      "recipient_id": "917305321711",
-                      "pricing": {
-                        "billable": false,
-                        "pricing_model": "PMP",
-                        "category": "service",
-                        "type": "free_customer_service"
-                      }
-                    }
-                  ]
-                },
-                "field": "messages"
-              }
-            ]
-          }
-        ]
-      }
-    },
     {
       "id": "evt_5b803086-7e20-4265-8987-bc897b951b61",
       "receivedAt": "2026-03-19T03:43:16.427Z",
@@ -57408,100 +54998,2270 @@
           }
         ]
       }
+    },
+    {
+      "id": "evt_80d966cb-0a72-459b-9631-aa6564096525",
+      "receivedAt": "2026-03-20T03:54:26.872Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "contacts": [
+                    {
+                      "profile": {
+                        "name": "Vaibhav"
+                      },
+                      "wa_id": "919597493595"
+                    }
+                  ],
+                  "messages": [
+                    {
+                      "context": {
+                        "from": "15551466896",
+                        "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAERgSQjA2MTFFQzMxNjExQzM4OThEAA=="
+                      },
+                      "from": "919597493595",
+                      "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0IwMkFGQzZDNENDMzZGMzFCM0MA",
+                      "timestamp": "1773978865",
+                      "type": "interactive",
+                      "interactive": {
+                        "type": "list_reply",
+                        "list_reply": {
+                          "id": "/select_brand{\"brand\":\"Acuvue\"}",
+                          "title": "Acuvue"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_31a950ec-52a8-4549-b270-33721a501e93",
+      "receivedAt": "2026-03-20T03:54:26.946Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "919597493595",
+      "conversationId": "919597493595",
+      "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f",
+      "payload": {
+        "from": "919597493595",
+        "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0IwMkFGQzZDNENDMzZGMzFCM0MA",
+        "timestamp": "1773978865",
+        "type": "interactive",
+        "context": {
+          "from": "15551466896",
+          "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAERgSQjA2MTFFQzMxNjExQzM4OThEAA=="
+        },
+        "interactive": {
+          "type": "list_reply",
+          "list_reply": {
+            "id": "/select_brand{\"brand\":\"Acuvue\"}",
+            "title": "Acuvue"
+          }
+        }
+      }
+    },
+    {
+      "id": "evt_227f6111-4764-4c3f-bab5-828c1b4c7aca",
+      "receivedAt": "2026-03-20T03:54:27.072Z",
+      "channel": "whatsapp",
+      "direction": "outbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "919597493595",
+      "conversationId": "919597493595",
+      "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f",
+      "payload": {
+        "metadata": {
+          "channel": "whatsapp",
+          "sourceId": "919597493595",
+          "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f",
+          "conversationId": "919597493595"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "To narrow this down properly, what budget range are you comfortable with?",
+            "options": [
+              {
+                "label": "Under RM100",
+                "value": "/select_budget{\"price_range\":\"Under RM100\"}"
+              },
+              {
+                "label": "RM100 - RM250",
+                "value": "/select_budget{\"price_range\":\"RM100 - RM250\"}"
+              },
+              {
+                "label": "RM250 - RM300",
+                "value": "/select_budget{\"price_range\":\"RM250 - RM300\"}"
+              },
+              {
+                "label": "Above RM300",
+                "value": "/select_budget{\"price_range\":\"Above RM300\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_aacc96d1-26bb-45c3-aca9-fb13ede2120c",
+      "receivedAt": "2026-03-20T03:54:28.792Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAERgSNzQ4MUY5MTMzNDgyREQ2RTRFAA==",
+                      "status": "sent",
+                      "timestamp": "1773978868",
+                      "recipient_id": "919597493595",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_57d5ec32-3630-461c-bae1-670f54363a23",
+      "receivedAt": "2026-03-20T03:54:37.769Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAERgSNzQ4MUY5MTMzNDgyREQ2RTRFAA==",
+                      "status": "delivered",
+                      "timestamp": "1773978876",
+                      "recipient_id": "919597493595",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_c54c9916-fba6-4034-971c-0653b6a1acb4",
+      "receivedAt": "2026-03-20T03:55:24.336Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAERgSNzQ4MUY5MTMzNDgyREQ2RTRFAA==",
+                      "status": "read",
+                      "timestamp": "1773978923",
+                      "recipient_id": "919597493595",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_9fb8742b-e862-4a8a-b22e-d68a79caebb0",
+      "receivedAt": "2026-03-20T03:55:28.742Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "contacts": [
+                    {
+                      "profile": {
+                        "name": "Vaibhav"
+                      },
+                      "wa_id": "919597493595"
+                    }
+                  ],
+                  "messages": [
+                    {
+                      "from": "919597493595",
+                      "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0JGODBBQjA0QkFDRUY1RDVGQjkA",
+                      "timestamp": "1773978928",
+                      "text": {
+                        "body": "bye"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_5b38a40c-61ed-4edd-a555-93b6beee79d1",
+      "receivedAt": "2026-03-20T03:55:28.812Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "919597493595",
+      "conversationId": "919597493595",
+      "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f",
+      "payload": {
+        "from": "919597493595",
+        "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0JGODBBQjA0QkFDRUY1RDVGQjkA",
+        "timestamp": "1773978928",
+        "type": "text",
+        "text": {
+          "body": "bye"
+        }
+      }
+    },
+    {
+      "id": "evt_786b7a05-bf25-4972-b116-41ef2f114003",
+      "receivedAt": "2026-03-20T03:55:28.948Z",
+      "channel": "whatsapp",
+      "direction": "outbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "919597493595",
+      "conversationId": "919597493595",
+      "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f",
+      "payload": {
+        "metadata": {
+          "channel": "whatsapp",
+          "sourceId": "919597493595",
+          "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f",
+          "conversationId": "919597493595"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Welcome to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+            "options": [
+              {
+                "label": "Browse Eyewear",
+                "value": "/browse_eyewear"
+              },
+              {
+                "label": "Check Pricing",
+                "value": "/ask_pricing"
+              },
+              {
+                "label": "Book Appointment",
+                "value": "/book_appointment"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_1671e518-2681-498c-a442-76812d4eaf42",
+      "receivedAt": "2026-03-20T03:55:30.550Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAERgSRDlDQTM2RUZCOTUyRTUyMzgxAA==",
+                      "status": "sent",
+                      "timestamp": "1773978929",
+                      "recipient_id": "919597493595",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_a74b25fb-acd5-40ce-8741-d191efabe769",
+      "receivedAt": "2026-03-20T03:55:32.265Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAERgSRDlDQTM2RUZCOTUyRTUyMzgxAA==",
+                      "status": "delivered",
+                      "timestamp": "1773978931",
+                      "recipient_id": "919597493595",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_fcabe297-3907-4c46-bd6d-757bdb3b352a",
+      "receivedAt": "2026-03-20T03:55:36.071Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAERgSRDlDQTM2RUZCOTUyRTUyMzgxAA==",
+                      "status": "read",
+                      "timestamp": "1773978935",
+                      "recipient_id": "919597493595",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_fe5be34e-46db-413c-b490-6638bf3a3189",
+      "receivedAt": "2026-03-20T03:55:42.724Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "contacts": [
+                    {
+                      "profile": {
+                        "name": "Vaibhav"
+                      },
+                      "wa_id": "919597493595"
+                    }
+                  ],
+                  "messages": [
+                    {
+                      "from": "919597493595",
+                      "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0I2QURGNTFDQzNDNTZDRTMyNDkA",
+                      "timestamp": "1773978941",
+                      "text": {
+                        "body": "bye"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_7c1dc510-90f5-47dc-b445-c00beb846706",
+      "receivedAt": "2026-03-20T03:55:42.794Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "919597493595",
+      "conversationId": "919597493595",
+      "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f",
+      "payload": {
+        "from": "919597493595",
+        "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0I2QURGNTFDQzNDNTZDRTMyNDkA",
+        "timestamp": "1773978941",
+        "type": "text",
+        "text": {
+          "body": "bye"
+        }
+      }
+    },
+    {
+      "id": "evt_77eb3fcd-49fe-4889-ac5e-f90093f99194",
+      "receivedAt": "2026-03-20T03:55:42.955Z",
+      "channel": "whatsapp",
+      "direction": "outbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "919597493595",
+      "conversationId": "919597493595",
+      "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f",
+      "payload": {
+        "metadata": {
+          "channel": "whatsapp",
+          "sourceId": "919597493595",
+          "leadId": "lead_65f90bde-a445-4dcc-9e67-e6cf949eba6f",
+          "conversationId": "919597493595"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Great. This is the product browsing flow. Which category would you like to explore first?",
+            "options": [
+              {
+                "label": "Designer Frames",
+                "value": "/select_product_type{\"product_type\":\"Designer Frames\"}"
+              },
+              {
+                "label": "Luxury Sunglasses",
+                "value": "/select_product_type{\"product_type\":\"Luxury Sunglasses\"}"
+              },
+              {
+                "label": "Contact Lenses",
+                "value": "/select_product_type{\"product_type\":\"Contact Lenses\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_a566a262-fe20-40fd-b6b5-9bb7a9e9038e",
+      "receivedAt": "2026-03-20T03:55:44.527Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAERgSNTNCMzMwMjU2QjdBRjdGQ0E1AA==",
+                      "status": "sent",
+                      "timestamp": "1773978943",
+                      "recipient_id": "919597493595",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_e0932843-0df4-4469-a295-f1805c6d736f",
+      "receivedAt": "2026-03-20T03:55:45.130Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAERgSNTNCMzMwMjU2QjdBRjdGQ0E1AA==",
+                      "status": "delivered",
+                      "timestamp": "1773978944",
+                      "recipient_id": "919597493595",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_277907ab-3be5-477d-9da3-eedaa4292c03",
+      "receivedAt": "2026-03-20T03:55:45.431Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE5NTk3NDkzNTk1FQIAERgSNTNCMzMwMjU2QjdBRjdGQ0E1AA==",
+                      "status": "read",
+                      "timestamp": "1773978944",
+                      "recipient_id": "919597493595",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_5ebf26e4-92a9-466e-b4bd-ba84149dc3b5",
+      "receivedAt": "2026-03-20T04:05:40.536Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "contacts": [
+                    {
+                      "profile": {
+                        "name": "Ds"
+                      },
+                      "wa_id": "918098916533"
+                    }
+                  ],
+                  "messages": [
+                    {
+                      "from": "918098916533",
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0IzOTk1M0I0NTYxMjE5MUQyMkYA",
+                      "timestamp": "1773641143",
+                      "text": {
+                        "body": "hi"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_7a225e45-1ef9-48fd-a509-f11808a65116",
+      "receivedAt": "2026-03-20T04:05:40.607Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "918098916533",
+      "conversationId": "918098916533",
+      "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+      "payload": {
+        "from": "918098916533",
+        "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0IzOTk1M0I0NTYxMjE5MUQyMkYA",
+        "timestamp": "1773641143",
+        "type": "text",
+        "text": {
+          "body": "hi"
+        }
+      }
+    },
+    {
+      "id": "evt_863ca0ff-0bfb-488d-b389-c51ae174b319",
+      "receivedAt": "2026-03-20T04:05:40.729Z",
+      "channel": "whatsapp",
+      "direction": "outbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "918098916533",
+      "conversationId": "918098916533",
+      "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+      "payload": {
+        "metadata": {
+          "channel": "whatsapp",
+          "sourceId": "918098916533",
+          "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+          "conversationId": "918098916533"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Welcome to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+            "options": [
+              {
+                "label": "Browse Eyewear",
+                "value": "/browse_eyewear"
+              },
+              {
+                "label": "Check Pricing",
+                "value": "/ask_pricing"
+              },
+              {
+                "label": "Book Appointment",
+                "value": "/book_appointment"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_65f0a583-f2d3-42c0-bc17-f2a893fc6d51",
+      "receivedAt": "2026-03-20T04:05:42.782Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSN0Q3QUM2RDM2ODc2NkRCNDM4AA==",
+                      "status": "sent",
+                      "timestamp": "1773979542",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_6522a280-e3fc-4f70-b0f6-0d501b7d3a78",
+      "receivedAt": "2026-03-20T04:05:43.812Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSN0Q3QUM2RDM2ODc2NkRCNDM4AA==",
+                      "status": "delivered",
+                      "timestamp": "1773979543",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_eca60888-5da8-4b1b-9bbb-97939a6878c5",
+      "receivedAt": "2026-03-20T04:05:43.834Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSN0Q3QUM2RDM2ODc2NkRCNDM4AA==",
+                      "status": "delivered",
+                      "timestamp": "1773979543",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_47533a92-cb70-455f-bbbd-4b51fe147c26",
+      "receivedAt": "2026-03-20T08:35:41.988Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {}
+    },
+    {
+      "id": "evt_f1127193-0e35-4c90-a15c-69059d96dfe5",
+      "receivedAt": "2026-03-20T08:36:39.218Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "contacts": [
+                    {
+                      "profile": {
+                        "name": "Ds"
+                      },
+                      "wa_id": "918098916533"
+                    }
+                  ],
+                  "messages": [
+                    {
+                      "from": "918098916533",
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0IwRUI3QjgyRDI3Nzk4RTJCMkEA",
+                      "timestamp": "1773995798",
+                      "text": {
+                        "body": "hii"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_5a475945-2c6c-471e-a805-5c8fc01b80a2",
+      "receivedAt": "2026-03-20T08:36:39.278Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "918098916533",
+      "conversationId": "918098916533",
+      "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+      "payload": {
+        "from": "918098916533",
+        "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0IwRUI3QjgyRDI3Nzk4RTJCMkEA",
+        "timestamp": "1773995798",
+        "type": "text",
+        "text": {
+          "body": "hii"
+        }
+      }
+    },
+    {
+      "id": "evt_aefe5221-7e30-44c4-901d-2ccd72c65856",
+      "receivedAt": "2026-03-20T08:36:39.975Z",
+      "channel": "whatsapp",
+      "direction": "outbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "918098916533",
+      "conversationId": "918098916533",
+      "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+      "payload": {
+        "metadata": {
+          "channel": "whatsapp",
+          "sourceId": "918098916533",
+          "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+          "conversationId": "918098916533"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Welcome to Calisto Eyewear.\nWhether you want to browse collections, compare pricing, find a store, or arrange a consultation, I can help. What would you like to start with?",
+            "options": [
+              {
+                "label": "Browse Eyewear",
+                "value": "/browse_eyewear"
+              },
+              {
+                "label": "Check Pricing",
+                "value": "/ask_pricing"
+              },
+              {
+                "label": "Book Appointment",
+                "value": "/book_appointment"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_1abe4f19-a6c3-481e-90ff-674700b36b17",
+      "receivedAt": "2026-03-20T08:36:42.092Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSRTZEMDU4QjE0MkVFOTk1NjdGAA==",
+                      "status": "sent",
+                      "timestamp": "1773995801",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_8a53c3d9-2431-4f20-81d4-bd58b827c5d0",
+      "receivedAt": "2026-03-20T08:36:42.461Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSRTZEMDU4QjE0MkVFOTk1NjdGAA==",
+                      "status": "delivered",
+                      "timestamp": "1773995802",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_b3531d2a-df04-4ae4-a821-f6c5ccc7d059",
+      "receivedAt": "2026-03-20T08:36:42.487Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSRTZEMDU4QjE0MkVFOTk1NjdGAA==",
+                      "status": "read",
+                      "timestamp": "1773995802",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_af677e91-a0a1-4aae-b299-d663ca04ec09",
+      "receivedAt": "2026-03-20T08:37:20.721Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "contacts": [
+                    {
+                      "profile": {
+                        "name": "Ds"
+                      },
+                      "wa_id": "918098916533"
+                    }
+                  ],
+                  "messages": [
+                    {
+                      "context": {
+                        "from": "15551466896",
+                        "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSRTZEMDU4QjE0MkVFOTk1NjdGAA=="
+                      },
+                      "from": "918098916533",
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0I3M0Y2NTdCRDg5N0QyMzhCMDMA",
+                      "timestamp": "1773995839",
+                      "type": "interactive",
+                      "interactive": {
+                        "type": "button_reply",
+                        "button_reply": {
+                          "id": "/browse_eyewear",
+                          "title": "Browse Eyewear"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_dac30d4b-bd9a-4631-b766-915b3ab82512",
+      "receivedAt": "2026-03-20T08:37:20.776Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "918098916533",
+      "conversationId": "918098916533",
+      "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+      "payload": {
+        "from": "918098916533",
+        "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0I3M0Y2NTdCRDg5N0QyMzhCMDMA",
+        "timestamp": "1773995839",
+        "type": "interactive",
+        "context": {
+          "from": "15551466896",
+          "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSRTZEMDU4QjE0MkVFOTk1NjdGAA=="
+        },
+        "interactive": {
+          "type": "button_reply",
+          "button_reply": {
+            "id": "/browse_eyewear",
+            "title": "Browse Eyewear"
+          }
+        }
+      }
+    },
+    {
+      "id": "evt_ee536169-75a2-486f-a20a-9f72440ba022",
+      "receivedAt": "2026-03-20T08:37:20.908Z",
+      "channel": "whatsapp",
+      "direction": "outbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "918098916533",
+      "conversationId": "918098916533",
+      "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+      "payload": {
+        "metadata": {
+          "channel": "whatsapp",
+          "sourceId": "918098916533",
+          "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+          "conversationId": "918098916533"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Great. I can open the collection by category to keep things focused. Which one would you like to browse first?",
+            "options": [
+              {
+                "label": "Designer Frames",
+                "value": "/select_product_type{\"product_type\":\"Designer Frames\"}"
+              },
+              {
+                "label": "Luxury Sunglasses",
+                "value": "/select_product_type{\"product_type\":\"Luxury Sunglasses\"}"
+              },
+              {
+                "label": "Contact Lenses",
+                "value": "/select_product_type{\"product_type\":\"Contact Lenses\"}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_d063ac18-a31c-47b3-a226-0efdd6c67fbd",
+      "receivedAt": "2026-03-20T08:37:22.554Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSRDBBQjg0RDI3OUY2QTNFMEIxAA==",
+                      "status": "sent",
+                      "timestamp": "1773995841",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_1f31a4be-eeb9-4b2d-a78d-58b14d22c61b",
+      "receivedAt": "2026-03-20T08:37:23.078Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSRDBBQjg0RDI3OUY2QTNFMEIxAA==",
+                      "status": "delivered",
+                      "timestamp": "1773995842",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_6c59005a-ec38-4488-b63c-de061b7d7481",
+      "receivedAt": "2026-03-20T08:37:23.090Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSRDBBQjg0RDI3OUY2QTNFMEIxAA==",
+                      "status": "read",
+                      "timestamp": "1773995842",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_128b87b2-6128-411c-97cb-d16fa5d34201",
+      "receivedAt": "2026-03-20T08:37:23.178Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSRDBBQjg0RDI3OUY2QTNFMEIxAA==",
+                      "status": "delivered",
+                      "timestamp": "1773995842",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_2902ef38-c1ac-4c03-867f-7023aadef017",
+      "receivedAt": "2026-03-20T08:41:31.176Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {}
+    },
+    {
+      "id": "evt_6a6bfb48-a8b1-4a06-9cb8-89b8ac0449a0",
+      "receivedAt": "2026-03-20T08:41:43.841Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "contacts": [
+                    {
+                      "profile": {
+                        "name": "Ds"
+                      },
+                      "wa_id": "918098916533"
+                    }
+                  ],
+                  "messages": [
+                    {
+                      "from": "918098916533",
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0IxN0U3Q0M4Nzk1QUFFNDQ2QkMA",
+                      "timestamp": "1773996103",
+                      "text": {
+                        "body": "hi"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_10667c5e-51e6-47ab-a6ea-849067136049",
+      "receivedAt": "2026-03-20T08:41:43.890Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "918098916533",
+      "conversationId": "918098916533",
+      "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+      "payload": {
+        "from": "918098916533",
+        "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0IxN0U3Q0M4Nzk1QUFFNDQ2QkMA",
+        "timestamp": "1773996103",
+        "type": "text",
+        "text": {
+          "body": "hi"
+        }
+      }
+    },
+    {
+      "id": "evt_4efc3a3f-e0c6-41d9-af05-12af984d8332",
+      "receivedAt": "2026-03-20T08:41:44.041Z",
+      "channel": "whatsapp",
+      "direction": "outbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "918098916533",
+      "conversationId": "918098916533",
+      "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+      "payload": {
+        "metadata": {
+          "channel": "whatsapp",
+          "sourceId": "918098916533",
+          "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+          "conversationId": "918098916533"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "*Ds*\nWelcome to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?",
+            "options": [
+              {
+                "label": "Browse Eyewear",
+                "value": "/browse_eyewear"
+              },
+              {
+                "label": "Check Pricing",
+                "value": "/ask_pricing"
+              },
+              {
+                "label": "Book Appointment",
+                "value": "/book_appointment"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_5ca960a5-5c53-422a-9477-a87d1425d17e",
+      "receivedAt": "2026-03-20T08:41:45.694Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSNzYzM0JFQkYwNkI3OTNDNkZGAA==",
+                      "status": "sent",
+                      "timestamp": "1773996105",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_78ce5e5f-698f-4113-b262-87382738d370",
+      "receivedAt": "2026-03-20T08:41:46.166Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSNzYzM0JFQkYwNkI3OTNDNkZGAA==",
+                      "status": "delivered",
+                      "timestamp": "1773996105",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_055053f1-4129-498a-af44-835dc390e449",
+      "receivedAt": "2026-03-20T08:41:46.179Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSNzYzM0JFQkYwNkI3OTNDNkZGAA==",
+                      "status": "read",
+                      "timestamp": "1773996105",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_8f35faff-9f23-4856-803a-cadfb7bd87a4",
+      "receivedAt": "2026-03-20T08:43:38.928Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "contacts": [
+                    {
+                      "profile": {
+                        "name": "Ds"
+                      },
+                      "wa_id": "918098916533"
+                    }
+                  ],
+                  "messages": [
+                    {
+                      "from": "918098916533",
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0JEOTBFRUU2RjZCRkE4RUNEOTEA",
+                      "timestamp": "1773996218",
+                      "text": {
+                        "body": "hi"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_102cbbfe-313d-43cc-a9b6-8fbdd1bb317e",
+      "receivedAt": "2026-03-20T08:43:38.977Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "918098916533",
+      "conversationId": "918098916533",
+      "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+      "payload": {
+        "from": "918098916533",
+        "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0JEOTBFRUU2RjZCRkE4RUNEOTEA",
+        "timestamp": "1773996218",
+        "type": "text",
+        "text": {
+          "body": "hi"
+        }
+      }
+    },
+    {
+      "id": "evt_553d4025-d175-437d-82ac-0e6e0b586078",
+      "receivedAt": "2026-03-20T08:43:39.132Z",
+      "channel": "whatsapp",
+      "direction": "outbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "918098916533",
+      "conversationId": "918098916533",
+      "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+      "payload": {
+        "metadata": {
+          "channel": "whatsapp",
+          "sourceId": "918098916533",
+          "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+          "conversationId": "918098916533"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Hi *Ds*\n\nWelcome to Calisto Eyewear.\nI can help you explore products, review pricing, find a nearby store, or arrange a consultation. Where would you like to start?",
+            "options": [
+              {
+                "label": "Browse Eyewear",
+                "value": "/browse_eyewear"
+              },
+              {
+                "label": "Check Pricing",
+                "value": "/ask_pricing"
+              },
+              {
+                "label": "Book Appointment",
+                "value": "/book_appointment"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_f9733b20-9df4-44bf-a0d8-81bb8ce896de",
+      "receivedAt": "2026-03-20T08:43:41.097Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSMEI0QjA0MEM2NkM1MkExM0E3AA==",
+                      "status": "sent",
+                      "timestamp": "1773996220",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_4a06a873-a8f6-47ee-9fe8-aa34ab2d83fd",
+      "receivedAt": "2026-03-20T08:43:41.666Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSMEI0QjA0MEM2NkM1MkExM0E3AA==",
+                      "status": "delivered",
+                      "timestamp": "1773996221",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_84238d0d-ee87-42ee-adba-dc476a6e13ac",
+      "receivedAt": "2026-03-20T08:43:41.859Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSMEI0QjA0MEM2NkM1MkExM0E3AA==",
+                      "status": "read",
+                      "timestamp": "1773996221",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_e0b851b8-6054-4389-af8f-0ee96b9a240b",
+      "receivedAt": "2026-03-20T08:43:41.934Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSMEI0QjA0MEM2NkM1MkExM0E3AA==",
+                      "status": "delivered",
+                      "timestamp": "1773996221",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_b81a97e0-5a77-491a-bc32-49ab23130555",
+      "receivedAt": "2026-03-20T09:09:36.118Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {}
+    },
+    {
+      "id": "evt_353dc792-6baa-4305-bd58-f8a5b98bb0ac",
+      "receivedAt": "2026-03-20T09:10:05.830Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "contacts": [
+                    {
+                      "profile": {
+                        "name": "Ds"
+                      },
+                      "wa_id": "918098916533"
+                    }
+                  ],
+                  "messages": [
+                    {
+                      "from": "918098916533",
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0I1NEJGOTdBRjY4QTYwM0U0MDgA",
+                      "timestamp": "1773997804",
+                      "text": {
+                        "body": "hey"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_059978b2-c6d8-41c9-9bda-8016e294b2f5",
+      "receivedAt": "2026-03-20T09:10:05.897Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "918098916533",
+      "conversationId": "918098916533",
+      "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+      "payload": {
+        "from": "918098916533",
+        "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0I1NEJGOTdBRjY4QTYwM0U0MDgA",
+        "timestamp": "1773997804",
+        "type": "text",
+        "text": {
+          "body": "hey"
+        }
+      }
+    },
+    {
+      "id": "evt_4fa543e2-02ca-4bfe-8b6e-917dec2bdb67",
+      "receivedAt": "2026-03-20T09:10:06.071Z",
+      "channel": "whatsapp",
+      "direction": "outbound",
+      "path": "/messages/whatsapp",
+      "sourceId": "918098916533",
+      "conversationId": "918098916533",
+      "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+      "payload": {
+        "metadata": {
+          "channel": "whatsapp",
+          "sourceId": "918098916533",
+          "leadId": "lead_412da641-3995-4587-9743-7fc489c35a4f",
+          "conversationId": "918098916533"
+        },
+        "messages": [
+          {
+            "type": "choice",
+            "text": "Hi *Ds*\n\nWelcome to Calisto Eyewear.\nI can help you explore products, review pricing, find a nearby store, or arrange a consultation. Where would you like to start?",
+            "options": [
+              {
+                "label": "Browse Eyewear",
+                "value": "/browse_eyewear"
+              },
+              {
+                "label": "Check Pricing",
+                "value": "/ask_pricing"
+              },
+              {
+                "label": "Book Appointment",
+                "value": "/book_appointment"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_fa435ca2-d80f-432b-b722-0be7c66e82b0",
+      "receivedAt": "2026-03-20T09:10:08.396Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSODg3REE1MjVGNDcyRkIyM0ZCAA==",
+                      "status": "sent",
+                      "timestamp": "1773997807",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_00a36a6f-2e75-45d0-b648-6ad9961a5bfb",
+      "receivedAt": "2026-03-20T09:10:09.084Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSODg3REE1MjVGNDcyRkIyM0ZCAA==",
+                      "status": "read",
+                      "timestamp": "1773997808",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "evt_cf1266a7-5bcb-4a65-b4d6-dd043406e309",
+      "receivedAt": "2026-03-20T09:10:09.552Z",
+      "channel": "whatsapp",
+      "direction": "inbound",
+      "path": "/webhooks/whatsapp",
+      "sourceId": "::1",
+      "conversationId": "webhook",
+      "payload": {
+        "object": "whatsapp_business_account",
+        "entry": [
+          {
+            "id": "1251034199984102",
+            "changes": [
+              {
+                "value": {
+                  "messaging_product": "whatsapp",
+                  "metadata": {
+                    "display_phone_number": "15551466896",
+                    "phone_number_id": "986501291217162"
+                  },
+                  "statuses": [
+                    {
+                      "id": "wamid.HBgMOTE4MDk4OTE2NTMzFQIAERgSODg3REE1MjVGNDcyRkIyM0ZCAA==",
+                      "status": "delivered",
+                      "timestamp": "1773997808",
+                      "recipient_id": "918098916533",
+                      "pricing": {
+                        "billable": false,
+                        "pricing_model": "PMP",
+                        "category": "service",
+                        "type": "free_customer_service"
+                      }
+                    }
+                  ]
+                },
+                "field": "messages"
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "deduplication": [
     {
-      "key": "whatsapp:wamid.HBgMOTE3Mzk1OTE4ODM4FQIAEhgUM0FDMzUzMTA3OEE4NDQwRjg5MkIA",
-      "seenAt": 1773978272531
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE5OTUyMDc2NDA1FQIAEhgWM0VCMEJERkQ2QTJDQURBNDBGMEE5MQA=",
-      "seenAt": 1773978281257
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE3Mzk1OTE4ODM4FQIAEhgUM0FDOEIwNDI0RUQ5ODM1MUM0NTQA",
-      "seenAt": 1773978287455
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE5OTUyMDc2NDA1FQIAEhgWM0VCMDUxQUNEQzAzQjBFRjBGNDJEMwA=",
-      "seenAt": 1773978308027
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE5OTUyMDc2NDA1FQIAEhgWM0VCMDU4MjM4MUVGMTM0MDM3NkZCOAA=",
-      "seenAt": 1773978311426
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE3MzA1MzIxNzExFQIAEhgWM0VCMEJCREYzQTRGOEE2MjdENTEyNAA=",
-      "seenAt": 1773978311987
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0JDQUY4MjI3NjFBNDgwRjY4QTkA",
-      "seenAt": 1773978338953
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0JENEJGNjlDNjQ4RkUwMDExQ0IA",
-      "seenAt": 1773978339405
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0I2QTY4NzFBOTBCQzk1QkUwRkQA",
-      "seenAt": 1773978341010
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0IzRTIzMjMyREY3RkE1QTlBQzYA",
-      "seenAt": 1773978342884
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0I1RjNBNkJGQjM2NEQyM0RBNzcA",
-      "seenAt": 1773978346213
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0IyMzk3RTE5OTJDOUMwMTEzMzkA",
-      "seenAt": 1773978351135
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE3Mzk1OTE4ODM4FQIAEhgUM0I5QzRERkFDRDE5NTlGMzU5QTcA",
-      "seenAt": 1773978390975
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0IwNENEMEJFREZGN0IyNzlCNTYA",
-      "seenAt": 1773978412081
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE3MzA1MzIxNzExFQIAEhgWM0VCMDRCRjA3OEY3RTg1NzhDNDA4RgA=",
-      "seenAt": 1773978421634
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE3MzA1MzIxNzExFQIAEhgWM0VCMDFCRjZDNDUyOUE1MTQxMUY1NwA=",
-      "seenAt": 1773978426283
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0I5MjU2NzM4REFCNEZFRTlGQkEA",
-      "seenAt": 1773978426998
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE3MzA1MzIxNzExFQIAEhgWM0VCMEY2RTI4QjZBNUM2MDM3NkU3MQA=",
-      "seenAt": 1773978430524
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE3MzA1MzIxNzExFQIAEhgWM0VCMEU2NEZGMjVEOUVFNzE3RjBDMQA=",
-      "seenAt": 1773978435317
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE3MzA1MzIxNzExFQIAEhgWM0VCMDIwN0UwOUJERDM3NkM4NEJFNgA=",
-      "seenAt": 1773978448373
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE5NTk3NDkzNTk1FQIAEhgUM0JGRTMxRDFBNDZGRkM3NDY3MEMA",
-      "seenAt": 1773978473083
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE5OTUyMDc2NDA1FQIAEhgWM0VCMDg5ODRENTkwNkQ5QTZDNkFGRAA=",
-      "seenAt": 1773978475503
-    },
-    {
-      "key": "whatsapp:wamid.HBgMOTE3MzA1MzIxNzExFQIAEhgWM0VCMEU3OEFDMDA1QkRFODIzQjNDRQA=",
-      "seenAt": 1773978564154
+      "key": "whatsapp:wamid.HBgMOTE4MDk4OTE2NTMzFQIAEhgUM0I1NEJGOTdBRjY4QTYwM0U0MDgA",
+      "seenAt": 1773997805857
     }
   ]
 }

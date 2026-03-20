@@ -5,6 +5,7 @@ export interface LeadRecord {
   channel: IncomingMessage['channel']
   sourceId: string
   conversationId: string
+  responseStyle?: 'casual' | 'professional' | 'warm' | 'concierge'
   senderName?: string
   leadName?: string
   email?: string

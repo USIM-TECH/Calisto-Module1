@@ -13,7 +13,10 @@ interface LeadOrchestratorOptions {
   deduplicator: MessageDeduplicator
   runtimeStore: RuntimeStore
   hubspot?: HubSpotClient
+  responseStyle?: 'casual' | 'professional' | 'warm' | 'concierge'
 }
+
+type ResponseStyle = 'casual' | 'professional' | 'warm' | 'concierge'
 
 export interface OrchestratedReply {
   lead: LeadRecord
@@ -112,12 +115,157 @@ function nextOutboundMessageId(): string {
   return `out_${crypto.randomUUID()}`
 }
 
+function isGreetingLikeText(text: string): boolean {
+  const normalized = text.trim().toLowerCase()
+  return normalized.startsWith('welcome')
+    || normalized.startsWith('selamat datang')
+    || normalized.startsWith('hai, selamat datang')
+    || normalized.startsWith('欢迎')
+    || normalized.startsWith('您好')
+}
+
+function inferResponseStyle(
+  text: string | undefined,
+  fallbackStyle: ResponseStyle,
+  existingStyle?: ResponseStyle,
+): ResponseStyle {
+  const normalized = String(text ?? '').trim().toLowerCase()
+  if (!normalized) {
+    return existingStyle ?? fallbackStyle
+  }
+
+  if (normalized.startsWith('/')) {
+    return existingStyle ?? fallbackStyle
+  }
+
+  const conciergeSignals = [
+    'luxury',
+    'premium',
+    'exclusive',
+    'designer',
+    'best option',
+    'high-end',
+    'curate',
+    'recommend the best',
+  ]
+  if (conciergeSignals.some((signal) => normalized.includes(signal))) {
+    return 'concierge'
+  }
+
+  const professionalSignals = [
+    'quotation',
+    'quote',
+    'pricing',
+    'price list',
+    'invoice',
+    'proposal',
+    'please share',
+    'please provide',
+    'schedule',
+    'appointment',
+    'consultation',
+  ]
+  if (professionalSignals.some((signal) => normalized.includes(signal))) {
+    return 'professional'
+  }
+
+  const warmSignals = [
+    'help me',
+    'not sure',
+    'confused',
+    'which is better',
+    'can someone help',
+    'please help',
+    'worried',
+    'unsure',
+  ]
+  if (warmSignals.some((signal) => normalized.includes(signal))) {
+    return 'warm'
+  }
+
+  if (normalized.length <= 12) {
+    return existingStyle ?? fallbackStyle
+  }
+
+  return 'casual'
+}
+
+function whatsappGreetingHeader(
+  senderName: string,
+  style: ResponseStyle,
+): string {
+  switch (style) {
+    case 'professional':
+      return `Hello *${senderName}*`
+    case 'warm':
+      return `Welcome *${senderName}*`
+    case 'concierge':
+      return `Good to have you here, *${senderName}*`
+    case 'casual':
+    default:
+      return `Hi *${senderName}*`
+  }
+}
+
+function prependWhatsappName(
+  text: string,
+  senderName: string | undefined,
+  style: ResponseStyle,
+): string {
+  const safeName = normalizeText(senderName)
+  if (!safeName) {
+    return text
+  }
+
+  const trimmed = text.trim()
+  const existingHeaders = [
+    `Hi *${safeName}*`,
+    `Hello *${safeName}*`,
+    `Welcome *${safeName}*`,
+    `Good to have you here, *${safeName}*`,
+  ]
+  if (existingHeaders.some((header) => trimmed.startsWith(header))) {
+    return text
+  }
+
+  return `${whatsappGreetingHeader(safeName, style)}\n\n${trimmed}`
+}
+
+function decorateWhatsappMessages(
+  message: IncomingMessage,
+  outgoingMessages: OutgoingMessage[],
+  style: ResponseStyle,
+): OutgoingMessage[] {
+  if (message.channel !== 'whatsapp' || !message.senderName) {
+    return outgoingMessages
+  }
+
+  return outgoingMessages.map((outgoingMessage) => {
+    if (outgoingMessage.type === 'text' && isGreetingLikeText(outgoingMessage.text)) {
+      return {
+        ...outgoingMessage,
+        text: prependWhatsappName(outgoingMessage.text, message.senderName, style),
+      }
+    }
+
+    if (outgoingMessage.type === 'choice' && isGreetingLikeText(outgoingMessage.text)) {
+      return {
+        ...outgoingMessage,
+        text: prependWhatsappName(outgoingMessage.text, message.senderName, style),
+      }
+    }
+
+    return outgoingMessage
+  })
+}
+
 export class LeadOrchestrator {
   private readonly _logger: Logger
   private readonly _nlpClient: NLPClient
   private readonly _deduplicator: MessageDeduplicator
   private readonly _runtimeStore: RuntimeStore
   private readonly _hubspot?: HubSpotClient
+  private readonly _responseStyle: ResponseStyle
 
   constructor(options: LeadOrchestratorOptions) {
     this._logger = options.logger
@@ -125,6 +273,7 @@ export class LeadOrchestrator {
     this._deduplicator = options.deduplicator
     this._runtimeStore = options.runtimeStore
     this._hubspot = options.hubspot
+    this._responseStyle = options.responseStyle ?? 'casual'
   }
 
   public async process(message: IncomingMessage): Promise<OrchestratedReply | undefined> {
@@ -138,6 +287,11 @@ export class LeadOrchestrator {
     const messageText = message.type === 'interactive'
       ? (message.interactive?.id || message.interactive?.title || message.text)
       : (message.text || message.interactive?.title)
+    const inferredResponseStyle = inferResponseStyle(
+      messageText,
+      this._responseStyle,
+      lead.responseStyle,
+    )
 
     this._runtimeStore.appendConversationMessage(
       lead.id,
@@ -183,6 +337,9 @@ export class LeadOrchestrator {
     if (messageSnapshot.location) {
       preNlpSnapshot.location = messageSnapshot.location
     }
+    if (inferredResponseStyle !== lead.responseStyle) {
+      preNlpSnapshot.responseStyle = inferredResponseStyle
+    }
     const leadWithMessageData = Object.keys(preNlpSnapshot).length
       ? (this._runtimeStore.updateLead(lead.id, preNlpSnapshot) ?? lead)
       : lead
@@ -210,7 +367,11 @@ export class LeadOrchestrator {
       trackerSnapshot.location = messageSnapshot.location
     }
     const updatedLead = this._runtimeStore.updateLead(lead.id, trackerSnapshot) ?? leadWithMessageData
-    const outgoingMessages = mapNlpResponseToOutgoingMessages(nlpResponse)
+    const outgoingMessages = decorateWhatsappMessages(
+      message,
+      mapNlpResponseToOutgoingMessages(nlpResponse),
+      inferredResponseStyle,
+    )
 
     for (const outgoingMessage of outgoingMessages) {
       this._runtimeStore.appendConversationMessage(

@@ -66,6 +66,7 @@ export function createDependencies(): AppDependencies {
     deduplicator,
     runtimeStore,
     hubspot,
+    responseStyle: config.responseStyle,
   })
   const website = new WebsiteChannel(orchestrator, logger)
 

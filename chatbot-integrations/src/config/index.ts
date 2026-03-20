@@ -15,11 +15,14 @@ const optionalString = z.preprocess((value) => {
   return trimmed === '' ? undefined : trimmed
 }, z.string().optional())
 
+const responseStyleSchema = z.enum(['casual', 'professional', 'warm', 'concierge']).default('casual')
+
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   RASA_URL: z.string().default('http://localhost:5005'),
   DATA_DIR: optionalString,
   DEDUP_TTL_MS: z.coerce.number().int().positive().default(5 * 60 * 1000),
+  RESPONSE_STYLE: responseStyleSchema,
 
   WEBSITE_AUTH_TOKEN: optionalString,
   WEBSITE_ALLOWED_ORIGINS: optionalString,
@@ -66,6 +69,7 @@ export interface AppConfig {
   rasaUrl: string
   dataDir: string
   dedupTtlMs: number
+  responseStyle: 'casual' | 'professional' | 'warm' | 'concierge'
   website: {
     authToken?: string
     allowedOrigins: string[]
@@ -88,6 +92,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     rasaUrl: parsed.RASA_URL,
     dataDir: parsed.DATA_DIR ?? 'data/runtime',
     dedupTtlMs: parsed.DEDUP_TTL_MS,
+    responseStyle: parsed.RESPONSE_STYLE,
     website: {
       authToken: parsed.WEBSITE_AUTH_TOKEN,
       allowedOrigins: (parsed.WEBSITE_ALLOWED_ORIGINS ?? '')
