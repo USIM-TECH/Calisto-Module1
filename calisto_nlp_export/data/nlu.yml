@@ -33,6 +33,14 @@ nlu:
       - i need assistance
       - start
       - lets begin
+      - hai
+      - helo
+      - selamat pagi
+      - saya perlukan bantuan
+      - 你好
+      - 你好呀
+      - 早安
+      - 我需要帮助
 
   - intent: browse_eyewear
     examples: |
@@ -88,6 +96,14 @@ nlu:
       - let me see your optical frames
       - show me frame options
       - i want to see your eyewear options
+      - tunjukkan cermin mata
+      - saya mahu lihat bingkai
+      - tunjuk koleksi eyewear
+      - saya mahu tengok produk
+      - 我想看眼镜
+      - 给我看看镜框
+      - 我想浏览产品
+      - 展示太阳镜给我
 
   - intent: search_product
     examples: |
@@ -164,6 +180,22 @@ nlu:
       - lens options for reading and distance
       - i need vision lenses for work
       - can you suggest better lenses for daily use
+      - saya perlukan pilihan kanta
+      - saya mahu cadangan kanta
+      - boleh terangkan jenis kanta
+      - saya perlukan bantuan untuk pilih kanta
+      - kanta apa sesuai untuk kerja pejabat
+      - saya mahukan kanta blue light
+      - saya mahu tahu pilihan pembetulan penglihatan
+      - boleh cadangkan kanta untuk kerja skrin
+      - 我想看镜片方案
+      - 我需要镜片建议
+      - 请介绍一下镜片类型
+      - 有适合办公的镜片吗
+      - 我需要防蓝光镜片
+      - 请帮我选择合适的镜片
+      - 有阅读和远近都适合的镜片吗
+      - 我想了解视力矫正方案
 
   - intent: find_a_store
     examples: |
@@ -256,6 +288,14 @@ nlu:
       - i want to drop by your store
       - find me a store for frame fitting
       - store to try glasses near me
+      - cari kedai berdekatan
+      - ada cawangan di kuala lumpur
+      - tunjukkan kedai di kl
+      - saya mahu pergi ke kedai
+      - 请帮我找门店
+      - 你们在吉隆坡有门店吗
+      - 附近有分店吗
+      - 我想去实体店
 
   - intent: select_product_type
     examples: |
@@ -287,6 +327,16 @@ nlu:
       - my choice is [Multifocal Lenses](product_type)
       - select [Monthly Lenses](product_type)
       - show options in [Contact Lenses](product_type)
+      - saya mahu [Designer Frames](product_type)
+      - tunjukkan [Luxury Sunglasses](product_type)
+      - saya perlukan [Contact Lenses](product_type)
+      - saya pilih [Monthly Lenses](product_type)
+      - saya mahu lihat [Daily Lenses](product_type)
+      - 请给我看[Designer Frames](product_type)
+      - 我想要[Luxury Sunglasses](product_type)
+      - 我需要[Contact Lenses](product_type)
+      - 选择[Monthly Lenses](product_type)
+      - 给我[Daily Lenses](product_type)
 
   - intent: select_brand
     examples: |
@@ -318,6 +368,16 @@ nlu:
       - filter by [Cartier](brand)
       - only [Gucci](brand) please
       - give me [Saint Laurent](brand) sunglasses
+      - saya mahu [Gucci](brand)
+      - tunjuk [Prada](brand)
+      - ada [Ray-Ban](brand) tak
+      - saya minat [Cartier](brand)
+      - hanya [Saint Laurent](brand) sahaja
+      - 我想看[Gucci](brand)
+      - 有[Prada](brand)吗
+      - 请展示[Ray-Ban](brand)
+      - 我对[Cartier](brand)有兴趣
+      - 只看[Saint Laurent](brand)
 
   - intent: select_budget
     examples: |
@@ -336,6 +396,14 @@ nlu:
       - i want options [Under RM100](price_range)
       - can i get [RM100 - RM250](price_range)
       - please show [Above RM300](price_range) collection
+      - bajet saya [Under RM100](price_range)
+      - tunjukkan julat [RM100 - RM250](price_range)
+      - saya mahu [RM250 - RM300](price_range)
+      - ada pilihan [Above RM300](price_range)
+      - 我预算是[Under RM100](price_range)
+      - 请给我看[RM100 - RM250](price_range)
+      - 我想看[RM250 - RM300](price_range)
+      - 有没有[Above RM300](price_range)的
 
   - intent: ask_lens_type
     examples: |
@@ -364,6 +432,20 @@ nlu:
       - lenses for digital screens
       - reading lenses please
       - what lens should i choose
+      - kanta single vision itu apa
+      - saya mahu kanta progresif
+      - boleh terangkan kanta blue light
+      - apakah kanta photochromic
+      - kanta apa sesuai untuk kerja komputer
+      - beza single vision dan progressive apa
+      - saya perlukan kanta untuk membaca
+      - 我想了解单光镜片
+      - 请解释渐进镜片
+      - 有防蓝光镜片吗
+      - 光致变色镜片是什么
+      - 电脑工作适合什么镜片
+      - 单光和渐进有什么区别
+      - 我需要阅读镜片
       - need lens recommendation
 
   - intent: choose_city
@@ -447,6 +529,30 @@ nlu:
       - KL
       - kl
       - kuala lumpur
+      - 吉隆坡
+
+  - synonym: Bukit Bintang
+    examples: |
+      - bukit bintang
+      - 武吉免登
+
+  - synonym: Lalaport Bukit Bintang
+    examples: |
+      - lalaport
+      - lalaport bukit bintang
+
+  - synonym: Aeon Mall Nilai
+    examples: |
+      - aeon nilai
+      - aeon mall nilai
+
+  - synonym: Melawati Mall
+    examples: |
+      - melawati mall
+
+  - synonym: Mitsui Outlet Park
+    examples: |
+      - mitsui outlet park
 
   - synonym: screen
     examples: |
@@ -499,6 +605,18 @@ nlu:
       - i prefer [titanium](frame_material) and [round](frame_shape)
       - show [acetate](frame_material) in [green](frame_color)
       - find [silver](frame_color) [aviator](frame_shape)
+      - saya mahu bingkai [black](frame_color)
+      - tunjuk cermin mata bentuk [round](frame_shape)
+      - ada bingkai [metal](frame_material) tak
+      - saya cari bingkai [brown](frame_color) bentuk [rectangle](frame_shape)
+      - saya mahu cermin mata [cat-eye](frame_shape) warna [red](frame_color)
+      - tunjuk bingkai [acetate](frame_material) warna [green](frame_color)
+      - 我想看[black](frame_color)色镜框
+      - 请给我看[round](frame_shape)款式
+      - 有[metal](frame_material)材质的吗
+      - 我想找[brown](frame_color)色[rectangle](frame_shape)眼镜
+      - 有[cat-eye](frame_shape)形状的太阳镜吗
+      - 给我看[green](frame_color)色[acetate](frame_material)镜框
 
   - intent: inform_budget
     examples: |
@@ -516,6 +634,14 @@ nlu:
       - i can do [between 250 and 400](budget)
       - make it [around 250](budget)
       - my budget is [rm300](budget)
+      - bajet saya [200](budget)
+      - sekitar [300](budget)
+      - bawah [400](budget)
+      - saya boleh belanja [500](budget)
+      - 我的预算是[300](budget)
+      - 大概[250](budget)
+      - 低于[400](budget)
+      - 我最多可以花[500](budget)
 
   - regex: budget
     examples: |
@@ -610,18 +736,49 @@ nlu:
       - eyeglasses
       - spectacles
       - designer frames
+      - bingkai
+      - cermin mata
+      - 镜框
+      - 眼镜框
 
   - synonym: Luxury Sunglasses
     examples: |
       - sunglasses
       - shades
       - luxury sunglasses
+      - cermin mata hitam
+      - 太阳镜
 
   - synonym: Contact Lenses
     examples: |
       - contacts
       - contact lens
       - contact lenses
+      - kanta sentuh
+      - 隐形眼镜
+
+  - synonym: Lens Consultation
+    examples: |
+      - konsultasi kanta
+      - 镜片咨询
+
+  - synonym: Eyewear Recommendation
+    examples: |
+      - cadangan produk
+      - cadangan eyewear
+      - 产品推荐
+
+  - synonym: Store Visit
+    examples: |
+      - lawatan kedai
+      - 到店服务
+      - 到店
+
+  - synonym: After-sales Support
+    examples: |
+      - sokongan selepas jualan
+      - 售后支持
+      - 售后服务
 
   - synonym: "300"
     examples: |
@@ -663,6 +820,10 @@ nlu:
       - this is [Sarah Lim](lead_name)
       - i am [Jason Wong](lead_name)
       - [John Tan](lead_name)
+      - nama saya [Farah](lead_name)
+      - saya [Daniel Lee](lead_name)
+      - 我叫[王小明](lead_name)
+      - 我是[陈美玲](lead_name)
 
   - intent: share_phone
     examples: |
@@ -674,6 +835,9 @@ nlu:
       - my contact is [0127788990](contact_number)
       - [0123456789](contact_number)
       - [60123456789](contact_number)
+      - nombor saya [0171234567](contact_number)
+      - boleh hubungi saya di [60199887766](contact_number)
+      - 我的电话是[0127788990](contact_number)
 
   - intent: share_email
     examples: |
@@ -684,6 +848,9 @@ nlu:
       - my email address is [sales@calisto.com](email)
       - [chen@example.com](email)
       - contact me at [hello@sample.com](email)
+      - emel saya [farah@contoh.my](email)
+      - boleh guna [sales@calisto.com](email)
+      - 我的邮箱是[chen@example.com](email)
 
   - intent: share_location
     examples: |
@@ -695,6 +862,10 @@ nlu:
       - i am based in [Kuala Lumpur](lead_location)
       - i am from [Nilai](lead_location)
       - i am located in [Kuala Lumpur](lead_location)
+      - saya di [Shah Alam](lead_location)
+      - lokasi saya [Johor Bahru](lead_location)
+      - 我在[吉隆坡](lead_location)
+      - 我住在[八打灵再也](lead_location)
 
   - intent: share_service_interest
     examples: |
@@ -710,6 +881,18 @@ nlu:
       - i need [After-sales Support](preferred_service)
       - i want [Contact Lenses](preferred_service)
       - [Lens Consultation](preferred_service)
+      - saya perlukan [Lens Consultation](preferred_service)
+      - saya mahu [Eyewear Recommendation](preferred_service)
+      - saya mahu [Store Visit](preferred_service)
+      - saya perlukan [After-sales Support](preferred_service)
+      - saya mahu [Contact Lenses](preferred_service)
+      - minat saya [Luxury Sunglasses](preferred_service)
+      - 我需要[After-sales Support](preferred_service)
+      - 我想要[Store Visit](preferred_service)
+      - 我需要[Lens Consultation](preferred_service)
+      - 我想看[Designer Frames](preferred_service)
+      - 我对[Luxury Sunglasses](preferred_service)有兴趣
+      - 我需要[Contact Lenses](preferred_service)
 
   - intent: share_timeline
     examples: |
@@ -724,6 +907,14 @@ nlu:
       - i am only [just exploring](purchase_timeline)
       - probably [this week](purchase_timeline)
       - maybe [just exploring](purchase_timeline)
+      - saya perlukan minggu ini [This Week](purchase_timeline)
+      - hanya survey dulu [Just Exploring](purchase_timeline)
+      - dalam dua minggu [Within 2 Weeks](purchase_timeline)
+      - saya akan putuskan [This Week](purchase_timeline)
+      - mungkin [Within 2 Weeks](purchase_timeline)
+      - 我想[This Week](purchase_timeline)决定
+      - 我会在[Within 2 Weeks](purchase_timeline)内决定
+      - 我先[Just Exploring](purchase_timeline)
 
   - intent: ask_pricing
     examples: |
@@ -746,6 +937,38 @@ nlu:
       - price for sunglasses under rm500
       - what is your price for eye test
       - how expensive are your designer frames
+      - berapa harga bingkai
+      - saya mahu semak harga
+      - harga cermin mata hitam berapa
+      - berapa kos kanta sentuh
+      - 请问价格多少
+      - 镜框多少钱
+      - 我想看价格
+      - 隐形眼镜多少钱
+
+  - intent: select_pricing_category
+    examples: |
+      - [Designer Frames](preferred_service)
+      - [Luxury Sunglasses](preferred_service)
+      - [Lens Consultation](preferred_service)
+      - show me [Designer Frames](preferred_service) pricing
+      - show me [Luxury Sunglasses](preferred_service) pricing
+      - show me [Lens Consultation](preferred_service) pricing
+      - i want [Designer Frames](preferred_service) prices
+      - i want [Luxury Sunglasses](preferred_service) prices
+      - let me see [Lens Consultation](preferred_service) pricing
+      - harga [Designer Frames](preferred_service)
+      - harga [Luxury Sunglasses](preferred_service)
+      - harga [Lens Consultation](preferred_service)
+      - saya mahu harga [Designer Frames](preferred_service)
+      - saya mahu harga [Luxury Sunglasses](preferred_service)
+      - saya mahu harga [Lens Consultation](preferred_service)
+      - [Designer Frames](preferred_service) 价格
+      - [Luxury Sunglasses](preferred_service) 价格
+      - [Lens Consultation](preferred_service) 价格
+      - 我想看[Designer Frames](preferred_service)价格
+      - 我想看[Luxury Sunglasses](preferred_service)价格
+      - 我想看[Lens Consultation](preferred_service)价格
 
   - intent: book_appointment
     examples: |
@@ -767,6 +990,14 @@ nlu:
       - i need to book a frame fitting
       - help me book a store visit
       - i want to book in kl
+      - saya mahu tempah janji temu
+      - tolong tempah pemeriksaan mata
+      - saya mahu buat appointment
+      - tempah lawatan kedai
+      - 我要预约
+      - 帮我预约验眼
+      - 我想预约到店
+      - 预约咨询
 
   - intent: reschedule_appointment
     examples: |
@@ -782,6 +1013,16 @@ nlu:
       - can i change my eye test slot
       - i need a different appointment time
       - change my store visit booking
+      - saya mahu ubah janji temu saya
+      - boleh tukar masa appointment
+      - saya mahu pindahkan tempahan saya
+      - tolong jadualkan semula pemeriksaan mata saya
+      - saya perlukan masa janji temu yang lain
+      - 我想更改我的预约时间
+      - 可以帮我改预约吗
+      - 我想把预约改到另一天
+      - 请重新安排我的验眼时间
+      - 我需要另一个预约时段
 
   - intent: order_tracking
     examples: |
@@ -798,6 +1039,19 @@ nlu:
       - can you track my purchase
       - my order is late
       - i have not received my order yet
+      - semak status pesanan saya
+      - pesanan saya di mana
+      - boleh jejak order saya
+      - nombor pesanan saya [ORD-1024](order_id)
+      - boleh semak pesanan [CAL-8891](order_id)
+      - saya belum terima pesanan saya
+      - ada kemas kini untuk order saya
+      - 请帮我查询订单状态
+      - 我的订单到哪里了
+      - 我的订单号是[INV-12345](order_id)
+      - 请帮我查一下订单[ORD7788](order_id)
+      - 我还没收到订单
+      - 我的眼镜订单现在到哪里了
 
   - intent: warranty_claim
     examples: |
@@ -814,6 +1068,17 @@ nlu:
       - lens coating has an issue
       - i think this should be under warranty
       - can i replace this under warranty
+      - saya mahu tuntut waranti
+      - bingkai saya rosak
+      - boleh bantu waranti saya
+      - kanta saya ada masalah salutan
+      - boleh semak sama ada ini bawah waranti
+      - saya mahu hantar tuntutan waranti
+      - 我要申请保修
+      - 镜框坏了可以保修吗
+      - 镜片镀膜有问题
+      - 这个可以保修更换吗
+      - 请帮我提交保修申请
 
   - intent: human_handoff
     examples: |
@@ -830,6 +1095,14 @@ nlu:
       - i need an actual person
       - let me speak to sales
       - not the bot, i want a consultant
+      - saya mahu bercakap dengan orang sebenar
+      - sambungkan saya dengan konsultan
+      - saya mahu staf hubungi saya
+      - boleh saya cakap dengan ejen
+      - 我想和真人沟通
+      - 请帮我联系顾问
+      - 我不要机器人
+      - 让我和客服说话
 
   - intent: store_hours
     examples: |
@@ -846,6 +1119,19 @@ nlu:
       - what time do you shut
       - are you still open now
       - store hours for melawati mall
+      - pukul berapa kedai buka
+      - waktu operasi kedai
+      - cawangan kl tutup pukul berapa
+      - kedai di nilai buka pukul berapa
+      - lalaport buka sampai pukul berapa
+      - adakah kedai masih buka hari ini
+      - waktu operasi melawati mall
+      - 门店几点开门
+      - 你们营业到几点
+      - 吉隆坡门店几点关门
+      - Nilai 门店今天营业吗
+      - Lalaport 营业到几点
+      - Melawati Mall 的营业时间是什么
 
   - intent: product_recommendation
     examples: |
@@ -865,6 +1151,11 @@ nlu:
       - recommend sunglasses for [outdoor](use_case) use
       - what is best for [eye strain](use_case)
       - can you suggest something for [gaming](use_case)
+      - cadangkan cermin mata untuk [office](use_case)
+      - apa yang sesuai untuk [driving](use_case)
+      - saya mahu cadangan untuk [daily wear](use_case)
+      - 请推荐适合[screen](use_case)使用的眼镜
+      - 有适合[driving](use_case)的太阳镜吗
 
   - intent: after_sales_support
     examples: |
@@ -885,6 +1176,18 @@ nlu:
       - can i exchange this frame
       - my order arrived damaged
       - i need help after i bought my glasses
+      - saya perlukan bantuan selepas jualan
+      - boleh semak waranti saya
+      - saya perlukan bantuan untuk pesanan saya
+      - bingkai saya longgar
+      - 我需要售后服务
+      - 请帮我查看保修
+      - 我的眼镜有问题
+      - 订单到了但是有损坏
+      - saya mahu tukar bingkai ini
+      - boleh bantu laraskan bingkai saya
+      - 我的镜框松了
+      - 可以帮我调整眼镜吗
 
   - intent: affirm
     examples: |
@@ -896,6 +1199,9 @@ nlu:
       - definitely
       - sounds good
       - please do
+      - ya
+      - boleh
+      - 是
 
   - intent: deny
     examples: |
@@ -907,6 +1213,9 @@ nlu:
       - i don't want that
       - maybe later
       - not interested
+      - tak
+      - tidak
+      - 不是
 
   - intent: ask_faq
     examples: |
@@ -939,3 +1248,17 @@ nlu:
       - is there free shipping
       - can i get invoice for my order
       - what if i receive damaged glasses
+      - apakah polisi pemulangan anda
+      - ada waranti tak
+      - berapa lama penghantaran
+      - boleh refund tak
+      - polisi tukar barang macam mana
+      - ada caj penghantaran tak
+      - macam mana nak hubungi khidmat pelanggan
+      - 请问退货政策是什么
+      - 你们有保修吗
+      - 配送需要多久
+      - 可以退款吗
+      - 换货政策是什么
+      - 运费是多少
+      - 怎么联系客户服务

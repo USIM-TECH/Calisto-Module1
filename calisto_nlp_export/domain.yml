@@ -5,6 +5,7 @@ intents:
   - browse_eyewear
   - ask_faq
   - ask_pricing
+  - select_pricing_category
   - select_product_type
   - select_brand
   - select_budget
@@ -190,6 +191,11 @@ slots:
         conditions:
           - active_loop: lead_capture_form
             requested_slot: purchase_timeline
+  preferred_language:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: custom
   lead_status:
     type: text
     influence_conversation: true
@@ -208,7 +214,31 @@ forms:
 
 responses:
   utter_greet:
-    - text: "Selamat datang to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?"
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Selamat datang ke Calisto Eyewear.\nSaya boleh bantu anda melihat produk, semak harga, cari kedai, atau aturkan konsultasi. Apa yang anda mahu lakukan dahulu?"
+      buttons:
+        - title: Lihat Produk
+          payload: /browse_eyewear
+        - title: Semak Harga
+          payload: /ask_pricing
+        - title: Tempah Janji Temu
+          payload: /book_appointment
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "欢迎来到 Calisto Eyewear。\n我可以帮您浏览产品、查看价格、寻找门店，或安排咨询。您想先做什么？"
+      buttons:
+        - title: 浏览产品
+          payload: /browse_eyewear
+        - title: 查看价格
+          payload: /ask_pricing
+        - title: 预约
+          payload: /book_appointment
+    - text: "Welcome to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?"
       buttons:
         - title: Browse Eyewear
           payload: /browse_eyewear
@@ -218,17 +248,65 @@ responses:
           payload: /book_appointment
 
   utter_pricing_intro:
-    - text: "Sure. I can help with pricing for frames, sunglasses, contact lenses, and lens upgrades. Which category do you want pricing for?"
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Baik. Ini ialah aliran semakan harga. Saya boleh bantu anda semak julat harga dan pilihan bajet untuk kategori tertentu. Harga kategori mana yang anda mahu lihat dahulu?"
       buttons:
-        - title: Frames
-          payload: /share_service_interest{"preferred_service":"Designer Frames"}
-        - title: Sunglasses
-          payload: /share_service_interest{"preferred_service":"Luxury Sunglasses"}
-        - title: Lenses
-          payload: /share_service_interest{"preferred_service":"Lens Consultation"}
+        - title: Harga Bingkai
+          payload: /select_pricing_category{"preferred_service":"Designer Frames"}
+        - title: Harga Cermin Mata Hitam
+          payload: /select_pricing_category{"preferred_service":"Luxury Sunglasses"}
+        - title: Harga Kanta
+          payload: /select_pricing_category{"preferred_service":"Lens Consultation"}
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "当然可以。这是价格查询流程。我可以帮您查看不同类别的价格范围和预算选项。您想先看哪一类的价格？"
+      buttons:
+        - title: 镜框价格
+          payload: /select_pricing_category{"preferred_service":"Designer Frames"}
+        - title: 太阳镜价格
+          payload: /select_pricing_category{"preferred_service":"Luxury Sunglasses"}
+        - title: 镜片价格
+          payload: /select_pricing_category{"preferred_service":"Lens Consultation"}
+    - text: "Sure. This is the pricing flow. I can help you check price ranges and budget-friendly options for a specific category. Which category would you like pricing for first?"
+      buttons:
+        - title: Frame Pricing
+          payload: /select_pricing_category{"preferred_service":"Designer Frames"}
+        - title: Sunglass Pricing
+          payload: /select_pricing_category{"preferred_service":"Luxury Sunglasses"}
+        - title: Lens Pricing
+          payload: /select_pricing_category{"preferred_service":"Lens Consultation"}
 
   utter_ask_product_type:
-    - text: "Great. What are you shopping for today?"
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Baik. Ini ialah aliran penerokaan produk. Anda mahu saya tunjuk kategori produk yang mana dahulu?"
+      buttons:
+        - title: Bingkai Pereka
+          payload: /select_product_type{"product_type":"Designer Frames"}
+        - title: Cermin Mata Hitam
+          payload: /select_product_type{"product_type":"Luxury Sunglasses"}
+        - title: Kanta Sentuh
+          payload: /select_product_type{"product_type":"Contact Lenses"}
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "好的，这是产品浏览流程。您想先看哪一类产品？"
+      buttons:
+        - title: 设计师镜框
+          payload: /select_product_type{"product_type":"Designer Frames"}
+        - title: 太阳镜
+          payload: /select_product_type{"product_type":"Luxury Sunglasses"}
+        - title: 隐形眼镜
+          payload: /select_product_type{"product_type":"Contact Lenses"}
+    - text: "Great. This is the product browsing flow. Which category would you like to explore first?"
       buttons:
         - title: Designer Frames
           payload: /select_product_type{"product_type":"Designer Frames"}
@@ -238,6 +316,34 @@ responses:
           payload: /select_product_type{"product_type":"Contact Lenses"}
 
   utter_ask_budget_range:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Untuk semak pilihan yang lebih tepat, julat bajet mana yang sesuai untuk anda?"
+      buttons:
+        - title: Bawah RM100
+          payload: /select_budget{"price_range":"Under RM100"}
+        - title: RM100 - RM250
+          payload: /select_budget{"price_range":"RM100 - RM250"}
+        - title: RM250 - RM300
+          payload: /select_budget{"price_range":"RM250 - RM300"}
+        - title: Atas RM300
+          payload: /select_budget{"price_range":"Above RM300"}
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "为了更准确地推荐，请问您的预算范围是多少？"
+      buttons:
+        - title: 低于 RM100
+          payload: /select_budget{"price_range":"Under RM100"}
+        - title: RM100 - RM250
+          payload: /select_budget{"price_range":"RM100 - RM250"}
+        - title: RM250 - RM300
+          payload: /select_budget{"price_range":"RM250 - RM300"}
+        - title: 高于 RM300
+          payload: /select_budget{"price_range":"Above RM300"}
     - text: "To narrow this down properly, what budget range are you comfortable with?"
       buttons:
         - title: Under RM100
@@ -250,6 +356,30 @@ responses:
           payload: /select_budget{"price_range":"Above RM300"}
 
   utter_ask_try_frames:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Adakah anda mahu mencuba bingkai ini di kedai Calisto?"
+      buttons:
+        - title: Cari Kedai
+          payload: /find_a_store
+        - title: Tempah Janji Temu
+          payload: /book_appointment
+        - title: Bercakap Dengan Konsultan
+          payload: /capture_lead
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "您想在 Calisto 门店试戴这些镜框吗？"
+      buttons:
+        - title: 查找门店
+          payload: /find_a_store
+        - title: 预约
+          payload: /book_appointment
+        - title: 联系顾问
+          payload: /capture_lead
     - text: "Would you like to try these frames at a Calisto store?"
       buttons:
         - title: Find Nearest Store
@@ -260,6 +390,30 @@ responses:
           payload: /capture_lead
 
   utter_ask_lens_type:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Penyelesaian kanta yang mana anda mahu bantuan?"
+      buttons:
+        - title: Single Vision
+          payload: /ask_lens_type{"lens_type":"Single Vision Lenses"}
+        - title: Progressive
+          payload: /ask_lens_type{"lens_type":"Progressive Lenses"}
+        - title: Blue Light
+          payload: /ask_lens_type{"lens_type":"Blue Light Protection"}
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "您想了解哪一种镜片方案？"
+      buttons:
+        - title: 单光镜片
+          payload: /ask_lens_type{"lens_type":"Single Vision Lenses"}
+        - title: 渐进镜片
+          payload: /ask_lens_type{"lens_type":"Progressive Lenses"}
+        - title: 防蓝光
+          payload: /ask_lens_type{"lens_type":"Blue Light Protection"}
     - text: "Which lens solution would you like help with?"
       buttons:
         - title: Single Vision
@@ -270,47 +424,225 @@ responses:
           payload: /ask_lens_type{"lens_type":"Blue Light Protection"}
 
   utter_ask_city:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Bandar atau pusat beli-belah mana yang anda mahu saya semak?"
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "您想让我查询哪个城市或商场？"
     - text: "Which city or mall should I check for you?"
 
   utter_store_hours_general:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Kebanyakan kedai Calisto biasanya mengikut waktu operasi pusat beli-belah, lazimnya sekitar 10:00 pagi hingga 10:00 malam setiap hari. Jika anda beritahu bandar atau pusat beli-belah, saya boleh arahkan anda ke lokasi yang betul."
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "大多数 Calisto 门店通常跟随商场营业时间，一般是每天上午 10:00 到晚上 10:00。如果您告诉我城市或商场名称，我可以帮您找到对应门店。"
     - text: "Most Calisto stores typically follow mall operating hours, usually around 10:00 AM to 10:00 PM daily. If you tell me the city or mall, I can point you to the right location."
 
   utter_next_step_product_help:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Saya boleh bantu senaraikan lagi pilihan, cari kedai berdekatan, atau aturkan konsultasi."
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "我可以继续帮您筛选更多选择、寻找附近门店，或安排咨询。"
     - text: "I can help you shortlist more options, find a nearby store, or arrange a consultation."
 
   utter_next_step_lens_help:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Jika anda mahu, saya boleh bantu bandingkan lebih banyak pilihan kanta, cari kedai, atau aturkan konsultasi."
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "如果您愿意，我可以继续帮您比较更多镜片方案、寻找门店，或安排咨询。"
     - text: "If you want, I can help you compare more lens options, find a store, or arrange a consultation."
 
   utter_booking_intro:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Saya boleh bantu anda tempah janji temu untuk pemeriksaan mata, fitting, atau konsultasi. Sebelum itu, saya perlukan beberapa butiran hubungan supaya pasukan kami boleh hubungi anda."
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "我可以帮您预约验眼、试戴或咨询。在此之前，我需要一些联系资料，方便团队跟进您。"
     - text: "I can help you book an appointment for an eye test, fitting, or consultation. Before I do that, I just need a few contact details so our team can reach you."
 
   utter_after_sales_intro:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Saya boleh bantu dengan waranti, pelarasan fitting, status pesanan, atau sokongan selepas jualan. Sebelum kita teruskan, saya perlukan beberapa butiran hubungan supaya pasukan yang betul boleh hubungi anda."
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "我可以协助保修、试戴调整、订单跟进或售后支持。在继续之前，我需要一些联系资料，方便相关团队跟进您。"
     - text: "I can help with warranty, fitting adjustments, order follow-up, or general after-sales support. Before we continue, I need a few contact details so the right team can follow up."
 
   utter_order_tracking_intro:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Saya boleh bantu semak status pesanan. Jika anda ada nombor rujukan pesanan, kongsi dengan saya, atau tinggalkan butiran anda dan pasukan kami akan semak untuk anda."
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "我可以帮您跟进订单状态。如果您有订单编号，请发给我；或者留下您的资料，我们的团队会为您查询。"
     - text: "I can help with order follow-up. If you have an order reference, share it, or leave your details and our team will check the latest update for you."
 
   utter_warranty_intro:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Saya boleh bantu dengan waranti dan isu selepas pembelian. Sila kongsi beberapa butiran hubungan supaya pasukan sokongan kami boleh semak kes anda."
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "我可以协助保修和售后问题。请提供一些联系资料，方便支持团队查看您的情况。"
     - text: "I can help with warranty and post-purchase issues. Please share a few contact details so our support team can review your case."
 
   utter_handoff_intro:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Baik. Saya boleh sambungkan anda dengan konsultan. Saya cuma perlukan beberapa butiran hubungan supaya orang yang betul boleh hubungi anda."
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "当然可以，我可以安排顾问联系您。我只需要一些联系资料，以便合适的人跟进您。"
     - text: "Sure. I can connect you with a consultant. I just need a few contact details so the right person can reach you."
 
   utter_reschedule_intro:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Saya boleh bantu ubah janji temu anda. Sila kongsi butiran hubungan anda dan pasukan kami akan bantu aturkan semula lawatan anda."
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "我可以帮您更改预约。请提供您的联系资料，我们的团队会协助重新安排时间。"
     - text: "I can help with appointment changes. Please share your contact details and our team will help reschedule your visit."
 
   utter_handoff_ack:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Saya telah tandakan permintaan ini untuk konsultan manusia. Anda juga boleh kongsi lebih banyak butiran tentang apa yang anda perlukan, dan saya akan teruskan kepada mereka."
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "我已经把这个请求转给人工顾问。您也可以继续告诉我更多需求，我会一并转达。"
     - text: "I’ve flagged this for a human consultant. You can also share more details about what you need, and I’ll pass that along."
 
   utter_ask_lead_name:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Boleh saya tahu nama anda dahulu?"
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "可以先告诉我您的名字吗？"
     - text: "First, may I have your name?"
   utter_ask_contact_number:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Apakah nombor WhatsApp atau telefon terbaik untuk pasukan kami hubungi anda?"
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "请问您的 WhatsApp 或联系电话是什么，方便团队联系您？"
     - text: "What is the best WhatsApp or phone number for our team to reach you on?"
   utter_ask_email:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Apakah alamat e-mel yang patut kami gunakan untuk sebut harga atau susulan?"
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "请问我们应该使用哪个邮箱给您发送报价或后续联系？"
     - text: "What email address should we use for quotations or follow-up?"
   utter_ask_lead_location:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Anda berada di kawasan atau bandar mana supaya kami boleh arahkan anda ke pasukan atau kedai yang betul?"
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "请问您所在的区域或城市是哪里？这样我们可以安排合适的团队或门店跟进您。"
     - text: "Which area or city are you located in, so we can route you to the right team or store?"
   utter_ask_preferred_service:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Apakah yang paling anda minati hari ini?"
+      buttons:
+        - title: Cadangan Produk
+          payload: /share_service_interest{"preferred_service":"Eyewear Recommendation"}
+        - title: Konsultasi Kanta
+          payload: /share_service_interest{"preferred_service":"Lens Consultation"}
+        - title: Lawatan Kedai
+          payload: /share_service_interest{"preferred_service":"Store Visit"}
+        - title: Sokongan Selepas Jualan
+          payload: /share_service_interest{"preferred_service":"After-sales Support"}
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "您今天主要想了解什么？"
+      buttons:
+        - title: 产品推荐
+          payload: /share_service_interest{"preferred_service":"Eyewear Recommendation"}
+        - title: 镜片咨询
+          payload: /share_service_interest{"preferred_service":"Lens Consultation"}
+        - title: 到店服务
+          payload: /share_service_interest{"preferred_service":"Store Visit"}
+        - title: 售后支持
+          payload: /share_service_interest{"preferred_service":"After-sales Support"}
     - text: "What are you mainly interested in today?"
       buttons:
         - title: Eyewear Recommendation
@@ -322,6 +654,30 @@ responses:
         - title: After-sales Support
           payload: /share_service_interest{"preferred_service":"After-sales Support"}
   utter_ask_purchase_timeline:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Anda merancang untuk membuat keputusan atau melawat kedai dalam tempoh bila?"
+      buttons:
+        - title: Minggu Ini
+          payload: /share_timeline{"purchase_timeline":"This Week"}
+        - title: Dalam 2 Minggu
+          payload: /share_timeline{"purchase_timeline":"Within 2 Weeks"}
+        - title: Sekadar Melihat
+          payload: /share_timeline{"purchase_timeline":"Just Exploring"}
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "您打算多久内做决定或到门店看看？"
+      buttons:
+        - title: 本周
+          payload: /share_timeline{"purchase_timeline":"This Week"}
+        - title: 两周内
+          payload: /share_timeline{"purchase_timeline":"Within 2 Weeks"}
+        - title: 先看看
+          payload: /share_timeline{"purchase_timeline":"Just Exploring"}
     - text: "How soon are you planning to make a decision or visit a store?"
       buttons:
         - title: This Week
@@ -332,18 +688,50 @@ responses:
           payload: /share_timeline{"purchase_timeline":"Just Exploring"}
 
   utter_lead_capture_complete:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Terima kasih. Saya sudah simpan butiran hubungan anda dan pasukan kami akan hubungi anda tidak lama lagi."
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "谢谢。我已经记录您的联系资料，团队会尽快跟进您。"
     - text: "Thanks. I have your contact details and our team will follow up shortly."
 
   utter_lead_not_qualified:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Terima kasih. Kami telah merekodkan pertanyaan anda dan pasukan kami akan semak langkah seterusnya yang paling sesuai untuk anda."
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "谢谢。我们已记录您的咨询，团队会为您评估最合适的下一步。"
     - text: "Thank you. We have captured your inquiry and our team will review the best next step for you."
 
   utter_explain_lens:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Berikut ialah maklumat lanjut tentang {lens_type}."
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "以下是关于 {lens_type} 的更多信息。"
     - text: "Here is more information about {lens_type}."
 
 actions:
+  - action_set_language
   - action_ask_city
   - action_ask_brand
   - action_handle_store_hours
+  - action_show_pricing
   - action_filter_products
   - action_explain_lens
   - action_find_store

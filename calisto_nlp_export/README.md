@@ -37,6 +37,31 @@ calisto_nlp_export/
 
 The current action layer reads from the local `knowledge_base/` folder. Product, brand, city, and store-location lookups come from `knowledge_base/calisto_product_catalog_500.csv`, while document Q&A uses the local FAISS/BM25 retrieval index under `knowledge_base/index/`. There is no PostgreSQL or external vector database dependency in the current branch.
 
+## Multilingual Support
+
+The bot currently supports:
+
+- English `en`
+- Malay `ms`
+- Mandarin `zh`
+
+The current multilingual design is Rasa-first:
+
+- intent understanding comes from multilingual examples in [data/nlu.yml](./data/nlu.yml)
+- language state is stored in the `preferred_language` slot in [domain.yml](./domain.yml)
+- `action_set_language` in [actions/actions.py](./actions/actions.py) sets or preserves conversation language
+- domain responses and custom actions localize text, buttons, and card labels based on that slot
+
+Supporting a new or improved language requires all of these to move together:
+
+1. parallel training examples per intent
+2. canonical entity synonyms and lookups
+3. localized responses in `domain.yml`
+4. localized custom-action copy in `actions.py`
+5. regression coverage in:
+   - [MULTILINGUAL_INTENT_MATRIX.md](./MULTILINGUAL_INTENT_MATRIX.md)
+   - [MULTILINGUAL_QA_REGRESSION.md](./MULTILINGUAL_QA_REGRESSION.md)
+
 ## Setup & Run (Docker — Recommended)
 
 ### Prerequisites
@@ -238,6 +263,20 @@ docker compose down
 docker compose up -d --build
 ```
 
+### Recommended retrain flow for this project
+
+When you update multilingual NLU, rules, or responses, use:
+
+```bash
+docker compose down
+rm -f models/*.tar.gz
+docker compose build --no-cache rasa
+docker compose run --rm rasa train
+docker compose up -d --build
+```
+
+After retraining, run through the checks in [MULTILINGUAL_QA_REGRESSION.md](./MULTILINGUAL_QA_REGRESSION.md).
+
 ### Via local Python (requires Python 3.8–3.10)
 ```bash
 rasa train
@@ -271,7 +310,6 @@ rasa shell
 | Action server errors (`InvalidURL`) | Verify `endpoints.yml` has `url: "http://action-server:5055/webhook"` (no `${...}` syntax). |
 | Python version error (local setup) | Rasa 3.6.x needs Python 3.8–3.10. Use Docker instead. |
 | Port 5005 already in use | Stop existing containers: `docker compose down`, or kill the process: `lsof -ti :5005 \| xargs kill -9` |
-
 
 
 

@@ -4,14 +4,17 @@ stories:
   - story: Browse Eyewear Flow
     steps:
       - intent: greet
+      - action: action_set_language
       - action: utter_greet
       - intent: browse_eyewear
+      - action: action_set_language
       - action: action_reset_eyewear_slots
       - action: utter_ask_product_type
       - intent: select_product_type
+      - action: action_set_language
       - slot_was_set:
           - product_type
-      - action: action_ask_brand # This is a placeholder, rules will determine the correct action
+      - action: action_ask_brand
       - intent: select_brand
       - slot_was_set:
           - brand
@@ -25,8 +28,10 @@ stories:
   - story: Lens and Vision Flow
     steps:
       - intent: lens_vision_solutions
+      - action: action_set_language
       - action: utter_ask_lens_type
       - intent: ask_lens_type
+      - action: action_set_language
       - slot_was_set:
           - lens_type
       - action: action_explain_lens
@@ -35,6 +40,7 @@ stories:
       - slot_was_set:
           - price_range
       - action: action_filter_lenses
+
   - story: Direct Brand to Budget Flow
     steps:
       - intent: select_brand
@@ -46,14 +52,17 @@ stories:
           - price_range
       - action: action_filter_products
       - action: utter_ask_try_frames
+
   - story: Combined product search flow
     steps:
       - intent: search_product
+      - action: action_set_language
       - action: action_filter_products
 
   - story: Lead capture happy path
     steps:
       - intent: book_appointment
+      - action: action_set_language
       - action: utter_booking_intro
       - action: action_prefill_lead_capture
       - action: lead_capture_form
@@ -65,8 +74,10 @@ stories:
   - story: Pricing to lead flow
     steps:
       - intent: ask_pricing
+      - action: action_set_language
       - action: utter_pricing_intro
       - intent: share_service_interest
+      - action: action_set_language
       - slot_was_set:
           - preferred_service
       - action: action_prefill_lead_capture

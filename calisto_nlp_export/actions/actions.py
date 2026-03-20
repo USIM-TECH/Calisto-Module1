@@ -247,19 +247,19 @@ def choose_product_image_theme(product_type: str, preferred_service: Optional[st
     return "eyewear"
 
 
-def lead_buttons(preferred_service: Optional[str] = None) -> List[Dict[str, str]]:
+def lead_buttons(lang: str, preferred_service: Optional[str] = None) -> List[Dict[str, str]]:
     payload = '/capture_lead'
     if preferred_service:
         safe_service = str(preferred_service).replace('"', '\\"')
         payload = f'/capture_lead{{"preferred_service":"{safe_service}"}}'
     return [
-        {"title": "Book Visit", "payload": "/book_appointment"},
-        {"title": "Find Store", "payload": "/find_a_store"},
-        {"title": "Consult Now", "payload": payload},
+        {"title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "payload": "/book_appointment"},
+        {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
+        {"title": tr(lang, "Consult Now", "Hubungi Konsultan", "联系顾问"), "payload": payload},
     ]
 
 
-def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any], preferred_service: Optional[str]) -> None:
+def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any], preferred_service: Optional[str], lang: str = "en") -> None:
     brand = str(product.get("brand") or "Brand").strip()
     name = str(product.get("product_name") or "Product").strip()
     price = float(product.get("price_myr", 0) or 0)
@@ -274,26 +274,26 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
 
     detail_parts = [part for part in [material, shape, color] if part]
     subtitle_sections = [
-        f"Price: RM{price:.2f}",
-        f"Category: {product_type}" if product_type else "",
-        f"Specs: {' • '.join(detail_parts)}" if detail_parts else "",
-        f"Availability: {stock}" if stock else "",
-        f"Rating: {rating}/5" if rating not in (None, "") else "",
-        f"Store: {store_location}, {city}".strip(", ") if (store_location or city) else "",
+        tr(lang, f"Price: RM{price:.2f}", f"Harga: RM{price:.2f}", f"价格：RM{price:.2f}"),
+        tr(lang, f"Category: {product_type}", f"Kategori: {product_type}", f"类别：{product_type}") if product_type else "",
+        tr(lang, f"Specs: {' • '.join(detail_parts)}", f"Spesifikasi: {' • '.join(detail_parts)}", f"规格：{' • '.join(detail_parts)}") if detail_parts else "",
+        tr(lang, f"Availability: {stock}", f"Ketersediaan: {stock}", f"库存：{stock}") if stock else "",
+        tr(lang, f"Rating: {rating}/5", f"Penilaian: {rating}/5", f"评分：{rating}/5") if rating not in (None, "") else "",
+        tr(lang, f"Store: {store_location}, {city}".strip(", "), f"Kedai: {store_location}, {city}".strip(", "), f"门店：{store_location}, {city}".strip(", ")) if (store_location or city) else "",
     ]
 
     actions = []
     if store_location or city:
         actions.append({
             "type": "url",
-            "title": "Open Store Map",
+            "title": tr(lang, "Open Store Map", "Buka Peta Kedai", "打开门店地图"),
             "value": build_maps_url(store_location, city, "Calisto Eyewear"),
         })
-    actions.append({"type": "postback", "title": "Book Visit", "value": "/book_appointment"})
+    actions.append({"type": "postback", "title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "value": "/book_appointment"})
     actions.append({
         "type": "postback",
-        "title": "Consult Now",
-        "value": lead_buttons(preferred_service)[-1]["payload"],
+        "title": tr(lang, "Consult Now", "Hubungi Konsultan", "联系顾问"),
+        "value": lead_buttons(lang, preferred_service)[-1]["payload"],
     })
 
     theme = choose_product_image_theme(product_type, preferred_service)
@@ -309,25 +309,25 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
     )
 
 
-def emit_store_card(dispatcher: CollectingDispatcher, store_location: str, city: str) -> None:
+def emit_store_card(dispatcher: CollectingDispatcher, store_location: str, city: str, lang: str = "en") -> None:
     dispatcher.utter_message(
         json_message={
             "type": "card",
             "title": store_location or "Calisto Store",
             "subtitle": "\n".join([
-                f"City: {city}" if city else "",
-                "Get directions or continue to book a visit.",
+                tr(lang, f"City: {city}", f"Bandar: {city}", f"城市：{city}") if city else "",
+                tr(lang, "Get directions or continue to book a visit.", "Dapatkan arah atau teruskan untuk tempah lawatan.", "获取路线或继续预约到店。"),
             ]).strip(),
             "imageUrl": build_placeholder_image(f"{store_location or 'Calisto Store'} {city}", "store"),
             "actions": [
                 {
                     "type": "url",
-                    "title": "Map",
+                    "title": tr(lang, "Map", "Peta", "地图"),
                     "value": build_maps_url(store_location, city, "Calisto Eyewear"),
                 },
                 {
                     "type": "postback",
-                    "title": "Book Visit",
+                    "title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"),
                     "value": '/capture_lead{"preferred_service":"Store Visit"}',
                 },
             ],
@@ -358,17 +358,113 @@ def infer_service_from_intent(tracker: Tracker) -> str:
 
 def infer_product_type_from_use_case(use_case: str) -> str:
     lowered = str(use_case or "").lower()
-    if any(token in lowered for token in ["screen", "computer", "office", "work"]):
+    if any(token in lowered for token in ["screen", "computer", "office", "work", "skrin", "pejabat", "办公", "屏幕"]):
         return "Designer Frames"
-    if any(token in lowered for token in ["drive", "driving", "sun", "outdoor", "travel"]):
+    if any(token in lowered for token in ["drive", "driving", "sun", "outdoor", "travel", "memandu", "luar", "驾驶", "户外", "出行"]):
         return "Luxury Sunglasses"
-    if any(token in lowered for token in ["daily", "everyday", "contact", "comfort"]):
+    if any(token in lowered for token in ["daily", "everyday", "contact", "comfort", "harian", "setiap hari", "日常", "隐形"]):
         return "Contact Lenses"
-    if any(token in lowered for token in ["sport", "active", "running", "cycling"]):
+    if any(token in lowered for token in ["sport", "active", "running", "cycling", "sukan", "aktif", "运动", "跑步", "骑行"]):
         return "Luxury Sunglasses"
-    if any(token in lowered for token in ["fashion", "stylish", "premium", "formal"]):
+    if any(token in lowered for token in ["fashion", "stylish", "premium", "formal", "fesyen", "bergaya", "时尚", "正式"]):
         return "Designer Frames"
     return ""
+
+
+def detect_language_from_text(text: str) -> str:
+    normalized = str(text or "").strip().lower()
+    if not normalized:
+        return ""
+
+    # Button payloads like `/browse_eyewear` or `/share_service_interest{...}`
+    # are internal control messages, not user language signals.
+    if normalized.startswith("/"):
+        return ""
+
+    if re.search(r"[\u3400-\u9FFF]", normalized):
+        return "zh"
+
+    english_keywords = [
+        "hello",
+        "hi",
+        "help",
+        "price",
+        "store",
+        "appointment",
+        "warranty",
+        "order",
+        "recommend",
+        "browse",
+        "frames",
+        "lenses",
+    ]
+    malay_keywords = [
+        "saya",
+        "nak",
+        "mahu",
+        "ingin",
+        "boleh",
+        "lihat",
+        "cari",
+        "produk",
+        "harga",
+        "kedai",
+        "cawangan",
+        "waranti",
+        "tempah",
+        "janji temu",
+        "berdekatan",
+        "tolong",
+        "bantuan",
+        "semak",
+        "pesanan",
+        "emel",
+        "nombor",
+        "laraskan",
+        "penghantaran",
+    ]
+    if any(keyword in normalized for keyword in malay_keywords):
+        return "ms"
+
+    if any(keyword in normalized for keyword in english_keywords):
+        return "en"
+
+    if len(normalized) <= 3:
+        return ""
+
+    return "en"
+
+
+def get_language(tracker: Tracker) -> str:
+    slot_language = str(tracker.get_slot("preferred_language") or "").strip().lower()
+    if slot_language in {"en", "ms", "zh"}:
+        return slot_language
+
+    return detect_language_from_text(tracker.latest_message.get("text") or "")
+
+
+def tr(lang: str, en: str, ms: str, zh: str) -> str:
+    if lang == "ms":
+        return ms
+    if lang == "zh":
+        return zh
+    return en
+
+
+class ActionSetLanguage(Action):
+    def name(self) -> Text:
+        return "action_set_language"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        current = str(tracker.get_slot("preferred_language") or "").strip().lower()
+        detected = detect_language_from_text(tracker.latest_message.get("text") or "")
+        language = detected or (current if current in {"en", "ms", "zh"} else "en")
+        return [SlotSet("preferred_language", language)]
 
 
 class ActionPrefillLeadCapture(Action):
@@ -413,9 +509,10 @@ class ValidateLeadCaptureForm(FormValidationAction):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> Dict[Text, Any]:
+        lang = get_language(tracker)
         value = str(slot_value).strip()
         if len(value) < 2:
-            dispatcher.utter_message(text="Please share a valid name with at least 2 characters.")
+            dispatcher.utter_message(text=tr(lang, "Please share a valid name with at least 2 characters.", "Sila kongsi nama yang sah dengan sekurang-kurangnya 2 aksara.", "请输入至少 2 个字符的有效姓名。"))
             return {"lead_name": None}
         return {"lead_name": value}
 
@@ -426,9 +523,10 @@ class ValidateLeadCaptureForm(FormValidationAction):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> Dict[Text, Any]:
+        lang = get_language(tracker)
         digits = re.sub(r"[^\d+]", "", str(slot_value))
         if len(re.sub(r"\D", "", digits)) < 8:
-            dispatcher.utter_message(text="Please provide a valid phone number including area or country code.")
+            dispatcher.utter_message(text=tr(lang, "Please provide a valid phone number including area or country code.", "Sila berikan nombor telefon yang sah termasuk kod kawasan atau negara.", "请输入有效的电话号码，并包含区号或国家代码。"))
             return {"contact_number": None}
         return {"contact_number": digits}
 
@@ -439,9 +537,10 @@ class ValidateLeadCaptureForm(FormValidationAction):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> Dict[Text, Any]:
+        lang = get_language(tracker)
         value = str(slot_value).strip()
         if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", value):
-            dispatcher.utter_message(text="Please provide a valid email address.")
+            dispatcher.utter_message(text=tr(lang, "Please provide a valid email address.", "Sila berikan alamat e-mel yang sah.", "请输入有效的电子邮箱地址。"))
             return {"email": None}
         return {"email": value.lower()}
 
@@ -452,9 +551,10 @@ class ValidateLeadCaptureForm(FormValidationAction):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> Dict[Text, Any]:
+        lang = get_language(tracker)
         value = str(slot_value).strip()
         if len(value) < 2:
-            dispatcher.utter_message(text="Please share your city or area so we can route your inquiry properly.")
+            dispatcher.utter_message(text=tr(lang, "Please share your city or area so we can route your inquiry properly.", "Sila kongsi bandar atau kawasan anda supaya kami boleh arahkan pertanyaan anda dengan betul.", "请提供您所在的城市或区域，以便我们正确安排您的咨询。"))
             return {"lead_location": None}
         return {"lead_location": value}
 
@@ -465,9 +565,10 @@ class ValidateLeadCaptureForm(FormValidationAction):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> Dict[Text, Any]:
+        lang = get_language(tracker)
         value = str(slot_value).strip()
         if len(value) < 3:
-            dispatcher.utter_message(text="Please tell us which product or service you are interested in.")
+            dispatcher.utter_message(text=tr(lang, "Please tell us which product or service you are interested in.", "Sila beritahu kami produk atau perkhidmatan yang anda minati.", "请告诉我们您感兴趣的产品或服务。"))
             return {"preferred_service": None}
         return {"preferred_service": value}
 
@@ -478,6 +579,7 @@ class ValidateLeadCaptureForm(FormValidationAction):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> Dict[Text, Any]:
+        lang = get_language(tracker)
         value = str(slot_value).strip()
         allowed = {
             "this week": "This Week",
@@ -489,7 +591,7 @@ class ValidateLeadCaptureForm(FormValidationAction):
             return {"purchase_timeline": normalized}
 
         if len(value) < 3:
-            dispatcher.utter_message(text="Let me know if you are ready this week, within 2 weeks, or just exploring.")
+            dispatcher.utter_message(text=tr(lang, "Let me know if you are ready this week, within 2 weeks, or just exploring.", "Beritahu saya sama ada anda bersedia minggu ini, dalam 2 minggu, atau sekadar melihat-lihat.", "请告诉我您是本周决定、两周内决定，还是先看看。"))
             return {"purchase_timeline": None}
 
         return {"purchase_timeline": value}
@@ -527,6 +629,7 @@ class ActionFilterProducts(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
         entities = latest_entity_values(tracker)
         product_type = entities.get("product_type") or tracker.get_slot("product_type")
         brand = entities.get("brand") or tracker.get_slot("brand")
@@ -549,9 +652,9 @@ class ActionFilterProducts(Action):
             "frame_material": frame_material,
         })
         if backend_results:
-            dispatcher.utter_message(text="Here are some products that match your request:")
+            dispatcher.utter_message(text=tr(lang, "Here are some products that match your request:", "Berikut ialah beberapa produk yang sepadan dengan permintaan anda:", "以下是一些符合您需求的产品："))
             for product in backend_results[:4]:
-                emit_product_card(dispatcher, product, str(product_type or brand or ""))
+                emit_product_card(dispatcher, product, str(product_type or brand or ""), lang)
             return []
 
         filtered_df = load_catalogue().copy()
@@ -580,13 +683,13 @@ class ActionFilterProducts(Action):
 
         if top_5.empty:
             dispatcher.utter_message(
-                text="We could not find eyewear matching your criteria. Try another brand or budget."
+                text=tr(lang, "We could not find eyewear matching your criteria. Try another brand or budget.", "Kami tidak menemui produk yang sepadan dengan kriteria anda. Cuba jenama atau bajet lain.", "我们暂时找不到符合您条件的产品。请尝试其他品牌或预算。")
             )
             return []
 
-        dispatcher.utter_message(text="Here are some products that match your request:")
+        dispatcher.utter_message(text=tr(lang, "Here are some products that match your request:", "Berikut ialah beberapa produk yang sepadan dengan permintaan anda:", "以下是一些符合您需求的产品："))
         for _, row in top_5.iterrows():
-            emit_product_card(dispatcher, row.to_dict(), str(product_type or brand or ""))
+            emit_product_card(dispatcher, row.to_dict(), str(product_type or brand or ""), lang)
         return []
 
 
@@ -600,6 +703,7 @@ class ActionExplainLens(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
         lens_type = tracker.get_slot("lens_type")
         explanations = {
             "Single Vision Lenses": "Single vision lenses have one prescription power across the lens and are ideal for distance or near correction.",
@@ -610,13 +714,13 @@ class ActionExplainLens(Action):
         if lens_type in explanations:
             dispatcher.utter_message(text=explanations[lens_type])
         else:
-            dispatcher.utter_message(text="I can explain different lens solutions if you tell me which one you are considering.")
+            dispatcher.utter_message(text=tr(lang, "I can explain different lens solutions if you tell me which one you are considering.", "Saya boleh terangkan pilihan kanta yang berbeza jika anda beritahu yang mana anda sedang pertimbangkan.", "如果您告诉我您正在考虑哪一种，我可以为您解释不同的镜片方案。"))
         dispatcher.utter_message(
-            response="utter_next_step_lens_help",
+            text=tr(lang, "If you want, I can help you compare more lens options, find a store, or arrange a consultation.", "Jika anda mahu, saya boleh bantu bandingkan lebih banyak pilihan kanta, cari kedai, atau aturkan konsultasi.", "如果您愿意，我可以帮您比较更多镜片方案、查找门店，或安排咨询。"),
             buttons=[
-                {"title": "Set Budget", "payload": '/select_budget{"price_range":"RM100 - RM250"}'},
-                {"title": "Find Store", "payload": "/find_a_store"},
-                {"title": "Talk to Consultant", "payload": '/capture_lead{"preferred_service":"Lens Consultation"}'},
+                {"title": tr(lang, "Set Budget", "Tetapkan Bajet", "设置预算"), "payload": '/select_budget{"price_range":"RM100 - RM250"}'},
+                {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
+                {"title": tr(lang, "Talk to Consultant", "Bercakap Dengan Konsultan", "联系顾问"), "payload": '/capture_lead{"preferred_service":"Lens Consultation"}'},
             ],
         )
         return []
@@ -632,6 +736,7 @@ class ActionAskCity(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
         resolved_city = tracker.get_slot("city") or tracker.get_slot("lead_location")
         if resolved_city:
             city = str(resolved_city)
@@ -642,12 +747,13 @@ class ActionAskCity(Action):
                         dispatcher,
                         str(store.get("store_location", "Calisto Store")),
                         str(store.get("city", city)),
+                        lang,
                     )
                 return [SlotSet("city", city)]
 
             stores = search_store_rows(load_catalogue(), city)
             if stores.empty:
-                dispatcher.utter_message(text=f"I could not find any Calisto stores in {titleize(city)}.")
+                dispatcher.utter_message(text=tr(lang, f"I could not find any Calisto stores in {titleize(city)}.", f"Saya tidak menemui mana-mana kedai Calisto di {titleize(city)}.", f"我暂时找不到 {titleize(city)} 的 Calisto 门店。"))
                 return [SlotSet("city", city)]
 
             for _, row in stores.head(6).iterrows():
@@ -655,6 +761,7 @@ class ActionAskCity(Action):
                     dispatcher,
                     str(row.get("store_location", "Calisto Store")),
                     str(row.get("city", city)),
+                    lang,
                 )
             return [SlotSet("city", city)]
 
@@ -663,7 +770,7 @@ class ActionAskCity(Action):
             {"title": city.title(), "payload": f'/choose_city{{"city":"{city}"}}'}
             for city in cities[:10]
         ]
-        dispatcher.utter_message(text="Which city are you looking for?", buttons=buttons or None)
+        dispatcher.utter_message(text=tr(lang, "Which city are you looking for?", "Bandar mana yang anda cari?", "您想查哪个城市？"), buttons=buttons or None)
         return []
 
 
@@ -677,9 +784,10 @@ class ActionFindStore(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
         city = tracker.get_slot("city") or tracker.get_slot("lead_location")
         if not city:
-            dispatcher.utter_message(text="Please specify the city to find a store.")
+            dispatcher.utter_message(text=tr(lang, "Please specify the city to find a store.", "Sila nyatakan bandar untuk mencari kedai.", "请提供要查询的城市。"))
             return []
 
         backend_stores = gateway.search_stores(str(city))
@@ -689,12 +797,13 @@ class ActionFindStore(Action):
                     dispatcher,
                     str(store.get('store_location', 'Calisto Store')),
                     str(store.get('city', city)),
+                    lang,
                 )
             return []
 
         stores = search_store_rows(load_catalogue(), str(city))
         if stores.empty:
-            dispatcher.utter_message(text=f"I could not find any Calisto stores in {titleize(city)}.")
+            dispatcher.utter_message(text=tr(lang, f"I could not find any Calisto stores in {titleize(city)}.", f"Saya tidak menemui mana-mana kedai Calisto di {titleize(city)}.", f"我暂时找不到 {titleize(city)} 的 Calisto 门店。"))
             return []
 
         for _, row in stores.head(6).iterrows():
@@ -702,6 +811,7 @@ class ActionFindStore(Action):
                 dispatcher,
                 str(row.get('store_location', 'Calisto Store')),
                 str(row.get('city', city)),
+                lang,
             )
         return []
 
@@ -716,27 +826,94 @@ class ActionHandleStoreHours(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
         city = tracker.get_slot("city") or tracker.get_slot("lead_location")
         if city:
             dispatcher.utter_message(
-                text=(
-                    f"Most Calisto stores in {titleize(str(city))} typically follow mall operating hours, "
-                    "usually around 10:00 AM to 10:00 PM daily. I recommend confirming before visiting."
+                text=tr(
+                    lang,
+                    f"Most Calisto stores in {titleize(str(city))} typically follow mall operating hours, usually around 10:00 AM to 10:00 PM daily. I recommend confirming before visiting.",
+                    f"Kebanyakan kedai Calisto di {titleize(str(city))} biasanya mengikut waktu operasi pusat beli-belah, sekitar 10:00 pagi hingga 10:00 malam setiap hari. Saya syorkan anda sahkan dahulu sebelum datang.",
+                    f"{titleize(str(city))} 的大多数 Calisto 门店通常跟随商场营业时间，一般为每天上午 10:00 至晚上 10:00。建议您到店前先确认。"
                 ),
                 buttons=[
-                    {"title": "Show Stores", "payload": f'/choose_city{{"city":"{city}"}}'},
-                    {"title": "Book Visit", "payload": "/book_appointment"},
+                    {"title": tr(lang, "Show Stores", "Lihat Kedai", "查看门店"), "payload": f'/choose_city{{"city":"{city}"}}'},
+                    {"title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "payload": "/book_appointment"},
                 ],
             )
             return []
 
         dispatcher.utter_message(
-            response="utter_store_hours_general",
+            text=tr(lang, "Most Calisto stores typically follow mall operating hours, usually around 10:00 AM to 10:00 PM daily. If you tell me the city or mall, I can point you to the right location.", "Kebanyakan kedai Calisto biasanya mengikut waktu operasi pusat beli-belah, sekitar 10:00 pagi hingga 10:00 malam setiap hari. Jika anda beritahu bandar atau pusat beli-belah, saya boleh tunjuk lokasi yang sesuai.", "大多数 Calisto 门店通常跟随商场营业时间，一般为每天上午 10:00 至晚上 10:00。如果您告诉我城市或商场，我可以为您找到对应门店。"),
             buttons=[
-                {"title": "Find Store", "payload": "/find_a_store"},
-                {"title": "Book Visit", "payload": "/book_appointment"},
+                {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
+                {"title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "payload": "/book_appointment"},
             ],
         )
+        return []
+
+
+class ActionShowPricing(Action):
+    def name(self) -> Text:
+        return "action_show_pricing"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
+        preferred_service = str(tracker.get_slot("preferred_service") or "").strip() or "Designer Frames"
+
+        pricing_map: Dict[str, Dict[str, Any]] = {
+            "Designer Frames": {
+                "headline": tr(lang, "Designer Frame Pricing", "Harga Bingkai Pereka", "设计师镜框价格"),
+                "lines": [
+                    tr(lang, "Entry styles: RM180-RM320", "Gaya asas: RM180-RM320", "入门款：RM180-RM320"),
+                    tr(lang, "Premium acetate and metal frames: RM320-RM680", "Bingkai asetat dan logam premium: RM320-RM680", "高级板材与金属镜框：RM320-RM680"),
+                    tr(lang, "Luxury designer labels: RM680-RM1,280+", "Jenama pereka mewah: RM680-RM1,280+", "奢华设计师品牌：RM680-RM1,280+"),
+                ],
+                "note": tr(lang, "Final pricing depends on brand, material, and lens package.", "Harga akhir bergantung pada jenama, bahan, dan pakej kanta.", "最终价格取决于品牌、材质和镜片搭配。"),
+                "buttons": [
+                    {"title": tr(lang, "Browse Frames", "Lihat Bingkai", "浏览镜框"), "payload": '/select_product_type{"product_type":"Designer Frames"}'},
+                    {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
+                    {"title": tr(lang, "Talk to Consultant", "Bercakap Dengan Konsultan", "联系顾问"), "payload": '/capture_lead{"preferred_service":"Designer Frames"}'},
+                ],
+            },
+            "Luxury Sunglasses": {
+                "headline": tr(lang, "Sunglass Pricing", "Harga Cermin Mata Hitam", "太阳镜价格"),
+                "lines": [
+                    tr(lang, "Everyday sunglasses: RM220-RM380", "Cermin mata hitam harian: RM220-RM380", "日常太阳镜：RM220-RM380"),
+                    tr(lang, "Polarized and premium styles: RM380-RM720", "Gaya polarized dan premium: RM380-RM720", "偏光与高级款：RM380-RM720"),
+                    tr(lang, "Luxury collections: RM720-RM1,450+", "Koleksi mewah: RM720-RM1,450+", "奢华系列：RM720-RM1,450+"),
+                ],
+                "note": tr(lang, "Pricing varies by lens tint, frame material, and brand collection.", "Harga berbeza ikut tint kanta, bahan bingkai, dan koleksi jenama.", "价格会因镜片颜色、镜框材质和品牌系列而不同。"),
+                "buttons": [
+                    {"title": tr(lang, "Browse Sunglasses", "Lihat Cermin Mata Hitam", "浏览太阳镜"), "payload": '/select_product_type{"product_type":"Luxury Sunglasses"}'},
+                    {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
+                    {"title": tr(lang, "Talk to Consultant", "Bercakap Dengan Konsultan", "联系顾问"), "payload": '/capture_lead{"preferred_service":"Luxury Sunglasses"}'},
+                ],
+            },
+            "Lens Consultation": {
+                "headline": tr(lang, "Lens Pricing", "Harga Kanta", "镜片价格"),
+                "lines": [
+                    tr(lang, "Single vision lens upgrades: RM120-RM260", "Naik taraf kanta single vision: RM120-RM260", "单光镜片升级：RM120-RM260"),
+                    tr(lang, "Blue light and digital comfort options: RM260-RM520", "Pilihan blue light dan keselesaan digital: RM260-RM520", "防蓝光与数码舒适方案：RM260-RM520"),
+                    tr(lang, "Progressive and premium lens packages: RM520-RM1,180+", "Pakej kanta progresif dan premium: RM520-RM1,180+", "渐进与高级镜片方案：RM520-RM1,180+"),
+                ],
+                "note": tr(lang, "Lens pricing depends on prescription complexity, coating, and package selection.", "Harga kanta bergantung pada kerumitan preskripsi, salutan, dan pilihan pakej.", "镜片价格取决于处方复杂度、镀膜和套餐选择。"),
+                "buttons": [
+                    {"title": tr(lang, "Lens Options", "Pilihan Kanta", "镜片方案"), "payload": "/lens_vision_solutions"},
+                    {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
+                    {"title": tr(lang, "Talk to Consultant", "Bercakap Dengan Konsultan", "联系顾问"), "payload": '/capture_lead{"preferred_service":"Lens Consultation"}'},
+                ],
+            },
+        }
+
+        pricing_info = pricing_map.get(preferred_service, pricing_map["Designer Frames"])
+        text = "\n\n".join([pricing_info["headline"], *pricing_info["lines"], pricing_info["note"]])
+        dispatcher.utter_message(text=text, buttons=pricing_info["buttons"])
         return []
 
 
@@ -750,6 +927,7 @@ class ActionRecommendProducts(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
         entities = latest_entity_values(tracker)
         use_case = entities.get("use_case") or tracker.get_slot("use_case")
         budget = entities.get("budget") or tracker.get_slot("budget") or tracker.get_slot("price_range")
@@ -782,14 +960,16 @@ class ActionRecommendProducts(Action):
 
         if results.empty:
             dispatcher.utter_message(
-                text=(
-                    "I could not find a strong match yet. Tell me your preferred product type, budget, or use case "
-                    "such as office use, driving, daily wear, or fashion."
+                text=tr(
+                    lang,
+                    "I could not find a strong match yet. Tell me your preferred product type, budget, or use case such as office use, driving, daily wear, or fashion.",
+                    "Saya belum menemui padanan yang kuat. Beritahu saya jenis produk, bajet, atau kegunaan anda seperti untuk pejabat, memandu, kegunaan harian, atau fesyen.",
+                    "我暂时还没找到很合适的推荐。请告诉我您偏好的产品类型、预算，或使用场景，例如上班、驾驶、日常佩戴或时尚用途。"
                 ),
                 buttons=[
-                    {"title": "Browse Eyewear", "payload": "/browse_eyewear"},
-                    {"title": "Check Pricing", "payload": "/ask_pricing"},
-                    {"title": "Talk to Consultant", "payload": '/capture_lead{"preferred_service":"Eyewear Recommendation"}'},
+                    {"title": tr(lang, "Browse Eyewear", "Lihat Produk", "浏览产品"), "payload": "/browse_eyewear"},
+                    {"title": tr(lang, "Check Pricing", "Semak Harga", "查看价格"), "payload": "/ask_pricing"},
+                    {"title": tr(lang, "Talk to Consultant", "Bercakap Dengan Konsultan", "联系顾问"), "payload": '/capture_lead{"preferred_service":"Eyewear Recommendation"}'},
                 ],
             )
             return []
@@ -803,12 +983,12 @@ class ActionRecommendProducts(Action):
             intro_bits.append(f"within {str(budget).strip()}")
         intro_text = " ".join(intro_bits).strip()
         if intro_text:
-            dispatcher.utter_message(text=f"Here are a few recommendations {intro_text}:")
+            dispatcher.utter_message(text=tr(lang, f"Here are a few recommendations {intro_text}:", f"Berikut beberapa cadangan {intro_text}:", f"以下是一些{intro_text}推荐："))
         else:
-            dispatcher.utter_message(text="Here are a few product recommendations for you:")
+            dispatcher.utter_message(text=tr(lang, "Here are a few product recommendations for you:", "Berikut beberapa cadangan produk untuk anda:", "以下是为您推荐的几款产品："))
 
         for _, row in results.iterrows():
-            emit_product_card(dispatcher, row.to_dict(), str(inferred_type or "Eyewear Recommendation"))
+            emit_product_card(dispatcher, row.to_dict(), str(inferred_type or "Eyewear Recommendation"), lang)
 
         return [SlotSet("product_type", inferred_type)] if inferred_type else []
 
@@ -823,6 +1003,7 @@ class ActionSearchProductByAttribute(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
         frame_color = tracker.get_slot("frame_color")
         frame_shape = tracker.get_slot("frame_shape")
         frame_material = tracker.get_slot("frame_material")
@@ -858,11 +1039,11 @@ class ActionSearchProductByAttribute(Action):
 
         top_5 = filtered_df.head(5)
         if top_5.empty:
-            dispatcher.utter_message(text="I could not find products matching that description.")
+            dispatcher.utter_message(text=tr(lang, "I could not find products matching that description.", "Saya tidak menemui produk yang sepadan dengan penerangan itu.", "我找不到符合该描述的产品。"))
             return []
 
         for _, row in top_5.iterrows():
-            emit_product_card(dispatcher, row.to_dict(), "Product Recommendation")
+            emit_product_card(dispatcher, row.to_dict(), "Product Recommendation", lang)
         return []
 
 
@@ -876,6 +1057,7 @@ class ActionFilterLenses(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
         lens_type = tracker.get_slot("lens_type")
         price_range = tracker.get_slot("price_range")
 
@@ -896,11 +1078,11 @@ class ActionFilterLenses(Action):
         results = filter_by_budget(df[mask], price_range).head(5)
 
         if results.empty:
-            dispatcher.utter_message(text="We could not find any lenses matching your criteria.")
+            dispatcher.utter_message(text=tr(lang, "We could not find any lenses matching your criteria.", "Kami tidak menemui kanta yang sepadan dengan kriteria anda.", "我们找不到符合您条件的镜片。"))
             return []
 
         for _, row in results.iterrows():
-            emit_product_card(dispatcher, row.to_dict(), str(lens_type or "Lens Consultation"))
+            emit_product_card(dispatcher, row.to_dict(), str(lens_type or "Lens Consultation"), lang)
         return []
 
 
@@ -914,6 +1096,7 @@ class ActionAskBrand(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
         product_type = tracker.get_slot("product_type")
 
         df = load_catalogue().copy()
@@ -931,11 +1114,11 @@ class ActionAskBrand(Action):
         buttons.append({"title": "Show All Brands", "payload": '/select_brand{"brand":"Show All Brands"}'})
 
         if product_type and "contact" in str(product_type).lower():
-            text = "Which brand of contact lenses would you like to explore?"
+            text = tr(lang, "Which brand of contact lenses would you like to explore?", "Jenama kanta sentuh mana yang anda mahu lihat?", "您想看哪个品牌的隐形眼镜？")
         elif product_type and "sunglasses" in str(product_type).lower():
-            text = "What brand of sunglasses are you interested in?"
+            text = tr(lang, "What brand of sunglasses are you interested in?", "Jenama cermin mata hitam mana yang anda minati?", "您对哪个太阳镜品牌感兴趣？")
         else:
-            text = "Which brand would you like to explore?"
+            text = tr(lang, "Which brand would you like to explore?", "Jenama mana yang anda mahu lihat?", "您想看哪个品牌？")
 
         dispatcher.utter_message(text=text, buttons=buttons)
         return []
@@ -980,6 +1163,7 @@ class ActionSubmitLeadCapture(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
         payload = {
             "name": tracker.get_slot("lead_name"),
             "phone": tracker.get_slot("contact_number"),
@@ -998,26 +1182,33 @@ class ActionSubmitLeadCapture(Action):
         status = tracker.get_slot("lead_status")
         if status == "qualified":
             dispatcher.utter_message(
-                text=(
-                    "Thanks, your request is qualified and our team will follow up shortly.\n"
-                    f"You can also book directly here: {BOOKING_URL}"
+                text=tr(
+                    lang,
+                    f"Thanks, your request is qualified and our team will follow up shortly.\nYou can also book directly here: {BOOKING_URL}",
+                    f"Terima kasih, permintaan anda layak untuk susulan dan pasukan kami akan hubungi anda tidak lama lagi.\nAnda juga boleh tempah terus di sini: {BOOKING_URL}",
+                    f"谢谢，您的请求已符合跟进条件，我们的团队会尽快联系您。\n您也可以直接在这里预约：{BOOKING_URL}"
                 ),
                 buttons=[
-                    {"title": "Book Appointment", "payload": "/book_appointment"},
-                    {"title": "Find Store", "payload": "/find_a_store"},
-                    {"title": "Browse Eyewear", "payload": "/browse_eyewear"},
+                    {"title": tr(lang, "Book Appointment", "Tempah Janji Temu", "预约"), "payload": "/book_appointment"},
+                    {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
+                    {"title": tr(lang, "Browse Eyewear", "Lihat Produk", "浏览产品"), "payload": "/browse_eyewear"},
                 ],
             )
         else:
             dispatcher.utter_message(
-                response="utter_lead_not_qualified",
+                text=tr(
+                    lang,
+                    "Thank you. We have captured your inquiry and our team will review the best next step for you.",
+                    "Terima kasih. Kami telah merekodkan pertanyaan anda dan pasukan kami akan semak langkah seterusnya yang paling sesuai untuk anda.",
+                    "谢谢。我们已记录您的咨询，团队会为您评估最合适的下一步。"
+                ),
                 buttons=[
-                    {"title": "Find Store", "payload": "/find_a_store"},
-                    {"title": "Browse Eyewear", "payload": "/browse_eyewear"},
-                    {"title": "Ask Another Question", "payload": "/greet"},
+                    {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
+                    {"title": tr(lang, "Browse Eyewear", "Lihat Produk", "浏览产品"), "payload": "/browse_eyewear"},
+                    {"title": tr(lang, "Ask Another Question", "Tanya Soalan Lain", "再问一个问题"), "payload": "/greet"},
                 ],
             )
 
         if response and response.get("lead_id"):
-            dispatcher.utter_message(text=f"Reference ID: {response['lead_id']}")
+            dispatcher.utter_message(text=tr(lang, f"Reference ID: {response['lead_id']}", f"ID Rujukan: {response['lead_id']}", f"参考编号：{response['lead_id']}"))
         return []
