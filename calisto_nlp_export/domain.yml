@@ -201,9 +201,31 @@ slots:
     influence_conversation: true
     mappings:
       - type: custom
+  current_flow:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: custom
 
 forms:
   lead_capture_form:
+    ignored_intents:
+      - ask_faq
+      - ask_pricing
+      - select_pricing_category
+      - browse_eyewear
+      - select_product_type
+      - select_brand
+      - select_budget
+      - ask_lens_type
+      - lens_vision_solutions
+      - find_a_store
+      - store_hours
+      - choose_city
+      - search_product
+      - search_product_by_attribute
+      - product_recommendation
+      - inform_budget
     required_slots:
       - lead_name
       - contact_number
@@ -1533,6 +1555,7 @@ actions:
   - action_document_search
   - action_search_product_by_attribute
   - action_filter_lenses
+  - action_handle_lead_capture_interruption
   - validate_lead_capture_form
   - action_qualify_lead
   - action_submit_lead_capture
