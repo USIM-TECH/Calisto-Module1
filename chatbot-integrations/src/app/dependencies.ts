@@ -11,7 +11,13 @@ import { WhatsAppChannel } from '../integrations/channels/whatsapp/index.js'
 import { XChannel } from '../integrations/channels/x/index.js'
 import { WebsiteChannel } from '../integrations/channels/website/index.js'
 import { HubSpotClient } from '../integrations/crm/hubspot/index.js'
-import { createMessageDeduplicator, type MessageDeduplicator, LeadOrchestrator, RuntimeStore } from '../leads/index.js'
+import {
+  createMessageDeduplicator,
+  createRuntimeStore,
+  type MessageDeduplicator,
+  LeadOrchestrator,
+  type RuntimeStore,
+} from '../leads/index.js'
 import { createNlpMessageHandler } from './message-handler.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -42,7 +48,15 @@ export function createDependencies(): AppDependencies {
 
   const logger: Logger = new ConsoleLogger()
   const config = loadConfig()
-  const runtimeStore = new RuntimeStore(config.dataDir)
+  if (config.usedFileStorageFallback) {
+    logger.warn(
+      'STORAGE_BACKEND is postgres but DATABASE_URL is not set; falling back to file storage (runtime-store.json).',
+    )
+  }
+  const runtimeStore = createRuntimeStore({
+    backend: config.storageBackend,
+    dataDir: config.dataDir,
+  })
   const deduplicator = createMessageDeduplicator(runtimeStore, config.dedupTtlMs)
   const nlpClient = new NLPClient({ rasaUrl: config.rasaUrl }, logger)
 

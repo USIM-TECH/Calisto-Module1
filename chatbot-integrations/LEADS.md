@@ -51,16 +51,36 @@ That ensures sales still has a direct contact path even when the user skips the 
 
 ## Stored Data
 
-Runtime data is stored in:
+Runtime data is persisted through a **`RuntimeStore`** implementation:
 
-[runtime-store.json](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/data/runtime/runtime-store.json)
+| Mode | Configuration | Location |
+|------|---------------|----------|
+| **PostgreSQL (default)** | `STORAGE_BACKEND=postgres` (default) and `DATABASE_URL` | Tables managed by [Prisma](prisma/schema.prisma) |
+| **File (fallback / opt-in)** | `STORAGE_BACKEND=file`, or postgres requested without `DATABASE_URL` | [`data/runtime/runtime-store.json`](data/runtime/runtime-store.json) |
 
-The store contains:
+In both cases the logical model is the same:
 
-- `leads`
-- `conversations`
-- `webhookEvents`
-- `deduplication`
+- **leads** — one row per `(channel, sourceId)` user
+- **conversations** — transcript threads with nested **messages**
+- **webhookEvents** — inbound channel webhook payloads for debugging/audit
+- **deduplication** — short-lived keys to drop duplicate deliveries (`DEDUP_TTL_MS`)
+
+### Retention (PostgreSQL)
+
+- **Webhook events**: after each insert, rows older than the newest **999** (by `receivedAt`) are deleted, matching the previous file-store cap.
+- **Dedupe keys**: entries with `seenAt` older than `DEDUP_TTL_MS` are removed when processing a new dedupe check.
+
+Setup commands and migrations: [prisma/README.md](prisma/README.md).
+
+### Importing legacy JSON into Postgres
+
+If you have an existing `runtime-store.json`:
+
+```bash
+DATABASE_URL=... npm run db:import-json
+```
+
+Optional path: `npm run db:import-json -- /path/to/runtime-store.json`
 
 ## Lead Record Fields
 
@@ -138,15 +158,19 @@ Website chat supports:
 
 ## Important Files
 
-- [lead-orchestrator.ts](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/src/leads/orchestration/lead-orchestrator.ts)
-- [runtime-store.ts](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/src/leads/storage/runtime-store.ts)
-- [records.ts](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/src/leads/types/records.ts)
-- [file-json-store.ts](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/src/leads/storage/file-json-store.ts)
-- [create-app.ts](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/src/app/create-app.ts)
-- [dependencies.ts](/Users/darshan/projects/USIM%20Tech/Calisto/Calisto-Module1/chatbot-integrations/src/app/dependencies.ts)
+- [lead-orchestrator.ts](src/leads/orchestration/lead-orchestrator.ts)
+- [runtime-store.interface.ts](src/leads/storage/runtime-store.interface.ts)
+- [file-runtime-store.ts](src/leads/storage/file-runtime-store.ts)
+- [prisma-runtime-store.ts](src/leads/storage/prisma-runtime-store.ts)
+- [create-runtime-store.ts](src/leads/storage/create-runtime-store.ts)
+- [records.ts](src/leads/types/records.ts)
+- [file-json-store.ts](src/leads/storage/file-json-store.ts)
+- [prisma/schema.prisma](prisma/schema.prisma)
+- [create-app.ts](src/app/create-app.ts)
+- [dependencies.ts](src/app/dependencies.ts)
 
 ## Notes
 
-- This storage is file-based for now, not database-backed.
-- It is suitable for local development and basic demos.
-- For production, move this to a real database and shared dedup store.
+- **PostgreSQL** is the default; set `DATABASE_URL` and run migrations before starting.
+- **File** storage: set `STORAGE_BACKEND=file`. If the default (`postgres`) is kept but `DATABASE_URL` is missing, the app falls back to JSON and logs a warning.
+- Website chat **rate limits** stay in-memory (`website-rate-limiter.ts`); use Redis later if you scale horizontally.

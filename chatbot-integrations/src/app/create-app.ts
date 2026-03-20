@@ -144,38 +144,62 @@ export function createApp(dependencies: AppDependencies): Express {
     })
   })
 
-  app.get('/reports/overview', (_req, res) => {
-    res.json(orchestrator.getSummary())
-  })
-
-  app.get('/reports/leads', (_req, res) => {
-    res.json({
-      leads: orchestrator.listLeads(),
-      services: {
-        hubspot: Boolean(hubspot),
-      },
-    })
-  })
-
-  app.get('/reports/leads-dashboard', (_req, res) => {
-    res.type('html').send(renderLeadsDashboardHtml({
-      leads: orchestrator.listLeads(),
-      conversations: orchestrator.listConversations(),
-      summary: orchestrator.getSummary(),
-    }))
-  })
-
-  app.get('/reports/leads-dashboard/:leadId', (req, res) => {
-    const leads = orchestrator.listLeads()
-    const lead = findLeadById(leads, req.params.leadId)
-
-    if (!lead) {
-      res.status(404).type('html').send('<h1>Lead not found</h1>')
-      return
+  app.get('/reports/overview', async (_req, res, next) => {
+    try {
+      res.json(await orchestrator.getSummary())
+    } catch (error) {
+      next(error)
     }
+  })
 
-    const conversation = findConversationByLeadId(orchestrator.listConversations(), lead.id)
-    res.type('html').send(renderLeadDetailHtml({ lead, conversation }))
+  app.get('/reports/leads', async (_req, res, next) => {
+    try {
+      res.json({
+        leads: await orchestrator.listLeads(),
+        services: {
+          hubspot: Boolean(hubspot),
+        },
+      })
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  app.get('/reports/leads-dashboard', async (_req, res, next) => {
+    try {
+      const [leads, conversations, summary] = await Promise.all([
+        orchestrator.listLeads(),
+        orchestrator.listConversations(),
+        orchestrator.getSummary(),
+      ])
+      res.type('html').send(renderLeadsDashboardHtml({
+        leads,
+        conversations,
+        summary,
+      }))
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  app.get('/reports/leads-dashboard/:leadId', async (req, res, next) => {
+    try {
+      const [leads, conversations] = await Promise.all([
+        orchestrator.listLeads(),
+        orchestrator.listConversations(),
+      ])
+      const lead = findLeadById(leads, req.params.leadId)
+
+      if (!lead) {
+        res.status(404).type('html').send('<h1>Lead not found</h1>')
+        return
+      }
+
+      const conversation = findConversationByLeadId(conversations, lead.id)
+      res.type('html').send(renderLeadDetailHtml({ lead, conversation }))
+    } catch (error) {
+      next(error)
+    }
   })
 
   return app

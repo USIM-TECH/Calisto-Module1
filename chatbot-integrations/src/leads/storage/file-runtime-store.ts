@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import path from 'path'
 import type { IncomingMessage } from '../../core/types.js'
 import { FileJsonStore } from './file-json-store.js'
+import type { LeadUpdatePayload, RuntimeStore, RuntimeStoreSummary } from './runtime-store.interface.js'
 import type {
   ConversationMessageRecord,
   ConversationRecord,
@@ -18,18 +19,7 @@ function nextId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID()}`
 }
 
-export interface LeadSnapshot {
-  leadName?: string
-  email?: string
-  phone?: string
-  preferredService?: string
-  location?: string
-  responseStyle?: LeadRecord['responseStyle']
-  qualificationStatus: LeadRecord['qualificationStatus']
-  lastIntent?: string
-}
-
-export class RuntimeStore {
+export class FileRuntimeStore implements RuntimeStore {
   private readonly _store: FileJsonStore<RuntimeDataShape>
 
   constructor(baseDir: string) {
@@ -41,7 +31,7 @@ export class RuntimeStore {
     })
   }
 
-  public shouldProcessDeduplication(key: string, ttlMs: number): boolean {
+  public async shouldProcessDeduplication(key: string, ttlMs: number): Promise<boolean> {
     const now = Date.now()
     let shouldProcess = true
 
@@ -59,14 +49,14 @@ export class RuntimeStore {
     return shouldProcess
   }
 
-  public getOrCreateLead(message: IncomingMessage): LeadRecord {
+  public async getOrCreateLead(message: IncomingMessage): Promise<LeadRecord> {
     const timestamp = nowIso()
     const sourceId = message.sourceId ?? message.senderId
     let leadRecord!: LeadRecord
 
     this._store.update((state) => {
       const existing = state.leads.find(
-        (lead) => lead.channel === message.channel && lead.sourceId === sourceId
+        (lead) => lead.channel === message.channel && lead.sourceId === sourceId,
       )
 
       if (existing) {
@@ -105,7 +95,7 @@ export class RuntimeStore {
     return leadRecord
   }
 
-  public updateLead(leadId: string, snapshot: Partial<LeadSnapshot> & Partial<Pick<LeadRecord, 'crmStatus' | 'crmRecordId'>>): LeadRecord | undefined {
+  public async updateLead(leadId: string, snapshot: LeadUpdatePayload): Promise<LeadRecord | undefined> {
     const timestamp = nowIso()
     let nextLead: LeadRecord | undefined
 
@@ -130,13 +120,13 @@ export class RuntimeStore {
     return nextLead
   }
 
-  public appendConversationMessage(
+  public async appendConversationMessage(
     leadId: string,
     message: ConversationMessageRecord,
     channel: IncomingMessage['channel'],
     sourceId: string,
     conversationId: string,
-  ): ConversationRecord {
+  ): Promise<ConversationRecord> {
     const timestamp = nowIso()
     let conversationRecord!: ConversationRecord
 
@@ -176,7 +166,9 @@ export class RuntimeStore {
     return conversationRecord
   }
 
-  public appendWebhookEvent(event: Omit<WebhookEventRecord, 'id' | 'receivedAt'>): WebhookEventRecord {
+  public async appendWebhookEvent(
+    event: Omit<WebhookEventRecord, 'id' | 'receivedAt'>,
+  ): Promise<WebhookEventRecord> {
     const record: WebhookEventRecord = {
       id: nextId('evt'),
       receivedAt: nowIso(),
@@ -191,7 +183,7 @@ export class RuntimeStore {
     return record
   }
 
-  public getSummary() {
+  public async getSummary(): Promise<RuntimeStoreSummary> {
     const state = this._store.read()
     return {
       leads: {
@@ -208,11 +200,11 @@ export class RuntimeStore {
     }
   }
 
-  public listLeads(): LeadRecord[] {
+  public async listLeads(): Promise<LeadRecord[]> {
     return this._store.read().leads
   }
 
-  public listConversations(): ConversationRecord[] {
+  public async listConversations(): Promise<ConversationRecord[]> {
     return this._store.read().conversations
   }
 }

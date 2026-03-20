@@ -5,7 +5,7 @@ import type { HubSpotClient } from '../../integrations/crm/hubspot/index.js'
 import type { MessageDeduplicator } from './message-deduplicator.js'
 import { mapNlpResponseToOutgoingMessages } from './rasa-outgoing.js'
 import type { LeadRecord } from '../types/records.js'
-import { RuntimeStore } from '../storage/runtime-store.js'
+import type { RuntimeStore } from '../storage/runtime-store.interface.js'
 
 interface LeadOrchestratorOptions {
   logger: Logger
@@ -277,13 +277,13 @@ export class LeadOrchestrator {
   }
 
   public async process(message: IncomingMessage): Promise<OrchestratedReply | undefined> {
-    if (!this._deduplicator.shouldProcess(message)) {
+    if (!(await this._deduplicator.shouldProcess(message))) {
       this._logger.warn(`[${message.channel}] Ignoring duplicate message ${message.messageId}`)
       return undefined
     }
 
     const sourceId = message.sourceId ?? message.senderId
-    const lead = this._runtimeStore.getOrCreateLead({ ...message, sourceId })
+    const lead = await this._runtimeStore.getOrCreateLead({ ...message, sourceId })
     const messageText = message.type === 'interactive'
       ? (message.interactive?.id || message.interactive?.title || message.text)
       : (message.text || message.interactive?.title)
@@ -293,7 +293,7 @@ export class LeadOrchestrator {
       lead.responseStyle,
     )
 
-    this._runtimeStore.appendConversationMessage(
+    await this._runtimeStore.appendConversationMessage(
       lead.id,
       {
         direction: 'inbound',
@@ -313,7 +313,7 @@ export class LeadOrchestrator {
       message.conversationId,
     )
 
-    this._runtimeStore.appendWebhookEvent({
+    await this._runtimeStore.appendWebhookEvent({
       channel: message.channel,
       direction: 'inbound',
       path: `/messages/${message.channel}`,
@@ -341,7 +341,7 @@ export class LeadOrchestrator {
       preNlpSnapshot.responseStyle = inferredResponseStyle
     }
     const leadWithMessageData = Object.keys(preNlpSnapshot).length
-      ? (this._runtimeStore.updateLead(lead.id, preNlpSnapshot) ?? lead)
+      ? (await this._runtimeStore.updateLead(lead.id, preNlpSnapshot) ?? lead)
       : lead
 
     if (!messageText) {
@@ -366,7 +366,7 @@ export class LeadOrchestrator {
     if (!trackerSnapshot.location) {
       trackerSnapshot.location = messageSnapshot.location
     }
-    const updatedLead = this._runtimeStore.updateLead(lead.id, trackerSnapshot) ?? leadWithMessageData
+    const updatedLead = (await this._runtimeStore.updateLead(lead.id, trackerSnapshot)) ?? leadWithMessageData
     const outgoingMessages = decorateWhatsappMessages(
       message,
       mapNlpResponseToOutgoingMessages(nlpResponse),
@@ -374,7 +374,7 @@ export class LeadOrchestrator {
     )
 
     for (const outgoingMessage of outgoingMessages) {
-      this._runtimeStore.appendConversationMessage(
+      await this._runtimeStore.appendConversationMessage(
         updatedLead.id,
         {
           direction: 'outbound',
@@ -395,7 +395,7 @@ export class LeadOrchestrator {
       )
     }
 
-    this._runtimeStore.appendWebhookEvent({
+    await this._runtimeStore.appendWebhookEvent({
       channel: message.channel,
       direction: 'outbound',
       path: `/messages/${message.channel}`,
@@ -418,15 +418,15 @@ export class LeadOrchestrator {
     return { lead: updatedLead, outgoingMessages }
   }
 
-  public getSummary() {
+  public async getSummary() {
     return this._runtimeStore.getSummary()
   }
 
-  public listLeads() {
+  public async listLeads() {
     return this._runtimeStore.listLeads()
   }
 
-  public listConversations() {
+  public async listConversations() {
     return this._runtimeStore.listConversations()
   }
 
@@ -482,13 +482,13 @@ export class LeadOrchestrator {
         },
       })
 
-      this._runtimeStore.updateLead(lead.id, {
+      await this._runtimeStore.updateLead(lead.id, {
         crmStatus: 'synced',
         crmRecordId: String(hubspotLead.id ?? contact.id),
       })
     } catch (error: any) {
       this._logger.error(`[CRM] Failed to sync qualified lead ${lead.id}: ${error.message}`)
-      this._runtimeStore.updateLead(lead.id, { crmStatus: 'failed' })
+      await this._runtimeStore.updateLead(lead.id, { crmStatus: 'failed' })
     }
   }
 }

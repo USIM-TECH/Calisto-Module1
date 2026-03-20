@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ChatChannel {
+  whatsapp
+  instagram
+  messenger
+  x
+  telegram
+  website
+}
+
+enum WebhookDirection {
+  inbound
+  outbound
+}
+
+enum QualificationStatus {
+  new
+  qualified
+  unqualified
+  needs_review
+}
+
+enum CrmStatus {
+  pending
+  synced
+  failed
+}
+
+enum ResponseStyle {
+  casual
+  professional
+  warm
+  concierge
+}
+
+enum MessageDirection {
+  inbound
+  outbound
+}
+
+model Lead {
+  id                    String               @id
+  channel               ChatChannel
+  sourceId              String
+  conversationId        String
+  responseStyle         ResponseStyle?
+  senderName            String?
+  leadName              String?
+  email                 String?
+  phone                 String?
+  preferredService      String?
+  location              String?
+  qualificationStatus   QualificationStatus
+  crmStatus             CrmStatus
+  crmRecordId           String?
+  lastIntent            String?
+  lastMessageAt         DateTime
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  conversations Conversation[]
+  webhookEvents WebhookEvent[]
+
+  @@unique([channel, sourceId])
+  @@index([updatedAt])
+}
+
+model Conversation {
+  id        String      @id
+  leadId    String
+  channel   ChatChannel
+  sourceId  String
+  createdAt DateTime
+  updatedAt DateTime
+
+  lead     Lead                  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  messages ConversationMessage[]
+
+  @@index([leadId])
+}
+
+model ConversationMessage {
+  id             String           @id @default(cuid())
+  conversationId String
+  direction      MessageDirection
+  messageId      String
+  text           String?
+  messageType    String
+  timestamp      DateTime
+  metadata       Json
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, timestamp])
+}
+
+model WebhookEvent {
+  id             String           @id
+  channel        ChatChannel
+  direction      WebhookDirection
+  path           String
+  sourceId       String
+  conversationId String
+  leadId         String?
+  receivedAt     DateTime
+  payload        Json
+
+  lead Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([receivedAt])
+}
+
+model DedupeKey {
+  key    String   @id
+  seenAt DateTime
+
+  @@index([seenAt])
+}

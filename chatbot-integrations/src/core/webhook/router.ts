@@ -6,7 +6,7 @@ import type { WhatsAppChannel } from '../../integrations/channels/whatsapp/clien
 import type { XChannel } from '../../integrations/channels/x/client.js'
 import type { Logger } from '../utils/index.js'
 import type { WebhookRequest } from '../types.js'
-import type { RuntimeStore } from '../../leads/index.js'
+import type { RuntimeStore } from '../../leads/storage/runtime-store.interface.js'
 
 export interface WebhookRouterConfig {
   whatsapp?: WhatsAppChannel
@@ -55,7 +55,7 @@ export function createWebhookRouter(
     const whatsappHandler = async (req: Request, res: Response) => {
       try {
         const webhookReq = toWebhookRequest(req)
-        runtimeStore.appendWebhookEvent({
+        await runtimeStore.appendWebhookEvent({
           channel: 'whatsapp',
           direction: 'inbound',
           path: req.path,
@@ -83,7 +83,7 @@ export function createWebhookRouter(
     const instagramHandler = async (req: Request, res: Response) => {
       try {
         const webhookReq = toWebhookRequest(req)
-        runtimeStore.appendWebhookEvent({
+        await runtimeStore.appendWebhookEvent({
           channel: 'instagram',
           direction: 'inbound',
           path: req.path,
@@ -110,7 +110,7 @@ export function createWebhookRouter(
     const messengerHandler = async (req: Request, res: Response) => {
       try {
         const webhookReq = toWebhookRequest(req)
-        runtimeStore.appendWebhookEvent({
+        await runtimeStore.appendWebhookEvent({
           channel: 'messenger',
           direction: 'inbound',
           path: req.path,
@@ -137,7 +137,7 @@ export function createWebhookRouter(
     const telegramHandler = async (req: Request, res: Response) => {
       try {
         const webhookReq = toWebhookRequest(req)
-        runtimeStore.appendWebhookEvent({
+        await runtimeStore.appendWebhookEvent({
           channel: 'telegram',
           direction: 'inbound',
           path: req.path,
@@ -168,7 +168,7 @@ export function createWebhookRouter(
     const xHandler = async (req: Request, res: Response) => {
       try {
         const webhookReq = toWebhookRequest(req)
-        runtimeStore.appendWebhookEvent({
+        await runtimeStore.appendWebhookEvent({
           channel: 'x',
           direction: 'inbound',
           path: req.path,

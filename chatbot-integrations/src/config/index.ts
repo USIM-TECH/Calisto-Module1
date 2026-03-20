@@ -17,12 +17,18 @@ const optionalString = z.preprocess((value) => {
 
 const responseStyleSchema = z.enum(['casual', 'professional', 'warm', 'concierge']).default('casual')
 
-const envSchema = z.object({
-  PORT: z.coerce.number().int().positive().default(3000),
-  RASA_URL: z.string().default('http://localhost:5005'),
-  DATA_DIR: optionalString,
-  DEDUP_TTL_MS: z.coerce.number().int().positive().default(5 * 60 * 1000),
-  RESPONSE_STYLE: responseStyleSchema,
+const storageBackendSchema = z.enum(['file', 'postgres']).default('postgres')
+
+const envSchema = z
+  .object({
+    PORT: z.coerce.number().int().positive().default(3000),
+    RASA_URL: z.string().default('http://localhost:5005'),
+    DATA_DIR: optionalString,
+    DEDUP_TTL_MS: z.coerce.number().int().positive().default(5 * 60 * 1000),
+    RESPONSE_STYLE: responseStyleSchema,
+
+    STORAGE_BACKEND: storageBackendSchema,
+    DATABASE_URL: optionalString,
 
   WEBSITE_AUTH_TOKEN: optionalString,
   WEBSITE_ALLOWED_ORIGINS: optionalString,
@@ -62,12 +68,15 @@ const envSchema = z.object({
 
   HUBSPOT_ACCESS_TOKEN: optionalString,
 
-})
+  })
 
 export interface AppConfig {
   port: number
   rasaUrl: string
   dataDir: string
+  storageBackend: 'file' | 'postgres'
+  /** Set when postgres was requested but `DATABASE_URL` was missing; effective backend is file. */
+  usedFileStorageFallback: boolean
   dedupTtlMs: number
   responseStyle: 'casual' | 'professional' | 'warm' | 'concierge'
   website: {
@@ -87,10 +96,16 @@ export interface AppConfig {
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = envSchema.parse(env)
 
+  const requestedPostgres = parsed.STORAGE_BACKEND === 'postgres'
+  const postgresMissingUrl = requestedPostgres && !parsed.DATABASE_URL
+  const storageBackend = postgresMissingUrl ? 'file' : parsed.STORAGE_BACKEND
+
   return {
     port: parsed.PORT,
     rasaUrl: parsed.RASA_URL,
     dataDir: parsed.DATA_DIR ?? 'data/runtime',
+    storageBackend,
+    usedFileStorageFallback: postgresMissingUrl,
     dedupTtlMs: parsed.DEDUP_TTL_MS,
     responseStyle: parsed.RESPONSE_STYLE,
     website: {
