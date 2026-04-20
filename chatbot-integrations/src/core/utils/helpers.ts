@@ -64,3 +64,40 @@ export function extractFileExtension(input: string): string | undefined {
   const match = input.match(/\.([a-zA-Z0-9]+)(?:\?.*)?$/)
   return match ? `.${match[1]}` : undefined
 }
+
+/**
+ * Channel payloads (e.g. WhatsApp Cloud API) often send Unix time as a string in **seconds**.
+ * `new Date("1739265432")` is Invalid Date in JS; this normalizes to a real Date for DB fields.
+ * Also accepts ISO strings and millisecond epoch strings (13+ digit integers).
+ */
+export function parseMessageTimestampToDate(raw: string | undefined): Date {
+  if (raw === undefined || raw === '') {
+    return new Date()
+  }
+  const trimmed = raw.trim()
+  if (!trimmed) {
+    return new Date()
+  }
+
+  if (trimmed.includes('T') || /^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+    const fromIso = new Date(trimmed)
+    if (!Number.isNaN(fromIso.getTime())) {
+      return fromIso
+    }
+  }
+
+  if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+    const n = Number(trimmed)
+    if (!Number.isFinite(n)) {
+      return new Date()
+    }
+    const intPart = Math.trunc(Math.abs(n)).toString()
+    if (intPart.length <= 10) {
+      return new Date(n * 1000)
+    }
+    return new Date(n)
+  }
+
+  const fallback = new Date(trimmed)
+  return Number.isNaN(fallback.getTime()) ? new Date() : fallback
+}

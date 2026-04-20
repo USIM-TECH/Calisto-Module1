@@ -9,6 +9,7 @@ import {
   ResponseStyle,
   WebhookDirection,
 } from '@prisma/client'
+import { parseMessageTimestampToDate } from '../../core/utils/helpers.js'
 import type { IncomingMessage } from '../../core/types.js'
 import type { LeadUpdatePayload, RuntimeStore, RuntimeStoreSummary } from './runtime-store.interface.js'
 import type {
@@ -178,7 +179,7 @@ function buildLeadUpdate(snapshot: LeadUpdatePayload): Prisma.LeadUpdateInput {
     data.conversationId = snapshot.conversationId
   }
   if (snapshot.lastMessageAt !== undefined) {
-    data.lastMessageAt = new Date(snapshot.lastMessageAt)
+    data.lastMessageAt = parseMessageTimestampToDate(snapshot.lastMessageAt)
   }
   return data
 }
@@ -210,7 +211,7 @@ export class PrismaRuntimeStore implements RuntimeStore {
   public async getOrCreateLead(message: IncomingMessage): Promise<LeadRecord> {
     const sourceId = message.sourceId ?? message.senderId
     const channel = toPrismaChannel(message.channel)
-    const timestamp = new Date(message.timestamp)
+    const timestamp = parseMessageTimestampToDate(message.timestamp)
     const now = new Date()
 
     const row = await this._prisma.lead.upsert({
@@ -277,7 +278,7 @@ export class PrismaRuntimeStore implements RuntimeStore {
     const direction = message.direction === 'inbound'
       ? MessageDirection.inbound
       : MessageDirection.outbound
-    const ts = new Date(message.timestamp)
+    const ts = parseMessageTimestampToDate(message.timestamp)
     const now = new Date()
     const metadata = message.metadata as Prisma.InputJsonValue
 

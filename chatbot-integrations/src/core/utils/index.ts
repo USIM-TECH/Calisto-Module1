@@ -6,5 +6,6 @@ export {
   sleep,
   safeJsonParse,
   extractFileExtension,
+  parseMessageTimestampToDate,
 } from './helpers.js'
 export { NLPClient, type NLPClientConfig, type NLPResponse } from './nlp-client.js'

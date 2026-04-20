@@ -1,4 +1,5 @@
 import type { IncomingMessage } from '../../../core/types.js'
+import { parseMessageTimestampToDate } from '../../../core/utils/helpers.js'
 import type { WhatsAppMessage } from './types.js'
 
 export async function normalizeWhatsAppIncomingMessage(
@@ -15,7 +16,7 @@ export async function normalizeWhatsAppIncomingMessage(
     conversationId: message.from,
     senderName,
     messageId: message.id,
-    timestamp: message.timestamp,
+    timestamp: parseMessageTimestampToDate(message.timestamp).toISOString(),
     type: 'unknown',
     rawPayload: message,
   }
