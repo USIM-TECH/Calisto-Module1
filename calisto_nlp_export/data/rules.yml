@@ -17,6 +17,134 @@ rules:
       - active_loop: null
       - action: utter_greet
 
+  - rule: Interrupt lead capture for FAQ
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: ask_faq
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for pricing intro
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: ask_pricing
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for pricing category
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: select_pricing_category
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for browsing
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: browse_eyewear
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for product type selection
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: select_product_type
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for brand selection
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: select_brand
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for budget selection
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: select_budget
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for lens flows
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: lens_vision_solutions
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for lens detail
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: ask_lens_type
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for store lookup
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: find_a_store
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for store hours
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: store_hours
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for city selection
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: choose_city
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for product search
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: search_product
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for attribute search
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: search_product_by_attribute
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for recommendations
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: product_recommendation
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for budget refinement
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: inform_budget
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
   - rule: Start eyewear browse flow
     steps:
       - intent: browse_eyewear

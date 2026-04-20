@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Text
 
 import pandas as pd
 from rasa_sdk import Action, Tracker
-from rasa_sdk.events import SlotSet
+from rasa_sdk.events import ActiveLoop, FollowupAction, SlotSet
 from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk.forms import FormValidationAction
 
@@ -22,6 +22,47 @@ CATALOGUE_PATH = os.getenv(
     "knowledge_base/calisto_product_catalog_500.csv",
 )
 BOOKING_URL = os.getenv("BOOKING_URL", "https://calisto.example.com/book")
+KB_INDEX_META_PATH = os.getenv(
+    "KB_INDEX_META_PATH",
+    "knowledge_base/index/calisto_meta.json",
+)
+INTENT_CONFIDENCE_THRESHOLD = 0.7
+FORM_INTERRUPTION_INTENTS = {
+    "ask_faq",
+    "ask_pricing",
+    "select_pricing_category",
+    "browse_eyewear",
+    "select_product_type",
+    "select_brand",
+    "select_budget",
+    "ask_lens_type",
+    "lens_vision_solutions",
+    "find_a_store",
+    "store_hours",
+    "choose_city",
+    "search_product",
+    "search_product_by_attribute",
+    "product_recommendation",
+    "inform_budget",
+}
+FLOW_BY_INTENT = {
+    "ask_faq": "faq",
+    "ask_pricing": "pricing",
+    "select_pricing_category": "pricing",
+    "browse_eyewear": "browse_eyewear",
+    "select_product_type": "browse_eyewear",
+    "select_brand": "browse_eyewear",
+    "select_budget": "browse_eyewear",
+    "ask_lens_type": "lens_consultation",
+    "lens_vision_solutions": "lens_consultation",
+    "find_a_store": "store_lookup",
+    "store_hours": "store_lookup",
+    "choose_city": "store_lookup",
+    "search_product": "product_search",
+    "search_product_by_attribute": "product_search",
+    "product_recommendation": "product_recommendation",
+    "inform_budget": "product_search",
+}
 
 
 class ServiceGateway:
@@ -85,6 +126,19 @@ def load_catalogue() -> pd.DataFrame:
     if "price_myr" in df.columns:
         df["price_myr"] = pd.to_numeric(df["price_myr"], errors="coerce")
     return df
+
+
+@lru_cache(maxsize=1)
+def load_kb_metadata() -> List[Dict[str, Any]]:
+    if not os.path.exists(KB_INDEX_META_PATH):
+        return []
+
+    with open(KB_INDEX_META_PATH, "r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+    return []
 
 
 def filter_by_budget(df: pd.DataFrame, budget_slot: Text) -> pd.DataFrame:
@@ -371,6 +425,133 @@ def infer_product_type_from_use_case(use_case: str) -> str:
     return ""
 
 
+def get_latest_intent(tracker: Tracker) -> Dict[str, Any]:
+    intent_data = tracker.latest_message.get("intent") or {}
+    intent_name = str(intent_data.get("name") or "").strip()
+    confidence = float(intent_data.get("confidence") or 0.0)
+    return {"name": intent_name, "confidence": confidence}
+
+
+def normalize_free_text(value: Any) -> str:
+    return re.sub(r"\s+", " ", str(value or "").strip())
+
+
+def strip_common_prefixes(value: str) -> str:
+    return re.sub(
+        r"^(?:my name is|i am|i'm|this is|name is)\s+",
+        "",
+        value,
+        flags=re.IGNORECASE,
+    ).strip(" .,-")
+
+
+def is_refusal(text: str) -> bool:
+    normalized = normalize_free_text(text).lower()
+    refusal_patterns = [
+        r"\bi do not want to\b",
+        r"\bi don't want to\b",
+        r"\bprefer not to\b",
+        r"\bnot comfortable\b",
+        r"\bwon't share\b",
+        r"\bcannot share\b",
+        r"\bdon't have\b",
+        r"\bno phone\b",
+        r"\bno email\b",
+        r"\btak nak\b",
+        r"\btidak mahu\b",
+        r"\btak mahu\b",
+    ]
+    return any(re.search(pattern, normalized) for pattern in refusal_patterns)
+
+
+def is_valid_name(value: str) -> bool:
+    normalized = strip_common_prefixes(normalize_free_text(value))
+    if len(normalized) < 2 or len(normalized) > 60:
+        return False
+    if is_refusal(normalized) or "@" in normalized or re.search(r"\d", normalized):
+        return False
+    if re.search(r"[?!]", normalized):
+        return False
+    disallowed_keywords = {
+        "glasses",
+        "frames",
+        "sunglasses",
+        "lenses",
+        "price",
+        "pricing",
+        "gucci",
+        "rayban",
+        "store",
+        "appointment",
+    }
+    lowered_tokens = set(re.findall(r"[a-zA-Z]+", normalized.lower()))
+    if lowered_tokens & disallowed_keywords:
+        return False
+    return bool(re.fullmatch(r"[A-Za-z][A-Za-z .'\-]{1,59}", normalized))
+
+
+def normalize_name(value: str) -> str:
+    return strip_common_prefixes(normalize_free_text(value))
+
+
+def is_valid_phone(value: str) -> bool:
+    digits = re.sub(r"[^\d+]", "", str(value or ""))
+    digit_count = len(re.sub(r"\D", "", digits))
+    return not is_refusal(str(value)) and 8 <= digit_count <= 15
+
+
+def normalize_phone(value: str) -> str:
+    return re.sub(r"[^\d+]", "", str(value or ""))
+
+
+def is_valid_email(value: str) -> bool:
+    normalized = normalize_free_text(value)
+    return not is_refusal(normalized) and bool(re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", normalized))
+
+
+def normalize_email(value: str) -> str:
+    return normalize_free_text(value).lower()
+
+
+def is_valid_location(value: str) -> bool:
+    normalized = normalize_free_text(value)
+    if len(normalized) < 2 or len(normalized) > 80:
+        return False
+    if is_refusal(normalized) or "@" in normalized:
+        return False
+    if re.search(r"\b\d{5,}\b", normalized):
+        return False
+    return bool(re.fullmatch(r"[A-Za-z0-9 .,'/\-]{2,80}", normalized))
+
+
+def is_valid_service(value: str) -> bool:
+    normalized = normalize_free_text(value)
+    if len(normalized) < 3 or len(normalized) > 80:
+        return False
+    if is_refusal(normalized):
+        return False
+    return not is_valid_email(normalized) and not is_valid_phone(normalized)
+
+
+def normalize_timeline(value: str) -> Optional[str]:
+    normalized = normalize_free_text(value).lower()
+    allowed = {
+        "this week": "This Week",
+        "within 2 weeks": "Within 2 Weeks",
+        "within two weeks": "Within 2 Weeks",
+        "just exploring": "Just Exploring",
+    }
+    if normalized in allowed:
+        return allowed[normalized]
+    if "this week" in normalized:
+        return "This Week"
+    if "2 week" in normalized or "two week" in normalized:
+        return "Within 2 Weeks"
+    if any(token in normalized for token in ["exploring", "looking around", "just checking", "surveying"]):
+        return "Just Exploring"
+    return None
+
+
 def detect_language_from_text(text: str) -> str:
     normalized = str(text or "").strip().lower()
     if not normalized:
@@ -467,6 +648,116 @@ class ActionSetLanguage(Action):
         return [SlotSet("preferred_language", language)]
 
 
+class ActionDocumentSearch(Action):
+    def name(self) -> Text:
+        return "action_document_search"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
+        query = normalize_free_text(tracker.latest_message.get("text") or "")
+        query_lower = query.lower()
+
+        faq_entries = [
+            entry for entry in load_kb_metadata()
+            if "faq" in str(entry.get("source") or "").lower()
+        ]
+
+        keyword_groups = {
+            "refund": {"refund", "return", "exchange", "policy", "size", "fit"},
+            "warranty": {"warranty", "cover", "broken", "damage"},
+            "booking": {"book", "appointment", "eye test", "online"},
+            "after_sales": {"adjustment", "after-sales", "after sales", "fitting", "support"},
+            "stores": {"store", "location", "branch", "outlet"},
+        }
+
+        requested_group: Optional[str] = None
+        for group_name, keywords in keyword_groups.items():
+            if any(keyword in query_lower for keyword in keywords):
+                requested_group = group_name
+                break
+
+        best_text = ""
+        if faq_entries:
+            ranked: List[tuple[int, str]] = []
+            for entry in faq_entries:
+                text = str(entry.get("text") or "").strip()
+                if not text:
+                    continue
+
+                score = 0
+                if requested_group == "refund":
+                    score += 5 if "refund or return policy" in text.lower() else 0
+                    score += 2 if "refund" in text.lower() else 0
+                    score += 2 if "exchange" in text.lower() else 0
+                elif requested_group == "warranty":
+                    score += 3 if "warranty" in text.lower() else 0
+                elif requested_group == "booking":
+                    score += 3 if "book an eye test online" in text.lower() else 0
+                elif requested_group == "after_sales":
+                    score += 3 if "after-sales support" in text.lower() else 0
+                elif requested_group == "stores":
+                    score += 3 if "stores located" in text.lower() else 0
+
+                for token in re.findall(r"[a-z0-9]+", query_lower):
+                    if len(token) > 2 and token in text.lower():
+                        score += 1
+
+                if score:
+                    ranked.append((score, text))
+
+            if ranked:
+                ranked.sort(key=lambda item: item[0], reverse=True)
+                best_text = ranked[0][1]
+
+        if requested_group == "refund" and not best_text:
+            best_text = (
+                "Calisto offers a 14-day return and refund policy for standard eyewear items in original unworn condition with the original receipt. "
+                "Custom prescription lenses are reviewed case by case."
+            )
+
+        if requested_group == "warranty" and not best_text:
+            best_text = (
+                "We can help with warranty and post-purchase issues. If you share the product issue, I can guide you or connect you with support."
+            )
+
+        if best_text:
+            dispatcher.utter_message(text=best_text)
+            dispatcher.utter_message(
+                text=tr(
+                    lang,
+                    "If you need help with a return, exchange, or support follow-up, I can connect you with the team.",
+                    "Jika anda perlukan bantuan untuk pemulangan, pertukaran, atau susulan sokongan, saya boleh hubungkan anda dengan pasukan kami.",
+                    "如果您需要退货、换货或售后协助，我可以帮您联系团队。"
+                ),
+                buttons=[
+                    {"title": tr(lang, "After-sales Support", "Sokongan Selepas Jualan", "售后支持"), "payload": "/after_sales_support"},
+                    {"title": tr(lang, "Warranty Help", "Bantuan Waranti", "保修协助"), "payload": "/warranty_claim"},
+                    {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
+                ],
+            )
+            return []
+
+        dispatcher.utter_message(
+            text=tr(
+                lang,
+                "I can help with returns, warranty, store info, or booking questions. Tell me which one you need.",
+                "Saya boleh bantu dengan pemulangan, waranti, info kedai, atau tempahan. Beritahu saya yang mana anda perlukan.",
+                "我可以协助退货、保修、门店信息或预约问题。请告诉我您需要哪一项。"
+            ),
+            buttons=[
+                {"title": tr(lang, "Refund Policy", "Polisi Refund", "退款政策"), "payload": "/ask_faq"},
+                {"title": tr(lang, "Warranty", "Waranti", "保修"), "payload": "/warranty_claim"},
+                {"title": tr(lang, "Book Eye Test", "Tempah Ujian Mata", "预约验光"), "payload": "/book_appointment"},
+            ],
+        )
+        return []
+
+
 class ActionPrefillLeadCapture(Action):
     def name(self) -> Text:
         return "action_prefill_lead_capture"
@@ -495,12 +786,34 @@ class ActionPrefillLeadCapture(Action):
             if normalized:
                 events.append(SlotSet(slot_name, normalized))
 
+        events.append(SlotSet("current_flow", "lead_capture"))
         return events
 
 
 class ValidateLeadCaptureForm(FormValidationAction):
     def name(self) -> Text:
         return "validate_lead_capture_form"
+
+    def _reject_slot(
+        self,
+        slot_name: str,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        retry_text: str,
+    ) -> Dict[Text, Any]:
+        intent = get_latest_intent(tracker)
+        requested_slot = tracker.get_slot("requested_slot") or slot_name
+
+        if intent["name"] in FORM_INTERRUPTION_INTENTS and intent["confidence"] >= INTENT_CONFIDENCE_THRESHOLD:
+            return {
+                slot_name: None,
+                "requested_slot": None,
+                "current_flow": FLOW_BY_INTENT.get(intent["name"], "interrupted"),
+            }
+
+        dispatcher.utter_message(text=retry_text)
+        dispatcher.utter_message(response=f"utter_ask_{requested_slot}")
+        return {slot_name: None}
 
     async def validate_lead_name(
         self,
@@ -510,10 +823,14 @@ class ValidateLeadCaptureForm(FormValidationAction):
         domain: Dict[Text, Any],
     ) -> Dict[Text, Any]:
         lang = get_language(tracker)
-        value = str(slot_value).strip()
-        if len(value) < 2:
-            dispatcher.utter_message(text=tr(lang, "Please share a valid name with at least 2 characters.", "Sila kongsi nama yang sah dengan sekurang-kurangnya 2 aksara.", "请输入至少 2 个字符的有效姓名。"))
-            return {"lead_name": None}
+        value = normalize_name(slot_value)
+        if not is_valid_name(value):
+            return self._reject_slot(
+                "lead_name",
+                dispatcher,
+                tracker,
+                tr(lang, "Please share your name only, without a product question or request.", "Sila kongsi nama anda sahaja, tanpa soalan atau permintaan produk.", "请只提供您的姓名，不要附带产品问题或请求。"),
+            )
         return {"lead_name": value}
 
     async def validate_contact_number(
@@ -524,11 +841,14 @@ class ValidateLeadCaptureForm(FormValidationAction):
         domain: Dict[Text, Any],
     ) -> Dict[Text, Any]:
         lang = get_language(tracker)
-        digits = re.sub(r"[^\d+]", "", str(slot_value))
-        if len(re.sub(r"\D", "", digits)) < 8:
-            dispatcher.utter_message(text=tr(lang, "Please provide a valid phone number including area or country code.", "Sila berikan nombor telefon yang sah termasuk kod kawasan atau negara.", "请输入有效的电话号码，并包含区号或国家代码。"))
-            return {"contact_number": None}
-        return {"contact_number": digits}
+        if not is_valid_phone(slot_value):
+            return self._reject_slot(
+                "contact_number",
+                dispatcher,
+                tracker,
+                tr(lang, "Please provide a valid phone number including area or country code.", "Sila berikan nombor telefon yang sah termasuk kod kawasan atau negara.", "请输入有效的电话号码，并包含区号或国家代码。"),
+            )
+        return {"contact_number": normalize_phone(slot_value)}
 
     async def validate_email(
         self,
@@ -538,11 +858,14 @@ class ValidateLeadCaptureForm(FormValidationAction):
         domain: Dict[Text, Any],
     ) -> Dict[Text, Any]:
         lang = get_language(tracker)
-        value = str(slot_value).strip()
-        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", value):
-            dispatcher.utter_message(text=tr(lang, "Please provide a valid email address.", "Sila berikan alamat e-mel yang sah.", "请输入有效的电子邮箱地址。"))
-            return {"email": None}
-        return {"email": value.lower()}
+        if not is_valid_email(slot_value):
+            return self._reject_slot(
+                "email",
+                dispatcher,
+                tracker,
+                tr(lang, "Please provide a valid email address.", "Sila berikan alamat e-mel yang sah.", "请输入有效的电子邮箱地址。"),
+            )
+        return {"email": normalize_email(slot_value)}
 
     async def validate_lead_location(
         self,
@@ -552,10 +875,14 @@ class ValidateLeadCaptureForm(FormValidationAction):
         domain: Dict[Text, Any],
     ) -> Dict[Text, Any]:
         lang = get_language(tracker)
-        value = str(slot_value).strip()
-        if len(value) < 2:
-            dispatcher.utter_message(text=tr(lang, "Please share your city or area so we can route your inquiry properly.", "Sila kongsi bandar atau kawasan anda supaya kami boleh arahkan pertanyaan anda dengan betul.", "请提供您所在的城市或区域，以便我们正确安排您的咨询。"))
-            return {"lead_location": None}
+        value = normalize_free_text(slot_value)
+        if not is_valid_location(value):
+            return self._reject_slot(
+                "lead_location",
+                dispatcher,
+                tracker,
+                tr(lang, "Please share your city or area so we can route your inquiry properly.", "Sila kongsi bandar atau kawasan anda supaya kami boleh arahkan pertanyaan anda dengan betul.", "请提供您所在的城市或区域，以便我们正确安排您的咨询。"),
+            )
         return {"lead_location": value}
 
     async def validate_preferred_service(
@@ -566,10 +893,14 @@ class ValidateLeadCaptureForm(FormValidationAction):
         domain: Dict[Text, Any],
     ) -> Dict[Text, Any]:
         lang = get_language(tracker)
-        value = str(slot_value).strip()
-        if len(value) < 3:
-            dispatcher.utter_message(text=tr(lang, "Please tell us which product or service you are interested in.", "Sila beritahu kami produk atau perkhidmatan yang anda minati.", "请告诉我们您感兴趣的产品或服务。"))
-            return {"preferred_service": None}
+        value = normalize_free_text(slot_value)
+        if not is_valid_service(value):
+            return self._reject_slot(
+                "preferred_service",
+                dispatcher,
+                tracker,
+                tr(lang, "Please tell us which product or service you are interested in.", "Sila beritahu kami produk atau perkhidmatan yang anda minati.", "请告诉我们您感兴趣的产品或服务。"),
+            )
         return {"preferred_service": value}
 
     async def validate_purchase_timeline(
@@ -580,21 +911,81 @@ class ValidateLeadCaptureForm(FormValidationAction):
         domain: Dict[Text, Any],
     ) -> Dict[Text, Any]:
         lang = get_language(tracker)
-        value = str(slot_value).strip()
-        allowed = {
-            "this week": "This Week",
-            "within 2 weeks": "Within 2 Weeks",
-            "just exploring": "Just Exploring",
-        }
-        normalized = allowed.get(value.lower())
+        value = normalize_free_text(slot_value)
+        normalized = normalize_timeline(value)
         if normalized:
             return {"purchase_timeline": normalized}
+        return self._reject_slot(
+            "purchase_timeline",
+            dispatcher,
+            tracker,
+            tr(lang, "Let me know if you are ready this week, within 2 weeks, or just exploring.", "Beritahu saya sama ada anda bersedia minggu ini, dalam 2 minggu, atau sekadar melihat-lihat.", "请告诉我您是本周决定、两周内决定，还是先看看。"),
+        )
 
-        if len(value) < 3:
-            dispatcher.utter_message(text=tr(lang, "Let me know if you are ready this week, within 2 weeks, or just exploring.", "Beritahu saya sama ada anda bersedia minggu ini, dalam 2 minggu, atau sekadar melihat-lihat.", "请告诉我您是本周决定、两周内决定，还是先看看。"))
-            return {"purchase_timeline": None}
 
-        return {"purchase_timeline": value}
+class ActionHandleLeadCaptureInterruption(Action):
+    def name(self) -> Text:
+        return "action_handle_lead_capture_interruption"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
+        intent = get_latest_intent(tracker)
+        requested_slot = str(tracker.get_slot("requested_slot") or "").strip()
+        intent_name = intent["name"]
+
+        if intent_name not in FORM_INTERRUPTION_INTENTS or intent["confidence"] < INTENT_CONFIDENCE_THRESHOLD:
+            dispatcher.utter_message(text=tr(lang, "I still need that detail to continue.", "Saya masih perlukan butiran itu untuk teruskan.", "我还需要这项信息才能继续。"))
+            if requested_slot:
+                dispatcher.utter_message(response=f"utter_ask_{requested_slot}")
+            return []
+
+        events: List[Dict[Text, Any]] = [
+            SlotSet("requested_slot", None),
+            ActiveLoop(None),
+            SlotSet("current_flow", FLOW_BY_INTENT.get(intent_name, "interrupted")),
+        ]
+
+        if intent_name == "browse_eyewear":
+            events.extend(ActionResetEyewearSlots().run(dispatcher, tracker, domain))
+            dispatcher.utter_message(response="utter_ask_product_type")
+        elif intent_name == "ask_pricing":
+            dispatcher.utter_message(response="utter_pricing_intro")
+        elif intent_name == "select_pricing_category":
+            events.extend(ActionShowPricing().run(dispatcher, tracker, domain))
+        elif intent_name in {"lens_vision_solutions", "ask_lens_type"}:
+            if intent_name == "ask_lens_type":
+                events.extend(ActionExplainLens().run(dispatcher, tracker, domain))
+            else:
+                dispatcher.utter_message(response="utter_ask_lens_type")
+        elif intent_name == "find_a_store":
+            events.extend(ActionAskCity().run(dispatcher, tracker, domain))
+        elif intent_name == "choose_city":
+            events.extend(ActionFindStore().run(dispatcher, tracker, domain))
+        elif intent_name == "store_hours":
+            events.extend(ActionHandleStoreHours().run(dispatcher, tracker, domain))
+        elif intent_name == "search_product":
+            events.extend(ActionFilterProducts().run(dispatcher, tracker, domain))
+        elif intent_name == "search_product_by_attribute":
+            events.extend(ActionSearchProductByAttribute().run(dispatcher, tracker, domain))
+        elif intent_name in {"product_recommendation", "inform_budget"}:
+            events.extend(ActionRecommendProducts().run(dispatcher, tracker, domain))
+        elif intent_name == "select_product_type":
+            events.extend(ActionAskBrand().run(dispatcher, tracker, domain))
+        elif intent_name in {"select_brand", "select_budget"}:
+            events.extend(ActionFilterProducts().run(dispatcher, tracker, domain))
+        elif intent_name == "ask_faq":
+            events.append(FollowupAction("action_document_search"))
+        else:
+            if requested_slot:
+                dispatcher.utter_message(response=f"utter_ask_{requested_slot}")
+            return []
+
+        return events
 
 
 class ActionResetEyewearSlots(Action):
@@ -1211,4 +1602,4 @@ class ActionSubmitLeadCapture(Action):
 
         if response and response.get("lead_id"):
             dispatcher.utter_message(text=tr(lang, f"Reference ID: {response['lead_id']}", f"ID Rujukan: {response['lead_id']}", f"参考编号：{response['lead_id']}"))
-        return []
+        return [SlotSet("current_flow", None), SlotSet("requested_slot", None)]
