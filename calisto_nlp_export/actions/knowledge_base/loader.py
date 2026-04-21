@@ -8,6 +8,7 @@ import csv
 import re
 from typing import List, Tuple
 
+import fitz
 import pypdf
 import docx
 
@@ -30,7 +31,16 @@ def _clean_pdf_text(text: str) -> str:
 
 
 def load_pdf(path: str) -> str:
-    """Extract all text from a PDF file."""
+    """Extract all text from a PDF file with PyMuPDF first, pypdf fallback."""
+    try:
+        with fitz.open(path) as document:
+            pages = [page.get_text("text") or "" for page in document]
+        text = "\n".join(pages)
+        if text.strip():
+            return _clean_pdf_text(text)
+    except Exception:
+        pass
+
     reader = pypdf.PdfReader(path)
     pages = [page.extract_text() or "" for page in reader.pages]
     return _clean_pdf_text("\n".join(pages))

@@ -41,6 +41,23 @@ def _merge_small_blocks(
     return merged
 
 
+def _window_words(text: str, chunk_size: int, overlap: int) -> List[str]:
+    words = text.split()
+    if not words:
+        return []
+
+    step = max(chunk_size - max(overlap, 0), 1)
+    windows: List[str] = []
+    for start in range(0, len(words), step):
+        window = words[start:start + chunk_size]
+        if not window:
+            continue
+        windows.append(" ".join(window))
+        if start + chunk_size >= len(words):
+            break
+    return windows
+
+
 def prepare_chunks(
     documents: List[Tuple[str, str]],
     chunk_size: int = 100,
@@ -57,6 +74,7 @@ def prepare_chunks(
             paragraphs = _split_paragraphs(text)
             blocks = _merge_small_blocks(paragraphs, min_words=15, max_words=chunk_size)
             for block in blocks:
-                all_chunks.append((source, block))
+                for window in _window_words(block, chunk_size, overlap):
+                    all_chunks.append((source, window))
 
     return all_chunks

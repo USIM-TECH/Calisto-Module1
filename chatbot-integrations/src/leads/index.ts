@@ -8,6 +8,7 @@ export type {
   ConversationMessageRecord,
   ConversationRecord,
   DeduplicationRecord,
+  LeadAiState,
   LeadRecord,
   RuntimeDataShape,
   WebhookEventRecord,

@@ -7,9 +7,17 @@ export { WebsiteChannel, type WebsiteChatRequest, type WebsiteChatResponse } fro
 export { HubSpotClient, type HubSpotConfig } from './integrations/crm/hubspot/index.js'
 export { createWebhookRouter, type WebhookRouterConfig } from './core/webhook/index.js'
 export { verifyMetaSignature } from './core/auth/index.js'
+export { LocalReasoningClient, ReasoningEngine, adaptMessagesForEmotion } from './core/reasoning/index.js'
 export { type Logger, ConsoleLogger, createConsoleLogger } from './core/utils/logger.js'
 export { validateMetaSignature, chunkArray, truncate, sleep, safeJsonParse } from './core/utils/helpers.js'
-export { NLPClient, type NLPClientConfig, type NLPResponse } from './core/utils/nlp-client.js'
+export {
+  NLPClient,
+  type NLPClientConfig,
+  type NLPParseResponse,
+  type NLPRequestMetadata,
+  type NLPResponse,
+  type NLPTrackerSnapshot,
+} from './core/utils/nlp-client.js'
 
 
 export type {

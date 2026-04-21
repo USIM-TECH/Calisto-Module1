@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    HF_HOME=/tmp/huggingface \
+    TRANSFORMERS_CACHE=/tmp/huggingface
+
+WORKDIR /app
+
+COPY reasoning-requirements.txt /app/reasoning-requirements.txt
+RUN pip install --no-cache-dir -r /app/reasoning-requirements.txt
+
+COPY reasoning_service/ /app/reasoning_service/
+
+EXPOSE 8008
+
+CMD ["uvicorn", "reasoning_service.server:app", "--host", "0.0.0.0", "--port", "8008"]

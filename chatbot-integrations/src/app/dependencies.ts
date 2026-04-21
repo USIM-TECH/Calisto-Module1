@@ -3,6 +3,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import type { AppConfig } from '../config/index.js'
 import { loadConfig } from '../config/index.js'
+import { LocalReasoningClient, ReasoningEngine } from '../core/reasoning/index.js'
 import { ConsoleLogger, NLPClient, type Logger } from '../core/utils/index.js'
 import { InstagramChannel } from '../integrations/channels/instagram/index.js'
 import { MessengerChannel } from '../integrations/channels/messenger/index.js'
@@ -24,6 +25,8 @@ export interface AppDependencies {
   runtimeStore: RuntimeStore
   orchestrator: LeadOrchestrator
   nlpClient: NLPClient
+  reasoningClient: LocalReasoningClient
+  reasoningEngine: ReasoningEngine
   whatsapp?: WhatsAppChannel
   instagram?: InstagramChannel
   messenger?: MessengerChannel
@@ -44,9 +47,27 @@ export function createDependencies(): AppDependencies {
   const config = loadConfig()
   const runtimeStore = new RuntimeStore(config.dataDir)
   const deduplicator = createMessageDeduplicator(runtimeStore, config.dedupTtlMs)
-  const nlpClient = new NLPClient({ rasaUrl: config.rasaUrl }, logger)
+  const nlpClient = new NLPClient({
+    rasaUrl: config.rasaUrl,
+    timeout: config.rasaTimeoutMs,
+  }, logger)
+  const reasoningClient = new LocalReasoningClient({
+    url: config.reasoning.url,
+    timeoutMs: config.reasoning.timeoutMs,
+  }, logger)
+  const reasoningEngine = new ReasoningEngine({
+    logger,
+    nlpClient,
+    localReasoningClient: reasoningClient,
+    fastPathConfidence: config.reasoning.fastPathConfidence,
+  })
 
   logger.info(`NLP client configured for ${config.rasaUrl}`)
+  if (config.reasoning.url) {
+    logger.info(`Reasoning client configured for ${config.reasoning.url}`)
+  } else {
+    logger.warn('Reasoning client disabled; fast-path heuristics only')
+  }
 
   let whatsapp: WhatsAppChannel | undefined
   let instagram: InstagramChannel | undefined
@@ -63,10 +84,12 @@ export function createDependencies(): AppDependencies {
   const orchestrator = new LeadOrchestrator({
     logger,
     nlpClient,
+    reasoningEngine,
     deduplicator,
     runtimeStore,
     hubspot,
     responseStyle: config.responseStyle,
+    emotionAdaptationEnabled: config.reasoning.emotionAdaptationEnabled,
   })
   const website = new WebsiteChannel(orchestrator, logger)
 
@@ -136,6 +159,8 @@ export function createDependencies(): AppDependencies {
     runtimeStore,
     orchestrator,
     nlpClient,
+    reasoningClient,
+    reasoningEngine,
     whatsapp,
     instagram,
     messenger,

@@ -1,4 +1,20 @@
 import type { IncomingMessage } from '../../core/types.js'
+import type { ReasoningEmotion, ReasoningStrategy } from '../../core/reasoning/index.js'
+
+export interface LeadAiState {
+  currentFlow?: string
+  expectedSlot?: string
+  activeLoop?: string
+  intent?: string
+  rasaIntent?: string
+  intentConfidence?: number
+  emotion?: ReasoningEmotion
+  useRag?: boolean
+  isInterruption?: boolean
+  isSlotValid?: boolean
+  strategy?: ReasoningStrategy
+  updatedAt: string
+}
 
 export interface LeadRecord {
   id: string
@@ -16,6 +32,7 @@ export interface LeadRecord {
   crmStatus: 'pending' | 'synced' | 'failed'
   crmRecordId?: string
   lastIntent?: string
+  aiState?: LeadAiState
   lastMessageAt: string
   createdAt: string
   updatedAt: string
@@ -32,7 +49,7 @@ export interface ConversationMessageRecord {
     sourceId: string
     conversationId: string
     leadId: string
-  }
+  } & Record<string, unknown>
 }
 
 export interface ConversationRecord {

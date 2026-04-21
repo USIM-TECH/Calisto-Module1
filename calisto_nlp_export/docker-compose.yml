@@ -13,12 +13,15 @@
 services:
   # ── Rasa NLP Server ──────────────────────────────────────
   rasa:
+    platform: linux/arm64
     build:
       context: .
       dockerfile: Dockerfile
     entrypoint: ["rasa"]
     command:
       - run
+      - --model
+      - /app/models/20260320-191439-beige-sill.tar.gz
       - --enable-api
       - --cors
       - "*"
@@ -27,15 +30,20 @@ services:
       - --credentials
       - credentials.yml
       - --port
-      - "5005"
+      - "5015"
     ports:
-      - "5005:5005"
+      - "5015:5015"
     depends_on:
       - action-server
     volumes:
       - ./models:/app/models
     networks:
       - calisto-net
+    deploy:
+      resources:
+        limits:
+          memory: 4096M
+          cpus: '2.0'
 
   # ── Rasa Action Server ──────────────────────────────────
   action-server:
@@ -44,6 +52,20 @@ services:
       dockerfile: Dockerfile.actions
     ports:
       - "5055:5055"
+    networks:
+      - calisto-net
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '1.0'
+
+  reasoning-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.reasoning
+    ports:
+      - "8008:8008"
     networks:
       - calisto-net
 

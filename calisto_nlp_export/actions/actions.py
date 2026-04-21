@@ -14,6 +14,9 @@ from rasa_sdk.events import ActiveLoop, FollowupAction, SlotSet
 from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk.forms import FormValidationAction
 
+from actions.knowledge_base.hybrid_retriever import hybrid_search
+from actions.knowledge_base.indexer import KnowledgeSearcher
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -395,6 +398,22 @@ def latest_metadata(tracker: Tracker) -> Dict[str, Any]:
     return metadata if isinstance(metadata, dict) else {}
 
 
+def latest_message_text(tracker: Tracker) -> str:
+    metadata = latest_metadata(tracker)
+    original_text = metadata.get("originalText") or metadata.get("original_text")
+    preferred_text = original_text if isinstance(original_text, str) and original_text.strip() else tracker.latest_message.get("text")
+    return normalize_free_text(preferred_text or "")
+
+
+def clean_retrieved_answer(text: str) -> str:
+    answer = " ".join(text.split()).strip()
+    if " A:" in answer:
+        answer = answer.split(" A:", 1)[1].strip()
+    if " Q:" in answer:
+        answer = answer.split(" Q:", 1)[0].strip()
+    return answer
+
+
 def infer_service_from_intent(tracker: Tracker) -> str:
     intent_name = str(tracker.latest_message.get("intent", {}).get("name") or "").strip()
     service_map = {
@@ -621,7 +640,7 @@ def get_language(tracker: Tracker) -> str:
     if slot_language in {"en", "ms", "zh"}:
         return slot_language
 
-    return detect_language_from_text(tracker.latest_message.get("text") or "")
+    return detect_language_from_text(latest_message_text(tracker))
 
 
 def tr(lang: str, en: str, ms: str, zh: str) -> str:
@@ -643,7 +662,7 @@ class ActionSetLanguage(Action):
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
         current = str(tracker.get_slot("preferred_language") or "").strip().lower()
-        detected = detect_language_from_text(tracker.latest_message.get("text") or "")
+        detected = detect_language_from_text(latest_message_text(tracker))
         language = detected or (current if current in {"en", "ms", "zh"} else "en")
         return [SlotSet("preferred_language", language)]
 
@@ -659,74 +678,56 @@ class ActionDocumentSearch(Action):
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
         lang = get_language(tracker)
-        query = normalize_free_text(tracker.latest_message.get("text") or "")
-        query_lower = query.lower()
-
-        faq_entries = [
-            entry for entry in load_kb_metadata()
-            if "faq" in str(entry.get("source") or "").lower()
-        ]
-
-        keyword_groups = {
-            "refund": {"refund", "return", "exchange", "policy", "size", "fit"},
-            "warranty": {"warranty", "cover", "broken", "damage"},
-            "booking": {"book", "appointment", "eye test", "online"},
-            "after_sales": {"adjustment", "after-sales", "after sales", "fitting", "support"},
-            "stores": {"store", "location", "branch", "outlet"},
-        }
-
-        requested_group: Optional[str] = None
-        for group_name, keywords in keyword_groups.items():
-            if any(keyword in query_lower for keyword in keywords):
-                requested_group = group_name
-                break
-
-        best_text = ""
-        if faq_entries:
-            ranked: List[tuple[int, str]] = []
-            for entry in faq_entries:
-                text = str(entry.get("text") or "").strip()
-                if not text:
-                    continue
-
-                score = 0
-                if requested_group == "refund":
-                    score += 5 if "refund or return policy" in text.lower() else 0
-                    score += 2 if "refund" in text.lower() else 0
-                    score += 2 if "exchange" in text.lower() else 0
-                elif requested_group == "warranty":
-                    score += 3 if "warranty" in text.lower() else 0
-                elif requested_group == "booking":
-                    score += 3 if "book an eye test online" in text.lower() else 0
-                elif requested_group == "after_sales":
-                    score += 3 if "after-sales support" in text.lower() else 0
-                elif requested_group == "stores":
-                    score += 3 if "stores located" in text.lower() else 0
-
-                for token in re.findall(r"[a-z0-9]+", query_lower):
-                    if len(token) > 2 and token in text.lower():
-                        score += 1
-
-                if score:
-                    ranked.append((score, text))
-
-            if ranked:
-                ranked.sort(key=lambda item: item[0], reverse=True)
-                best_text = ranked[0][1]
-
-        if requested_group == "refund" and not best_text:
-            best_text = (
-                "Calisto offers a 14-day return and refund policy for standard eyewear items in original unworn condition with the original receipt. "
-                "Custom prescription lenses are reviewed case by case."
+        query = latest_message_text(tracker)
+        if not query:
+            dispatcher.utter_message(
+                text=tr(
+                    lang,
+                    "Could you rephrase your question so I can search the knowledge base?",
+                    "Boleh anda tulis semula soalan anda supaya saya boleh semak pangkalan pengetahuan?",
+                    "请换一种说法提问，我才能查询知识库。",
+                )
             )
+            return []
 
-        if requested_group == "warranty" and not best_text:
-            best_text = (
-                "We can help with warranty and post-purchase issues. If you share the product issue, I can guide you or connect you with support."
+        intent = tracker.latest_message.get("intent") or {}
+        entities = tracker.latest_message.get("entities") or []
+        entity_map: Dict[str, List[str]] = {}
+        for entity in entities:
+            entity_name = entity.get("entity")
+            entity_value = entity.get("value")
+            if entity_name and entity_value is not None:
+                entity_map.setdefault(entity_name, []).append(str(entity_value))
+
+        try:
+            searcher = KnowledgeSearcher.get()
+            results = hybrid_search(
+                query=query,
+                searcher=searcher,
+                bm25=searcher.bm25,
+                entities=entity_map,
+                intent_name=str(intent.get("name") or "").strip() or None,
+                intent_confidence=float(intent.get("confidence") or 0.0),
             )
+        except Exception as exc:
+            logger.exception("Knowledge-base retrieval failed: %s", exc)
+            dispatcher.utter_message(
+                text=tr(
+                    lang,
+                    "The knowledge search is temporarily unavailable. Please try again shortly.",
+                    "Carian pengetahuan tidak tersedia buat sementara waktu. Sila cuba sebentar lagi.",
+                    "知识检索暂时不可用，请稍后再试。",
+                )
+            )
+            return []
 
-        if best_text:
-            dispatcher.utter_message(text=best_text)
+        if results:
+            answer = clean_retrieved_answer(str(results[0].get("text") or "").strip())
+            words = answer.split()
+            if len(words) > 150:
+                answer = " ".join(words[:150]) + " ..."
+
+            dispatcher.utter_message(text=answer)
             dispatcher.utter_message(
                 text=tr(
                     lang,

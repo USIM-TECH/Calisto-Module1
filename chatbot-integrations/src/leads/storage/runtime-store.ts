@@ -5,6 +5,7 @@ import { FileJsonStore } from './file-json-store.js'
 import type {
   ConversationMessageRecord,
   ConversationRecord,
+  LeadAiState,
   LeadRecord,
   RuntimeDataShape,
   WebhookEventRecord,
@@ -27,6 +28,7 @@ export interface LeadSnapshot {
   responseStyle?: LeadRecord['responseStyle']
   qualificationStatus: LeadRecord['qualificationStatus']
   lastIntent?: string
+  aiState?: LeadAiState
 }
 
 export class RuntimeStore {
@@ -92,6 +94,7 @@ export class RuntimeStore {
         qualificationStatus: 'new',
         crmStatus: 'pending',
         lastMessageAt: message.timestamp,
+        aiState: undefined,
         createdAt: timestamp,
         updatedAt: timestamp,
       }

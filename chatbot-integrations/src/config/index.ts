@@ -15,14 +15,35 @@ const optionalString = z.preprocess((value) => {
   return trimmed === '' ? undefined : trimmed
 }, z.string().optional())
 
+const booleanish = z.preprocess((value) => {
+  if (typeof value === 'boolean') {
+    return value
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+      return true
+    }
+    if (['0', 'false', 'no', 'off'].includes(normalized)) {
+      return false
+    }
+  }
+  return value
+}, z.boolean())
+
 const responseStyleSchema = z.enum(['casual', 'professional', 'warm', 'concierge']).default('casual')
 
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   RASA_URL: z.string().default('http://localhost:5005'),
+  RASA_TIMEOUT_MS: z.coerce.number().int().positive().default(700),
   DATA_DIR: optionalString,
   DEDUP_TTL_MS: z.coerce.number().int().positive().default(5 * 60 * 1000),
   RESPONSE_STYLE: responseStyleSchema,
+  REASONING_URL: optionalString,
+  REASONING_TIMEOUT_MS: z.coerce.number().int().positive().default(1000),
+  REASONING_FAST_PATH_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.7),
+  EMOTION_ADAPTATION_ENABLED: booleanish.default(true),
 
   WEBSITE_AUTH_TOKEN: optionalString,
   WEBSITE_ALLOWED_ORIGINS: optionalString,
@@ -67,9 +88,16 @@ const envSchema = z.object({
 export interface AppConfig {
   port: number
   rasaUrl: string
+  rasaTimeoutMs: number
   dataDir: string
   dedupTtlMs: number
   responseStyle: 'casual' | 'professional' | 'warm' | 'concierge'
+  reasoning: {
+    url?: string
+    timeoutMs: number
+    fastPathConfidence: number
+    emotionAdaptationEnabled: boolean
+  }
   website: {
     authToken?: string
     allowedOrigins: string[]
@@ -90,9 +118,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   return {
     port: parsed.PORT,
     rasaUrl: parsed.RASA_URL,
+    rasaTimeoutMs: parsed.RASA_TIMEOUT_MS,
     dataDir: parsed.DATA_DIR ?? 'data/runtime',
     dedupTtlMs: parsed.DEDUP_TTL_MS,
     responseStyle: parsed.RESPONSE_STYLE,
+    reasoning: {
+      url: parsed.REASONING_URL,
+      timeoutMs: parsed.REASONING_TIMEOUT_MS,
+      fastPathConfidence: parsed.REASONING_FAST_PATH_CONFIDENCE,
+      emotionAdaptationEnabled: parsed.EMOTION_ADAPTATION_ENABLED,
+    },
     website: {
       authToken: parsed.WEBSITE_AUTH_TOKEN,
       allowedOrigins: (parsed.WEBSITE_ALLOWED_ORIGINS ?? '')

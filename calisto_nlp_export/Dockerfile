@@ -21,6 +21,9 @@ COPY credentials.yml .
 COPY data/ ./data/
 COPY actions/ ./actions/
 
+# Ensure permissions
+RUN chown -R 1001:1001 /app
+
 # Switch back to non-root user
 USER 1001
 

@@ -1,4 +1,5 @@
 import express, { type Express } from 'express'
+import { z } from 'zod'
 import { createWebhookRouter } from '../core/webhook/index.js'
 import {
   findConversationByLeadId,
@@ -13,11 +14,20 @@ import {
 import type { AppDependencies } from './dependencies.js'
 import { createWebsiteRateLimiter } from './website-rate-limiter.js'
 
+const reasoningRequestSchema = z.object({
+  senderId: z.string().min(1).max(100).optional(),
+  currentFlow: z.string().min(1).max(100).optional(),
+  expectedSlot: z.string().min(1).max(100).optional(),
+  userInput: z.string().min(1).max(2000),
+})
+
 export function createApp(dependencies: AppDependencies): Express {
   const {
     config,
     logger,
     nlpClient,
+    reasoningClient,
+    reasoningEngine,
     whatsapp,
     instagram,
     messenger,
@@ -97,6 +107,31 @@ export function createApp(dependencies: AppDependencies): Express {
     }
   })
 
+  app.post('/reasoning/evaluate', async (req, res) => {
+    try {
+      const payload = reasoningRequestSchema.parse(req.body)
+      const evaluation = await reasoningEngine.evaluate({
+        userId: payload.senderId ?? `reasoning-${Date.now()}`,
+        userInput: payload.userInput,
+        state: {
+          currentFlow: payload.currentFlow,
+          expectedSlot: payload.expectedSlot,
+        },
+      })
+
+      res.json({
+        intent: evaluation.intent,
+        is_slot_valid: evaluation.isSlotValid,
+        is_interruption: evaluation.isInterruption,
+        emotion: evaluation.emotion,
+        use_rag: evaluation.useRag,
+      })
+    } catch (error: any) {
+      logger.error(`Reasoning route error: ${error.message}`)
+      res.status(400).json({ error: error.message })
+    }
+  })
+
   app.get('/', (_req, res) => {
     res.json({
       name: 'chatbot-integrations',
@@ -113,9 +148,11 @@ export function createApp(dependencies: AppDependencies): Express {
       },
       nlp: {
         rasaUrl: config.rasaUrl,
+        reasoningUrl: config.reasoning.url ?? null,
       },
       endpoints: {
         health: '/health',
+        reasoning: '/reasoning/evaluate',
         whatsapp: whatsapp ? '/webhooks/whatsapp' : null,
         instagram: instagram ? '/webhooks/instagram' : null,
         messenger: messenger ? '/webhooks/messenger' : null,
@@ -130,9 +167,11 @@ export function createApp(dependencies: AppDependencies): Express {
 
   app.get('/health', async (_req, res) => {
     const nlpHealth = await nlpClient.healthCheck()
+    const reasoningHealth = await reasoningClient.healthCheck()
     res.json({
       server: 'ok',
       nlp: nlpHealth,
+      reasoning: reasoningHealth,
       channels: {
         whatsapp: Boolean(whatsapp),
         instagram: Boolean(instagram),

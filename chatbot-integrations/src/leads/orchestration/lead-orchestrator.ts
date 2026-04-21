@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import type { IncomingMessage, OutgoingMessage } from '../../core/types.js'
-import type { NLPClient, Logger } from '../../core/utils/index.js'
+import { adaptMessagesForEmotion, type ReasoningEngine, type ReasoningEvaluation } from '../../core/reasoning/index.js'
+import type { NLPClient, Logger, NLPRequestMetadata, NLPTrackerSnapshot } from '../../core/utils/index.js'
 import type { HubSpotClient } from '../../integrations/crm/hubspot/index.js'
 import type { MessageDeduplicator } from './message-deduplicator.js'
 import { mapNlpResponseToOutgoingMessages } from './rasa-outgoing.js'
@@ -10,17 +11,23 @@ import { RuntimeStore } from '../storage/runtime-store.js'
 interface LeadOrchestratorOptions {
   logger: Logger
   nlpClient: NLPClient
+  reasoningEngine: ReasoningEngine
   deduplicator: MessageDeduplicator
   runtimeStore: RuntimeStore
   hubspot?: HubSpotClient
   responseStyle?: 'casual' | 'professional' | 'warm' | 'concierge'
+  emotionAdaptationEnabled?: boolean
 }
 
 type ResponseStyle = 'casual' | 'professional' | 'warm' | 'concierge'
 
+const FINAL_FALLBACK_MESSAGE = "I'm having trouble right now. Please try again shortly."
+const LOW_CONFIDENCE_THRESHOLD = 0.7
+
 export interface OrchestratedReply {
   lead: LeadRecord
   outgoingMessages: OutgoingMessage[]
+  reasoning: ReasoningEvaluation
 }
 
 function normalizeText(value: unknown): string | undefined {
@@ -32,8 +39,14 @@ function normalizeText(value: unknown): string | undefined {
   return trimmed || undefined
 }
 
-function deriveLeadSnapshot(tracker: { latestIntent?: string; slots: Record<string, unknown> } | undefined) {
+function deriveLeadSnapshot(
+  tracker: NLPTrackerSnapshot | undefined,
+  reasoning?: ReasoningEvaluation,
+) {
   const slots = tracker?.slots ?? {}
+  const trackerCurrentFlow = normalizeText(slots.current_flow)
+  const trackerExpectedSlot = normalizeText(tracker?.requestedSlot ?? slots.requested_slot)
+  const trackerActiveLoop = normalizeText(tracker?.activeLoop)
   const leadName = normalizeText(slots.lead_name ?? slots.customer_name ?? slots.name)
   const email = normalizeText(slots.email)
   const phone = normalizeText(slots.contact_number ?? slots.phone_number ?? slots.phone)
@@ -59,6 +72,22 @@ function deriveLeadSnapshot(tracker: { latestIntent?: string; slots: Record<stri
     location,
     qualificationStatus,
     lastIntent: tracker?.latestIntent,
+    aiState: {
+      currentFlow: trackerCurrentFlow
+        ?? (tracker?.activeLoop === 'lead_capture_form' ? 'lead_capture' : undefined)
+        ?? (tracker ? undefined : reasoning?.currentFlow),
+      expectedSlot: trackerExpectedSlot ?? (tracker ? undefined : reasoning?.expectedSlot),
+      activeLoop: trackerActiveLoop ?? (tracker ? undefined : reasoning?.activeLoop),
+      intent: reasoning?.intent ?? tracker?.latestIntent,
+      rasaIntent: tracker?.latestIntent ?? reasoning?.rasaIntent,
+      intentConfidence: tracker?.latestIntentConfidence ?? reasoning?.parseConfidence,
+      emotion: reasoning?.emotion,
+      useRag: reasoning?.useRag,
+      isInterruption: reasoning?.isInterruption,
+      isSlotValid: reasoning?.isSlotValid,
+      strategy: reasoning?.strategy,
+      updatedAt: new Date().toISOString(),
+    },
   }
 }
 
@@ -93,7 +122,7 @@ function deriveMessageLeadSnapshot(message: IncomingMessage): Partial<Pick<LeadR
   }
 }
 
-function deriveNlpMetadata(message: IncomingMessage): Record<string, string> | undefined {
+function deriveNlpMetadata(message: IncomingMessage): NLPRequestMetadata | undefined {
   const raw = message.rawPayload && typeof message.rawPayload === 'object'
     ? message.rawPayload as Record<string, unknown>
     : {}
@@ -108,7 +137,7 @@ function deriveNlpMetadata(message: IncomingMessage): Record<string, string> | u
   }
 
   const entries = Object.entries(metadata).filter(([, value]) => value)
-  return entries.length ? Object.fromEntries(entries) as Record<string, string> : undefined
+  return entries.length ? Object.fromEntries(entries) : undefined
 }
 
 function nextOutboundMessageId(): string {
@@ -262,18 +291,22 @@ function decorateWhatsappMessages(
 export class LeadOrchestrator {
   private readonly _logger: Logger
   private readonly _nlpClient: NLPClient
+  private readonly _reasoningEngine: ReasoningEngine
   private readonly _deduplicator: MessageDeduplicator
   private readonly _runtimeStore: RuntimeStore
   private readonly _hubspot?: HubSpotClient
   private readonly _responseStyle: ResponseStyle
+  private readonly _emotionAdaptationEnabled: boolean
 
   constructor(options: LeadOrchestratorOptions) {
     this._logger = options.logger
     this._nlpClient = options.nlpClient
+    this._reasoningEngine = options.reasoningEngine
     this._deduplicator = options.deduplicator
     this._runtimeStore = options.runtimeStore
     this._hubspot = options.hubspot
     this._responseStyle = options.responseStyle ?? 'casual'
+    this._emotionAdaptationEnabled = options.emotionAdaptationEnabled ?? true
   }
 
   public async process(message: IncomingMessage): Promise<OrchestratedReply | undefined> {
@@ -292,36 +325,6 @@ export class LeadOrchestrator {
       this._responseStyle,
       lead.responseStyle,
     )
-
-    this._runtimeStore.appendConversationMessage(
-      lead.id,
-      {
-        direction: 'inbound',
-        messageId: message.messageId,
-        text: messageText,
-        messageType: message.type,
-        timestamp: message.timestamp,
-        metadata: {
-          channel: message.channel,
-          sourceId,
-          conversationId: message.conversationId,
-          leadId: lead.id,
-        },
-      },
-      message.channel,
-      sourceId,
-      message.conversationId,
-    )
-
-    this._runtimeStore.appendWebhookEvent({
-      channel: message.channel,
-      direction: 'inbound',
-      path: `/messages/${message.channel}`,
-      sourceId,
-      conversationId: message.conversationId,
-      leadId: lead.id,
-      payload: message.rawPayload,
-    })
 
     const messageSnapshot = deriveMessageLeadSnapshot(message)
     const preNlpSnapshot: Partial<LeadRecord> = {}
@@ -345,15 +348,135 @@ export class LeadOrchestrator {
       : lead
 
     if (!messageText) {
+      this._runtimeStore.appendConversationMessage(
+        lead.id,
+        {
+          direction: 'inbound',
+          messageId: message.messageId,
+          text: messageText,
+          messageType: message.type,
+          timestamp: message.timestamp,
+          metadata: {
+            channel: message.channel,
+            sourceId,
+            conversationId: message.conversationId,
+            leadId: lead.id,
+          },
+        },
+        message.channel,
+        sourceId,
+        message.conversationId,
+      )
+      this._runtimeStore.appendWebhookEvent({
+        channel: message.channel,
+        direction: 'inbound',
+        path: `/messages/${message.channel}`,
+        sourceId,
+        conversationId: message.conversationId,
+        leadId: lead.id,
+        payload: message.rawPayload,
+      })
+
       this._logger.warn(`[${message.channel}] Ignoring non-text message for lead ${lead.id}`)
       return {
         lead: leadWithMessageData,
         outgoingMessages: [],
+        reasoning: {
+          currentFlow: leadWithMessageData.aiState?.currentFlow,
+          expectedSlot: leadWithMessageData.aiState?.expectedSlot,
+          activeLoop: leadWithMessageData.aiState?.activeLoop,
+          intent: leadWithMessageData.aiState?.intent ?? 'general_query',
+          rasaIntent: leadWithMessageData.aiState?.rasaIntent ?? 'ask_faq',
+          isSlotValid: false,
+          isInterruption: false,
+          emotion: leadWithMessageData.aiState?.emotion ?? 'neutral',
+          useRag: Boolean(leadWithMessageData.aiState?.useRag),
+          strategy: leadWithMessageData.aiState?.strategy ?? 'heuristic',
+          shouldDeactivateFlow: false,
+          shouldForceRasaIntent: false,
+        },
       }
     }
 
-    const nlpResponse = await this._nlpClient.getResponse(message.senderId, messageText, deriveNlpMetadata(message))
-    const trackerSnapshot = deriveLeadSnapshot(nlpResponse.tracker)
+    const baseMetadata = deriveNlpMetadata(message)
+    const requestMetadata: NLPRequestMetadata | undefined = baseMetadata
+      ? { ...baseMetadata, originalText: messageText }
+      : { originalText: messageText }
+    const cachedAiState = leadWithMessageData.aiState
+    const trackerBefore = cachedAiState?.updatedAt ? undefined : await this._nlpClient.getTracker(message.senderId)
+    const conversationState = deriveLeadSnapshot(trackerBefore).aiState ?? cachedAiState ?? {}
+
+    // Phase 1: Reasoning (Intent & Emotion detection)
+    // We call parseMessage first to help the reasoning engine
+    const parseResult = await this._nlpClient.parseMessage(messageText, requestMetadata)
+    const parseConfidence = parseResult?.intent?.confidence ?? 0
+    const lowConfidence = !parseResult?.intent?.name || parseConfidence < LOW_CONFIDENCE_THRESHOLD
+
+    const reasoning = await this._reasoningEngine.evaluate({
+      userId: message.senderId,
+      userInput: messageText,
+      state: {
+        currentFlow: cachedAiState?.currentFlow ?? conversationState.currentFlow,
+        expectedSlot: cachedAiState?.expectedSlot ?? conversationState.expectedSlot,
+        activeLoop: cachedAiState?.activeLoop ?? conversationState.activeLoop,
+      },
+      metadata: requestMetadata,
+      parseResult,
+      llmPolicy: 'always', // Always reason about emotion/tone in Dual-Phase mode
+    })
+
+    // Phase 2: Action (Call Rasa with untampered query)
+    const nlpResponse = await this._nlpClient.getResponse(message.senderId, messageText, requestMetadata)
+    const isConnectionError = nlpResponse.isConnectionError
+
+    if (isConnectionError) {
+      this._logger.warn(`[Orchestrator] Rasa connection failure detected for ${message.senderId}.`)
+    }
+
+    this._runtimeStore.appendConversationMessage(
+      lead.id,
+      {
+        direction: 'inbound',
+        messageId: message.messageId,
+        text: messageText,
+        messageType: message.type,
+        timestamp: message.timestamp,
+        metadata: {
+          channel: message.channel,
+          sourceId,
+          conversationId: message.conversationId,
+          leadId: lead.id,
+          reasoningIntent: reasoning.intent,
+          rasaIntent: reasoning.rasaIntent,
+          reasoningEmotion: reasoning.emotion,
+          reasoningUseRag: reasoning.useRag,
+          reasoningIsInterruption: reasoning.isInterruption,
+          reasoningIsSlotValid: reasoning.isSlotValid,
+          reasoningStrategy: reasoning.strategy,
+        },
+      },
+      message.channel,
+      sourceId,
+      message.conversationId,
+    )
+
+    this._runtimeStore.appendWebhookEvent({
+      channel: message.channel,
+      direction: 'inbound',
+      path: `/messages/${message.channel}`,
+      sourceId,
+      conversationId: message.conversationId,
+      leadId: lead.id,
+      payload: {
+        raw: message.rawPayload,
+        reasoning,
+      },
+    })
+
+    if (reasoning.shouldDeactivateFlow) {
+      await this._nlpClient.deactivateActiveFlow(message.senderId)
+    }
+    const trackerSnapshot = deriveLeadSnapshot(nlpResponse.tracker, reasoning)
     if (!trackerSnapshot.leadName) {
       trackerSnapshot.leadName = messageSnapshot.leadName
     }
@@ -367,10 +490,47 @@ export class LeadOrchestrator {
       trackerSnapshot.location = messageSnapshot.location
     }
     const updatedLead = this._runtimeStore.updateLead(lead.id, trackerSnapshot) ?? leadWithMessageData
-    const outgoingMessages = decorateWhatsappMessages(
-      message,
-      mapNlpResponseToOutgoingMessages(nlpResponse),
-      inferredResponseStyle,
+    let responseMessages: OutgoingMessage[]
+
+    // Phase 3: Rewriting (Tone & Emotion enhancement)
+    if (nlpResponse.ok && !nlpResponse.fallbackUsed) {
+      const rawMessages = mapNlpResponseToOutgoingMessages(nlpResponse)
+      responseMessages = []
+
+      for (const msg of rawMessages) {
+        if (msg.type === 'text' && msg.text.trim()) {
+          this._logger.debug(`[Orchestrator] Rewriting Rasa response for tone: "${msg.text.substring(0, 50)}..."`)
+          const enhancedText = await this._reasoningEngine.rewrite({
+            userInput: messageText,
+            rasaResponse: msg.text,
+            emotion: reasoning.emotion,
+            intent: reasoning.intent,
+          })
+          responseMessages.push({ type: 'text', text: enhancedText })
+        } else {
+          responseMessages.push(msg)
+        }
+      }
+    } else if (nlpResponse.ok) {
+      // Rasa succeeded but returned empty or fallback
+      responseMessages = mapNlpResponseToOutgoingMessages(nlpResponse)
+    } else if (isConnectionError) {
+      // Rasa connection failed
+      this._logger.error(`[Orchestrator] Rasa unreachable. Using system fallback.`)
+      responseMessages = [{ type: 'text', text: FINAL_FALLBACK_MESSAGE }]
+    } else {
+      // General NLP failure
+      responseMessages = [{ type: 'text', text: FINAL_FALLBACK_MESSAGE }]
+    }
+
+    if (!responseMessages.length) {
+      responseMessages = [{ type: 'text', text: FINAL_FALLBACK_MESSAGE }]
+    }
+
+    const outgoingMessages = adaptMessagesForEmotion(
+      decorateWhatsappMessages(message, responseMessages, inferredResponseStyle),
+      reasoning.emotion,
+      this._emotionAdaptationEnabled,
     )
 
     for (const outgoingMessage of outgoingMessages) {
@@ -415,7 +575,7 @@ export class LeadOrchestrator {
 
     await this._syncQualifiedLead(updatedLead)
 
-    return { lead: updatedLead, outgoingMessages }
+    return { lead: updatedLead, outgoingMessages, reasoning }
   }
 
   public getSummary() {
