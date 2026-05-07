@@ -27,6 +27,28 @@ const envSchema = z
     DEDUP_TTL_MS: z.coerce.number().int().positive().default(5 * 60 * 1000),
     RESPONSE_STYLE: responseStyleSchema,
 
+    LLM_LAYER_ENABLED: z
+      .preprocess((value) => {
+        if (typeof value !== 'string') return value
+        return value.trim().toLowerCase()
+      }, z.enum(['true', 'false', '1', '0', 'yes', 'no']).default('true'))
+      .transform((value) => value === 'true' || value === '1' || value === 'yes'),
+    OLLAMA_URL: z.string().default('http://localhost:11434'),
+    OLLAMA_MODEL: z.string().default('llama3'),
+    OLLAMA_TIMEOUT_MS: z.coerce.number().int().positive().default(8_000),
+    OLLAMA_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.1),
+    /**
+     * Below this Rasa NLU confidence we route the message through the LLM
+     * fallback. Should match (or sit just above) the `FallbackClassifier`
+     * threshold in `calisto_nlp_export/config.yml`.
+     */
+    RASA_NLU_CONFIDENCE_FLOOR: z.coerce.number().min(0).max(1).default(0.4),
+    /**
+     * Below this LLM confidence we abandon the LLM result and let Rasa's own
+     * `action_default_fallback` produce the user-facing fallback message.
+     */
+    LLM_CONFIDENCE_FLOOR: z.coerce.number().min(0).max(1).default(0.35),
+
     STORAGE_BACKEND: storageBackendSchema,
     DATABASE_URL: optionalString,
 
@@ -79,6 +101,15 @@ export interface AppConfig {
   usedFileStorageFallback: boolean
   dedupTtlMs: number
   responseStyle: 'casual' | 'professional' | 'warm' | 'concierge'
+  llm: {
+    enabled: boolean
+    ollamaUrl: string
+    model: string
+    timeoutMs: number
+    temperature: number
+    nluConfidenceFloor: number
+    llmConfidenceFloor: number
+  }
   website: {
     authToken?: string
     allowedOrigins: string[]
@@ -108,6 +139,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     usedFileStorageFallback: postgresMissingUrl,
     dedupTtlMs: parsed.DEDUP_TTL_MS,
     responseStyle: parsed.RESPONSE_STYLE,
+    llm: {
+      enabled: parsed.LLM_LAYER_ENABLED,
+      ollamaUrl: parsed.OLLAMA_URL,
+      model: parsed.OLLAMA_MODEL,
+      timeoutMs: parsed.OLLAMA_TIMEOUT_MS,
+      temperature: parsed.OLLAMA_TEMPERATURE,
+      nluConfidenceFloor: parsed.RASA_NLU_CONFIDENCE_FLOOR,
+      llmConfidenceFloor: parsed.LLM_CONFIDENCE_FLOOR,
+    },
     website: {
       authToken: parsed.WEBSITE_AUTH_TOKEN,
       allowedOrigins: (parsed.WEBSITE_ALLOWED_ORIGINS ?? '')

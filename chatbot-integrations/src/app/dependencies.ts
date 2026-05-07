@@ -3,7 +3,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import type { AppConfig } from '../config/index.js'
 import { loadConfig } from '../config/index.js'
-import { ConsoleLogger, NLPClient, type Logger } from '../core/utils/index.js'
+import { ConsoleLogger, LlmIntentClassifier, NLPClient, type Logger } from '../core/utils/index.js'
 import { InstagramChannel } from '../integrations/channels/instagram/index.js'
 import { MessengerChannel } from '../integrations/channels/messenger/index.js'
 import { TelegramChannel } from '../integrations/channels/telegram/index.js'
@@ -58,7 +58,37 @@ export function createDependencies(): AppDependencies {
     dataDir: config.dataDir,
   })
   const deduplicator = createMessageDeduplicator(runtimeStore, config.dedupTtlMs)
-  const nlpClient = new NLPClient({ rasaUrl: config.rasaUrl }, logger)
+
+  const llmClassifier = config.llm.enabled
+    ? new LlmIntentClassifier(
+        {
+          ollamaUrl: config.llm.ollamaUrl,
+          model: config.llm.model,
+          timeout: config.llm.timeoutMs,
+          temperature: config.llm.temperature,
+        },
+        logger,
+      )
+    : undefined
+
+  if (llmClassifier) {
+    logger.info(
+      `LLM fallback classifier enabled: model=${config.llm.model} ollama=${config.llm.ollamaUrl} ` +
+      `(invoked when Rasa NLU confidence < ${config.llm.nluConfidenceFloor})`,
+    )
+  } else {
+    logger.info('LLM fallback classifier disabled (LLM_LAYER_ENABLED=false); Rasa-only mode')
+  }
+
+  const nlpClient = new NLPClient(
+    {
+      rasaUrl: config.rasaUrl,
+      nluConfidenceFloor: config.llm.nluConfidenceFloor,
+      llmConfidenceFloor: config.llm.llmConfidenceFloor,
+    },
+    logger,
+    llmClassifier,
+  )
 
   logger.info(`NLP client configured for ${config.rasaUrl}`)
 
