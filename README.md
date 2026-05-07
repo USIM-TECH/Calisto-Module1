@@ -60,6 +60,10 @@ Rasa endpoints:
 - `http://localhost:5005`
 - `http://localhost:5055`
 
+Health/status endpoints:
+- `GET /status` (JSON)
+- `GET /version` (JSON)
+
 
 
 ### 2. Start the integration service
@@ -83,6 +87,10 @@ Integration service endpoints:
 - `http://localhost:3000/webchat`
 - `http://localhost:3000/webchat/test`
 - `http://localhost:3000/reports/leads-dashboard`
+
+### 3. Telegram
+
+See the full end-to-end Telegram runbook: [chatbot-integrations/scripts/TELEGRAM.md](chatbot-integrations/scripts/TELEGRAM.md)
 
 
 

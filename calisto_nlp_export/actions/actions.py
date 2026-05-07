@@ -65,6 +65,167 @@ FLOW_BY_INTENT = {
 }
 
 
+PERSISTENT_SLOTS = {
+    "lead_name",
+    "contact_number",
+    "email",
+    "lead_location",
+    "preferred_service",
+    "purchase_timeline",
+    "lead_status",
+}
+
+MANAGED_SLOTS = {
+    "product_type",
+    "brand",
+    "price_range",
+    "lens_type",
+    "city",
+    "use_case",
+    "urgency",
+    "order_id",
+    "frame_color",
+    "frame_shape",
+    "frame_material",
+    "budget",
+    *PERSISTENT_SLOTS,
+}
+
+FLOW_ALLOWED_SLOTS: Dict[str, set] = {
+    "faq": set(),
+    "pricing": set(),
+    "browse_eyewear": {
+        "product_type",
+        "brand",
+        "price_range",
+        "frame_color",
+        "frame_shape",
+        "frame_material",
+        "budget",
+    },
+    "lens_consultation": {"lens_type", "price_range"},
+    "store_lookup": {"city"},
+    "product_search": {
+        "product_type",
+        "brand",
+        "price_range",
+        "frame_color",
+        "frame_shape",
+        "frame_material",
+        "budget",
+    },
+    "product_recommendation": {"product_type", "brand", "budget", "use_case", "urgency"},
+    "lead_capture": set(PERSISTENT_SLOTS),
+}
+
+
+def flow_entry_events(tracker: Tracker, target_flow: str) -> List[Dict[Text, Any]]:
+    """Centralized flow transition: set current_flow and clear slots that don't belong.
+
+    We avoid clearing lead-capture slots (PERSISTENT_SLOTS) so we don't lose collected info.
+    """
+
+    allowed = set(FLOW_ALLOWED_SLOTS.get(target_flow, set())) | set(PERSISTENT_SLOTS)
+    clearable = set(MANAGED_SLOTS) - set(PERSISTENT_SLOTS)
+    to_clear = sorted(slot for slot in clearable if slot not in allowed)
+
+    events: List[Dict[Text, Any]] = [SlotSet("current_flow", target_flow)]
+    for slot_name in to_clear:
+        if tracker.get_slot(slot_name) is not None:
+            events.append(SlotSet(slot_name, None))
+    return events
+
+
+def normalize_city_key(value: Any) -> str:
+    text = str(value or "").strip().lower()
+    text = re.sub(r"[\[\]{}()\.,;:!?'\"]", " ", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+@lru_cache(maxsize=1)
+def city_key_registry() -> Dict[str, str]:
+    cities = unique_cities(load_catalogue())
+    registry: Dict[str, str] = {}
+    for city in cities:
+        key = normalize_city_key(city)
+        if key:
+            registry[key] = city
+            registry[key.replace(" ", "")] = city
+
+    # Common abbreviations / aliases.
+    if "kuala lumpur" in registry:
+        registry.setdefault("kl", registry["kuala lumpur"])
+        registry.setdefault("k l", registry["kuala lumpur"])
+        registry.setdefault("k.l", registry["kuala lumpur"])
+    return registry
+
+
+def resolve_city(value: Any) -> Optional[str]:
+    """Resolve a free-text location into a known catalogue city.
+
+    Returns the canonical city name from the catalogue, or None.
+    """
+
+    if value is None:
+        return None
+
+    normalized = normalize_city_key(value)
+    if not normalized:
+        return None
+
+    registry = city_key_registry()
+    direct = registry.get(normalized) or registry.get(normalized.replace(" ", ""))
+    if direct:
+        return direct
+
+    # Embedded match (avoid ambiguity): handle phrases like "I'm in Kuala Lumpur".
+    normalized_no_space = normalized.replace(" ", "")
+    candidates: List[str] = []
+    for key, canonical in registry.items():
+        if len(key) < 3:
+            continue
+        if key in normalized or key in normalized_no_space:
+            candidates.append(canonical)
+
+    unique = sorted(set(candidates), key=str.lower)
+    if len(unique) == 1:
+        return unique[0]
+    return None
+
+
+def is_probable_location(value: Any) -> bool:
+    text = normalize_free_text(value)
+    if not text:
+        return False
+
+    words = re.findall(r"[A-Za-z]+", text)
+    if not (1 <= len(words) <= 4):
+        return False
+
+    lowered = text.lower()
+    disallowed = {
+        "return",
+        "refund",
+        "exchange",
+        "warranty",
+        "broken",
+        "complain",
+        "help",
+        "need",
+        "want",
+        "bought",
+        "buy",
+        "order",
+        "tracking",
+        "price",
+        "cost",
+        "appointment",
+        "book",
+    }
+    return not any(token in lowered for token in disallowed)
+
+
 class ServiceGateway:
     """Thin backend adapter with CSV fallback for local development."""
 
@@ -658,6 +819,7 @@ class ActionDocumentSearch(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        events = flow_entry_events(tracker, "faq")
         lang = get_language(tracker)
         query = normalize_free_text(tracker.latest_message.get("text") or "")
         query_lower = query.lower()
@@ -740,7 +902,7 @@ class ActionDocumentSearch(Action):
                     {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
                 ],
             )
-            return []
+            return events
 
         dispatcher.utter_message(
             text=tr(
@@ -755,7 +917,7 @@ class ActionDocumentSearch(Action):
                 {"title": tr(lang, "Book Eye Test", "Tempah Ujian Mata", "预约验光"), "payload": "/book_appointment"},
             ],
         )
-        return []
+        return events
 
 
 class ActionPrefillLeadCapture(Action):
@@ -769,7 +931,7 @@ class ActionPrefillLeadCapture(Action):
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
         metadata = latest_metadata(tracker)
-        events: List[Dict[Text, Any]] = []
+        events: List[Dict[Text, Any]] = flow_entry_events(tracker, "lead_capture")
 
         slot_mappings = {
             "lead_name": metadata.get("senderName"),
@@ -785,8 +947,6 @@ class ActionPrefillLeadCapture(Action):
             normalized = str(value).strip() if isinstance(value, str) else ""
             if normalized:
                 events.append(SlotSet(slot_name, normalized))
-
-        events.append(SlotSet("current_flow", "lead_capture"))
         return events
 
 
@@ -876,7 +1036,11 @@ class ValidateLeadCaptureForm(FormValidationAction):
     ) -> Dict[Text, Any]:
         lang = get_language(tracker)
         value = normalize_free_text(slot_value)
-        if not is_valid_location(value):
+        resolved_city = resolve_city(value)
+        if resolved_city:
+            return {"lead_location": resolved_city}
+
+        if not is_valid_location(value) or not is_probable_location(value):
             return self._reject_slot(
                 "lead_location",
                 dispatcher,
@@ -998,7 +1162,8 @@ class ActionResetEyewearSlots(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        return [
+        events = flow_entry_events(tracker, "browse_eyewear")
+        events.extend([
             SlotSet("product_type", None),
             SlotSet("brand", None),
             SlotSet("price_range", None),
@@ -1007,7 +1172,8 @@ class ActionResetEyewearSlots(Action):
             SlotSet("frame_material", None),
             SlotSet("lens_type", None),
             SlotSet("city", None),
-        ]
+        ])
+        return events
 
 
 class ActionFilterProducts(Action):
@@ -1020,6 +1186,7 @@ class ActionFilterProducts(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        events = flow_entry_events(tracker, "product_search")
         lang = get_language(tracker)
         entities = latest_entity_values(tracker)
         product_type = entities.get("product_type") or tracker.get_slot("product_type")
@@ -1046,7 +1213,7 @@ class ActionFilterProducts(Action):
             dispatcher.utter_message(text=tr(lang, "Here are some products that match your request:", "Berikut ialah beberapa produk yang sepadan dengan permintaan anda:", "以下是一些符合您需求的产品："))
             for product in backend_results[:4]:
                 emit_product_card(dispatcher, product, str(product_type or brand or ""), lang)
-            return []
+            return events
 
         filtered_df = load_catalogue().copy()
         if product_type and str(product_type).lower() != "contact lenses":
@@ -1076,12 +1243,12 @@ class ActionFilterProducts(Action):
             dispatcher.utter_message(
                 text=tr(lang, "We could not find eyewear matching your criteria. Try another brand or budget.", "Kami tidak menemui produk yang sepadan dengan kriteria anda. Cuba jenama atau bajet lain.", "我们暂时找不到符合您条件的产品。请尝试其他品牌或预算。")
             )
-            return []
+            return events
 
         dispatcher.utter_message(text=tr(lang, "Here are some products that match your request:", "Berikut ialah beberapa produk yang sepadan dengan permintaan anda:", "以下是一些符合您需求的产品："))
         for _, row in top_5.iterrows():
             emit_product_card(dispatcher, row.to_dict(), str(product_type or brand or ""), lang)
-        return []
+        return events
 
 
 class ActionExplainLens(Action):
@@ -1094,6 +1261,7 @@ class ActionExplainLens(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        events = flow_entry_events(tracker, "lens_consultation")
         lang = get_language(tracker)
         lens_type = tracker.get_slot("lens_type")
         explanations = {
@@ -1114,7 +1282,7 @@ class ActionExplainLens(Action):
                 {"title": tr(lang, "Talk to Consultant", "Bercakap Dengan Konsultan", "联系顾问"), "payload": '/capture_lead{"preferred_service":"Lens Consultation"}'},
             ],
         )
-        return []
+        return events
 
 
 class ActionAskCity(Action):
@@ -1127,10 +1295,12 @@ class ActionAskCity(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        events = flow_entry_events(tracker, "store_lookup")
         lang = get_language(tracker)
-        resolved_city = tracker.get_slot("city") or tracker.get_slot("lead_location")
+        city_candidate = tracker.get_slot("city") or tracker.get_slot("lead_location")
+        resolved_city = resolve_city(city_candidate)
         if resolved_city:
-            city = str(resolved_city)
+            city = resolved_city
             backend_stores = gateway.search_stores(city)
             if backend_stores:
                 for store in backend_stores[:6]:
@@ -1140,12 +1310,14 @@ class ActionAskCity(Action):
                         str(store.get("city", city)),
                         lang,
                     )
-                return [SlotSet("city", city)]
+                events.append(SlotSet("city", city))
+                return events
 
             stores = search_store_rows(load_catalogue(), city)
             if stores.empty:
                 dispatcher.utter_message(text=tr(lang, f"I could not find any Calisto stores in {titleize(city)}.", f"Saya tidak menemui mana-mana kedai Calisto di {titleize(city)}.", f"我暂时找不到 {titleize(city)} 的 Calisto 门店。"))
-                return [SlotSet("city", city)]
+                events.append(SlotSet("city", city))
+                return events
 
             for _, row in stores.head(6).iterrows():
                 emit_store_card(
@@ -1154,7 +1326,11 @@ class ActionAskCity(Action):
                     str(row.get("city", city)),
                     lang,
                 )
-            return [SlotSet("city", city)]
+            events.append(SlotSet("city", city))
+            return events
+
+        if tracker.get_slot("city") is not None:
+            events.append(SlotSet("city", None))
 
         cities = unique_cities(load_catalogue())
         buttons = [
@@ -1162,7 +1338,7 @@ class ActionAskCity(Action):
             for city in cities[:10]
         ]
         dispatcher.utter_message(text=tr(lang, "Which city are you looking for?", "Bandar mana yang anda cari?", "您想查哪个城市？"), buttons=buttons or None)
-        return []
+        return events
 
 
 class ActionFindStore(Action):
@@ -1175,11 +1351,15 @@ class ActionFindStore(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        events = flow_entry_events(tracker, "store_lookup")
         lang = get_language(tracker)
-        city = tracker.get_slot("city") or tracker.get_slot("lead_location")
+        city_candidate = tracker.get_slot("city") or tracker.get_slot("lead_location")
+        city = resolve_city(city_candidate)
         if not city:
             dispatcher.utter_message(text=tr(lang, "Please specify the city to find a store.", "Sila nyatakan bandar untuk mencari kedai.", "请提供要查询的城市。"))
-            return []
+            if tracker.get_slot("city") is not None:
+                events.append(SlotSet("city", None))
+            return events
 
         backend_stores = gateway.search_stores(str(city))
         if backend_stores:
@@ -1190,12 +1370,12 @@ class ActionFindStore(Action):
                     str(store.get('city', city)),
                     lang,
                 )
-            return []
+            return events
 
         stores = search_store_rows(load_catalogue(), str(city))
         if stores.empty:
             dispatcher.utter_message(text=tr(lang, f"I could not find any Calisto stores in {titleize(city)}.", f"Saya tidak menemui mana-mana kedai Calisto di {titleize(city)}.", f"我暂时找不到 {titleize(city)} 的 Calisto 门店。"))
-            return []
+            return events
 
         for _, row in stores.head(6).iterrows():
             emit_store_card(
@@ -1204,7 +1384,7 @@ class ActionFindStore(Action):
                 str(row.get('city', city)),
                 lang,
             )
-        return []
+        return events
 
 
 class ActionHandleStoreHours(Action):
@@ -1217,8 +1397,10 @@ class ActionHandleStoreHours(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        events = flow_entry_events(tracker, "store_lookup")
         lang = get_language(tracker)
-        city = tracker.get_slot("city") or tracker.get_slot("lead_location")
+        city_candidate = tracker.get_slot("city") or tracker.get_slot("lead_location")
+        city = resolve_city(city_candidate)
         if city:
             dispatcher.utter_message(
                 text=tr(
@@ -1232,7 +1414,7 @@ class ActionHandleStoreHours(Action):
                     {"title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "payload": "/book_appointment"},
                 ],
             )
-            return []
+            return events
 
         dispatcher.utter_message(
             text=tr(lang, "Most Calisto stores typically follow mall operating hours, usually around 10:00 AM to 10:00 PM daily. If you tell me the city or mall, I can point you to the right location.", "Kebanyakan kedai Calisto biasanya mengikut waktu operasi pusat beli-belah, sekitar 10:00 pagi hingga 10:00 malam setiap hari. Jika anda beritahu bandar atau pusat beli-belah, saya boleh tunjuk lokasi yang sesuai.", "大多数 Calisto 门店通常跟随商场营业时间，一般为每天上午 10:00 至晚上 10:00。如果您告诉我城市或商场，我可以为您找到对应门店。"),
@@ -1241,7 +1423,7 @@ class ActionHandleStoreHours(Action):
                 {"title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "payload": "/book_appointment"},
             ],
         )
-        return []
+        return events
 
 
 class ActionShowPricing(Action):
@@ -1254,6 +1436,7 @@ class ActionShowPricing(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        events = flow_entry_events(tracker, "pricing")
         lang = get_language(tracker)
         preferred_service = str(tracker.get_slot("preferred_service") or "").strip() or "Designer Frames"
 
@@ -1305,7 +1488,7 @@ class ActionShowPricing(Action):
         pricing_info = pricing_map.get(preferred_service, pricing_map["Designer Frames"])
         text = "\n\n".join([pricing_info["headline"], *pricing_info["lines"], pricing_info["note"]])
         dispatcher.utter_message(text=text, buttons=pricing_info["buttons"])
-        return []
+        return events
 
 
 class ActionRecommendProducts(Action):
@@ -1318,6 +1501,7 @@ class ActionRecommendProducts(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        events = flow_entry_events(tracker, "product_recommendation")
         lang = get_language(tracker)
         entities = latest_entity_values(tracker)
         use_case = entities.get("use_case") or tracker.get_slot("use_case")
@@ -1363,7 +1547,7 @@ class ActionRecommendProducts(Action):
                     {"title": tr(lang, "Talk to Consultant", "Bercakap Dengan Konsultan", "联系顾问"), "payload": '/capture_lead{"preferred_service":"Eyewear Recommendation"}'},
                 ],
             )
-            return []
+            return events
 
         intro_bits = []
         if inferred_type:
@@ -1380,8 +1564,9 @@ class ActionRecommendProducts(Action):
 
         for _, row in results.iterrows():
             emit_product_card(dispatcher, row.to_dict(), str(inferred_type or "Eyewear Recommendation"), lang)
-
-        return [SlotSet("product_type", inferred_type)] if inferred_type else []
+        if inferred_type:
+            events.append(SlotSet("product_type", inferred_type))
+        return events
 
 
 class ActionSearchProductByAttribute(Action):
@@ -1394,6 +1579,7 @@ class ActionSearchProductByAttribute(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        events = flow_entry_events(tracker, "product_search")
         lang = get_language(tracker)
         frame_color = tracker.get_slot("frame_color")
         frame_shape = tracker.get_slot("frame_shape")
@@ -1431,11 +1617,11 @@ class ActionSearchProductByAttribute(Action):
         top_5 = filtered_df.head(5)
         if top_5.empty:
             dispatcher.utter_message(text=tr(lang, "I could not find products matching that description.", "Saya tidak menemui produk yang sepadan dengan penerangan itu.", "我找不到符合该描述的产品。"))
-            return []
+            return events
 
         for _, row in top_5.iterrows():
             emit_product_card(dispatcher, row.to_dict(), "Product Recommendation", lang)
-        return []
+        return events
 
 
 class ActionFilterLenses(Action):
@@ -1448,6 +1634,7 @@ class ActionFilterLenses(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        events = flow_entry_events(tracker, "lens_consultation")
         lang = get_language(tracker)
         lens_type = tracker.get_slot("lens_type")
         price_range = tracker.get_slot("price_range")
@@ -1470,11 +1657,11 @@ class ActionFilterLenses(Action):
 
         if results.empty:
             dispatcher.utter_message(text=tr(lang, "We could not find any lenses matching your criteria.", "Kami tidak menemui kanta yang sepadan dengan kriteria anda.", "我们找不到符合您条件的镜片。"))
-            return []
+            return events
 
         for _, row in results.iterrows():
             emit_product_card(dispatcher, row.to_dict(), str(lens_type or "Lens Consultation"), lang)
-        return []
+        return events
 
 
 class ActionAskBrand(Action):
@@ -1487,6 +1674,7 @@ class ActionAskBrand(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        events = flow_entry_events(tracker, "browse_eyewear")
         lang = get_language(tracker)
         product_type = tracker.get_slot("product_type")
 
@@ -1512,7 +1700,7 @@ class ActionAskBrand(Action):
             text = tr(lang, "Which brand would you like to explore?", "Jenama mana yang anda mahu lihat?", "您想看哪个品牌？")
 
         dispatcher.utter_message(text=text, buttons=buttons)
-        return []
+        return events
 
 
 class ActionQualifyLead(Action):

@@ -8,6 +8,7 @@ interface CreateNlpMessageHandlerProps {
   orchestrator: LeadOrchestrator
   sendText: (recipientId: string, text: string) => Promise<unknown>
   sendMessage?: (recipientId: string, message: OutgoingMessage) => Promise<unknown>
+  getRecipientId?: (message: IncomingMessage) => string
 }
 
 function redactSenderId(senderId: string): string {
@@ -24,9 +25,11 @@ export function createNlpMessageHandler({
   orchestrator,
   sendText,
   sendMessage,
+  getRecipientId,
 }: CreateNlpMessageHandlerProps) {
   return async (message: IncomingMessage): Promise<void> => {
     const senderLabel = redactSenderId(message.senderId)
+    const recipientId = getRecipientId ? getRecipientId(message) : message.senderId
 
     try {
       const result = await orchestrator.process(message)
@@ -40,23 +43,23 @@ export function createNlpMessageHandler({
       for (const outgoingMessage of outgoingMessages) {
         if (outgoingMessage.type === 'choice' && sendMessage) {
           logger.debug(`[${channelName}] Sending choice message with ${outgoingMessage.options.length} buttons to ${senderLabel}`)
-          await sendMessage(message.senderId, outgoingMessage)
+          await sendMessage(recipientId, outgoingMessage)
           continue
         }
 
         if (outgoingMessage.type === 'text') {
-          await sendText(message.senderId, outgoingMessage.text)
+          await sendText(recipientId, outgoingMessage.text)
           continue
         }
 
         if (sendMessage) {
-          await sendMessage(message.senderId, outgoingMessage)
+          await sendMessage(recipientId, outgoingMessage)
         }
       }
     } catch (error: any) {
       logger.error(`[${channelName}] Failed to process message for ${senderLabel}: ${error.message}`)
       try {
-        await sendText(message.senderId, 'Sorry, something went wrong. Please try again.')
+        await sendText(recipientId, 'Sorry, something went wrong. Please try again.')
       } catch (sendError: any) {
         logger.error(`[${channelName}] Failed to send fallback reply to ${senderLabel}: ${sendError.message}`)
       }

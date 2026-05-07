@@ -156,6 +156,7 @@ export function createDependencies(): AppDependencies {
       channelName: 'Telegram',
       logger,
       orchestrator,
+      getRecipientId: (message) => message.conversationId,
       sendText: (recipientId, text) => telegram!.sendTextMessage(recipientId, text),
       sendMessage: (recipientId, message) => telegram!.sendMessage(recipientId, message),
     }))

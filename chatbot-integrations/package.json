@@ -13,7 +13,8 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
-    "db:import-json": "tsx scripts/import-runtime-store-json.ts"
+    "db:import-json": "tsx scripts/import-runtime-store-json.ts",
+    "telegram:webhook": "tsx scripts/register-telegram-webhook.ts"
   },
   "dependencies": {
     "@hubspot/api-client": "^13.1.0",
