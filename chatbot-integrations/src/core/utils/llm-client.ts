@@ -24,6 +24,8 @@ export interface LlmClassifierConfig {
 export interface LlmClassificationContext {
   /** Preferred language slot known from the tracker. */
   preferredLanguage?: string
+  activeLoop?: string
+  requestedSlot?: string
   /** Short conversation history, newest last. */
   history?: Array<{ role: 'user' | 'bot'; text: string }>
 }
@@ -35,6 +37,9 @@ export interface LlmClassification {
   entities: Record<string, string>
   /** Model-reported confidence in [0,1]. */
   confidence: number
+  language: 'en' | 'ms' | 'zh'
+  isInterruption: boolean
+  isRefusal: boolean
   /** Raw JSON string returned by the model, for debugging. */
   raw: string
 }
@@ -148,6 +153,7 @@ Entities (optional — include only when clearly stated by the user):
     "contacts", "kanta sentuh", "隐形眼镜" — that's product_type="Contact Lenses",
     intent=select_product_type.
 - brand: canonical brand name (e.g. "Ray-Ban", "Gucci", "Oakley", "Persol", "Calisto")
+    Normalize obvious typos only when deterministic: "guci" -> "Gucci", "rayban" -> "Ray-Ban".
 - price_range: one of "Under RM100" | "RM100-RM250" | "RM250-RM300" | "Above RM300"
 - lens_type: "Single Vision" | "Progressive" | "Blue Light" | "Photochromic"
     These are *prescription-lens technologies fitted into spectacle frames*.
@@ -165,39 +171,34 @@ Entities (optional — include only when clearly stated by the user):
 
 const FEW_SHOT_EXAMPLES = `
 Examples (these are authoritative — imitate them):
-- "hi" -> {"intent":"greet","entities":{},"confidence":0.95}
-- "hey bro" -> {"intent":"greet","entities":{},"confidence":0.9}
-- "Book Appointment" -> {"intent":"book_appointment","entities":{"preferred_service":"Appointment Booking"},"confidence":0.95}
-- "i wanna book appointment" -> {"intent":"book_appointment","entities":{"preferred_service":"Appointment Booking"},"confidence":0.9}
-- "i wanna book an eye test this week in KL" -> {"intent":"book_appointment","entities":{"preferred_service":"Eye Test","urgency":"this week","city":"Kuala Lumpur"},"confidence":0.9}
-- "book me a slot for fitting tomorrow" -> {"intent":"book_appointment","entities":{"preferred_service":"Fitting","urgency":"tomorrow"},"confidence":0.88}
-- "can someone help me book" -> {"intent":"book_appointment","entities":{"preferred_service":"Appointment Booking"},"confidence":0.8}
-- "gotta reschedule my appointment" -> {"intent":"reschedule_appointment","entities":{},"confidence":0.85}
-- "i just wanna browse" -> {"intent":"browse_eyewear","entities":{},"confidence":0.85}
-- "show me ray-ban" -> {"intent":"select_brand","entities":{"brand":"Ray-Ban"},"confidence":0.95}
-- "i want to look into contact lenses" -> {"intent":"select_product_type","entities":{"product_type":"Contact Lenses"},"confidence":0.95}
-- "show me contact lenses" -> {"intent":"select_product_type","entities":{"product_type":"Contact Lenses"},"confidence":0.95}
-- "i want contact lens" -> {"intent":"select_product_type","entities":{"product_type":"Contact Lenses"},"confidence":0.9}
-- "looking for designer frames" -> {"intent":"select_product_type","entities":{"product_type":"Designer Frames"},"confidence":0.95}
-- "any luxury sunglasses?" -> {"intent":"select_product_type","entities":{"product_type":"Luxury Sunglasses"},"confidence":0.9}
-- "i need progressive lenses" -> {"intent":"ask_lens_type","entities":{"lens_type":"Progressive"},"confidence":0.95}
-- "do you have blue light lenses" -> {"intent":"ask_lens_type","entities":{"lens_type":"Blue Light"},"confidence":0.9}
-- "single vision please" -> {"intent":"ask_lens_type","entities":{"lens_type":"Single Vision"},"confidence":0.95}
-- "我要看隐形眼镜" -> {"intent":"select_product_type","entities":{"product_type":"Contact Lenses"},"confidence":0.95}
-- "saya nak kanta sentuh" -> {"intent":"select_product_type","entities":{"product_type":"Contact Lenses"},"confidence":0.9}
-- "recommend something for driving" -> {"intent":"product_recommendation","entities":{"use_case":"driving"},"confidence":0.9}
-- "how much?" -> {"intent":"ask_pricing","entities":{},"confidence":0.8}
-- "my budget is around rm200" -> {"intent":"inform_budget","entities":{"budget":"RM200"},"confidence":0.9}
-- "where's your store" -> {"intent":"find_a_store","entities":{},"confidence":0.9}
-- "store in KL" -> {"intent":"choose_city","entities":{"city":"Kuala Lumpur"},"confidence":0.9}
-- "when do you open" -> {"intent":"store_hours","entities":{},"confidence":0.9}
-- "ORD12345 status" -> {"intent":"order_tracking","entities":{"order_id":"ORD12345"},"confidence":0.95}
-- "my frame is broken pls help" -> {"intent":"after_sales_support","entities":{},"confidence":0.9}
-- "i need a real person" -> {"intent":"human_handoff","entities":{},"confidence":0.95}
-- "yeh" -> {"intent":"affirm","entities":{},"confidence":0.85}
-- "nah" -> {"intent":"deny","entities":{},"confidence":0.85}
-- "saya nak tempah janji temu" -> {"intent":"book_appointment","entities":{"preferred_service":"Appointment Booking"},"confidence":0.9}
-- "我要预约" -> {"intent":"book_appointment","entities":{"preferred_service":"Appointment Booking"},"confidence":0.95}
+- "hi" -> {"intent":"greet","entities":{},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
+- "Book Appointment" -> {"intent":"book_appointment","entities":{"preferred_service":"Appointment Booking"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
+- "gotta reschedule my appointment" -> {"intent":"reschedule_appointment","entities":{},"confidence":0.85,"language":"en","is_interruption":true,"is_refusal":false}
+- "i just wanna browse" -> {"intent":"browse_eyewear","entities":{},"confidence":0.85,"language":"en","is_interruption":true,"is_refusal":false}
+- "show me ray-ban" -> {"intent":"select_brand","entities":{"brand":"Ray-Ban"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
+- "guci glasses pls" -> {"intent":"search_product","entities":{"product_type":"Designer Frames","brand":"Gucci"},"confidence":0.9,"language":"en","is_interruption":false,"is_refusal":false}
+- "i want to look into contact lenses" -> {"intent":"select_product_type","entities":{"product_type":"Contact Lenses"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
+- "looking for designer frames" -> {"intent":"select_product_type","entities":{"product_type":"Designer Frames"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
+- "any sun glasses?" -> {"intent":"select_product_type","entities":{"product_type":"Luxury Sunglasses"},"confidence":0.9,"language":"en","is_interruption":false,"is_refusal":false}
+- "need progressive lens" -> {"intent":"ask_lens_type","entities":{"lens_type":"Progressive"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
+- "recommend something for driving" -> {"intent":"product_recommendation","entities":{"use_case":"driving"},"confidence":0.9,"language":"en","is_interruption":false,"is_refusal":false}
+- "how much?" -> {"intent":"ask_pricing","entities":{},"confidence":0.8,"language":"en","is_interruption":false,"is_refusal":false}
+- "my budget is around rm200" -> {"intent":"inform_budget","entities":{"budget":"RM200"},"confidence":0.9,"language":"en","is_interruption":false,"is_refusal":false}
+- "where's your store" -> {"intent":"find_a_store","entities":{},"confidence":0.9,"language":"en","is_interruption":false,"is_refusal":false}
+- "what time does KL store close" -> {"intent":"store_hours","entities":{"city":"Kuala Lumpur"},"confidence":0.9,"language":"en","is_interruption":true,"is_refusal":false}
+- "ORD12345 status" -> {"intent":"order_tracking","entities":{"order_id":"ORD12345"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
+- "my frame is broken pls help" -> {"intent":"after_sales_support","entities":{},"confidence":0.9,"language":"en","is_interruption":false,"is_refusal":false}
+- "i need a real person" -> {"intent":"human_handoff","entities":{},"confidence":0.95,"language":"en","is_interruption":true,"is_refusal":false}
+- "not comfortable sharing phone" -> {"intent":"deny","entities":{},"confidence":0.95,"language":"en","is_interruption":true,"is_refusal":true}
+- "maybe later" -> {"intent":"deny","entities":{},"confidence":0.9,"language":"en","is_interruption":true,"is_refusal":true}
+- "you already asked me twice" -> {"intent":"deny","entities":{},"confidence":0.85,"language":"en","is_interruption":true,"is_refusal":true}
+- "saya nak tempah janji temu" -> {"intent":"book_appointment","entities":{"preferred_service":"Appointment Booking"},"confidence":0.9,"language":"ms","is_interruption":false,"is_refusal":false}
+- "Saya mahu cermin mata Gucci murah" -> {"intent":"search_product","entities":{"product_type":"Designer Frames","brand":"Gucci","budget":"cheap"},"confidence":0.9,"language":"ms","is_interruption":false,"is_refusal":false}
+- "saya nak kanta sentuh" -> {"intent":"select_product_type","entities":{"product_type":"Contact Lenses"},"confidence":0.9,"language":"ms","is_interruption":false,"is_refusal":false}
+- "我要预约" -> {"intent":"book_appointment","entities":{"preferred_service":"Appointment Booking"},"confidence":0.95,"language":"zh","is_interruption":false,"is_refusal":false}
+- "我要看隐形眼镜" -> {"intent":"select_product_type","entities":{"product_type":"Contact Lenses"},"confidence":0.95,"language":"zh","is_interruption":false,"is_refusal":false}
+- "有没有太阳眼镜推荐" -> {"intent":"product_recommendation","entities":{"product_type":"Luxury Sunglasses"},"confidence":0.9,"language":"zh","is_interruption":false,"is_refusal":false}
+- "banana spaceship quantum pizza" -> {"intent":"nlu_fallback","entities":{},"confidence":0.0,"language":"en","is_interruption":false,"is_refusal":false}
 `.trim()
 
 const SYSTEM_PROMPT = `
@@ -214,7 +215,7 @@ ${FEW_SHOT_EXAMPLES}
 
 Rules:
 1. Output ONLY valid JSON matching this schema, nothing else:
-   {"intent": string, "entities": object, "confidence": number}
+   {"intent": string, "confidence": number, "language": "en|ms|zh", "entities": object, "is_interruption": boolean, "is_refusal": boolean}
 2. "intent" MUST be exactly one of the intent names above.
 3. "entities" is a flat object. Keys MUST be from the entities list above. Values
    are short strings. Omit the key if the entity is not clearly present.
@@ -225,9 +226,11 @@ Rules:
    Informal contractions (wanna, gonna, gotta, u, ur, plz, pls, asap, lemme,
    kinda, sorta) are normal English — classify them just like their expanded
    form.
-6. If the user message is empty, gibberish, or you are unsure, return
-   {"intent":"nlu_fallback","entities":{},"confidence":0.0}.
+6. If the user message is empty, gibberish, or unrelated nonsense, return
+   {"intent":"nlu_fallback","entities":{},"confidence":0.0,"language":"en","is_interruption":false,"is_refusal":false}.
 7. Do not invent entity values that are not in the user message.
+8. If active_loop is present and the user asks a different product/store/support/pricing question, set is_interruption=true.
+9. If the user refuses contact details, wants to stop, says maybe later, or is uncomfortable sharing information, set is_refusal=true.
 `.trim()
 
 const CLASSIFICATION_SCHEMA = {
@@ -236,8 +239,11 @@ const CLASSIFICATION_SCHEMA = {
     intent: { type: 'string' },
     entities: { type: 'object', additionalProperties: { type: 'string' } },
     confidence: { type: 'number' },
+    language: { type: 'string' },
+    is_interruption: { type: 'boolean' },
+    is_refusal: { type: 'boolean' },
   },
-  required: ['intent', 'entities', 'confidence'],
+  required: ['intent', 'entities', 'confidence', 'language', 'is_interruption', 'is_refusal'],
 } as const
 
 function clampConfidence(value: unknown): number {
@@ -290,12 +296,71 @@ function sanitizeIntent(raw: unknown): ValidIntent {
  */
 export function buildRasaIntentPayload(classification: LlmClassification): string {
   const intent = classification.intent
-  const entries = Object.entries(classification.entities)
+  const entries = Object.entries(normalizeEntities(classification.entities))
   if (entries.length === 0) {
     return `/${intent}`
   }
   const entityJson = JSON.stringify(Object.fromEntries(entries))
   return `/${intent}${entityJson}`
+}
+
+const ENTITY_ALIASES: Record<string, Record<string, string>> = {
+  lens_type: {
+    'single vision': 'Single Vision Lenses',
+    'single vision lens': 'Single Vision Lenses',
+    'single vision lenses': 'Single Vision Lenses',
+    progressive: 'Progressive Lenses',
+    'progressive lens': 'Progressive Lenses',
+    'progressive lenses': 'Progressive Lenses',
+    'blue light': 'Blue Light Protection',
+    'blue light lens': 'Blue Light Protection',
+    'blue light lenses': 'Blue Light Protection',
+    'blue light protection': 'Blue Light Protection',
+    photochromic: 'Photochromic Lenses',
+    'photochromic lens': 'Photochromic Lenses',
+    'photochromic lenses': 'Photochromic Lenses',
+  },
+  product_type: {
+    frame: 'Designer Frames',
+    frames: 'Designer Frames',
+    glasses: 'Designer Frames',
+    spectacles: 'Designer Frames',
+    eyeglasses: 'Designer Frames',
+    'designer frame': 'Designer Frames',
+    'designer frames': 'Designer Frames',
+    sunglass: 'Luxury Sunglasses',
+    sunglasses: 'Luxury Sunglasses',
+    shades: 'Luxury Sunglasses',
+    'luxury sunglasses': 'Luxury Sunglasses',
+    contacts: 'Contact Lenses',
+    'contact lens': 'Contact Lenses',
+    'contact lenses': 'Contact Lenses',
+  },
+  preferred_service: {
+    'designer frame': 'Designer Frames',
+    'designer frames': 'Designer Frames',
+    sunglasses: 'Luxury Sunglasses',
+    'luxury sunglasses': 'Luxury Sunglasses',
+    lens: 'Lens Consultation',
+    'lens consultation': 'Lens Consultation',
+    'eyewear recommendation': 'Eyewear Recommendation',
+    'store visit': 'Store Visit',
+    'after sales': 'After-sales Support',
+    'after sales support': 'After-sales Support',
+  },
+}
+
+function normalizeEntityKey(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function normalizeEntities(entities: Record<string, string>): Record<string, string> {
+  const normalized: Record<string, string> = {}
+  for (const [key, value] of Object.entries(entities)) {
+    const aliases = ENTITY_ALIASES[key]
+    normalized[key] = aliases?.[normalizeEntityKey(value)] ?? value
+  }
+  return normalized
 }
 
 export class LlmIntentClassifier {

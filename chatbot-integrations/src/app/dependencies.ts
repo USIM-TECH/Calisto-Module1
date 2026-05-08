@@ -85,6 +85,7 @@ export function createDependencies(): AppDependencies {
       rasaUrl: config.rasaUrl,
       nluConfidenceFloor: config.llm.nluConfidenceFloor,
       llmConfidenceFloor: config.llm.llmConfidenceFloor,
+      isolateTrackersByChannel: config.isolateTrackersByChannel,
     },
     logger,
     llmClassifier,
@@ -170,6 +171,7 @@ export function createDependencies(): AppDependencies {
       logger,
       orchestrator,
       sendText: (recipientId, text) => x!.sendTextMessage(recipientId, text),
+      sendMessage: (recipientId, message) => x!.sendMessage(recipientId, message),
     }))
     logger.info('X channel enabled')
   }

@@ -8,7 +8,10 @@ function displayName(from?: TelegramMessage['from']): string | undefined {
   return [from.first_name, from.last_name].filter(Boolean).join(' ') || from.username
 }
 
-export function normalizeTelegramUpdate(update: TelegramUpdate): IncomingMessage | undefined {
+export function normalizeTelegramUpdate(
+  update: TelegramUpdate,
+  resolveCallbackData: (value: string) => string = (value) => value,
+): IncomingMessage | undefined {
   const message = update.message ?? update.edited_message
   if (message) {
     const contactName = message.contact
@@ -43,7 +46,7 @@ export function normalizeTelegramUpdate(update: TelegramUpdate): IncomingMessage
 
   const callback = update.callback_query
   if (callback?.message) {
-    return normalizeTelegramCallbackQuery(callback, update)
+    return normalizeTelegramCallbackQuery(callback, update, resolveCallbackData)
   }
 
   return undefined
@@ -51,8 +54,11 @@ export function normalizeTelegramUpdate(update: TelegramUpdate): IncomingMessage
 
 function normalizeTelegramCallbackQuery(
   callback: TelegramCallbackQuery,
-  rawPayload: TelegramUpdate
+  rawPayload: TelegramUpdate,
+  resolveCallbackData: (value: string) => string,
 ): IncomingMessage {
+  const rawData = callback.data ?? callback.id
+  const resolvedData = resolveCallbackData(rawData)
   return {
     channel: 'telegram',
     senderId: String(callback.from.id),
@@ -61,11 +67,11 @@ function normalizeTelegramCallbackQuery(
     messageId: callback.id,
     timestamp: String(callback.message!.date),
     type: 'interactive',
-    text: callback.data,
+    text: resolvedData,
     interactive: {
       type: 'button',
-      id: callback.data ?? callback.id,
-      title: callback.data ?? '',
+      id: resolvedData,
+      title: resolvedData,
     },
     rawPayload,
   }

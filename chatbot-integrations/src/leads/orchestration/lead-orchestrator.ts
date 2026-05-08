@@ -266,6 +266,7 @@ export class LeadOrchestrator {
   private readonly _runtimeStore: RuntimeStore
   private readonly _hubspot?: HubSpotClient
   private readonly _responseStyle: ResponseStyle
+  private readonly _lastChoiceOptions: Map<string, Array<{ label: string; value: string }>>
 
   constructor(options: LeadOrchestratorOptions) {
     this._logger = options.logger
@@ -274,6 +275,7 @@ export class LeadOrchestrator {
     this._runtimeStore = options.runtimeStore
     this._hubspot = options.hubspot
     this._responseStyle = options.responseStyle ?? 'casual'
+    this._lastChoiceOptions = new Map()
   }
 
   public async process(message: IncomingMessage): Promise<OrchestratedReply | undefined> {
@@ -284,9 +286,11 @@ export class LeadOrchestrator {
 
     const sourceId = message.sourceId ?? message.senderId
     const lead = await this._runtimeStore.getOrCreateLead({ ...message, sourceId })
-    const messageText = message.type === 'interactive'
+    const optionScopeKey = `${message.channel}:${sourceId}:${message.conversationId}`
+    const rawMessageText = message.type === 'interactive'
       ? (message.interactive?.id || message.interactive?.title || message.text)
       : (message.text || message.interactive?.title)
+    const messageText = this._resolveNumericOptionReply(message, rawMessageText, optionScopeKey)
     const inferredResponseStyle = inferResponseStyle(
       messageText,
       this._responseStyle,
@@ -372,6 +376,7 @@ export class LeadOrchestrator {
       mapNlpResponseToOutgoingMessages(nlpResponse),
       inferredResponseStyle,
     )
+    this._rememberChoiceOptions(optionScopeKey, outgoingMessages)
 
     for (const outgoingMessage of outgoingMessages) {
       await this._runtimeStore.appendConversationMessage(
@@ -416,6 +421,34 @@ export class LeadOrchestrator {
     await this._syncQualifiedLead(updatedLead)
 
     return { lead: updatedLead, outgoingMessages }
+  }
+
+  private _resolveNumericOptionReply(
+    message: IncomingMessage,
+    text: string | undefined,
+    optionScopeKey: string,
+  ): string | undefined {
+    if (message.type === 'interactive') {
+      return text
+    }
+    if (message.channel !== 'x' && message.channel !== 'instagram') {
+      return text
+    }
+    const normalized = String(text ?? '').trim()
+    if (!/^\d{1,2}$/.test(normalized)) {
+      return text
+    }
+    const option = this._lastChoiceOptions.get(optionScopeKey)?.[Number(normalized) - 1]
+    return option?.value ?? text
+  }
+
+  private _rememberChoiceOptions(optionScopeKey: string, outgoingMessages: OutgoingMessage[]): void {
+    const choice = outgoingMessages.find((outgoingMessage): outgoingMessage is Extract<OutgoingMessage, { type: 'choice' }> => {
+      return outgoingMessage.type === 'choice' && outgoingMessage.options.length > 0
+    })
+    if (choice) {
+      this._lastChoiceOptions.set(optionScopeKey, choice.options)
+    }
   }
 
   public async getSummary() {

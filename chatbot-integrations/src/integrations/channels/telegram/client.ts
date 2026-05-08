@@ -1,6 +1,7 @@
 import axios from 'axios'
 import type { IncomingMessage, OutgoingMessage, WebhookRequest, WebhookResponse } from '../../../core/types.js'
 import type { Logger } from '../../../core/utils/index.js'
+import { TelegramCallbackAliasStore } from './callback-alias.js'
 import { normalizeTelegramUpdate } from './incoming.js'
 import { buildTelegramSendPayload } from './outgoing.js'
 import type { TelegramUpdate } from './types.js'
@@ -16,12 +17,14 @@ export class TelegramChannel {
   private readonly _config: TelegramConfig
   private readonly _logger: Logger
   private readonly _baseUrl: string
+  private readonly _callbackAliases: TelegramCallbackAliasStore
   private _onMessage?: (message: IncomingMessage) => Promise<void>
 
   constructor(config: TelegramConfig, logger: Logger) {
     this._config = config
     this._logger = logger
     this._baseUrl = `${config.apiBaseUrl ?? 'https://api.telegram.org'}/bot${config.botToken}`
+    this._callbackAliases = new TelegramCallbackAliasStore()
   }
 
   public onMessage(handler: (message: IncomingMessage) => Promise<void>) {
@@ -37,7 +40,7 @@ export class TelegramChannel {
   }
 
   public async sendMessage(chatId: string, message: OutgoingMessage): Promise<string | undefined> {
-    const payload = buildTelegramSendPayload(chatId, message)
+    const payload = buildTelegramSendPayload(chatId, message, this._callbackAliases)
     if (!payload) {
       this._logger.warn(`Unsupported outgoing message type for Telegram: ${(message as any).type}`)
       return undefined
@@ -82,7 +85,13 @@ export class TelegramChannel {
       }
     }
 
-    const incoming = normalizeTelegramUpdate(update)
+    const incoming = normalizeTelegramUpdate(update, (value) => {
+      const resolved = this._callbackAliases.resolve(value)
+      if (resolved === value && value.startsWith('cb:')) {
+        this._logger.warn(`[Telegram] Callback alias not found for token ${value}`)
+      }
+      return resolved
+    })
     if (!incoming) {
       return
     }

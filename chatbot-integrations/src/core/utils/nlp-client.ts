@@ -24,6 +24,7 @@ export interface NLPClientConfig {
    * own fallback rule fires (`utter_default`). Defaults to 0.35.
    */
   llmConfidenceFloor?: number
+  isolateTrackersByChannel?: boolean
 }
 
 export interface NLPRequestMetadata {
@@ -100,6 +101,7 @@ export class NLPClient {
    *      user-facing fallback message.
    */
   public async getResponse(userId: string, message: string, metadata?: NLPRequestMetadata): Promise<NLPResponse> {
+    const startedAt = Date.now()
     const rasaUrl = this._config.rasaUrl
     const timeout = this._config.timeout ?? 10_000
     const fallback = this._config.fallbackMessage ?? DEFAULT_FALLBACK
@@ -107,7 +109,10 @@ export class NLPClient {
     const llmFloor = this._config.llmConfidenceFloor ?? DEFAULT_LLM_FLOOR
 
     const safeMessage = String(message).slice(0, 1000).trim()
-    const safeSender = String(userId).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 50)
+    const senderNamespace = this._config.isolateTrackersByChannel && metadata?.channel
+      ? `${metadata.channel}:${userId}`
+      : userId
+    const safeSender = String(senderNamespace).replace(/[^a-zA-Z0-9:_-]/g, '').slice(0, 80)
 
     if (!safeMessage) {
       return { text: fallback, raw: [] }
@@ -202,6 +207,15 @@ export class NLPClient {
         .join('\n\n')
 
       this._logger.debug(`[NLP] Rasa response: ${combinedText.substring(0, 200)}...`)
+      this._logger.info(JSON.stringify({
+        event: 'nlp_turn',
+        channel: metadata?.channel,
+        sender_id: redactIdentifier(safeSender),
+        route,
+        intent: postTracker?.latestIntent,
+        llm_used: Boolean(llmResult),
+        latency_ms: Date.now() - startedAt,
+      }))
 
       return {
         text: combinedText || fallback,
@@ -211,6 +225,15 @@ export class NLPClient {
       }
     } catch (error: any) {
       this._logger.error(`[NLP] Rasa error: ${describeAxiosError(error, `${rasaUrl}/webhooks/rest/webhook`)}`)
+      this._logger.info(JSON.stringify({
+        event: 'nlp_turn',
+        channel: metadata?.channel,
+        sender_id: redactIdentifier(safeSender),
+        route,
+        llm_used: Boolean(llmResult),
+        latency_ms: Date.now() - startedAt,
+        status: 'error',
+      }))
       return { text: fallback, raw: [] }
     }
   }
@@ -289,6 +312,13 @@ export class NLPClient {
 
 function truncateForLog(value: string): string {
   return value.length > 120 ? `${value.slice(0, 117)}...` : value
+}
+
+function redactIdentifier(value: string): string {
+  if (value.length <= 6) {
+    return '***'
+  }
+  return `${value.slice(0, 3)}...${value.slice(-3)}`
 }
 
 /**

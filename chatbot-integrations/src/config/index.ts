@@ -23,6 +23,12 @@ const envSchema = z
   .object({
     PORT: z.coerce.number().int().positive().default(3000),
     RASA_URL: z.string().default('http://localhost:5005'),
+    RASA_TRACKER_INCLUDE_CHANNEL: z
+      .preprocess((value) => {
+        if (typeof value !== 'string') return value
+        return value.trim().toLowerCase()
+      }, z.enum(['true', 'false', '1', '0', 'yes', 'no']).default('false'))
+      .transform((value) => value === 'true' || value === '1' || value === 'yes'),
     DATA_DIR: optionalString,
     DEDUP_TTL_MS: z.coerce.number().int().positive().default(5 * 60 * 1000),
     RESPONSE_STYLE: responseStyleSchema,
@@ -42,12 +48,12 @@ const envSchema = z
      * fallback. Should match (or sit just above) the `FallbackClassifier`
      * threshold in `calisto_nlp_export/config.yml`.
      */
-    RASA_NLU_CONFIDENCE_FLOOR: z.coerce.number().min(0).max(1).default(0.4),
+    RASA_NLU_CONFIDENCE_FLOOR: z.coerce.number().min(0).max(1).default(0.65),
     /**
      * Below this LLM confidence we abandon the LLM result and let Rasa's own
      * `action_default_fallback` produce the user-facing fallback message.
      */
-    LLM_CONFIDENCE_FLOOR: z.coerce.number().min(0).max(1).default(0.35),
+    LLM_CONFIDENCE_FLOOR: z.coerce.number().min(0).max(1).default(0.45),
 
     STORAGE_BACKEND: storageBackendSchema,
     DATABASE_URL: optionalString,
@@ -95,6 +101,7 @@ const envSchema = z
 export interface AppConfig {
   port: number
   rasaUrl: string
+  isolateTrackersByChannel: boolean
   dataDir: string
   storageBackend: 'file' | 'postgres'
   /** Set when postgres was requested but `DATABASE_URL` was missing; effective backend is file. */
@@ -134,6 +141,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   return {
     port: parsed.PORT,
     rasaUrl: parsed.RASA_URL,
+    isolateTrackersByChannel: parsed.RASA_TRACKER_INCLUDE_CHANNEL,
     dataDir: parsed.DATA_DIR ?? 'data/runtime',
     storageBackend,
     usedFileStorageFallback: postgresMissingUrl,
