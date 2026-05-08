@@ -880,7 +880,7 @@ nlu:
       - i want a [Store Visit](preferred_service)
       - i need [After-sales Support](preferred_service)
       - i want [Contact Lenses](preferred_service)
-      - [Lens Consultation](preferred_service)
+      - i need help with [Lens Consultation](preferred_service)
       - saya perlukan [Lens Consultation](preferred_service)
       - saya mahu [Eyewear Recommendation](preferred_service)
       - saya mahu [Store Visit](preferred_service)
@@ -892,7 +892,7 @@ nlu:
       - 我需要[Lens Consultation](preferred_service)
       - 我想看[Designer Frames](preferred_service)
       - 我对[Luxury Sunglasses](preferred_service)有兴趣
-      - 我需要[Contact Lenses](preferred_service)
+      - 我需要顾问协助[Contact Lenses](preferred_service)
 
   - intent: share_timeline
     examples: |
@@ -948,9 +948,9 @@ nlu:
 
   - intent: select_pricing_category
     examples: |
-      - [Designer Frames](preferred_service)
-      - [Luxury Sunglasses](preferred_service)
-      - [Lens Consultation](preferred_service)
+      - pricing for [Designer Frames](preferred_service)
+      - pricing for [Luxury Sunglasses](preferred_service)
+      - pricing for [Lens Consultation](preferred_service)
       - show me [Designer Frames](preferred_service) pricing
       - show me [Luxury Sunglasses](preferred_service) pricing
       - show me [Lens Consultation](preferred_service) pricing

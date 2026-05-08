@@ -394,7 +394,7 @@ responses:
         - type: slot
           name: preferred_language
           value: ms
-      text: "Baik. Ini ialah aliran semakan harga. Saya boleh bantu anda semak julat harga dan pilihan bajet untuk kategori tertentu. Harga kategori mana yang anda mahu lihat dahulu?"
+      text: "Baik. Saya boleh bantu anda semak julat harga dan pilihan bajet mengikut kategori. Harga kategori mana yang anda mahu lihat dahulu?"
       buttons:
         - title: Harga Bingkai
           payload: /select_pricing_category{"preferred_service":"Designer Frames"}
@@ -486,7 +486,7 @@ responses:
           payload: /select_pricing_category{"preferred_service":"Luxury Sunglasses"}
         - title: 镜片价格
           payload: /select_pricing_category{"preferred_service":"Lens Consultation"}
-    - text: "Sure. This is the pricing flow. I can help you check price ranges and budget-friendly options for a specific category. Which category would you like pricing for first?"
+    - text: "Sure. I can help you check price ranges and budget-friendly options by category. Which category would you like pricing for first?"
       buttons:
         - title: Frame Pricing
           payload: /select_pricing_category{"preferred_service":"Designer Frames"}
@@ -1564,8 +1564,43 @@ responses:
       text: "以下是关于 {lens_type} 的更多信息。"
     - text: "Here is more information about {lens_type}."
 
+  utter_default:
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: ms
+      text: "Saya kurang jelas dengan mesej itu. Saya boleh bantu dengan produk, harga, kedai, janji temu, atau sokongan."
+      buttons:
+        - title: Lihat Produk
+          payload: /browse_eyewear
+        - title: Semak Harga
+          payload: /ask_pricing
+        - title: Cari Kedai
+          payload: /find_a_store
+    - condition:
+        - type: slot
+          name: preferred_language
+          value: zh
+      text: "我没有完全理解您的意思。我可以协助产品、价格、门店、预约或售后支持。"
+      buttons:
+        - title: 浏览产品
+          payload: /browse_eyewear
+        - title: 查看价格
+          payload: /ask_pricing
+        - title: 查找门店
+          payload: /find_a_store
+    - text: "I did not catch that clearly. I can help with products, pricing, stores, appointments, or support."
+      buttons:
+        - title: Browse Eyewear
+          payload: /browse_eyewear
+        - title: Check Pricing
+          payload: /ask_pricing
+        - title: Find Store
+          payload: /find_a_store
+
 actions:
   - action_set_language
+  - action_default_fallback
   - action_ask_city
   - action_ask_brand
   - action_handle_store_hours

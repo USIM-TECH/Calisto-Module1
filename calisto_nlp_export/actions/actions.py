@@ -21,7 +21,8 @@ CATALOGUE_PATH = os.getenv(
     "KB_CATALOGUE_PATH",
     "knowledge_base/calisto_product_catalog_500.csv",
 )
-BOOKING_URL = os.getenv("BOOKING_URL", "https://calisto.example.com/book")
+BOOKING_URL = os.getenv("BOOKING_URL", "").strip()
+DEFAULT_STORE_HOURS = os.getenv("DEFAULT_STORE_HOURS", "10:00 AM to 10:00 PM daily").strip()
 KB_INDEX_META_PATH = os.getenv(
     "KB_INDEX_META_PATH",
     "knowledge_base/index/calisto_meta.json",
@@ -363,6 +364,74 @@ def latest_entity_values(tracker: Tracker) -> Dict[str, Any]:
     return values
 
 
+def canonical_text_key(value: Any) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").strip().lower()).strip()
+
+
+CANONICAL_ALIASES: Dict[str, Dict[str, str]] = {
+    "lens_type": {
+        "single vision": "Single Vision Lenses",
+        "single vision lens": "Single Vision Lenses",
+        "single vision lenses": "Single Vision Lenses",
+        "progressive": "Progressive Lenses",
+        "progressive lens": "Progressive Lenses",
+        "progressive lenses": "Progressive Lenses",
+        "blue light": "Blue Light Protection",
+        "blue light lens": "Blue Light Protection",
+        "blue light lenses": "Blue Light Protection",
+        "blue light protection": "Blue Light Protection",
+        "photochromic": "Photochromic Lenses",
+        "photochromic lens": "Photochromic Lenses",
+        "photochromic lenses": "Photochromic Lenses",
+    },
+    "product_type": {
+        "designer frame": "Designer Frames",
+        "designer frames": "Designer Frames",
+        "frames": "Designer Frames",
+        "frame": "Designer Frames",
+        "glasses": "Designer Frames",
+        "spectacles": "Designer Frames",
+        "eyeglasses": "Designer Frames",
+        "luxury sunglasses": "Luxury Sunglasses",
+        "sunglasses": "Luxury Sunglasses",
+        "sunglass": "Luxury Sunglasses",
+        "shades": "Luxury Sunglasses",
+        "contact lenses": "Contact Lenses",
+        "contact lens": "Contact Lenses",
+        "contacts": "Contact Lenses",
+        "kanta sentuh": "Contact Lenses",
+    },
+    "preferred_service": {
+        "designer frame": "Designer Frames",
+        "designer frames": "Designer Frames",
+        "luxury sunglasses": "Luxury Sunglasses",
+        "sunglasses": "Luxury Sunglasses",
+        "lens": "Lens Consultation",
+        "lens consultation": "Lens Consultation",
+        "eyewear recommendation": "Eyewear Recommendation",
+        "store visit": "Store Visit",
+        "after sales support": "After-sales Support",
+        "after sales": "After-sales Support",
+    },
+}
+
+
+def canonicalize_slot_value(slot_name: str, value: Any) -> Any:
+    if value in (None, ""):
+        return value
+    aliases = CANONICAL_ALIASES.get(slot_name)
+    if not aliases:
+        return value
+    return aliases.get(canonical_text_key(value), value)
+
+
+def canonicalize_entities(values: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        key: canonicalize_slot_value(key, value)
+        for key, value in values.items()
+    }
+
+
 def format_product_list(rows: pd.DataFrame, heading: str) -> str:
     lines = [heading, ""]
     for index, (_, row) in enumerate(rows.iterrows(), start=1):
@@ -376,6 +445,52 @@ def format_product_list(rows: pd.DataFrame, heading: str) -> str:
             lines.append(f"Location: {location}")
         lines.append("")
     return "\n".join(lines).strip()
+
+
+def rank_products_safely(
+    df: pd.DataFrame,
+    product_type: Any = None,
+    brand: Any = None,
+    use_case: Any = None,
+) -> pd.DataFrame:
+    try:
+        ranked = df.copy()
+        if ranked.empty:
+            return ranked
+
+        score = pd.Series(0.0, index=ranked.index)
+        if product_type:
+            product_type_text = str(product_type)
+            score += ranked["product_type"].astype(str).str.contains(product_type_text, case=False, na=False).astype(float) * 4
+            score += ranked["category"].astype(str).str.contains(product_type_text, case=False, na=False).astype(float) * 2
+        if brand:
+            score += ranked["brand"].astype(str).str.contains(str(brand), case=False, na=False).astype(float) * 3
+        if use_case:
+            use_case_text = str(use_case)
+            relevance = (
+                ranked["description"].astype(str).str.contains(use_case_text, case=False, na=False)
+                | ranked["product_name"].astype(str).str.contains(use_case_text, case=False, na=False)
+                | ranked["lens_feature"].astype(str).str.contains(use_case_text, case=False, na=False)
+            )
+            score += relevance.astype(float) * 2
+        if "stock_status" in ranked.columns:
+            stock = ranked["stock_status"].astype(str).str.lower()
+            score += stock.eq("in_stock").astype(float) * 2
+            score += stock.eq("low_stock").astype(float)
+        if "rating" in ranked.columns:
+            rating = pd.to_numeric(ranked["rating"], errors="coerce").fillna(0)
+            score += rating / 5
+
+        ranked = ranked.assign(_score=score)
+        sort_columns = ["_score"]
+        ascending = [False]
+        if "price_myr" in ranked.columns:
+            sort_columns.append("price_myr")
+            ascending.append(True)
+        return ranked.sort_values(sort_columns, ascending=ascending).drop(columns=["_score"], errors="ignore")
+    except Exception as exc:
+        logger.warning("Product ranking failed, falling back to catalogue order: %s", exc)
+        return df
 
 
 def unique_cities(df: pd.DataFrame) -> List[str]:
@@ -399,6 +514,7 @@ def build_maps_url(*parts: Any) -> str:
 
 
 def build_placeholder_image(label: str, theme: str = "eyewear") -> str:
+    image_base_url = os.getenv("PLACEHOLDER_IMAGE_BASE_URL", "https://dummyimage.com").rstrip("/")
     themes = {
         "eyewear": {
             "bg": "1f2937",
@@ -440,7 +556,7 @@ def build_placeholder_image(label: str, theme: str = "eyewear") -> str:
     safe_label = urllib.parse.quote((label[:30] or "Calisto Eyewear").upper())
     prefix = urllib.parse.quote(config["prefix"])
     return (
-        f"https://dummyimage.com/1200x628/{config['bg']}/{config['fg']}"
+        f"{image_base_url}/1200x628/{config['bg']}/{config['fg']}"
         f"&text={prefix}%0A%0A{safe_label}"
     )
 
@@ -807,6 +923,33 @@ class ActionSetLanguage(Action):
         detected = detect_language_from_text(tracker.latest_message.get("text") or "")
         language = detected or (current if current in {"en", "ms", "zh"} else "en")
         return [SlotSet("preferred_language", language)]
+
+
+class ActionDefaultFallback(Action):
+    def name(self) -> Text:
+        return "action_default_fallback"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
+        dispatcher.utter_message(
+            text=tr(
+                lang,
+                "I did not catch that clearly. I can help with products, pricing, stores, appointments, or support.",
+                "Saya kurang jelas dengan mesej itu. Saya boleh bantu dengan produk, harga, kedai, janji temu, atau sokongan.",
+                "我没有完全理解您的意思。我可以协助产品、价格、门店、预约或售后支持。"
+            ),
+            buttons=[
+                {"title": tr(lang, "Browse Eyewear", "Lihat Produk", "浏览产品"), "payload": "/browse_eyewear"},
+                {"title": tr(lang, "Check Pricing", "Semak Harga", "查看价格"), "payload": "/ask_pricing"},
+                {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
+            ],
+        )
+        return []
 
 
 class ActionDocumentSearch(Action):
@@ -1188,8 +1331,8 @@ class ActionFilterProducts(Action):
     ) -> List[Dict[Text, Any]]:
         events = flow_entry_events(tracker, "product_search")
         lang = get_language(tracker)
-        entities = latest_entity_values(tracker)
-        product_type = entities.get("product_type") or tracker.get_slot("product_type")
+        entities = canonicalize_entities(latest_entity_values(tracker))
+        product_type = canonicalize_slot_value("product_type", entities.get("product_type") or tracker.get_slot("product_type"))
         brand = entities.get("brand") or tracker.get_slot("brand")
         price_range = (
             entities.get("price_range")
@@ -1216,7 +1359,7 @@ class ActionFilterProducts(Action):
             return events
 
         filtered_df = load_catalogue().copy()
-        if product_type and str(product_type).lower() != "contact lenses":
+        if product_type:
             filtered_df = filtered_df[
                 filtered_df["product_type"].astype(str).str.contains(product_type, case=False, na=False)
             ]
@@ -1237,7 +1380,7 @@ class ActionFilterProducts(Action):
                 filtered_df["frame_material"].astype(str).str.contains(str(frame_material), case=False, na=False)
             ]
         filtered_df = filter_by_budget(filtered_df, price_range)
-        top_5 = filtered_df.head(5)
+        top_5 = rank_products_safely(filtered_df, product_type=product_type, brand=brand).head(5)
 
         if top_5.empty:
             dispatcher.utter_message(
@@ -1405,9 +1548,9 @@ class ActionHandleStoreHours(Action):
             dispatcher.utter_message(
                 text=tr(
                     lang,
-                    f"Most Calisto stores in {titleize(str(city))} typically follow mall operating hours, usually around 10:00 AM to 10:00 PM daily. I recommend confirming before visiting.",
-                    f"Kebanyakan kedai Calisto di {titleize(str(city))} biasanya mengikut waktu operasi pusat beli-belah, sekitar 10:00 pagi hingga 10:00 malam setiap hari. Saya syorkan anda sahkan dahulu sebelum datang.",
-                    f"{titleize(str(city))} 的大多数 Calisto 门店通常跟随商场营业时间，一般为每天上午 10:00 至晚上 10:00。建议您到店前先确认。"
+                    f"Most Calisto stores in {titleize(str(city))} typically follow mall operating hours, usually around {DEFAULT_STORE_HOURS}. I recommend confirming before visiting.",
+                    f"Kebanyakan kedai Calisto di {titleize(str(city))} biasanya mengikut waktu operasi pusat beli-belah, sekitar {DEFAULT_STORE_HOURS}. Saya syorkan anda sahkan dahulu sebelum datang.",
+                    f"{titleize(str(city))} 的大多数 Calisto 门店通常跟随商场营业时间，一般为 {DEFAULT_STORE_HOURS}。建议您到店前先确认。"
                 ),
                 buttons=[
                     {"title": tr(lang, "Show Stores", "Lihat Kedai", "查看门店"), "payload": f'/choose_city{{"city":"{city}"}}'},
@@ -1417,7 +1560,7 @@ class ActionHandleStoreHours(Action):
             return events
 
         dispatcher.utter_message(
-            text=tr(lang, "Most Calisto stores typically follow mall operating hours, usually around 10:00 AM to 10:00 PM daily. If you tell me the city or mall, I can point you to the right location.", "Kebanyakan kedai Calisto biasanya mengikut waktu operasi pusat beli-belah, sekitar 10:00 pagi hingga 10:00 malam setiap hari. Jika anda beritahu bandar atau pusat beli-belah, saya boleh tunjuk lokasi yang sesuai.", "大多数 Calisto 门店通常跟随商场营业时间，一般为每天上午 10:00 至晚上 10:00。如果您告诉我城市或商场，我可以为您找到对应门店。"),
+            text=tr(lang, f"Most Calisto stores typically follow mall operating hours, usually around {DEFAULT_STORE_HOURS}. If you tell me the city or mall, I can point you to the right location.", f"Kebanyakan kedai Calisto biasanya mengikut waktu operasi pusat beli-belah, sekitar {DEFAULT_STORE_HOURS}. Jika anda beritahu bandar atau pusat beli-belah, saya boleh tunjuk lokasi yang sesuai.", f"大多数 Calisto 门店通常跟随商场营业时间，一般为 {DEFAULT_STORE_HOURS}。如果您告诉我城市或商场，我可以为您找到对应门店。"),
             buttons=[
                 {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
                 {"title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "payload": "/book_appointment"},
@@ -1438,7 +1581,13 @@ class ActionShowPricing(Action):
     ) -> List[Dict[Text, Any]]:
         events = flow_entry_events(tracker, "pricing")
         lang = get_language(tracker)
-        preferred_service = str(tracker.get_slot("preferred_service") or "").strip() or "Designer Frames"
+        entities = canonicalize_entities(latest_entity_values(tracker))
+        preferred_service = str(
+            entities.get("preferred_service")
+            or tracker.get_slot("preferred_service")
+            or "Designer Frames"
+        ).strip()
+        preferred_service = canonicalize_slot_value("preferred_service", preferred_service)
 
         pricing_map: Dict[str, Dict[str, Any]] = {
             "Designer Frames": {
@@ -1503,11 +1652,11 @@ class ActionRecommendProducts(Action):
     ) -> List[Dict[Text, Any]]:
         events = flow_entry_events(tracker, "product_recommendation")
         lang = get_language(tracker)
-        entities = latest_entity_values(tracker)
+        entities = canonicalize_entities(latest_entity_values(tracker))
         use_case = entities.get("use_case") or tracker.get_slot("use_case")
         budget = entities.get("budget") or tracker.get_slot("budget") or tracker.get_slot("price_range")
         brand = entities.get("brand") or tracker.get_slot("brand")
-        requested_type = entities.get("product_type") or tracker.get_slot("product_type")
+        requested_type = canonicalize_slot_value("product_type", entities.get("product_type") or tracker.get_slot("product_type"))
 
         inferred_type = requested_type or infer_product_type_from_use_case(str(use_case or ""))
         filtered_df = load_catalogue().copy()
@@ -1531,7 +1680,7 @@ class ActionRecommendProducts(Action):
                 filtered_df = filtered_df[mask]
 
         filtered_df = filter_by_budget(filtered_df, budget)
-        results = filtered_df.head(4)
+        results = rank_products_safely(filtered_df, product_type=inferred_type, brand=brand, use_case=use_case).head(4)
 
         if results.empty:
             dispatcher.utter_message(
@@ -1760,12 +1909,18 @@ class ActionSubmitLeadCapture(Action):
         response = gateway.submit_lead(payload)
         status = tracker.get_slot("lead_status")
         if status == "qualified":
+            booking_line = tr(
+                lang,
+                f"\nYou can also book directly here: {BOOKING_URL}" if BOOKING_URL else "",
+                f"\nAnda juga boleh tempah terus di sini: {BOOKING_URL}" if BOOKING_URL else "",
+                f"\n您也可以直接在这里预约：{BOOKING_URL}" if BOOKING_URL else "",
+            )
             dispatcher.utter_message(
                 text=tr(
                     lang,
-                    f"Thanks, your request is qualified and our team will follow up shortly.\nYou can also book directly here: {BOOKING_URL}",
-                    f"Terima kasih, permintaan anda layak untuk susulan dan pasukan kami akan hubungi anda tidak lama lagi.\nAnda juga boleh tempah terus di sini: {BOOKING_URL}",
-                    f"谢谢，您的请求已符合跟进条件，我们的团队会尽快联系您。\n您也可以直接在这里预约：{BOOKING_URL}"
+                    f"Thanks, your request is qualified and our team will follow up shortly.{booking_line}",
+                    f"Terima kasih, permintaan anda layak untuk susulan dan pasukan kami akan hubungi anda tidak lama lagi.{booking_line}",
+                    f"谢谢，您的请求已符合跟进条件，我们的团队会尽快联系您。{booking_line}"
                 ),
                 buttons=[
                     {"title": tr(lang, "Book Appointment", "Tempah Janji Temu", "预约"), "payload": "/book_appointment"},
