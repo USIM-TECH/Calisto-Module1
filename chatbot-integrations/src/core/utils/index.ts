@@ -8,7 +8,7 @@ export {
   extractFileExtension,
   parseMessageTimestampToDate,
 } from './helpers.js'
-export { NLPClient, type NLPClientConfig, type NLPResponse } from './nlp-client.js'
+export { NLPClient, type NLPClientConfig, type NLPRequestMetadata, type NLPResponse } from './nlp-client.js'
 export {
   LlmIntentClassifier,
   buildRasaIntentPayload,

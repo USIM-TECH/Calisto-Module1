@@ -15,7 +15,7 @@ export interface WebsiteChatRequest {
 
 export interface WebsiteChatResponse {
   senderId: string
-  leadId: string
+  customerId: string
   conversationId: string
   messages: OutgoingMessage[]
 }
@@ -50,11 +50,11 @@ export class WebsiteChannel {
       rawPayload: input,
     }
     const result = await this._orchestrator.process(incomingMessage)
-    const leadId = result?.lead.id ?? senderId
+    const customerId = result?.customer.id ?? senderId
 
     return {
       senderId,
-      leadId,
+      customerId,
       conversationId,
       messages: result?.outgoingMessages ?? [],
     }

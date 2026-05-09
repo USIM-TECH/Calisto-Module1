@@ -12,6 +12,9 @@ export interface IncomingMessage {
 
   senderName?: string
 
+  /** Channel-native handle (e.g. Telegram @username, IG username, X screen_name). */
+  username?: string
+
   type: 'text' | 'image' | 'audio' | 'video' | 'file' | 'location' | 'interactive' | 'reaction' | 'unknown'
 
   text?: string

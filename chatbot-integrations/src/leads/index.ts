@@ -7,16 +7,21 @@ export type { StorageBackend } from './storage/create-runtime-store.js'
 export { FileRuntimeStore } from './storage/file-runtime-store.js'
 export { PrismaRuntimeStore } from './storage/prisma-runtime-store.js'
 export type {
-  LeadSnapshot,
-  LeadUpdatePayload,
+  CustomerSnapshot,
+  IdentitySnapshot,
+  MergeContact,
+  ResolvedIdentity,
   RuntimeStore,
   RuntimeStoreSummary,
 } from './storage/runtime-store.interface.js'
 export type {
+  ChannelIdentityRecord,
   ConversationMessageRecord,
   ConversationRecord,
+  CustomerRecord,
   DeduplicationRecord,
-  LeadRecord,
+  InterestKind,
+  InterestRecord,
   RuntimeDataShape,
   WebhookEventRecord,
 } from './types/records.js'

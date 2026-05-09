@@ -46,45 +46,85 @@ enum MessageDirection {
   outbound
 }
 
-model Lead {
-  id                    String               @id
-  channel               ChatChannel
-  sourceId              String
-  conversationId        String
-  responseStyle         ResponseStyle?
-  senderName            String?
-  leadName              String?
-  email                 String?
-  phone                 String?
-  preferredService      String?
-  location              String?
-  qualificationStatus   QualificationStatus
-  crmStatus             CrmStatus
-  crmRecordId           String?
-  lastIntent            String?
-  lastMessageAt         DateTime
-  createdAt             DateTime
-  updatedAt             DateTime
+/// One row per real human. Identifying fields (phone, email) are kept
+/// here so the same person on multiple channels collapses to one record.
+model Customer {
+  id                  String              @id
+  leadName            String?
+  email               String?
+  phone               String?
+  location            String?
+  preferredService    String?
+  responseStyle       ResponseStyle?
+  qualificationStatus QualificationStatus
+  crmStatus           CrmStatus
+  crmRecordId         String?
+  lastIntent          String?
+  lastMessageAt       DateTime
+  firstSeenAt         DateTime
+  updatedAt           DateTime
 
+  identities    ChannelIdentity[]
+  interests     Interest[]
   conversations Conversation[]
   webhookEvents WebhookEvent[]
 
-  @@unique([channel, sourceId])
+  @@index([phone])
+  @@index([email])
   @@index([updatedAt])
 }
 
+/// One row per (channel, sourceId). A customer owns N of these so we
+/// can recognise them across WhatsApp, Telegram, Instagram, etc.
+model ChannelIdentity {
+  id             String      @id
+  customerId     String
+  channel        ChatChannel
+  sourceId       String
+  senderName     String?
+  username       String?
+  conversationId String
+  firstSeenAt    DateTime
+  lastSeenAt     DateTime
+
+  customer      Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+
+  @@unique([channel, sourceId])
+  @@index([customerId])
+  @@index([username])
+}
+
+/// Append-only log of every distinct interest the bot picks up.
+/// Lets us answer "what was customer X interested in last month".
+model Interest {
+  id         String   @id @default(cuid())
+  customerId String
+  kind       String
+  value      String
+  capturedAt DateTime
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, kind, value])
+  @@index([customerId, capturedAt])
+}
+
 model Conversation {
-  id        String      @id
-  leadId    String
-  channel   ChatChannel
-  sourceId  String
-  createdAt DateTime
-  updatedAt DateTime
+  id                String      @id
+  customerId        String
+  channelIdentityId String
+  channel           ChatChannel
+  sourceId          String
+  createdAt         DateTime
+  updatedAt         DateTime
 
-  lead     Lead                  @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  messages ConversationMessage[]
+  customer        Customer              @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  channelIdentity ChannelIdentity       @relation(fields: [channelIdentityId], references: [id], onDelete: Cascade)
+  messages        ConversationMessage[]
 
-  @@index([leadId])
+  @@index([customerId])
+  @@index([channelIdentityId])
 }
 
 model ConversationMessage {
@@ -109,13 +149,14 @@ model WebhookEvent {
   path           String
   sourceId       String
   conversationId String
-  leadId         String?
+  customerId     String?
   receivedAt     DateTime
   payload        Json
 
-  lead Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   @@index([receivedAt])
+  @@index([customerId])
 }
 
 model DedupeKey {

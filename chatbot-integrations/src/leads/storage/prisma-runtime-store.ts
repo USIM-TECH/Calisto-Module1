@@ -11,13 +11,24 @@ import {
 } from '@prisma/client'
 import { parseMessageTimestampToDate } from '../../core/utils/helpers.js'
 import type { IncomingMessage } from '../../core/types.js'
-import type { LeadUpdatePayload, RuntimeStore, RuntimeStoreSummary } from './runtime-store.interface.js'
 import type {
+  CustomerSnapshot,
+  IdentitySnapshot,
+  MergeContact,
+  ResolvedIdentity,
+  RuntimeStore,
+  RuntimeStoreSummary,
+} from './runtime-store.interface.js'
+import type {
+  ChannelIdentityRecord,
   ConversationMessageRecord,
   ConversationRecord,
-  LeadRecord,
+  CustomerRecord,
+  InterestKind,
+  InterestRecord,
   WebhookEventRecord,
 } from '../types/records.js'
+import { normaliseEmail, normalisePhone } from './helpers.js'
 
 const WEBHOOK_EVENT_CAP = 999
 
@@ -29,45 +40,75 @@ function toPrismaChannel(channel: IncomingMessage['channel']): ChatChannel {
   return channel as ChatChannel
 }
 
-function leadToRecord(row: {
+type PrismaCustomer = {
   id: string
-  channel: ChatChannel
-  sourceId: string
-  conversationId: string
-  responseStyle: ResponseStyle | null
-  senderName: string | null
   leadName: string | null
   email: string | null
   phone: string | null
-  preferredService: string | null
   location: string | null
+  preferredService: string | null
+  responseStyle: ResponseStyle | null
   qualificationStatus: QualificationStatus
   crmStatus: CrmStatus
   crmRecordId: string | null
   lastIntent: string | null
   lastMessageAt: Date
-  createdAt: Date
+  firstSeenAt: Date
   updatedAt: Date
-}): LeadRecord {
+}
+
+function customerToRecord(row: PrismaCustomer): CustomerRecord {
   return {
     id: row.id,
-    channel: row.channel as LeadRecord['channel'],
-    sourceId: row.sourceId,
-    conversationId: row.conversationId,
-    responseStyle: row.responseStyle ?? undefined,
-    senderName: row.senderName ?? undefined,
     leadName: row.leadName ?? undefined,
     email: row.email ?? undefined,
     phone: row.phone ?? undefined,
-    preferredService: row.preferredService ?? undefined,
     location: row.location ?? undefined,
-    qualificationStatus: row.qualificationStatus as LeadRecord['qualificationStatus'],
-    crmStatus: row.crmStatus as LeadRecord['crmStatus'],
+    preferredService: row.preferredService ?? undefined,
+    responseStyle: row.responseStyle ?? undefined,
+    qualificationStatus: row.qualificationStatus as CustomerRecord['qualificationStatus'],
+    crmStatus: row.crmStatus as CustomerRecord['crmStatus'],
     crmRecordId: row.crmRecordId ?? undefined,
     lastIntent: row.lastIntent ?? undefined,
     lastMessageAt: row.lastMessageAt.toISOString(),
-    createdAt: row.createdAt.toISOString(),
+    firstSeenAt: row.firstSeenAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  }
+}
+
+type PrismaIdentity = {
+  id: string
+  customerId: string
+  channel: ChatChannel
+  sourceId: string
+  senderName: string | null
+  username: string | null
+  conversationId: string
+  firstSeenAt: Date
+  lastSeenAt: Date
+}
+
+function identityToRecord(row: PrismaIdentity): ChannelIdentityRecord {
+  return {
+    id: row.id,
+    customerId: row.customerId,
+    channel: row.channel as ChannelIdentityRecord['channel'],
+    sourceId: row.sourceId,
+    senderName: row.senderName ?? undefined,
+    username: row.username ?? undefined,
+    conversationId: row.conversationId,
+    firstSeenAt: row.firstSeenAt.toISOString(),
+    lastSeenAt: row.lastSeenAt.toISOString(),
+  }
+}
+
+function interestToRecord(row: { id: string; customerId: string; kind: string; value: string; capturedAt: Date }): InterestRecord {
+  return {
+    id: row.id,
+    customerId: row.customerId,
+    kind: row.kind,
+    value: row.value,
+    capturedAt: row.capturedAt.toISOString(),
   }
 }
 
@@ -91,7 +132,8 @@ function messageToRecord(m: {
 
 function conversationToRecord(row: {
   id: string
-  leadId: string
+  customerId: string
+  channelIdentityId: string
   channel: ChatChannel
   sourceId: string
   createdAt: Date
@@ -107,7 +149,8 @@ function conversationToRecord(row: {
 }): ConversationRecord {
   return {
     id: row.id,
-    leadId: row.leadId,
+    customerId: row.customerId,
+    channelIdentityId: row.channelIdentityId,
     channel: row.channel as ConversationRecord['channel'],
     sourceId: row.sourceId,
     createdAt: row.createdAt.toISOString(),
@@ -123,7 +166,7 @@ function webhookToRecord(row: {
   path: string
   sourceId: string
   conversationId: string
-  leadId: string | null
+  customerId: string | null
   receivedAt: Date
   payload: Prisma.JsonValue
 }): WebhookEventRecord {
@@ -134,53 +177,25 @@ function webhookToRecord(row: {
     path: row.path,
     sourceId: row.sourceId,
     conversationId: row.conversationId,
-    leadId: row.leadId ?? undefined,
+    customerId: row.customerId ?? undefined,
     receivedAt: row.receivedAt.toISOString(),
     payload: row.payload as unknown,
   }
 }
 
-function buildLeadUpdate(snapshot: LeadUpdatePayload): Prisma.LeadUpdateInput {
-  const data: Prisma.LeadUpdateInput = {}
-  if (snapshot.senderName !== undefined) {
-    data.senderName = snapshot.senderName
-  }
-  if (snapshot.leadName !== undefined) {
-    data.leadName = snapshot.leadName
-  }
-  if (snapshot.email !== undefined) {
-    data.email = snapshot.email
-  }
-  if (snapshot.phone !== undefined) {
-    data.phone = snapshot.phone
-  }
-  if (snapshot.preferredService !== undefined) {
-    data.preferredService = snapshot.preferredService
-  }
-  if (snapshot.location !== undefined) {
-    data.location = snapshot.location
-  }
-  if (snapshot.responseStyle !== undefined) {
-    data.responseStyle = snapshot.responseStyle as ResponseStyle
-  }
-  if (snapshot.qualificationStatus !== undefined) {
-    data.qualificationStatus = snapshot.qualificationStatus as QualificationStatus
-  }
-  if (snapshot.lastIntent !== undefined) {
-    data.lastIntent = snapshot.lastIntent
-  }
-  if (snapshot.crmStatus !== undefined) {
-    data.crmStatus = snapshot.crmStatus as CrmStatus
-  }
-  if (snapshot.crmRecordId !== undefined) {
-    data.crmRecordId = snapshot.crmRecordId
-  }
-  if (snapshot.conversationId !== undefined) {
-    data.conversationId = snapshot.conversationId
-  }
-  if (snapshot.lastMessageAt !== undefined) {
-    data.lastMessageAt = parseMessageTimestampToDate(snapshot.lastMessageAt)
-  }
+function buildCustomerUpdate(snapshot: CustomerSnapshot): Prisma.CustomerUpdateInput {
+  const data: Prisma.CustomerUpdateInput = {}
+  if (snapshot.leadName !== undefined) data.leadName = snapshot.leadName
+  if (snapshot.email !== undefined) data.email = snapshot.email
+  if (snapshot.phone !== undefined) data.phone = snapshot.phone
+  if (snapshot.location !== undefined) data.location = snapshot.location
+  if (snapshot.preferredService !== undefined) data.preferredService = snapshot.preferredService
+  if (snapshot.responseStyle !== undefined) data.responseStyle = snapshot.responseStyle as ResponseStyle
+  if (snapshot.qualificationStatus !== undefined) data.qualificationStatus = snapshot.qualificationStatus as QualificationStatus
+  if (snapshot.crmStatus !== undefined) data.crmStatus = snapshot.crmStatus as CrmStatus
+  if (snapshot.crmRecordId !== undefined) data.crmRecordId = snapshot.crmRecordId
+  if (snapshot.lastIntent !== undefined) data.lastIntent = snapshot.lastIntent
+  if (snapshot.lastMessageAt !== undefined) data.lastMessageAt = parseMessageTimestampToDate(snapshot.lastMessageAt)
   return data
 }
 
@@ -197,10 +212,7 @@ export class PrismaRuntimeStore implements RuntimeStore {
         })
         return true
       } catch (error: unknown) {
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError
-          && error.code === 'P2002'
-        ) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
           return false
         }
         throw error
@@ -208,59 +220,208 @@ export class PrismaRuntimeStore implements RuntimeStore {
     })
   }
 
-  public async getOrCreateLead(message: IncomingMessage): Promise<LeadRecord> {
+  public async resolveIdentity(message: IncomingMessage, identityUpdate?: IdentitySnapshot): Promise<ResolvedIdentity> {
     const sourceId = message.sourceId ?? message.senderId
     const channel = toPrismaChannel(message.channel)
-    const timestamp = parseMessageTimestampToDate(message.timestamp)
+    const messageTs = parseMessageTimestampToDate(message.timestamp)
     const now = new Date()
 
-    const row = await this._prisma.lead.upsert({
-      where: {
-        channel_sourceId: { channel, sourceId },
-      },
-      create: {
-        id: nextId('lead'),
-        channel,
-        sourceId,
-        conversationId: message.conversationId,
-        senderName: message.senderName,
-        qualificationStatus: QualificationStatus.new,
-        crmStatus: CrmStatus.pending,
-        lastMessageAt: timestamp,
-        createdAt: now,
-        updatedAt: now,
-      },
-      update: {
-        senderName: message.senderName ?? undefined,
-        conversationId: message.conversationId,
-        lastMessageAt: timestamp,
-        updatedAt: now,
-      },
-    })
+    return this._prisma.$transaction(async (tx) => {
+      const existing = await tx.channelIdentity.findUnique({
+        where: { channel_sourceId: { channel, sourceId } },
+        include: { customer: true },
+      })
 
-    return leadToRecord(row)
+      if (existing) {
+        const senderName = identityUpdate?.senderName ?? message.senderName ?? existing.senderName ?? undefined
+        const username = identityUpdate?.username ?? message.username ?? existing.username ?? undefined
+        const conversationId = identityUpdate?.conversationId ?? message.conversationId
+
+        const updatedIdentity = await tx.channelIdentity.update({
+          where: { id: existing.id },
+          data: {
+            senderName,
+            username,
+            conversationId,
+            lastSeenAt: now,
+          },
+        })
+
+        const updatedCustomer = await tx.customer.update({
+          where: { id: existing.customerId },
+          data: {
+            lastMessageAt: messageTs,
+            updatedAt: now,
+          },
+        })
+
+        return {
+          customer: customerToRecord(updatedCustomer),
+          identity: identityToRecord(updatedIdentity),
+        }
+      }
+
+      const customer = await tx.customer.create({
+        data: {
+          id: nextId('cust'),
+          qualificationStatus: QualificationStatus.new,
+          crmStatus: CrmStatus.pending,
+          lastMessageAt: messageTs,
+          firstSeenAt: now,
+          updatedAt: now,
+        },
+      })
+
+      const identity = await tx.channelIdentity.create({
+        data: {
+          id: nextId('cid'),
+          customerId: customer.id,
+          channel,
+          sourceId,
+          senderName: identityUpdate?.senderName ?? message.senderName ?? null,
+          username: identityUpdate?.username ?? message.username ?? null,
+          conversationId: identityUpdate?.conversationId ?? message.conversationId,
+          firstSeenAt: now,
+          lastSeenAt: now,
+        },
+      })
+
+      return {
+        customer: customerToRecord(customer),
+        identity: identityToRecord(identity),
+      }
+    })
   }
 
-  public async updateLead(leadId: string, snapshot: LeadUpdatePayload): Promise<LeadRecord | undefined> {
-    const data = buildLeadUpdate(snapshot)
+  public async updateCustomer(customerId: string, snapshot: CustomerSnapshot): Promise<CustomerRecord | undefined> {
+    const data = buildCustomerUpdate(snapshot)
     if (Object.keys(data).length === 0) {
-      const row = await this._prisma.lead.findUnique({ where: { id: leadId } })
-      return row ? leadToRecord(row) : undefined
+      const row = await this._prisma.customer.findUnique({ where: { id: customerId } })
+      return row ? customerToRecord(row) : undefined
     }
 
     data.updatedAt = new Date()
 
     try {
-      const row = await this._prisma.lead.update({
-        where: { id: leadId },
+      const row = await this._prisma.customer.update({
+        where: { id: customerId },
         data,
       })
-      return leadToRecord(row)
+      return customerToRecord(row)
     } catch (error: unknown) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError
-        && error.code === 'P2025'
-      ) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return undefined
+      }
+      throw error
+    }
+  }
+
+  public async mergeCustomersByContact(customerId: string, contact: MergeContact): Promise<string> {
+    const phone = normalisePhone(contact.phone)
+    const email = normaliseEmail(contact.email)
+    if (!phone && !email) {
+      return customerId
+    }
+
+    return this._prisma.$transaction(async (tx) => {
+      const orFilters: Prisma.CustomerWhereInput[] = []
+      if (phone) orFilters.push({ phone })
+      if (email) orFilters.push({ email })
+
+      const candidate = await tx.customer.findFirst({
+        where: {
+          AND: [
+            { id: { not: customerId } },
+            { OR: orFilters },
+          ],
+        },
+        orderBy: { firstSeenAt: 'asc' },
+      })
+
+      if (!candidate) {
+        return customerId
+      }
+
+      const survivor = candidate
+      const losing = await tx.customer.findUnique({ where: { id: customerId } })
+      if (!losing) {
+        return survivor.id
+      }
+
+      await tx.channelIdentity.updateMany({
+        where: { customerId: losing.id },
+        data: { customerId: survivor.id },
+      })
+      await tx.conversation.updateMany({
+        where: { customerId: losing.id },
+        data: { customerId: survivor.id },
+      })
+      await tx.webhookEvent.updateMany({
+        where: { customerId: losing.id },
+        data: { customerId: survivor.id },
+      })
+
+      const losingInterests = await tx.interest.findMany({ where: { customerId: losing.id } })
+      for (const i of losingInterests) {
+        await tx.interest.upsert({
+          where: { customerId_kind_value: { customerId: survivor.id, kind: i.kind, value: i.value } },
+          create: {
+            customerId: survivor.id,
+            kind: i.kind,
+            value: i.value,
+            capturedAt: i.capturedAt,
+          },
+          update: {},
+        })
+      }
+      await tx.interest.deleteMany({ where: { customerId: losing.id } })
+
+      await tx.customer.update({
+        where: { id: survivor.id },
+        data: {
+          leadName: survivor.leadName ?? losing.leadName,
+          phone: survivor.phone ?? losing.phone,
+          email: survivor.email ?? losing.email,
+          location: survivor.location ?? losing.location,
+          preferredService: survivor.preferredService ?? losing.preferredService,
+          responseStyle: survivor.responseStyle ?? losing.responseStyle,
+          crmRecordId: survivor.crmRecordId ?? losing.crmRecordId,
+          lastIntent: losing.lastIntent ?? survivor.lastIntent,
+          lastMessageAt:
+            losing.lastMessageAt > survivor.lastMessageAt
+              ? losing.lastMessageAt
+              : survivor.lastMessageAt,
+          updatedAt: new Date(),
+        },
+      })
+
+      await tx.customer.delete({ where: { id: losing.id } })
+      return survivor.id
+    })
+  }
+
+  public async appendInterest(
+    customerId: string,
+    kind: InterestKind | string,
+    value: string,
+  ): Promise<InterestRecord | undefined> {
+    const trimmed = value.trim()
+    if (!trimmed) return undefined
+
+    try {
+      const row = await this._prisma.interest.upsert({
+        where: { customerId_kind_value: { customerId, kind, value: trimmed } },
+        create: {
+          customerId,
+          kind,
+          value: trimmed,
+          capturedAt: new Date(),
+        },
+        update: {},
+      })
+      return interestToRecord(row)
+    } catch (error: unknown) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
         return undefined
       }
       throw error
@@ -268,16 +429,15 @@ export class PrismaRuntimeStore implements RuntimeStore {
   }
 
   public async appendConversationMessage(
-    leadId: string,
+    customerId: string,
+    channelIdentityId: string,
     message: ConversationMessageRecord,
     channel: IncomingMessage['channel'],
     sourceId: string,
     conversationId: string,
   ): Promise<ConversationRecord> {
     const prismaChannel = toPrismaChannel(channel)
-    const direction = message.direction === 'inbound'
-      ? MessageDirection.inbound
-      : MessageDirection.outbound
+    const direction = message.direction === 'inbound' ? MessageDirection.inbound : MessageDirection.outbound
     const ts = parseMessageTimestampToDate(message.timestamp)
     const now = new Date()
     const metadata = message.metadata as Prisma.InputJsonValue
@@ -302,7 +462,11 @@ export class PrismaRuntimeStore implements RuntimeStore {
         })
         await tx.conversation.update({
           where: { id: conversationId },
-          data: { updatedAt: now },
+          data: {
+            updatedAt: now,
+            customerId,
+            channelIdentityId,
+          },
         })
         const full = await tx.conversation.findUniqueOrThrow({
           where: { id: conversationId },
@@ -314,7 +478,8 @@ export class PrismaRuntimeStore implements RuntimeStore {
       const created = await tx.conversation.create({
         data: {
           id: conversationId,
-          leadId,
+          customerId,
+          channelIdentityId,
           channel: prismaChannel,
           sourceId,
           createdAt: now,
@@ -350,13 +515,11 @@ export class PrismaRuntimeStore implements RuntimeStore {
         data: {
           id,
           channel: event.channel as ChatChannel,
-          direction: event.direction === 'inbound'
-            ? WebhookDirection.inbound
-            : WebhookDirection.outbound,
+          direction: event.direction === 'inbound' ? WebhookDirection.inbound : WebhookDirection.outbound,
           path: event.path,
           sourceId: event.sourceId,
           conversationId: event.conversationId,
-          leadId: event.leadId,
+          customerId: event.customerId,
           receivedAt,
           payload: event.payload as Prisma.InputJsonValue,
         },
@@ -382,17 +545,19 @@ export class PrismaRuntimeStore implements RuntimeStore {
   }
 
   public async getSummary(): Promise<RuntimeStoreSummary> {
-    const [total, qualified, pendingSync, conversations, webhookEvents, channelGroups] = await Promise.all([
-      this._prisma.lead.count(),
-      this._prisma.lead.count({ where: { qualificationStatus: QualificationStatus.qualified } }),
-      this._prisma.lead.count({ where: { crmStatus: { not: CrmStatus.synced } } }),
-      this._prisma.conversation.count(),
-      this._prisma.webhookEvent.count(),
-      this._prisma.lead.groupBy({
-        by: ['channel'],
-        _count: { channel: true },
-      }),
-    ])
+    const [total, qualified, pendingSync, conversations, webhookEvents, identities, channelGroups] =
+      await Promise.all([
+        this._prisma.customer.count(),
+        this._prisma.customer.count({ where: { qualificationStatus: QualificationStatus.qualified } }),
+        this._prisma.customer.count({ where: { crmStatus: { not: CrmStatus.synced } } }),
+        this._prisma.conversation.count(),
+        this._prisma.webhookEvent.count(),
+        this._prisma.channelIdentity.count(),
+        this._prisma.channelIdentity.groupBy({
+          by: ['channel'],
+          _count: { channel: true },
+        }),
+      ])
 
     const channels: Record<string, number> = {}
     for (const row of channelGroups) {
@@ -400,22 +565,26 @@ export class PrismaRuntimeStore implements RuntimeStore {
     }
 
     return {
-      leads: {
-        total,
-        qualified,
-        pendingSync,
-      },
+      customers: { total, qualified, pendingSync },
       conversations,
       webhookEvents,
       channels,
+      identities,
     }
   }
 
-  public async listLeads(): Promise<LeadRecord[]> {
-    const rows = await this._prisma.lead.findMany({
+  public async listCustomers(): Promise<CustomerRecord[]> {
+    const rows = await this._prisma.customer.findMany({
       orderBy: { updatedAt: 'desc' },
     })
-    return rows.map(leadToRecord)
+    return rows.map(customerToRecord)
+  }
+
+  public async listIdentities(): Promise<ChannelIdentityRecord[]> {
+    const rows = await this._prisma.channelIdentity.findMany({
+      orderBy: { lastSeenAt: 'desc' },
+    })
+    return rows.map(identityToRecord)
   }
 
   public async listConversations(): Promise<ConversationRecord[]> {
@@ -424,5 +593,18 @@ export class PrismaRuntimeStore implements RuntimeStore {
       orderBy: { updatedAt: 'desc' },
     })
     return rows.map(conversationToRecord)
+  }
+
+  public async listInterestsByCustomer(customerId: string): Promise<InterestRecord[]> {
+    const rows = await this._prisma.interest.findMany({
+      where: { customerId },
+      orderBy: { capturedAt: 'asc' },
+    })
+    return rows.map(interestToRecord)
+  }
+
+  public async getCustomer(customerId: string): Promise<CustomerRecord | undefined> {
+    const row = await this._prisma.customer.findUnique({ where: { id: customerId } })
+    return row ? customerToRecord(row) : undefined
   }
 }
