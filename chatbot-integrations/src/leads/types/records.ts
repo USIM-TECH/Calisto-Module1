@@ -1,24 +1,51 @@
 import type { IncomingMessage } from '../../core/types.js'
 
-export interface LeadRecord {
+export type ChannelName = IncomingMessage['channel']
+
+export type InterestKind =
+  | 'product_type'
+  | 'brand'
+  | 'lens_type'
+  | 'use_case'
+  | 'preferred_service'
+  | 'budget'
+  | 'urgency'
+
+export interface CustomerRecord {
   id: string
-  channel: IncomingMessage['channel']
-  sourceId: string
-  conversationId: string
-  responseStyle?: 'casual' | 'professional' | 'warm' | 'concierge'
-  senderName?: string
   leadName?: string
   email?: string
   phone?: string
-  preferredService?: string
   location?: string
+  preferredService?: string
+  responseStyle?: 'casual' | 'professional' | 'warm' | 'concierge'
   qualificationStatus: 'new' | 'qualified' | 'unqualified' | 'needs_review'
   crmStatus: 'pending' | 'synced' | 'failed'
   crmRecordId?: string
   lastIntent?: string
   lastMessageAt: string
-  createdAt: string
+  firstSeenAt: string
   updatedAt: string
+}
+
+export interface ChannelIdentityRecord {
+  id: string
+  customerId: string
+  channel: ChannelName
+  sourceId: string
+  senderName?: string
+  username?: string
+  conversationId: string
+  firstSeenAt: string
+  lastSeenAt: string
+}
+
+export interface InterestRecord {
+  id: string
+  customerId: string
+  kind: InterestKind | string
+  value: string
+  capturedAt: string
 }
 
 export interface ConversationMessageRecord {
@@ -28,17 +55,19 @@ export interface ConversationMessageRecord {
   messageType: string
   timestamp: string
   metadata: {
-    channel: IncomingMessage['channel']
+    channel: ChannelName
     sourceId: string
     conversationId: string
-    leadId: string
+    customerId: string
+    channelIdentityId: string
   }
 }
 
 export interface ConversationRecord {
   id: string
-  leadId: string
-  channel: IncomingMessage['channel']
+  customerId: string
+  channelIdentityId: string
+  channel: ChannelName
   sourceId: string
   createdAt: string
   updatedAt: string
@@ -47,12 +76,12 @@ export interface ConversationRecord {
 
 export interface WebhookEventRecord {
   id: string
-  channel: IncomingMessage['channel'] | 'website'
+  channel: ChannelName
   direction: 'inbound' | 'outbound'
   path: string
   sourceId: string
   conversationId: string
-  leadId?: string
+  customerId?: string
   receivedAt: string
   payload: unknown
 }
@@ -63,7 +92,9 @@ export interface DeduplicationRecord {
 }
 
 export interface RuntimeDataShape {
-  leads: LeadRecord[]
+  customers: CustomerRecord[]
+  identities: ChannelIdentityRecord[]
+  interests: InterestRecord[]
   conversations: ConversationRecord[]
   webhookEvents: WebhookEventRecord[]
   deduplication: DeduplicationRecord[]

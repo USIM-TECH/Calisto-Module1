@@ -1,11 +1,36 @@
 import express, { type Express } from 'express'
 import { createWebhookRouter } from '../core/webhook/index.js'
+import type { ChannelIdentityRecord, RuntimeStore } from '../leads/index.js'
 import {
-  findConversationByLeadId,
-  findLeadById,
+  findConversationByCustomerId,
+  findCustomerById,
   renderLeadDetailHtml,
   renderLeadsDashboardHtml,
 } from '../frontend/leads-dashboard.js'
+
+async function groupIdentitiesByCustomer(
+  store: RuntimeStore,
+  customerIds: string[],
+): Promise<Map<string, ChannelIdentityRecord[]>> {
+  const wanted = new Set(customerIds)
+  const all = await store.listIdentities()
+  const grouped = new Map<string, ChannelIdentityRecord[]>()
+  for (const identity of all) {
+    if (!wanted.has(identity.customerId)) continue
+    const list = grouped.get(identity.customerId) ?? []
+    list.push(identity)
+    grouped.set(identity.customerId, list)
+  }
+  return grouped
+}
+
+async function listIdentitiesForCustomer(
+  store: RuntimeStore,
+  customerId: string,
+): Promise<ChannelIdentityRecord[]> {
+  const all = await store.listIdentities()
+  return all.filter((identity) => identity.customerId === customerId)
+}
 import {
   renderCustomerWebchatHtml,
   renderWebchatPlaygroundHtml,
@@ -154,8 +179,13 @@ export function createApp(dependencies: AppDependencies): Express {
 
   app.get('/reports/leads', async (_req, res, next) => {
     try {
+      const [customers, summary] = await Promise.all([
+        orchestrator.listCustomers(),
+        orchestrator.getSummary(),
+      ])
       res.json({
-        leads: await orchestrator.listLeads(),
+        customers,
+        summary,
         services: {
           hubspot: Boolean(hubspot),
         },
@@ -167,13 +197,15 @@ export function createApp(dependencies: AppDependencies): Express {
 
   app.get('/reports/leads-dashboard', async (_req, res, next) => {
     try {
-      const [leads, conversations, summary] = await Promise.all([
-        orchestrator.listLeads(),
+      const [customers, conversations, summary] = await Promise.all([
+        orchestrator.listCustomers(),
         orchestrator.listConversations(),
         orchestrator.getSummary(),
       ])
+      const identitiesByCustomer = await groupIdentitiesByCustomer(runtimeStore, customers.map((c) => c.id))
       res.type('html').send(renderLeadsDashboardHtml({
-        leads,
+        customers,
+        identitiesByCustomer,
         conversations,
         summary,
       }))
@@ -182,21 +214,23 @@ export function createApp(dependencies: AppDependencies): Express {
     }
   })
 
-  app.get('/reports/leads-dashboard/:leadId', async (req, res, next) => {
+  app.get('/reports/leads-dashboard/:customerId', async (req, res, next) => {
     try {
-      const [leads, conversations] = await Promise.all([
-        orchestrator.listLeads(),
-        orchestrator.listConversations(),
-      ])
-      const lead = findLeadById(leads, req.params.leadId)
+      const customers = await orchestrator.listCustomers()
+      const customer = findCustomerById(customers, req.params.customerId)
 
-      if (!lead) {
-        res.status(404).type('html').send('<h1>Lead not found</h1>')
+      if (!customer) {
+        res.status(404).type('html').send('<h1>Customer not found</h1>')
         return
       }
 
-      const conversation = findConversationByLeadId(conversations, lead.id)
-      res.type('html').send(renderLeadDetailHtml({ lead, conversation }))
+      const [conversations, identities, interests] = await Promise.all([
+        orchestrator.listConversations(),
+        listIdentitiesForCustomer(runtimeStore, customer.id),
+        orchestrator.listInterestsByCustomer(customer.id),
+      ])
+      const conversation = findConversationByCustomerId(conversations, customer.id)
+      res.type('html').send(renderLeadDetailHtml({ customer, identities, conversation, interests }))
     } catch (error) {
       next(error)
     }

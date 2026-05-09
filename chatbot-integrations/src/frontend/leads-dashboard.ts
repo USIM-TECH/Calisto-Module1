@@ -1,11 +1,20 @@
-import type { ConversationRecord, ConversationMessageRecord, LeadRecord } from '../leads/index.js'
+import type {
+  ChannelIdentityRecord,
+  ConversationMessageRecord,
+  ConversationRecord,
+  CustomerRecord,
+  InterestRecord,
+} from '../leads/index.js'
 
 interface LeadsSummary {
-  leads: { total: number; qualified: number; pendingSync: number }
+  customers: { total: number; qualified: number; pendingSync: number }
   conversations: number
   webhookEvents: number
+  identities: number
   channels: Record<string, number>
 }
+
+type ChannelName = ChannelIdentityRecord['channel']
 
 function escapeHtml(value: string): string {
   return value
@@ -32,12 +41,13 @@ function buildWhatsappLink(phone?: string): string | undefined {
   return digits ? `https://wa.me/${digits}` : undefined
 }
 
-function leadName(lead: LeadRecord): string {
-  return lead.leadName ?? lead.senderName ?? 'Unknown'
+function customerName(customer: CustomerRecord, identities: ChannelIdentityRecord[]): string {
+  const fromIdentity = identities.find((i) => i.senderName)?.senderName
+  return customer.leadName ?? fromIdentity ?? 'Unknown'
 }
 
-function leadInitials(lead: LeadRecord): string {
-  return leadName(lead)
+function customerInitials(customer: CustomerRecord, identities: ChannelIdentityRecord[]): string {
+  return customerName(customer, identities)
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
@@ -51,41 +61,27 @@ function statusTone(status: string): string {
   return 'warning'
 }
 
-function channelLabel(channel: LeadRecord['channel']): string {
+function channelLabel(channel: ChannelName): string {
   switch (channel) {
-    case 'whatsapp':
-      return 'WhatsApp'
-    case 'website':
-      return 'Website'
-    case 'instagram':
-      return 'Instagram'
-    case 'messenger':
-      return 'Messenger'
-    case 'telegram':
-      return 'Telegram'
-    case 'x':
-      return 'X'
-    default:
-      return channel
+    case 'whatsapp': return 'WhatsApp'
+    case 'website': return 'Website'
+    case 'instagram': return 'Instagram'
+    case 'messenger': return 'Messenger'
+    case 'telegram': return 'Telegram'
+    case 'x': return 'X'
+    default: return channel
   }
 }
 
-function iconDot(channel: LeadRecord['channel']): string {
+function iconDot(channel: ChannelName): string {
   switch (channel) {
-    case 'whatsapp':
-      return 'wa'
-    case 'website':
-      return 'web'
-    case 'instagram':
-      return 'ig'
-    case 'messenger':
-      return 'ms'
-    case 'telegram':
-      return 'tg'
-    case 'x':
-      return 'x'
-    default:
-      return 'id'
+    case 'whatsapp': return 'wa'
+    case 'website': return 'web'
+    case 'instagram': return 'ig'
+    case 'messenger': return 'ms'
+    case 'telegram': return 'tg'
+    case 'x': return 'x'
+    default: return 'id'
   }
 }
 
@@ -127,10 +123,7 @@ export function renderAppShell(title: string, content: string, activeNav: 'leads
       a { color: inherit; text-decoration: none; }
       button, input, select { font: inherit; }
 
-      .app-shell {
-        min-height: 100vh;
-        display: flex;
-      }
+      .app-shell { min-height: 100vh; display: flex; }
 
       .sidebar {
         width: 264px;
@@ -140,566 +133,202 @@ export function renderAppShell(title: string, content: string, activeNav: 'leads
         display: flex;
         flex-direction: column;
       }
-
-      .brand {
-        padding: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-
-      .brand-main {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
+      .brand { padding: 24px; display: flex; align-items: center; justify-content: space-between; }
+      .brand-main { display: flex; align-items: center; gap: 10px; }
       .brand-badge {
-        width: 32px;
-        height: 32px;
-        border-radius: 10px;
-        background: #111111;
-        color: #ffffff;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.9rem;
-        font-weight: 800;
+        width: 32px; height: 32px; border-radius: 10px;
+        background: #111111; color: #ffffff;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 0.9rem; font-weight: 800;
       }
-
-      .brand-name {
-        font-size: 1.05rem;
-        font-weight: 800;
-      }
-
-      .sidebar-search {
-        padding: 0 16px 16px;
-      }
-
+      .brand-name { font-size: 1.05rem; font-weight: 800; }
+      .sidebar-search { padding: 0 16px 16px; }
       .search-shell {
-        border: 1px solid var(--line);
-        background: #f9fafb;
-        border-radius: 999px;
-        padding: 10px 14px;
-        color: var(--muted);
-        font-size: 0.92rem;
+        border: 1px solid var(--line); background: #f9fafb;
+        border-radius: 999px; padding: 10px 14px;
+        color: var(--muted); font-size: 0.92rem;
       }
-
-      .nav {
-        display: grid;
-        gap: 6px;
-        padding: 0 12px;
-      }
-
+      .nav { display: grid; gap: 6px; padding: 0 12px; }
       .nav-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 10px 14px;
-        border-radius: 999px;
-        color: #4b5563;
-        font-size: 0.95rem;
-        font-weight: 600;
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 14px; border-radius: 999px;
+        color: #4b5563; font-size: 0.95rem; font-weight: 600;
       }
-
-      .nav-item.active {
-        background: #111111;
-        color: #ffffff;
-      }
-
-      .nav-dot {
-        width: 18px;
-        text-align: center;
-        font-size: 0.72rem;
-        font-weight: 800;
-        text-transform: uppercase;
-      }
-
-      .sidebar-footer {
-        margin-top: auto;
-        padding: 16px;
-        border-top: 1px solid #f0f1f3;
-      }
-
-      .sidebar-user {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding-top: 8px;
-      }
-
+      .nav-item.active { background: #111111; color: #ffffff; }
+      .nav-dot { width: 18px; text-align: center; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; }
+      .sidebar-footer { margin-top: auto; padding: 16px; border-top: 1px solid #f0f1f3; }
+      .sidebar-user { display: flex; align-items: center; gap: 12px; padding-top: 8px; }
       .user-avatar {
-        width: 38px;
-        height: 38px;
-        border-radius: 999px;
-        background: #e0e7ff;
-        color: #4338ca;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        font-size: 0.84rem;
+        width: 38px; height: 38px; border-radius: 999px;
+        background: #e0e7ff; color: #4338ca;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 0.84rem;
       }
+      .user-name { font-size: 0.92rem; font-weight: 700; }
+      .user-email { color: var(--muted); font-size: 0.78rem; }
 
-      .user-name {
-        font-size: 0.92rem;
-        font-weight: 700;
-      }
-
-      .user-email {
-        color: var(--muted);
-        font-size: 0.78rem;
-      }
-
-      .page {
-        flex: 1;
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-      }
-
+      .page { flex: 1; min-width: 0; display: flex; flex-direction: column; }
       .page-header {
         height: 64px;
         border-bottom: 1px solid var(--line);
         background: var(--panel);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        padding: 0 32px;
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 16px; padding: 0 32px;
       }
-
-      .page-title {
-        font-size: 1.25rem;
-        font-weight: 800;
-      }
-
-      .header-actions {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-
+      .page-title { font-size: 1.25rem; font-weight: 800; }
+      .header-actions { display: flex; align-items: center; gap: 12px; }
       .btn {
-        border-radius: 12px;
-        padding: 10px 16px;
-        border: 1px solid var(--line-strong);
-        background: #ffffff;
-        color: #111827;
-        font-size: 0.9rem;
-        font-weight: 600;
-        cursor: pointer;
+        border-radius: 12px; padding: 10px 16px;
+        border: 1px solid var(--line-strong); background: #ffffff;
+        color: #111827; font-size: 0.9rem; font-weight: 600; cursor: pointer;
       }
-
-      .btn.dark {
-        background: #111111;
-        color: #ffffff;
-        border-color: #111111;
-      }
-
-      .btn.link {
-        border: 0;
-        background: transparent;
-        padding: 0;
-      }
-
-      .page-body {
-        flex: 1;
-        overflow: auto;
-        padding: 32px;
-      }
-
-      .page-inner {
-        max-width: 1240px;
-        margin: 0 auto;
-      }
-
+      .btn.dark { background: #111111; color: #ffffff; border-color: #111111; }
+      .btn.link { border: 0; background: transparent; padding: 0; }
+      .page-body { flex: 1; overflow: auto; padding: 32px; }
+      .page-inner { max-width: 1240px; margin: 0 auto; }
       .metric-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 20px;
-        margin-bottom: 28px;
+        display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px; margin-bottom: 28px;
       }
-
       .metric-card {
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: var(--shadow);
+        background: var(--panel); border: 1px solid var(--line);
+        border-radius: 16px; padding: 20px; box-shadow: var(--shadow);
       }
-
       .metric-card.blue { background: #eff6ff; border-color: #dbeafe; }
       .metric-card.green { background: #ecfdf5; border-color: #d1fae5; }
       .metric-card.amber { background: #fff7ed; border-color: #ffedd5; }
-
-      .metric-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 8px;
-      }
-
-      .metric-label {
-        font-size: 0.78rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-      }
-
-      .metric-value {
-        font-size: 2.1rem;
-        line-height: 1;
-        font-weight: 800;
-      }
-
-      .metric-note {
-        margin-top: 10px;
-        color: var(--muted);
-        font-size: 0.78rem;
-      }
+      .metric-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+      .metric-label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+      .metric-value { font-size: 2.1rem; line-height: 1; font-weight: 800; }
+      .metric-note { margin-top: 10px; color: var(--muted); font-size: 0.78rem; }
 
       .toolbar {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 20px;
+        display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+        gap: 16px; margin-bottom: 20px;
       }
-
-      .toolbar-group {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 10px;
-      }
-
+      .toolbar-group { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
       .chip {
-        border-radius: 999px;
-        padding: 7px 12px;
-        background: #f3f4f6;
-        color: #4b5563;
-        font-size: 0.76rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
+        border-radius: 999px; padding: 7px 12px; background: #f3f4f6;
+        color: #4b5563; font-size: 0.76rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.04em;
+      }
+      .chip strong { background: #ffffff; border-radius: 999px; padding: 2px 6px; margin-left: 6px; }
+      .chip.active { background: #e5e7eb; color: #111827; }
+      .toolbar select, .toolbar input {
+        min-height: 40px; border: 1px solid var(--line-strong); border-radius: 10px;
+        padding: 0 12px; background: #ffffff; color: #111827;
       }
 
-      .chip strong {
-        background: #ffffff;
-        border-radius: 999px;
-        padding: 2px 6px;
-        margin-left: 6px;
-      }
-
-      .chip.active {
-        background: #e5e7eb;
-        color: #111827;
-      }
-
-      .toolbar select,
-      .toolbar input {
-        min-height: 40px;
-        border: 1px solid var(--line-strong);
-        border-radius: 10px;
-        padding: 0 12px;
-        background: #ffffff;
-        color: #111827;
-      }
-
-      .lead-list {
-        display: grid;
-        gap: 14px;
-      }
-
+      .lead-list { display: grid; gap: 14px; }
       .lead-card {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 24px;
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: var(--shadow);
+        display: flex; align-items: flex-start; justify-content: space-between;
+        gap: 24px; background: var(--panel); border: 1px solid var(--line);
+        border-radius: 16px; padding: 20px; box-shadow: var(--shadow);
       }
-
-      .lead-main {
-        display: flex;
-        gap: 16px;
-        min-width: 0;
-      }
-
+      .lead-main { display: flex; gap: 16px; min-width: 0; }
       .lead-avatar {
-        width: 48px;
-        height: 48px;
-        border-radius: 999px;
-        background: #dbeafe;
-        color: #2563eb;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        flex-shrink: 0;
+        width: 48px; height: 48px; border-radius: 999px;
+        background: #dbeafe; color: #2563eb;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-weight: 800; flex-shrink: 0;
       }
-
-      .lead-heading {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 8px;
-      }
-
-      .lead-title {
-        font-size: 1rem;
-        font-weight: 800;
-      }
-
+      .lead-heading { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+      .lead-title { font-size: 1rem; font-weight: 800; }
       .pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        border-radius: 999px;
-        padding: 4px 9px;
-        font-size: 0.68rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        display: inline-flex; align-items: center; gap: 6px;
+        border-radius: 999px; padding: 4px 9px;
+        font-size: 0.68rem; font-weight: 800;
+        text-transform: uppercase; letter-spacing: 0.05em;
       }
-
       .pill.warning { background: var(--amber); color: var(--amber-text); }
       .pill.success { background: var(--green); color: var(--green-text); }
       .pill.danger { background: var(--danger); color: var(--danger-text); }
       .pill.neutral { background: #f3f4f6; color: #4b5563; }
-
-      .lead-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 18px;
-        color: var(--muted);
-        font-size: 0.88rem;
-      }
-
-      .lead-meta strong {
-        color: #374151;
-      }
-
-      .channel-meta {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-      }
-
+      .lead-meta { display: flex; flex-wrap: wrap; gap: 18px; color: var(--muted); font-size: 0.88rem; }
+      .lead-meta strong { color: #374151; }
+      .channel-meta { display: inline-flex; align-items: center; gap: 6px; }
       .channel-icon {
-        width: 18px;
-        height: 18px;
-        border-radius: 999px;
-        background: #ecfeff;
-        color: #0f766e;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.58rem;
-        font-weight: 800;
-        text-transform: uppercase;
+        width: 18px; height: 18px; border-radius: 999px;
+        background: #ecfeff; color: #0f766e;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 0.58rem; font-weight: 800; text-transform: uppercase;
       }
-
-      .lead-side {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 10px;
-      }
-
-      .lead-side-actions {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-      }
+      .lead-side { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+      .lead-side-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
       .empty {
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 16px;
-        padding: 32px;
-        text-align: center;
-        color: var(--muted);
-        box-shadow: var(--shadow);
+        background: var(--panel); border: 1px solid var(--line);
+        border-radius: 16px; padding: 32px; text-align: center;
+        color: var(--muted); box-shadow: var(--shadow);
       }
-
       .detail-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr);
+        display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr);
         gap: 24px;
       }
-
-      .detail-stack {
-        display: grid;
-        gap: 24px;
-      }
-
+      .detail-stack { display: grid; gap: 24px; }
       .panel {
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 16px;
-        box-shadow: var(--shadow);
-        overflow: hidden;
+        background: var(--panel); border: 1px solid var(--line);
+        border-radius: 16px; box-shadow: var(--shadow); overflow: hidden;
       }
-
       .panel-head {
-        padding: 18px 22px;
-        border-bottom: 1px solid var(--line);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
+        padding: 18px 22px; border-bottom: 1px solid var(--line);
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
       }
-
-      .panel-title {
-        font-size: 1rem;
-        font-weight: 800;
-      }
-
-      .panel-body {
-        padding: 22px;
-      }
-
-      .overview-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 24px 28px;
-      }
-
+      .panel-title { font-size: 1rem; font-weight: 800; }
+      .panel-body { padding: 22px; }
+      .overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 28px; }
       .field-label {
-        margin-bottom: 6px;
-        color: #9ca3af;
-        font-size: 0.68rem;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
+        margin-bottom: 6px; color: #9ca3af;
+        font-size: 0.68rem; font-weight: 800;
+        letter-spacing: 0.08em; text-transform: uppercase;
       }
-
-      .field-value {
-        font-size: 0.94rem;
-        color: #374151;
-        font-weight: 600;
-        word-break: break-word;
-      }
-
-      .field-value.muted {
-        color: #9ca3af;
-        font-style: italic;
-      }
-
-      .crm-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-top: 20px;
-      }
-
-      .transcript {
-        min-height: 640px;
-        display: flex;
-        flex-direction: column;
-      }
-
-      .transcript-list {
-        flex: 1;
-        padding: 22px;
-        display: grid;
-        gap: 18px;
-        background: #fafafa;
-      }
-
-      .bubble-wrap {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .bubble-wrap.outbound {
-        align-items: flex-end;
-      }
-
-      .bubble-wrap.inbound {
-        align-items: flex-start;
-      }
-
+      .field-value { font-size: 0.94rem; color: #374151; font-weight: 600; word-break: break-word; }
+      .field-value.muted { color: #9ca3af; font-style: italic; }
+      .crm-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+      .transcript { min-height: 640px; display: flex; flex-direction: column; }
+      .transcript-list { flex: 1; padding: 22px; display: grid; gap: 18px; background: #fafafa; }
+      .bubble-wrap { display: flex; flex-direction: column; gap: 4px; }
+      .bubble-wrap.outbound { align-items: flex-end; }
+      .bubble-wrap.inbound { align-items: flex-start; }
       .bubble {
-        max-width: 85%;
-        padding: 14px 16px;
-        border-radius: 18px;
-        font-size: 0.92rem;
-        line-height: 1.55;
-        box-shadow: 0 6px 16px rgba(17, 24, 39, 0.05);
-        white-space: pre-wrap;
+        max-width: 85%; padding: 14px 16px; border-radius: 18px;
+        font-size: 0.92rem; line-height: 1.55;
+        box-shadow: 0 6px 16px rgba(17, 24, 39, 0.05); white-space: pre-wrap;
       }
-
-      .bubble.inbound {
-        background: #e5e7eb;
-        color: #111827;
-        border-top-left-radius: 6px;
-      }
-
-      .bubble.outbound {
-        background: #2563eb;
-        color: #ffffff;
-        border-top-right-radius: 6px;
-      }
-
-      .bubble-meta {
-        color: #9ca3af;
-        font-size: 0.7rem;
-        font-weight: 600;
-      }
-
-      .transcript-footer {
-        padding: 16px;
-        border-top: 1px solid var(--line);
-        background: #ffffff;
-      }
-
+      .bubble.inbound { background: #e5e7eb; color: #111827; border-top-left-radius: 6px; }
+      .bubble.outbound { background: #2563eb; color: #ffffff; border-top-right-radius: 6px; }
+      .bubble-meta { color: #9ca3af; font-size: 0.7rem; font-weight: 600; }
+      .transcript-footer { padding: 16px; border-top: 1px solid var(--line); background: #ffffff; }
       .note-input {
-        width: 100%;
-        min-height: 48px;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        background: #f3f4f6;
-        padding: 0 14px;
+        width: 100%; min-height: 48px;
+        border: 1px solid var(--line); border-radius: 12px;
+        background: #f3f4f6; padding: 0 14px;
+      }
+
+      .identity-list { display: flex; flex-wrap: wrap; gap: 8px; }
+      .identity-chip {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: #f3f4f6; border-radius: 999px;
+        padding: 4px 10px 4px 4px;
+        font-size: 0.78rem; font-weight: 600; color: #374151;
+      }
+      .identity-chip .channel-icon { width: 22px; height: 22px; font-size: 0.62rem; }
+
+      .interest-list { display: flex; flex-wrap: wrap; gap: 8px; }
+      .interest-chip {
+        background: #ecfeff; color: #0e7490;
+        border-radius: 999px; padding: 5px 11px;
+        font-size: 0.78rem; font-weight: 700;
       }
 
       @media (max-width: 1160px) {
-        .metric-grid,
-        .detail-grid,
-        .overview-grid {
-          grid-template-columns: 1fr;
-        }
+        .metric-grid, .detail-grid, .overview-grid { grid-template-columns: 1fr; }
       }
-
       @media (max-width: 940px) {
-        .sidebar {
-          display: none;
-        }
-
-        .page-header,
-        .page-body {
-          padding-left: 18px;
-          padding-right: 18px;
-        }
-
-        .lead-card {
-          flex-direction: column;
-          align-items: stretch;
-        }
-
-        .lead-side {
-          align-items: flex-start;
-        }
+        .sidebar { display: none; }
+        .page-header, .page-body { padding-left: 18px; padding-right: 18px; }
+        .lead-card { flex-direction: column; align-items: stretch; }
+        .lead-side { align-items: flex-start; }
       }
     </style>
   </head>
@@ -741,50 +370,63 @@ export function renderAppShell(title: string, content: string, activeNav: 'leads
 </html>`
 }
 
-function renderLeadCard(lead: LeadRecord): string {
-  const whatsappLink = buildWhatsappLink(lead.phone)
-  const contact = lead.phone ?? lead.email ?? `ID: ${lead.sourceId}`
-  const service = lead.preferredService ?? 'No interest captured yet'
+function renderIdentityChip(identity: ChannelIdentityRecord): string {
+  const handle = identity.username ? `@${identity.username}` : identity.sourceId
+  return `
+    <span class="identity-chip" title="${escapeHtml(identity.sourceId)}">
+      <span class="channel-icon">${escapeHtml(iconDot(identity.channel))}</span>
+      <span>${escapeHtml(handle)}</span>
+    </span>`
+}
+
+function renderCustomerCard(
+  customer: CustomerRecord,
+  identities: ChannelIdentityRecord[],
+): string {
+  const whatsappLink = buildWhatsappLink(customer.phone)
+  const contact = customer.phone ?? customer.email ?? identities.map((i) => i.sourceId).join(', ')
+  const service = customer.preferredService ?? 'No interest captured yet'
+  const channelKeys = Array.from(new Set(identities.map((i) => i.channel))).join(' ')
 
   return `
     <article
       class="lead-card"
-      data-lead-id="${escapeHtml(lead.id)}"
-      data-channel="${escapeHtml(lead.channel)}"
-      data-status="${escapeHtml(lead.qualificationStatus)}"
-      data-crm="${escapeHtml(lead.crmStatus)}"
+      data-customer-id="${escapeHtml(customer.id)}"
+      data-channels="${escapeHtml(channelKeys)}"
+      data-status="${escapeHtml(customer.qualificationStatus)}"
+      data-crm="${escapeHtml(customer.crmStatus)}"
       data-search="${escapeHtml([
-        leadName(lead),
-        lead.phone ?? '',
-        lead.email ?? '',
-        lead.preferredService ?? '',
-        lead.location ?? '',
-        lead.sourceId,
+        customerName(customer, identities),
+        customer.phone ?? '',
+        customer.email ?? '',
+        customer.preferredService ?? '',
+        customer.location ?? '',
+        ...identities.map((i) => i.sourceId),
+        ...identities.map((i) => i.username ?? ''),
       ].join(' ').toLowerCase())}"
     >
       <div class="lead-main">
-        <div class="lead-avatar">${escapeHtml(leadInitials(lead))}</div>
+        <div class="lead-avatar">${escapeHtml(customerInitials(customer, identities))}</div>
         <div>
           <div class="lead-heading">
-            <div class="lead-title">${escapeHtml(leadName(lead))}</div>
-            <span class="pill ${statusTone(lead.qualificationStatus)}">${escapeHtml(lead.qualificationStatus)}</span>
+            <div class="lead-title">${escapeHtml(customerName(customer, identities))}</div>
+            <span class="pill ${statusTone(customer.qualificationStatus)}">${escapeHtml(customer.qualificationStatus)}</span>
           </div>
           <div class="lead-meta">
-            <span class="channel-meta">
-              <span class="channel-icon">${escapeHtml(iconDot(lead.channel))}</span>
-              ${escapeHtml(channelLabel(lead.channel))}
-            </span>
             <span>${escapeHtml(contact)}</span>
             <strong>${escapeHtml(service)}</strong>
+          </div>
+          <div class="identity-list" style="margin-top:10px;">
+            ${identities.map(renderIdentityChip).join('')}
           </div>
         </div>
       </div>
       <div class="lead-side">
-        <span class="pill ${statusTone(lead.crmStatus)}">${escapeHtml(lead.crmStatus)}</span>
+        <span class="pill ${statusTone(customer.crmStatus)}">${escapeHtml(customer.crmStatus)}</span>
         <div class="lead-side-actions">
           ${whatsappLink ? `<a class="btn" href="${escapeHtml(whatsappLink)}" target="_blank" rel="noreferrer">WhatsApp</a>` : ''}
-          ${lead.email ? `<a class="btn" href="mailto:${escapeHtml(lead.email)}">Email</a>` : ''}
-          <a class="btn dark" href="/reports/leads-dashboard/${escapeHtml(lead.id)}">Review Lead</a>
+          ${customer.email ? `<a class="btn" href="mailto:${escapeHtml(customer.email)}">Email</a>` : ''}
+          <a class="btn dark" href="/reports/leads-dashboard/${escapeHtml(customer.id)}">Review Lead</a>
         </div>
       </div>
     </article>
@@ -803,16 +445,19 @@ function renderTranscriptItem(message: ConversationMessageRecord): string {
 }
 
 export function renderLeadsDashboardHtml({
-  leads,
+  customers,
+  identitiesByCustomer,
   conversations,
   summary,
 }: {
-  leads: LeadRecord[]
+  customers: CustomerRecord[]
+  identitiesByCustomer: Map<string, ChannelIdentityRecord[]>
   conversations: ConversationRecord[]
   summary: LeadsSummary
 }): string {
+  void conversations
   const channelChips = Object.entries(summary.channels)
-    .map(([channel, count], index) => `<button type="button" class="chip ${index === 0 ? 'active' : ''}" data-channel-chip="${escapeHtml(channel)}">${escapeHtml(channelLabel(channel as LeadRecord['channel']))}<strong>${count}</strong></button>`)
+    .map(([channel, count], index) => `<button type="button" class="chip ${index === 0 ? 'active' : ''}" data-channel-chip="${escapeHtml(channel)}">${escapeHtml(channelLabel(channel as ChannelName))}<strong>${count}</strong></button>`)
     .join('')
 
   const content = `
@@ -829,18 +474,18 @@ export function renderLeadsDashboardHtml({
           <section class="metric-grid">
             <article class="metric-card blue">
               <div class="metric-head">
-                <span class="metric-label">Total Leads</span>
+                <span class="metric-label">Total Customers</span>
                 <span>◌</span>
               </div>
-              <div class="metric-value">${summary.leads.total}</div>
-              <div class="metric-note">Webhook Events: <strong>${summary.webhookEvents}</strong></div>
+              <div class="metric-value">${summary.customers.total}</div>
+              <div class="metric-note">Channel identities: <strong>${summary.identities}</strong></div>
             </article>
             <article class="metric-card green">
               <div class="metric-head">
                 <span class="metric-label">Qualified</span>
                 <span>◌</span>
               </div>
-              <div class="metric-value">${summary.leads.qualified}</div>
+              <div class="metric-value">${summary.customers.qualified}</div>
               <div class="metric-note">Conversations tracked: <strong>${summary.conversations}</strong></div>
             </article>
             <article class="metric-card amber">
@@ -848,8 +493,8 @@ export function renderLeadsDashboardHtml({
                 <span class="metric-label">Pending CRM Sync</span>
                 <span>◌</span>
               </div>
-              <div class="metric-value">${summary.leads.pendingSync}</div>
-              <div class="metric-note">Leads awaiting sync or review</div>
+              <div class="metric-value">${summary.customers.pendingSync}</div>
+              <div class="metric-note">Customers awaiting sync or review</div>
             </article>
           </section>
 
@@ -858,7 +503,7 @@ export function renderLeadsDashboardHtml({
               ${channelChips || ''}
               <select id="channelFilter">
                 <option value="">All Channels</option>
-                ${Object.keys(summary.channels).map((channel) => `<option value="${escapeHtml(channel)}">${escapeHtml(channelLabel(channel as LeadRecord['channel']))}</option>`).join('')}
+                ${Object.keys(summary.channels).map((channel) => `<option value="${escapeHtml(channel)}">${escapeHtml(channelLabel(channel as ChannelName))}</option>`).join('')}
               </select>
               <select id="statusFilter">
                 <option value="">All Statuses</option>
@@ -875,18 +520,18 @@ export function renderLeadsDashboardHtml({
               </select>
             </div>
             <div class="toolbar-group">
-              <input id="search" type="search" placeholder="Search leads" />
-              <span id="resultCount" style="color:#6b7280;font-size:0.9rem;font-weight:600;">Showing ${leads.length} leads</span>
+              <input id="search" type="search" placeholder="Search customers" />
+              <span id="resultCount" style="color:#6b7280;font-size:0.9rem;font-weight:600;">Showing ${customers.length} customers</span>
               <button id="clearFilters" class="btn link" type="button" style="color:#4f46e5;font-weight:700;">Clear filters</button>
             </div>
           </section>
 
           <section id="leadList" class="lead-list">
-            ${leads.length ? leads
+            ${customers.length ? customers
               .slice()
               .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-              .map((lead) => renderLeadCard(lead))
-              .join('') : '<div class="empty">No leads captured yet.</div>'}
+              .map((customer) => renderCustomerCard(customer, identitiesByCustomer.get(customer.id) ?? []))
+              .join('') : '<div class="empty">No customers captured yet.</div>'}
           </section>
         </div>
       </div>
@@ -910,7 +555,7 @@ export function renderLeadsDashboardHtml({
 
         cards.forEach((card) => {
           const matchesQuery = !query || (card.dataset.search || '').includes(query);
-          const matchesChannel = !channel || card.dataset.channel === channel;
+          const matchesChannel = !channel || (card.dataset.channels || '').split(' ').includes(channel);
           const matchesStatus = !status || card.dataset.status === status;
           const matchesCrm = !crm || card.dataset.crm === crm;
           const visible = matchesQuery && matchesChannel && matchesStatus && matchesCrm;
@@ -918,7 +563,7 @@ export function renderLeadsDashboardHtml({
           if (visible) visibleCount += 1;
         });
 
-        resultCount.textContent = 'Showing ' + visibleCount + ' lead' + (visibleCount === 1 ? '' : 's');
+        resultCount.textContent = 'Showing ' + visibleCount + ' customer' + (visibleCount === 1 ? '' : 's');
       }
 
       search.addEventListener('input', applyFilters);
@@ -956,14 +601,25 @@ export function renderLeadsDashboardHtml({
 }
 
 export function renderLeadDetailHtml({
-  lead,
+  customer,
+  identities,
   conversation,
+  interests,
 }: {
-  lead: LeadRecord
+  customer: CustomerRecord
+  identities: ChannelIdentityRecord[]
   conversation?: ConversationRecord
+  interests: InterestRecord[]
 }): string {
-  const whatsappLink = buildWhatsappLink(lead.phone)
+  const whatsappLink = buildWhatsappLink(customer.phone)
   const transcript = (conversation?.messages ?? []).slice(-20)
+  const interestsByKind = new Map<string, InterestRecord[]>()
+  for (const interest of interests) {
+    const list = interestsByKind.get(interest.kind) ?? []
+    list.push(interest)
+    interestsByKind.set(interest.kind, list)
+  }
+
   const content = `
     <main class="page">
       <header class="page-header">
@@ -979,8 +635,8 @@ export function renderLeadDetailHtml({
         <div class="page-inner">
           <section style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px;">
             <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-              <h1 style="margin:0;font-size:2rem;line-height:1;font-weight:800;">${escapeHtml(leadName(lead))}</h1>
-              <span class="pill ${statusTone(lead.qualificationStatus)}">${escapeHtml(lead.qualificationStatus)}</span>
+              <h1 style="margin:0;font-size:2rem;line-height:1;font-weight:800;">${escapeHtml(customerName(customer, identities))}</h1>
+              <span class="pill ${statusTone(customer.qualificationStatus)}">${escapeHtml(customer.qualificationStatus)}</span>
             </div>
             <div class="header-actions">
               <button class="btn dark">Push to CRM</button>
@@ -992,40 +648,61 @@ export function renderLeadDetailHtml({
             <div class="detail-stack">
               <article class="panel">
                 <div class="panel-head">
-                  <div class="panel-title">Lead Overview</div>
+                  <div class="panel-title">Customer Overview</div>
                   <a href="#" style="color:#4f46e5;font-size:0.82rem;font-weight:700;">Edit Info</a>
                 </div>
                 <div class="panel-body">
                   <div class="overview-grid">
                     <div>
-                      <div class="field-label">Source ID</div>
-                      <div class="field-value">${escapeHtml(lead.sourceId)}</div>
+                      <div class="field-label">Customer ID</div>
+                      <div class="field-value">${escapeHtml(customer.id)}</div>
                     </div>
                     <div>
-                      <div class="field-label">Channel</div>
-                      <div class="field-value">${escapeHtml(channelLabel(lead.channel))} Widget</div>
+                      <div class="field-label">Channels</div>
+                      <div class="field-value">
+                        <div class="identity-list">${identities.map(renderIdentityChip).join('')}</div>
+                      </div>
                     </div>
                     <div>
-                      <div class="field-label">Interest</div>
-                      <div class="field-value">${escapeHtml(lead.preferredService ?? 'Not captured')}</div>
+                      <div class="field-label">Latest Interest</div>
+                      <div class="field-value ${customer.preferredService ? '' : 'muted'}">${escapeHtml(customer.preferredService ?? 'Not captured')}</div>
                     </div>
                     <div>
                       <div class="field-label">First Seen</div>
-                      <div class="field-value">${escapeHtml(formatDate(lead.createdAt))}</div>
+                      <div class="field-value">${escapeHtml(formatDate(customer.firstSeenAt))}</div>
                     </div>
                     <div>
                       <div class="field-label">Location</div>
-                      <div class="field-value ${lead.location ? '' : 'muted'}">${escapeHtml(lead.location ?? 'Not provided')}</div>
+                      <div class="field-value ${customer.location ? '' : 'muted'}">${escapeHtml(customer.location ?? 'Not provided')}</div>
                     </div>
                     <div>
                       <div class="field-label">Email</div>
-                      <div class="field-value ${lead.email ? '' : 'muted'}">${escapeHtml(lead.email ?? 'Not provided')}</div>
+                      <div class="field-value ${customer.email ? '' : 'muted'}">${escapeHtml(customer.email ?? 'Not provided')}</div>
                     </div>
                     <div style="grid-column:1 / -1;">
                       <div class="field-label">Phone</div>
-                      <div class="field-value ${lead.phone ? '' : 'muted'}">${escapeHtml(lead.phone ?? 'Not provided')}</div>
+                      <div class="field-value ${customer.phone ? '' : 'muted'}">${escapeHtml(customer.phone ?? 'Not provided')}</div>
                     </div>
                   </div>
+                </div>
+              </article>
+
+              <article class="panel">
+                <div class="panel-head">
+                  <div class="panel-title">Captured Interests</div>
+                  <span style="color:#9ca3af;font-size:0.72rem;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;">${interests.length} entries</span>
+                </div>
+                <div class="panel-body">
+                  ${interests.length === 0
+                    ? '<div class="field-value muted">No interests captured yet.</div>'
+                    : Array.from(interestsByKind.entries()).map(([kind, items]) => `
+                      <div style="margin-bottom:18px;">
+                        <div class="field-label">${escapeHtml(kind.replace(/_/g, ' '))}</div>
+                        <div class="interest-list">
+                          ${items.map((item) => `<span class="interest-chip" title="${escapeHtml(formatDate(item.capturedAt))}">${escapeHtml(item.value)}</span>`).join('')}
+                        </div>
+                      </div>
+                    `).join('')}
                 </div>
               </article>
 
@@ -1037,27 +714,26 @@ export function renderLeadDetailHtml({
                   <div class="overview-grid">
                     <div>
                       <div class="field-label">CRM Status</div>
-                      <div class="field-value"><span class="pill ${statusTone(lead.crmStatus)}">${escapeHtml(lead.crmStatus)}</span></div>
+                      <div class="field-value"><span class="pill ${statusTone(customer.crmStatus)}">${escapeHtml(customer.crmStatus)}</span></div>
                     </div>
                     <div>
                       <div class="field-label">CRM Record</div>
-                      <div class="field-value ${lead.crmRecordId ? '' : 'muted'}">${escapeHtml(lead.crmRecordId ?? 'No match found')}</div>
-                    </div>
-                    <div>
-                      <div class="field-label">Conversation ID</div>
-                      <div class="field-value">${escapeHtml(lead.conversationId)}</div>
+                      <div class="field-value ${customer.crmRecordId ? '' : 'muted'}">${escapeHtml(customer.crmRecordId ?? 'No match found')}</div>
                     </div>
                     <div>
                       <div class="field-label">Last Intent</div>
-                      <div class="field-value ${lead.lastIntent ? '' : 'muted'}">${escapeHtml(lead.lastIntent ?? 'Not captured')}</div>
+                      <div class="field-value ${customer.lastIntent ? '' : 'muted'}">${escapeHtml(customer.lastIntent ?? 'Not captured')}</div>
+                    </div>
+                    <div>
+                      <div class="field-label">Last Activity</div>
+                      <div class="field-value">${escapeHtml(formatDate(customer.lastMessageAt))}</div>
                     </div>
                   </div>
                   <div class="crm-actions">
                     <button class="btn dark">Push to CRM</button>
                     <button class="btn">Mark Invalid</button>
-                    <button class="btn">Merge Lead</button>
                     ${whatsappLink ? `<a class="btn" href="${escapeHtml(whatsappLink)}" target="_blank" rel="noreferrer">Open WhatsApp</a>` : ''}
-                    ${lead.email ? `<a class="btn" href="mailto:${escapeHtml(lead.email)}">Send Email</a>` : ''}
+                    ${customer.email ? `<a class="btn" href="mailto:${escapeHtml(customer.email)}">Send Email</a>` : ''}
                   </div>
                 </div>
               </article>
@@ -1081,17 +757,16 @@ export function renderLeadDetailHtml({
     </main>
   `
 
-  return renderAppShell(`${leadName(lead)} - Lead Detail`, content, 'leads')
+  return renderAppShell(`${customerName(customer, identities)} - Customer Detail`, content, 'leads')
 }
 
-export function findLeadById(leads: LeadRecord[], leadId: string): LeadRecord | undefined {
-  return leads.find((lead) => lead.id === leadId)
+export function findCustomerById(customers: CustomerRecord[], customerId: string): CustomerRecord | undefined {
+  return customers.find((customer) => customer.id === customerId)
 }
 
-export function findConversationByLeadId(conversations: ConversationRecord[], leadId: string): ConversationRecord | undefined {
-  const leadConversation = conversations.find((entry) => entry.leadId === leadId)
-  if (leadConversation) {
-    return leadConversation
-  }
-  return conversations.find((entry) => entry.id === leadId)
+export function findConversationByCustomerId(conversations: ConversationRecord[], customerId: string): ConversationRecord | undefined {
+  return conversations
+    .slice()
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .find((entry) => entry.customerId === customerId)
 }

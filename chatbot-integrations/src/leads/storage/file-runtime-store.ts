@@ -2,14 +2,25 @@ import crypto from 'crypto'
 import path from 'path'
 import type { IncomingMessage } from '../../core/types.js'
 import { FileJsonStore } from './file-json-store.js'
-import type { LeadUpdatePayload, RuntimeStore, RuntimeStoreSummary } from './runtime-store.interface.js'
 import type {
+  CustomerSnapshot,
+  IdentitySnapshot,
+  MergeContact,
+  ResolvedIdentity,
+  RuntimeStore,
+  RuntimeStoreSummary,
+} from './runtime-store.interface.js'
+import type {
+  ChannelIdentityRecord,
   ConversationMessageRecord,
   ConversationRecord,
-  LeadRecord,
+  CustomerRecord,
+  InterestKind,
+  InterestRecord,
   RuntimeDataShape,
   WebhookEventRecord,
 } from '../types/records.js'
+import { normaliseEmail, normalisePhone } from './helpers.js'
 
 function nowIso(): string {
   return new Date().toISOString()
@@ -24,7 +35,9 @@ export class FileRuntimeStore implements RuntimeStore {
 
   constructor(baseDir: string) {
     this._store = new FileJsonStore<RuntimeDataShape>(path.join(baseDir, 'runtime-store.json'), {
-      leads: [],
+      customers: [],
+      identities: [],
+      interests: [],
       conversations: [],
       webhookEvents: [],
       deduplication: [],
@@ -49,79 +62,210 @@ export class FileRuntimeStore implements RuntimeStore {
     return shouldProcess
   }
 
-  public async getOrCreateLead(message: IncomingMessage): Promise<LeadRecord> {
-    const timestamp = nowIso()
+  public async resolveIdentity(message: IncomingMessage, identityUpdate?: IdentitySnapshot): Promise<ResolvedIdentity> {
     const sourceId = message.sourceId ?? message.senderId
-    let leadRecord!: LeadRecord
+    const timestamp = nowIso()
+    let result!: ResolvedIdentity
 
     this._store.update((state) => {
-      const existing = state.leads.find(
-        (lead) => lead.channel === message.channel && lead.sourceId === sourceId,
+      const existing = state.identities.find(
+        (entry) => entry.channel === message.channel && entry.sourceId === sourceId,
       )
 
       if (existing) {
-        leadRecord = {
+        const customer = state.customers.find((c) => c.id === existing.customerId)
+        if (!customer) {
+          throw new Error(`Channel identity ${existing.id} references missing customer ${existing.customerId}`)
+        }
+
+        const updatedIdentity: ChannelIdentityRecord = {
           ...existing,
-          senderName: message.senderName ?? existing.senderName,
-          conversationId: message.conversationId,
+          senderName: identityUpdate?.senderName ?? message.senderName ?? existing.senderName,
+          username: identityUpdate?.username ?? message.username ?? existing.username,
+          conversationId: identityUpdate?.conversationId ?? message.conversationId,
+          lastSeenAt: timestamp,
+        }
+        const updatedCustomer: CustomerRecord = {
+          ...customer,
           lastMessageAt: message.timestamp,
           updatedAt: timestamp,
         }
+
+        result = { customer: updatedCustomer, identity: updatedIdentity }
+
         return {
           ...state,
-          leads: state.leads.map((lead) => (lead.id === existing.id ? leadRecord : lead)),
+          identities: state.identities.map((entry) => (entry.id === existing.id ? updatedIdentity : entry)),
+          customers: state.customers.map((entry) => (entry.id === customer.id ? updatedCustomer : entry)),
         }
       }
 
-      leadRecord = {
-        id: nextId('lead'),
-        channel: message.channel,
-        sourceId,
-        conversationId: message.conversationId,
-        senderName: message.senderName,
+      const newCustomer: CustomerRecord = {
+        id: nextId('cust'),
         qualificationStatus: 'new',
         crmStatus: 'pending',
         lastMessageAt: message.timestamp,
-        createdAt: timestamp,
+        firstSeenAt: timestamp,
         updatedAt: timestamp,
       }
+      const newIdentity: ChannelIdentityRecord = {
+        id: nextId('cid'),
+        customerId: newCustomer.id,
+        channel: message.channel,
+        sourceId,
+        senderName: identityUpdate?.senderName ?? message.senderName,
+        username: identityUpdate?.username ?? message.username,
+        conversationId: identityUpdate?.conversationId ?? message.conversationId,
+        firstSeenAt: timestamp,
+        lastSeenAt: timestamp,
+      }
+      result = { customer: newCustomer, identity: newIdentity }
 
       return {
         ...state,
-        leads: [...state.leads, leadRecord],
+        customers: [...state.customers, newCustomer],
+        identities: [...state.identities, newIdentity],
       }
     })
 
-    return leadRecord
+    return result
   }
 
-  public async updateLead(leadId: string, snapshot: LeadUpdatePayload): Promise<LeadRecord | undefined> {
+  public async updateCustomer(customerId: string, snapshot: CustomerSnapshot): Promise<CustomerRecord | undefined> {
     const timestamp = nowIso()
-    let nextLead: LeadRecord | undefined
+    let next: CustomerRecord | undefined
 
     this._store.update((state) => {
-      const current = state.leads.find((lead) => lead.id === leadId)
-      if (!current) {
-        return state
-      }
+      const current = state.customers.find((c) => c.id === customerId)
+      if (!current) return state
 
-      nextLead = {
+      next = {
         ...current,
         ...snapshot,
+        lastMessageAt: snapshot.lastMessageAt ?? current.lastMessageAt,
         updatedAt: timestamp,
       }
 
       return {
         ...state,
-        leads: state.leads.map((lead) => (lead.id === leadId ? nextLead! : lead)),
+        customers: state.customers.map((entry) => (entry.id === customerId ? next! : entry)),
       }
     })
 
-    return nextLead
+    return next
+  }
+
+  public async mergeCustomersByContact(customerId: string, contact: MergeContact): Promise<string> {
+    const phone = normalisePhone(contact.phone)
+    const email = normaliseEmail(contact.email)
+    if (!phone && !email) return customerId
+
+    let resolvedId = customerId
+
+    this._store.update((state) => {
+      const losing = state.customers.find((c) => c.id === customerId)
+      if (!losing) return state
+
+      const survivor = state.customers.find((c) => {
+        if (c.id === customerId) return false
+        if (phone && normalisePhone(c.phone) === phone) return true
+        if (email && normaliseEmail(c.email) === email) return true
+        return false
+      })
+
+      if (!survivor) return state
+
+      const winner = survivor.firstSeenAt <= losing.firstSeenAt ? survivor : losing
+      const loser = winner === survivor ? losing : survivor
+
+      const merged: CustomerRecord = {
+        ...winner,
+        leadName: winner.leadName ?? loser.leadName,
+        phone: winner.phone ?? loser.phone,
+        email: winner.email ?? loser.email,
+        location: winner.location ?? loser.location,
+        preferredService: winner.preferredService ?? loser.preferredService,
+        responseStyle: winner.responseStyle ?? loser.responseStyle,
+        crmRecordId: winner.crmRecordId ?? loser.crmRecordId,
+        lastIntent: loser.lastIntent ?? winner.lastIntent,
+        lastMessageAt:
+          loser.lastMessageAt > winner.lastMessageAt ? loser.lastMessageAt : winner.lastMessageAt,
+        updatedAt: nowIso(),
+      }
+      resolvedId = merged.id
+
+      const interestsKept: InterestRecord[] = []
+      const seen = new Set<string>()
+      for (const interest of state.interests) {
+        if (interest.customerId === winner.id || interest.customerId === loser.id) {
+          const key = `${interest.kind}::${interest.value}`
+          if (seen.has(key)) continue
+          seen.add(key)
+          interestsKept.push({ ...interest, customerId: merged.id })
+        } else {
+          interestsKept.push(interest)
+        }
+      }
+
+      return {
+        ...state,
+        customers: state.customers
+          .filter((c) => c.id !== loser.id)
+          .map((c) => (c.id === merged.id ? merged : c)),
+        identities: state.identities.map((i) =>
+          i.customerId === loser.id ? { ...i, customerId: merged.id } : i,
+        ),
+        conversations: state.conversations.map((c) =>
+          c.customerId === loser.id ? { ...c, customerId: merged.id } : c,
+        ),
+        interests: interestsKept,
+        webhookEvents: state.webhookEvents.map((e) =>
+          e.customerId === loser.id ? { ...e, customerId: merged.id } : e,
+        ),
+      }
+    })
+
+    return resolvedId
+  }
+
+  public async appendInterest(
+    customerId: string,
+    kind: InterestKind | string,
+    value: string,
+  ): Promise<InterestRecord | undefined> {
+    const trimmed = value.trim()
+    if (!trimmed) return undefined
+
+    let result: InterestRecord | undefined
+
+    this._store.update((state) => {
+      if (!state.customers.some((c) => c.id === customerId)) {
+        return state
+      }
+      const existing = state.interests.find(
+        (entry) => entry.customerId === customerId && entry.kind === kind && entry.value === trimmed,
+      )
+      if (existing) {
+        result = existing
+        return state
+      }
+      const created: InterestRecord = {
+        id: nextId('int'),
+        customerId,
+        kind,
+        value: trimmed,
+        capturedAt: nowIso(),
+      }
+      result = created
+      return { ...state, interests: [...state.interests, created] }
+    })
+
+    return result
   }
 
   public async appendConversationMessage(
-    leadId: string,
+    customerId: string,
+    channelIdentityId: string,
     message: ConversationMessageRecord,
     channel: IncomingMessage['channel'],
     sourceId: string,
@@ -136,6 +280,8 @@ export class FileRuntimeStore implements RuntimeStore {
       if (existing) {
         conversationRecord = {
           ...existing,
+          customerId,
+          channelIdentityId,
           updatedAt: timestamp,
           messages: [...existing.messages, message],
         }
@@ -149,7 +295,8 @@ export class FileRuntimeStore implements RuntimeStore {
 
       conversationRecord = {
         id: conversationId,
-        leadId,
+        customerId,
+        channelIdentityId,
         channel,
         sourceId,
         createdAt: timestamp,
@@ -186,25 +333,44 @@ export class FileRuntimeStore implements RuntimeStore {
   public async getSummary(): Promise<RuntimeStoreSummary> {
     const state = this._store.read()
     return {
-      leads: {
-        total: state.leads.length,
-        qualified: state.leads.filter((lead) => lead.qualificationStatus === 'qualified').length,
-        pendingSync: state.leads.filter((lead) => lead.crmStatus !== 'synced').length,
+      customers: {
+        total: state.customers.length,
+        qualified: state.customers.filter((c) => c.qualificationStatus === 'qualified').length,
+        pendingSync: state.customers.filter((c) => c.crmStatus !== 'synced').length,
       },
       conversations: state.conversations.length,
       webhookEvents: state.webhookEvents.length,
-      channels: state.leads.reduce<Record<string, number>>((acc, lead) => {
-        acc[lead.channel] = (acc[lead.channel] ?? 0) + 1
+      identities: state.identities.length,
+      channels: state.identities.reduce<Record<string, number>>((acc, identity) => {
+        acc[identity.channel] = (acc[identity.channel] ?? 0) + 1
         return acc
       }, {}),
     }
   }
 
-  public async listLeads(): Promise<LeadRecord[]> {
-    return this._store.read().leads
+  public async listCustomers(): Promise<CustomerRecord[]> {
+    return this._store.read().customers
+  }
+
+  public async listIdentities(): Promise<ChannelIdentityRecord[]> {
+    return this._store
+      .read()
+      .identities.slice()
+      .sort((a, b) => b.lastSeenAt.localeCompare(a.lastSeenAt))
   }
 
   public async listConversations(): Promise<ConversationRecord[]> {
     return this._store.read().conversations
+  }
+
+  public async listInterestsByCustomer(customerId: string): Promise<InterestRecord[]> {
+    return this._store
+      .read()
+      .interests.filter((entry) => entry.customerId === customerId)
+      .sort((a, b) => a.capturedAt.localeCompare(b.capturedAt))
+  }
+
+  public async getCustomer(customerId: string): Promise<CustomerRecord | undefined> {
+    return this._store.read().customers.find((c) => c.id === customerId)
   }
 }

@@ -1,11 +1,16 @@
 import crypto from 'crypto'
 import type { IncomingMessage, OutgoingMessage } from '../../core/types.js'
-import type { NLPClient, Logger } from '../../core/utils/index.js'
+import type { NLPClient, NLPRequestMetadata, Logger } from '../../core/utils/index.js'
 import type { HubSpotClient } from '../../integrations/crm/hubspot/index.js'
 import type { MessageDeduplicator } from './message-deduplicator.js'
 import { mapNlpResponseToOutgoingMessages } from './rasa-outgoing.js'
-import type { LeadRecord } from '../types/records.js'
-import type { RuntimeStore } from '../storage/runtime-store.interface.js'
+import type { ChannelIdentityRecord, CustomerRecord, InterestKind } from '../types/records.js'
+import type {
+  CustomerSnapshot,
+  IdentitySnapshot,
+  RuntimeStore,
+} from '../storage/runtime-store.interface.js'
+import { normaliseEmail, normalisePhone } from '../storage/helpers.js'
 
 interface LeadOrchestratorOptions {
   logger: Logger
@@ -19,59 +24,100 @@ interface LeadOrchestratorOptions {
 type ResponseStyle = 'casual' | 'professional' | 'warm' | 'concierge'
 
 export interface OrchestratedReply {
-  lead: LeadRecord
+  customer: CustomerRecord
+  identity: ChannelIdentityRecord
   outgoingMessages: OutgoingMessage[]
 }
 
-function normalizeText(value: unknown): string | undefined {
-  if (typeof value !== 'string') {
-    return undefined
-  }
+interface TrackerLeadFields {
+  leadName?: string
+  email?: string
+  phone?: string
+  preferredService?: string
+  location?: string
+}
 
+interface TrackerInterestSamples {
+  productType?: string
+  brand?: string
+  lensType?: string
+  useCase?: string
+  budget?: string
+  urgency?: string
+  preferredService?: string
+}
+
+const SUPPORTED_INTEREST_KINDS: Array<keyof TrackerInterestSamples> = [
+  'productType',
+  'brand',
+  'lensType',
+  'useCase',
+  'budget',
+  'urgency',
+  'preferredService',
+]
+
+const INTEREST_KIND_MAP: Record<keyof TrackerInterestSamples, InterestKind> = {
+  productType: 'product_type',
+  brand: 'brand',
+  lensType: 'lens_type',
+  useCase: 'use_case',
+  budget: 'budget',
+  urgency: 'urgency',
+  preferredService: 'preferred_service',
+}
+
+function normalizeText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
   const trimmed = value.trim()
   return trimmed || undefined
 }
 
-function deriveLeadSnapshot(tracker: { latestIntent?: string; slots: Record<string, unknown> } | undefined) {
+function deriveTrackerLeadFields(tracker?: { slots: Record<string, unknown> }): TrackerLeadFields {
   const slots = tracker?.slots ?? {}
-  const leadName = normalizeText(slots.lead_name ?? slots.customer_name ?? slots.name)
-  const email = normalizeText(slots.email)
-  const phone = normalizeText(slots.contact_number ?? slots.phone_number ?? slots.phone)
-  const preferredService = normalizeText(
-    slots.preferred_service ?? slots.product_type ?? slots.lens_type ?? slots.service_type
-  )
-  const location = normalizeText(slots.lead_location ?? slots.city ?? slots.location)
-  const rawStatus = normalizeText(slots.lead_status)
-
-  const qualificationStatus: LeadRecord['qualificationStatus'] = rawStatus === 'qualified'
-    ? 'qualified'
-    : rawStatus === 'unqualified'
-      ? 'unqualified'
-      : leadName || email || phone || preferredService || location
-        ? 'needs_review'
-        : 'new'
-
   return {
-    leadName,
-    email,
-    phone,
-    preferredService,
-    location,
-    qualificationStatus,
-    lastIntent: tracker?.latestIntent,
+    leadName: normalizeText(slots.lead_name ?? slots.customer_name ?? slots.name),
+    email: normalizeText(slots.email),
+    phone: normalizeText(slots.contact_number ?? slots.phone_number ?? slots.phone),
+    preferredService: normalizeText(slots.preferred_service ?? slots.service_type),
+    location: normalizeText(slots.lead_location ?? slots.city ?? slots.location),
   }
+}
+
+function deriveTrackerInterestSamples(tracker?: { slots: Record<string, unknown> }): TrackerInterestSamples {
+  const slots = tracker?.slots ?? {}
+  return {
+    productType: normalizeText(slots.product_type),
+    brand: normalizeText(slots.brand_name ?? slots.brand),
+    lensType: normalizeText(slots.lens_type),
+    useCase: normalizeText(slots.use_case),
+    budget: normalizeText(slots.preferred_budget ?? slots.budget),
+    urgency: normalizeText(slots.purchase_timeline ?? slots.urgency),
+    preferredService: normalizeText(slots.preferred_service),
+  }
+}
+
+function deriveQualificationStatus(
+  fields: TrackerLeadFields,
+  rawStatus: string | undefined,
+  fallback: CustomerRecord['qualificationStatus'],
+): CustomerRecord['qualificationStatus'] {
+  if (rawStatus === 'qualified') return 'qualified'
+  if (rawStatus === 'unqualified') return 'unqualified'
+  if (fields.leadName || fields.email || fields.phone || fields.preferredService || fields.location) {
+    return 'needs_review'
+  }
+  return fallback
 }
 
 function deriveChannelPhone(message: IncomingMessage): string | undefined {
+  if (message.channel !== 'whatsapp') return undefined
   const sourceId = message.sourceId ?? message.senderId
-  if (message.channel === 'whatsapp') {
-    const normalized = String(sourceId).replace(/[^\d+]/g, '')
-    return normalized || undefined
-  }
-  return undefined
+  const normalized = String(sourceId).replace(/[^\d+]/g, '')
+  return normalized || undefined
 }
 
-function deriveMessageLeadSnapshot(message: IncomingMessage): Partial<Pick<LeadRecord, 'leadName' | 'email' | 'phone' | 'location'>> {
+function deriveMessageOnlyFields(message: IncomingMessage): { leadName?: string; email?: string; phone?: string; location?: string } {
   const raw = message.rawPayload && typeof message.rawPayload === 'object'
     ? message.rawPayload as Record<string, unknown>
     : {}
@@ -88,27 +134,9 @@ function deriveMessageLeadSnapshot(message: IncomingMessage): Partial<Pick<LeadR
   return {
     leadName: normalizeText(message.senderName ?? raw.name ?? telegramContactName),
     email: normalizeText(raw.email),
-    phone: normalizeText(raw.phone ?? telegramContact?.phone_number),
+    phone: normalizeText(raw.phone ?? telegramContact?.phone_number) ?? deriveChannelPhone(message),
     location: normalizeText(raw.location),
   }
-}
-
-function deriveNlpMetadata(message: IncomingMessage): Record<string, string> | undefined {
-  const raw = message.rawPayload && typeof message.rawPayload === 'object'
-    ? message.rawPayload as Record<string, unknown>
-    : {}
-
-  const metadata = {
-    channel: normalizeText(message.channel),
-    senderName: normalizeText(message.senderName),
-    sourceId: normalizeText(message.sourceId ?? message.senderId),
-    email: normalizeText(raw.email),
-    phone: normalizeText(raw.phone),
-    location: normalizeText(raw.location),
-  }
-
-  const entries = Object.entries(metadata).filter(([, value]) => value)
-  return entries.length ? Object.fromEntries(entries) as Record<string, string> : undefined
 }
 
 function nextOutboundMessageId(): string {
@@ -130,92 +158,36 @@ function inferResponseStyle(
   existingStyle?: ResponseStyle,
 ): ResponseStyle {
   const normalized = String(text ?? '').trim().toLowerCase()
-  if (!normalized) {
-    return existingStyle ?? fallbackStyle
-  }
+  if (!normalized) return existingStyle ?? fallbackStyle
+  if (normalized.startsWith('/')) return existingStyle ?? fallbackStyle
 
-  if (normalized.startsWith('/')) {
-    return existingStyle ?? fallbackStyle
-  }
+  const conciergeSignals = ['luxury', 'premium', 'exclusive', 'designer', 'best option', 'high-end', 'curate', 'recommend the best']
+  if (conciergeSignals.some((signal) => normalized.includes(signal))) return 'concierge'
 
-  const conciergeSignals = [
-    'luxury',
-    'premium',
-    'exclusive',
-    'designer',
-    'best option',
-    'high-end',
-    'curate',
-    'recommend the best',
-  ]
-  if (conciergeSignals.some((signal) => normalized.includes(signal))) {
-    return 'concierge'
-  }
+  const professionalSignals = ['quotation', 'quote', 'pricing', 'price list', 'invoice', 'proposal', 'please share', 'please provide', 'schedule', 'appointment', 'consultation']
+  if (professionalSignals.some((signal) => normalized.includes(signal))) return 'professional'
 
-  const professionalSignals = [
-    'quotation',
-    'quote',
-    'pricing',
-    'price list',
-    'invoice',
-    'proposal',
-    'please share',
-    'please provide',
-    'schedule',
-    'appointment',
-    'consultation',
-  ]
-  if (professionalSignals.some((signal) => normalized.includes(signal))) {
-    return 'professional'
-  }
+  const warmSignals = ['help me', 'not sure', 'confused', 'which is better', 'can someone help', 'please help', 'worried', 'unsure']
+  if (warmSignals.some((signal) => normalized.includes(signal))) return 'warm'
 
-  const warmSignals = [
-    'help me',
-    'not sure',
-    'confused',
-    'which is better',
-    'can someone help',
-    'please help',
-    'worried',
-    'unsure',
-  ]
-  if (warmSignals.some((signal) => normalized.includes(signal))) {
-    return 'warm'
-  }
-
-  if (normalized.length <= 12) {
-    return existingStyle ?? fallbackStyle
-  }
-
+  if (normalized.length <= 12) return existingStyle ?? fallbackStyle
   return 'casual'
 }
 
-function whatsappGreetingHeader(
-  senderName: string,
-  style: ResponseStyle,
-): string {
+function whatsappGreetingHeader(senderName: string, style: ResponseStyle): string {
   switch (style) {
-    case 'professional':
-      return `Hello *${senderName}*`
-    case 'warm':
-      return `Welcome *${senderName}*`
-    case 'concierge':
-      return `Good to have you here, *${senderName}*`
+    case 'professional': return `Hello *${senderName}*`
+    case 'warm': return `Welcome *${senderName}*`
+    case 'concierge': return `Good to have you here, *${senderName}*`
     case 'casual':
     default:
       return `Hi *${senderName}*`
   }
 }
 
-function prependWhatsappName(
-  text: string,
-  senderName: string | undefined,
-  style: ResponseStyle,
-): string {
+function prependWhatsappName(text: string, senderName: string | undefined, style: ResponseStyle): string {
   const safeName = normalizeText(senderName)
-  if (!safeName) {
-    return text
-  }
+  if (!safeName) return text
 
   const trimmed = text.trim()
   const existingHeaders = [
@@ -224,9 +196,7 @@ function prependWhatsappName(
     `Welcome *${safeName}*`,
     `Good to have you here, *${safeName}*`,
   ]
-  if (existingHeaders.some((header) => trimmed.startsWith(header))) {
-    return text
-  }
+  if (existingHeaders.some((header) => trimmed.startsWith(header))) return text
 
   return `${whatsappGreetingHeader(safeName, style)}\n\n${trimmed}`
 }
@@ -236,25 +206,15 @@ function decorateWhatsappMessages(
   outgoingMessages: OutgoingMessage[],
   style: ResponseStyle,
 ): OutgoingMessage[] {
-  if (message.channel !== 'whatsapp' || !message.senderName) {
-    return outgoingMessages
-  }
+  if (message.channel !== 'whatsapp' || !message.senderName) return outgoingMessages
 
   return outgoingMessages.map((outgoingMessage) => {
     if (outgoingMessage.type === 'text' && isGreetingLikeText(outgoingMessage.text)) {
-      return {
-        ...outgoingMessage,
-        text: prependWhatsappName(outgoingMessage.text, message.senderName, style),
-      }
+      return { ...outgoingMessage, text: prependWhatsappName(outgoingMessage.text, message.senderName, style) }
     }
-
     if (outgoingMessage.type === 'choice' && isGreetingLikeText(outgoingMessage.text)) {
-      return {
-        ...outgoingMessage,
-        text: prependWhatsappName(outgoingMessage.text, message.senderName, style),
-      }
+      return { ...outgoingMessage, text: prependWhatsappName(outgoingMessage.text, message.senderName, style) }
     }
-
     return outgoingMessage
   })
 }
@@ -266,7 +226,6 @@ export class LeadOrchestrator {
   private readonly _runtimeStore: RuntimeStore
   private readonly _hubspot?: HubSpotClient
   private readonly _responseStyle: ResponseStyle
-  private readonly _lastChoiceOptions: Map<string, Array<{ label: string; value: string }>>
 
   constructor(options: LeadOrchestratorOptions) {
     this._logger = options.logger
@@ -275,7 +234,6 @@ export class LeadOrchestrator {
     this._runtimeStore = options.runtimeStore
     this._hubspot = options.hubspot
     this._responseStyle = options.responseStyle ?? 'casual'
-    this._lastChoiceOptions = new Map()
   }
 
   public async process(message: IncomingMessage): Promise<OrchestratedReply | undefined> {
@@ -285,20 +243,25 @@ export class LeadOrchestrator {
     }
 
     const sourceId = message.sourceId ?? message.senderId
-    const lead = await this._runtimeStore.getOrCreateLead({ ...message, sourceId })
-    const optionScopeKey = `${message.channel}:${sourceId}:${message.conversationId}`
-    const rawMessageText = message.type === 'interactive'
+    const messageOnlyFields = deriveMessageOnlyFields(message)
+
+    const identityUpdate: IdentitySnapshot = {
+      senderName: message.senderName,
+      username: message.username,
+      conversationId: message.conversationId,
+    }
+
+    let { customer, identity } = await this._runtimeStore.resolveIdentity(message, identityUpdate)
+    let workingCustomerId = customer.id
+
+    const messageText = message.type === 'interactive'
       ? (message.interactive?.id || message.interactive?.title || message.text)
       : (message.text || message.interactive?.title)
-    const messageText = this._resolveNumericOptionReply(message, rawMessageText, optionScopeKey)
-    const inferredResponseStyle = inferResponseStyle(
-      messageText,
-      this._responseStyle,
-      lead.responseStyle,
-    )
+    const inferredResponseStyle = inferResponseStyle(messageText, this._responseStyle, customer.responseStyle)
 
     await this._runtimeStore.appendConversationMessage(
-      lead.id,
+      customer.id,
+      identity.id,
       {
         direction: 'inbound',
         messageId: message.messageId,
@@ -309,7 +272,8 @@ export class LeadOrchestrator {
           channel: message.channel,
           sourceId,
           conversationId: message.conversationId,
-          leadId: lead.id,
+          customerId: customer.id,
+          channelIdentityId: identity.id,
         },
       },
       message.channel,
@@ -323,75 +287,110 @@ export class LeadOrchestrator {
       path: `/messages/${message.channel}`,
       sourceId,
       conversationId: message.conversationId,
-      leadId: lead.id,
+      customerId: customer.id,
       payload: message.rawPayload,
     })
 
-    const messageSnapshot = deriveMessageLeadSnapshot(message)
-    const preNlpSnapshot: Partial<LeadRecord> = {}
-    if (messageSnapshot.leadName) {
-      preNlpSnapshot.leadName = messageSnapshot.leadName
-    }
-    if (messageSnapshot.email) {
-      preNlpSnapshot.email = messageSnapshot.email
-    }
-    if (messageSnapshot.phone ?? deriveChannelPhone(message)) {
-      preNlpSnapshot.phone = messageSnapshot.phone ?? deriveChannelPhone(message)
-    }
-    if (messageSnapshot.location) {
-      preNlpSnapshot.location = messageSnapshot.location
-    }
-    if (inferredResponseStyle !== lead.responseStyle) {
-      preNlpSnapshot.responseStyle = inferredResponseStyle
-    }
-    const leadWithMessageData = Object.keys(preNlpSnapshot).length
-      ? (await this._runtimeStore.updateLead(lead.id, preNlpSnapshot) ?? lead)
-      : lead
+    const preNlpSnapshot: CustomerSnapshot = {}
+    if (!customer.leadName && messageOnlyFields.leadName) preNlpSnapshot.leadName = messageOnlyFields.leadName
+    if (!customer.email && messageOnlyFields.email) preNlpSnapshot.email = messageOnlyFields.email
+    if (!customer.phone && messageOnlyFields.phone) preNlpSnapshot.phone = messageOnlyFields.phone
+    if (!customer.location && messageOnlyFields.location) preNlpSnapshot.location = messageOnlyFields.location
+    if (inferredResponseStyle !== customer.responseStyle) preNlpSnapshot.responseStyle = inferredResponseStyle
 
-    if (!messageText) {
-      this._logger.warn(`[${message.channel}] Ignoring non-text message for lead ${lead.id}`)
-      return {
-        lead: leadWithMessageData,
-        outgoingMessages: [],
+    if (Object.keys(preNlpSnapshot).length) {
+      customer = (await this._runtimeStore.updateCustomer(customer.id, preNlpSnapshot)) ?? customer
+
+      if (preNlpSnapshot.phone || preNlpSnapshot.email) {
+        const mergedId = await this._runtimeStore.mergeCustomersByContact(customer.id, {
+          phone: preNlpSnapshot.phone,
+          email: preNlpSnapshot.email,
+        })
+        if (mergedId !== customer.id) {
+          this._logger.info(
+            `[Lead] Merged customer ${customer.id} into ${mergedId} via channel-payload contact match`,
+          )
+          workingCustomerId = mergedId
+          customer = (await this._runtimeStore.getCustomer(mergedId)) ?? customer
+        }
       }
     }
 
-    const nlpResponse = await this._nlpClient.getResponse(message.senderId, messageText, deriveNlpMetadata(message))
-    const trackerSnapshot = deriveLeadSnapshot(nlpResponse.tracker)
-    if (!trackerSnapshot.leadName) {
-      trackerSnapshot.leadName = messageSnapshot.leadName
+    if (!messageText) {
+      this._logger.warn(`[${message.channel}] Ignoring non-text message for customer ${customer.id}`)
+      return { customer, identity, outgoingMessages: [] }
     }
-    if (!trackerSnapshot.email) {
-      trackerSnapshot.email = messageSnapshot.email
+
+    const requestMetadata = this._buildPrefillMetadata(message, customer, identity, sourceId)
+
+    const nlpResponse = await this._nlpClient.getResponse(message.senderId, messageText, requestMetadata)
+
+    const trackerFields = deriveTrackerLeadFields(nlpResponse.tracker)
+    const trackerInterests = deriveTrackerInterestSamples(nlpResponse.tracker)
+    const rawStatus = normalizeText(nlpResponse.tracker?.slots?.lead_status)
+
+    const postSnapshot: CustomerSnapshot = {}
+    if (trackerFields.leadName && trackerFields.leadName !== customer.leadName) postSnapshot.leadName = trackerFields.leadName
+    if (trackerFields.email && trackerFields.email !== customer.email) postSnapshot.email = trackerFields.email
+    if (trackerFields.phone && trackerFields.phone !== customer.phone) postSnapshot.phone = trackerFields.phone
+    if (trackerFields.location && trackerFields.location !== customer.location) postSnapshot.location = trackerFields.location
+    if (trackerFields.preferredService && trackerFields.preferredService !== customer.preferredService) {
+      postSnapshot.preferredService = trackerFields.preferredService
     }
-    if (!trackerSnapshot.phone) {
-      trackerSnapshot.phone = messageSnapshot.phone ?? deriveChannelPhone(message)
+    const newStatus = deriveQualificationStatus(trackerFields, rawStatus, customer.qualificationStatus)
+    if (newStatus !== customer.qualificationStatus) postSnapshot.qualificationStatus = newStatus
+    if (nlpResponse.tracker?.latestIntent && nlpResponse.tracker.latestIntent !== customer.lastIntent) {
+      postSnapshot.lastIntent = nlpResponse.tracker.latestIntent
     }
-    if (!trackerSnapshot.location) {
-      trackerSnapshot.location = messageSnapshot.location
+
+    if (Object.keys(postSnapshot).length) {
+      customer = (await this._runtimeStore.updateCustomer(customer.id, postSnapshot)) ?? customer
+
+      if (postSnapshot.phone || postSnapshot.email) {
+        const mergedId = await this._runtimeStore.mergeCustomersByContact(customer.id, {
+          phone: postSnapshot.phone,
+          email: postSnapshot.email,
+        })
+        if (mergedId !== customer.id) {
+          this._logger.info(
+            `[Lead] Merged customer ${customer.id} into ${mergedId} via tracker contact match`,
+          )
+          workingCustomerId = mergedId
+          customer = (await this._runtimeStore.getCustomer(mergedId)) ?? customer
+        }
+      }
     }
-    const updatedLead = (await this._runtimeStore.updateLead(lead.id, trackerSnapshot)) ?? leadWithMessageData
+
+    for (const kind of SUPPORTED_INTEREST_KINDS) {
+      const value = trackerInterests[kind]
+      if (!value) continue
+      await this._runtimeStore.appendInterest(workingCustomerId, INTEREST_KIND_MAP[kind], value)
+    }
+
     const outgoingMessages = decorateWhatsappMessages(
       message,
       mapNlpResponseToOutgoingMessages(nlpResponse),
       inferredResponseStyle,
     )
-    this._rememberChoiceOptions(optionScopeKey, outgoingMessages)
 
     for (const outgoingMessage of outgoingMessages) {
       await this._runtimeStore.appendConversationMessage(
-        updatedLead.id,
+        customer.id,
+        identity.id,
         {
           direction: 'outbound',
           messageId: nextOutboundMessageId(),
-          text: outgoingMessage.type === 'text' ? outgoingMessage.text : ('text' in outgoingMessage ? outgoingMessage.text : undefined),
+          text: outgoingMessage.type === 'text'
+            ? outgoingMessage.text
+            : ('text' in outgoingMessage ? outgoingMessage.text : undefined),
           messageType: outgoingMessage.type,
           timestamp: new Date().toISOString(),
           metadata: {
             channel: message.channel,
             sourceId,
             conversationId: message.conversationId,
-            leadId: updatedLead.id,
+            customerId: customer.id,
+            channelIdentityId: identity.id,
           },
         },
         message.channel,
@@ -406,122 +405,136 @@ export class LeadOrchestrator {
       path: `/messages/${message.channel}`,
       sourceId,
       conversationId: message.conversationId,
-      leadId: updatedLead.id,
+      customerId: customer.id,
       payload: {
         metadata: {
           channel: message.channel,
           sourceId,
-          leadId: updatedLead.id,
+          customerId: customer.id,
+          channelIdentityId: identity.id,
           conversationId: message.conversationId,
         },
         messages: outgoingMessages,
       },
     })
 
-    await this._syncQualifiedLead(updatedLead)
+    await this._syncQualifiedLead(customer)
 
-    return { lead: updatedLead, outgoingMessages }
-  }
-
-  private _resolveNumericOptionReply(
-    message: IncomingMessage,
-    text: string | undefined,
-    optionScopeKey: string,
-  ): string | undefined {
-    if (message.type === 'interactive') {
-      return text
-    }
-    if (message.channel !== 'x' && message.channel !== 'instagram') {
-      return text
-    }
-    const normalized = String(text ?? '').trim()
-    if (!/^\d{1,2}$/.test(normalized)) {
-      return text
-    }
-    const option = this._lastChoiceOptions.get(optionScopeKey)?.[Number(normalized) - 1]
-    return option?.value ?? text
-  }
-
-  private _rememberChoiceOptions(optionScopeKey: string, outgoingMessages: OutgoingMessage[]): void {
-    const choice = outgoingMessages.find((outgoingMessage): outgoingMessage is Extract<OutgoingMessage, { type: 'choice' }> => {
-      return outgoingMessage.type === 'choice' && outgoingMessage.options.length > 0
-    })
-    if (choice) {
-      this._lastChoiceOptions.set(optionScopeKey, choice.options)
-    }
+    return { customer, identity, outgoingMessages }
   }
 
   public async getSummary() {
     return this._runtimeStore.getSummary()
   }
 
-  public async listLeads() {
-    return this._runtimeStore.listLeads()
+  public async listCustomers() {
+    return this._runtimeStore.listCustomers()
   }
 
   public async listConversations() {
     return this._runtimeStore.listConversations()
   }
 
-  private async _syncQualifiedLead(lead: LeadRecord): Promise<void> {
-    if (!this._hubspot || lead.qualificationStatus !== 'qualified') {
-      return
+  public async listInterestsByCustomer(customerId: string) {
+    return this._runtimeStore.listInterestsByCustomer(customerId)
+  }
+
+  /**
+   * Build the metadata payload Rasa receives. We seed it with whatever the
+   * customer record already knows so `action_prefill_lead_capture` can skip
+   * questions for fields we have on file. Channel-payload values (raw
+   * WhatsApp profile, Telegram contact card) act as fallbacks for fields
+   * still missing on the customer.
+   */
+  private _buildPrefillMetadata(
+    message: IncomingMessage,
+    customer: CustomerRecord,
+    identity: ChannelIdentityRecord,
+    sourceId: string,
+  ): NLPRequestMetadata {
+    const fallback = deriveMessageOnlyFields(message)
+
+    const senderName = customer.leadName ?? identity.senderName ?? message.senderName ?? fallback.leadName
+    const phone = normalisePhone(customer.phone) ?? normalisePhone(fallback.phone)
+    const email = normaliseEmail(customer.email) ?? normaliseEmail(fallback.email)
+    const location = customer.location ?? fallback.location
+    const preferredService = customer.preferredService
+
+    const metadata: NLPRequestMetadata = {
+      channel: message.channel,
+      sourceId,
     }
+    if (senderName) metadata.senderName = senderName
+    if (phone) metadata.phone = phone
+    if (email) metadata.email = email
+    if (location) metadata.location = location
+    if (preferredService) (metadata as Record<string, unknown>).preferred_service = preferredService
+
+    return metadata
+  }
+
+  private async _syncQualifiedLead(customer: CustomerRecord): Promise<void> {
+    if (!this._hubspot || customer.qualificationStatus !== 'qualified') return
 
     try {
       const existing = await this._hubspot.searchContact({
-        email: lead.email,
-        phone: lead.phone,
+        email: customer.email,
+        phone: customer.phone,
       }).catch(() => undefined)
 
+      const primaryIdentity = (await this._runtimeStore.listConversations())
+        .find((c) => c.customerId === customer.id)
+
+      const channel = primaryIdentity?.channel ?? 'website'
+      const sourceId = primaryIdentity?.sourceId ?? customer.id
+
       const contactProperties = {
-        firstname: lead.leadName ?? lead.senderName ?? 'Unknown',
-        phone: lead.phone ?? '',
-        city: lead.location ?? '',
+        firstname: customer.leadName ?? 'Unknown',
+        phone: customer.phone ?? '',
+        city: customer.location ?? '',
         lifecyclestage: 'lead',
-        hs_lead_status: lead.qualificationStatus,
-        favorite_product: lead.preferredService ?? '',
-        channel_source: lead.channel,
-        source_id: lead.sourceId,
-        lead_id: lead.id,
-        conversation_id: lead.conversationId,
+        hs_lead_status: customer.qualificationStatus,
+        favorite_product: customer.preferredService ?? '',
+        channel_source: channel,
+        source_id: sourceId,
+        customer_id: customer.id,
       }
 
       const contact = existing
         ? await this._hubspot.updateContact({
             contactId: existing.id,
-            email: lead.email,
-            phone: lead.phone,
+            email: customer.email,
+            phone: customer.phone,
             additionalProperties: contactProperties,
           })
         : await this._hubspot.createContact({
-            email: lead.email,
-            phone: lead.phone,
+            email: customer.email,
+            phone: customer.phone,
             additionalProperties: contactProperties,
           })
 
-      const leadName = lead.preferredService
-        ? `${lead.preferredService} lead`
-        : `Lead from ${lead.channel}`
+      const leadName = customer.preferredService
+        ? `${customer.preferredService} lead`
+        : `Lead from ${channel}`
 
       const hubspotLead = await this._hubspot.createLead({
         leadName,
         additionalProperties: {
           hs_pipeline_stage: 'qualified',
-          source_channel: lead.channel,
-          source_id: lead.sourceId,
+          source_channel: channel,
+          source_id: sourceId,
           linked_contact_id: String(contact.id),
-          qualification_status: lead.qualificationStatus,
+          qualification_status: customer.qualificationStatus,
         },
       })
 
-      await this._runtimeStore.updateLead(lead.id, {
+      await this._runtimeStore.updateCustomer(customer.id, {
         crmStatus: 'synced',
         crmRecordId: String(hubspotLead.id ?? contact.id),
       })
     } catch (error: any) {
-      this._logger.error(`[CRM] Failed to sync qualified lead ${lead.id}: ${error.message}`)
-      await this._runtimeStore.updateLead(lead.id, { crmStatus: 'failed' })
+      this._logger.error(`[CRM] Failed to sync qualified customer ${customer.id}: ${error.message}`)
+      await this._runtimeStore.updateCustomer(customer.id, { crmStatus: 'failed' })
     }
   }
 }

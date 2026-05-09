@@ -171,10 +171,11 @@ export class InstagramChannel {
       return
     }
 
-    if (!incoming.senderName) {
+    if (!incoming.senderName || !incoming.username) {
       try {
         const profile = await this.getUserProfile(incoming.senderId)
-        incoming.senderName = profile.name || profile.username || incoming.senderName
+        incoming.senderName = incoming.senderName ?? (profile.name || profile.username)
+        incoming.username = incoming.username ?? profile.username
       } catch (error: any) {
         this._logger.warn(`[Instagram] Failed to fetch sender profile for ${incoming.senderId}: ${error.message}`)
       }
