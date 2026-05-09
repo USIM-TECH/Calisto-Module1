@@ -60,7 +60,70 @@ const DEFAULT_LLM_FLOOR = 0.35
 interface RasaParseResult {
   intent: string
   confidence: number
+  entities?: Record<string, string>
 }
+
+function parseBudget(text: string): { budget_min?: number; budget_max?: number; budget_bucket?: string } | null {
+  const normalized = text.toLowerCase().replace(/rm/g, '').replace(/\s+/g, ' ').trim()
+  const result: { budget_min?: number; budget_max?: number; budget_bucket?: string } = {}
+
+  if (/cheap|affordable|budget|low\s+price/i.test(normalized)) {
+    result.budget_bucket = 'low'
+  } else if (/premium|luxury|expensive|high\s+end/i.test(normalized)) {
+    result.budget_bucket = 'premium'
+  }
+
+  let match
+  if ((match = normalized.match(/(?:between|from)?\s*(\d+(?:\.\d+)?)\s*(?:and|-|to)\s*(\d+(?:\.\d+)?)/))) {
+    result.budget_min = parseFloat(match[1])
+    result.budget_max = parseFloat(match[2])
+  } else if ((match = normalized.match(/(?:under|below|less than|<)\s*(\d+(?:\.\d+)?)/))) {
+    result.budget_max = parseFloat(match[1])
+  } else if ((match = normalized.match(/(?:over|above|more than|>)\s*(\d+(?:\.\d+)?)/))) {
+    result.budget_min = parseFloat(match[1])
+  } else if ((match = normalized.match(/(?:around|about|approx(?:imately)?)\s*(\d+(?:\.\d+)?)/))) {
+    const val = parseFloat(match[1])
+    result.budget_min = val - 50
+    result.budget_max = val + 50
+  } else if ((match = normalized.match(/\b(\d+(?:\.\d+)?)\b/))) {
+    const val = parseFloat(match[1])
+    if (val >= 50) result.budget_max = val
+  }
+
+  return Object.keys(result).length > 0 ? result : null
+}
+
+function opportunisticSlotFilling(text: string): string | null {
+  const entities: Record<string, any> = {}
+  const budget = parseBudget(text)
+  if (budget) {
+    Object.assign(entities, budget)
+  }
+  
+  const lower = text.toLowerCase()
+  const brandMatch = lower.match(/gucci|ray-ban|rayban|oakley|persol|prada|dior/i)
+  if (brandMatch) {
+    entities.brand = brandMatch[0].charAt(0).toUpperCase() + brandMatch[0].slice(1).toLowerCase()
+    if (entities.brand === 'Rayban') entities.brand = 'Ray-Ban'
+  }
+  
+  if (/sunglass|sun glass|shades/i.test(lower)) {
+    entities.product_type = 'Luxury Sunglasses'
+  } else if (/frame|glass|spectacle/i.test(lower)) {
+    entities.product_type = 'Designer Frames'
+  } else if (/contact/i.test(lower)) {
+    entities.product_type = 'Contact Lenses'
+  }
+
+  if (Object.keys(entities).length > 0 && (entities.product_type || entities.brand)) {
+    return `/search_product${JSON.stringify(entities)}`
+  }
+  if (budget && Object.keys(entities).length === Object.keys(budget).length) {
+    return `/inform_budget${JSON.stringify(entities)}`
+  }
+  return null
+}
+
 
 export class NLPClient {
   private _config: NLPClientConfig
@@ -126,56 +189,66 @@ export class NLPClient {
 
     let llmResult: LlmClassification | undefined
     let rasaMessage = safeMessage
-    let route: 'raw' | 'llm-trigger' | 'fallback-raw' | 'skip' = 'raw'
+    let route: 'raw' | 'llm-trigger' | 'fallback-raw' | 'skip' | 'opportunistic' = 'raw'
 
-    if (isInsideForm || safeMessage.startsWith('/')) {
+    if (safeMessage.startsWith('/')) {
       route = 'skip'
     } else {
-      const parseResult = await this._parseWithRasa(safeMessage)
+      const opportunisticPayload = !isInsideForm ? opportunisticSlotFilling(safeMessage) : null
+      
+      if (opportunisticPayload) {
+        rasaMessage = opportunisticPayload
+        route = 'opportunistic'
+        this._logger.info(`[NLU] Deterministic opportunistic extraction -> ${rasaMessage}`)
+      } else if (isInsideForm) {
+        route = 'skip'
+      } else {
+        const parseResult = await this._parseWithRasa(safeMessage)
 
-      if (parseResult && parseResult.intent !== 'nlu_fallback' && parseResult.confidence >= nluFloor) {
-        this._logger.debug(
-          `[NLU] Rasa classified "${truncateForLog(safeMessage)}" as ${parseResult.intent} ` +
-          `(confidence=${parseResult.confidence.toFixed(2)}) — forwarding raw text`,
-        )
-        route = 'raw'
-      } else if (this._llm) {
-        const reason = parseResult
-          ? `${parseResult.intent}@${parseResult.confidence.toFixed(2)}`
-          : 'parse-failed'
-        this._logger.info(
-          `[NLU] Rasa unsure (${reason}) for "${truncateForLog(safeMessage)}" — invoking LLM fallback`,
-        )
+        if (parseResult && parseResult.intent !== 'nlu_fallback' && parseResult.confidence >= nluFloor) {
+          this._logger.debug(
+            `[NLU] Rasa classified "${truncateForLog(safeMessage)}" as ${parseResult.intent} ` +
+            `(confidence=${parseResult.confidence.toFixed(2)}) — forwarding raw text`,
+          )
+          route = 'raw'
+        } else if (this._llm) {
+          const reason = parseResult
+            ? `${parseResult.intent}@${parseResult.confidence.toFixed(2)}`
+            : 'parse-failed'
+          this._logger.info(
+            `[NLU] Rasa unsure (${reason}) for "${truncateForLog(safeMessage)}" — invoking LLM fallback`,
+          )
 
-        try {
-          llmResult = await this._llm.classify(safeMessage, { preferredLanguage })
+          try {
+            llmResult = await this._llm.classify(safeMessage, { preferredLanguage })
 
-          if (
-            llmResult.intent !== 'nlu_fallback'
-            && llmResult.confidence >= llmFloor
-          ) {
-            rasaMessage = buildRasaIntentPayload(llmResult)
-            route = 'llm-trigger'
-            this._logger.info(
-              `[LLM] Routed "${truncateForLog(safeMessage)}" -> ${rasaMessage} ` +
-              `(confidence=${llmResult.confidence.toFixed(2)})`,
-            )
-          } else {
+            if (
+              llmResult.intent !== 'nlu_fallback'
+              && llmResult.confidence >= llmFloor
+            ) {
+              rasaMessage = buildRasaIntentPayload(llmResult)
+              route = 'llm-trigger'
+              this._logger.info(
+                `[LLM] Routed "${truncateForLog(safeMessage)}" -> ${rasaMessage} ` +
+                `(confidence=${llmResult.confidence.toFixed(2)})`,
+              )
+            } else {
+              route = 'fallback-raw'
+              this._logger.info(
+                `[LLM] Low confidence (${llmResult.confidence.toFixed(2)}) for ` +
+                `"${truncateForLog(safeMessage)}" — letting Rasa fallback fire`,
+              )
+            }
+          } catch (error: any) {
+            this._logger.error(`[LLM] Classification failed, letting Rasa fallback fire: ${error.message}`)
             route = 'fallback-raw'
-            this._logger.info(
-              `[LLM] Low confidence (${llmResult.confidence.toFixed(2)}) for ` +
-              `"${truncateForLog(safeMessage)}" — letting Rasa fallback fire`,
-            )
           }
-        } catch (error: any) {
-          this._logger.error(`[LLM] Classification failed, letting Rasa fallback fire: ${error.message}`)
+        } else {
+          this._logger.debug(
+            `[NLU] Rasa unsure and LLM disabled — letting Rasa fallback fire for "${truncateForLog(safeMessage)}"`,
+          )
           route = 'fallback-raw'
         }
-      } else {
-        this._logger.debug(
-          `[NLU] Rasa unsure and LLM disabled — letting Rasa fallback fire for "${truncateForLog(safeMessage)}"`,
-        )
-        route = 'fallback-raw'
       }
     }
 

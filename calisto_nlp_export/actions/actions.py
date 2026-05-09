@@ -66,6 +66,25 @@ FLOW_BY_INTENT = {
 }
 
 
+def resolve_interruption_flow(tracker: Tracker, intent_name: str) -> str:
+    if intent_name != "select_budget":
+        return FLOW_BY_INTENT.get(intent_name, "interrupted")
+
+    current_flow = str(tracker.get_slot("current_flow") or "").strip()
+    if current_flow in {"lens_consultation", "product_search", "browse_eyewear", "pricing"}:
+        return current_flow
+
+    preferred_service = str(tracker.get_slot("preferred_service") or "").lower()
+    lens_type = tracker.get_slot("lens_type")
+    product_type = str(tracker.get_slot("product_type") or "").lower()
+
+    if lens_type or "lens" in preferred_service:
+        return "lens_consultation"
+    if product_type or "frame" in preferred_service or "sunglass" in preferred_service:
+        return "browse_eyewear"
+    return "product_search"
+
+
 PERSISTENT_SLOTS = {
     "lead_name",
     "contact_number",
@@ -89,6 +108,9 @@ MANAGED_SLOTS = {
     "frame_shape",
     "frame_material",
     "budget",
+    "budget_min",
+    "budget_max",
+    "budget_bucket",
     *PERSISTENT_SLOTS,
 }
 
@@ -103,6 +125,9 @@ FLOW_ALLOWED_SLOTS: Dict[str, set] = {
         "frame_shape",
         "frame_material",
         "budget",
+        "budget_min",
+        "budget_max",
+        "budget_bucket",
     },
     "lens_consultation": {"lens_type", "price_range"},
     "store_lookup": {"city"},
@@ -114,6 +139,9 @@ FLOW_ALLOWED_SLOTS: Dict[str, set] = {
         "frame_shape",
         "frame_material",
         "budget",
+        "budget_min",
+        "budget_max",
+        "budget_bucket",
     },
     "product_recommendation": {"product_type", "brand", "budget", "use_case", "urgency"},
     "lead_capture": set(PERSISTENT_SLOTS),
@@ -159,6 +187,31 @@ def city_key_registry() -> Dict[str, str]:
         registry.setdefault("kl", registry["kuala lumpur"])
         registry.setdefault("k l", registry["kuala lumpur"])
         registry.setdefault("k.l", registry["kuala lumpur"])
+        registry.setdefault("klcc", registry["kuala lumpur"])
+        registry.setdefault("kl city", registry["kuala lumpur"])
+    for alias, canonical_key in [
+        ("jb", "johor bahru"),
+        ("johor", "johor bahru"),
+        ("pg", "penang"),
+        ("georgetown", "penang"),
+        ("bukit jalil", "kuala lumpur"),
+        ("bukitjalil", "kuala lumpur"),
+        ("shah alam", "selangor"),
+        ("pj", "petaling jaya"),
+        ("petaling jaya", "petaling jaya"),
+        ("ipoh", "ipoh"),
+        ("nilai", "nilai"),
+    ]:
+        # Only register if the canonical city exists in catalogue
+        target = registry.get(canonical_key)
+        if target:
+            registry.setdefault(alias, target)
+        else:
+            # Register against itself if city exists directly
+            for key, city in list(registry.items()):
+                if canonical_key in key:
+                    registry.setdefault(alias, city)
+                    break
     return registry
 
 
@@ -303,46 +356,116 @@ def load_kb_metadata() -> List[Dict[str, Any]]:
     return []
 
 
-def filter_by_budget(df: pd.DataFrame, budget_slot: Text) -> pd.DataFrame:
-    if not budget_slot:
+def parse_budget_from_text(text: str) -> Optional[Dict[str, Any]]:
+    """Deterministically extract budget constraints from free text. Returns dict with
+    budget_min and/or budget_max keys, or None if no budget found."""
+    if not text:
+        return None
+    t = text.lower().replace("rm", "").replace(",", "").strip()
+    result: Dict[str, Any] = {}
+
+    if re.search(r"\b(cheap|affordable|budget|murah|jimat)\b", t):
+        result["budget_bucket"] = "low"
+    elif re.search(r"\b(premium|luxury|mewah|expensive|high.end)\b", t):
+        result["budget_bucket"] = "premium"
+
+    m = re.search(r"(?:between|dari|antara)?\s*(\d+(?:\.\d+)?)\s*(?:and|to|-|hingga|sampai)\s*(\d+(?:\.\d+)?)", t)
+    if m:
+        result["budget_min"] = float(m.group(1))
+        result["budget_max"] = float(m.group(2))
+        return result
+
+    m = re.search(r"(?:under|below|less\s*than|bawah|kurang\s*dari|di\s*bawah|<)\s*(\d+(?:\.\d+)?)", t)
+    if m:
+        result["budget_max"] = float(m.group(1))
+        return result
+
+    m = re.search(r"(?:over|above|more\s*than|atas|lebih\s*dari|>)\s*(\d+(?:\.\d+)?)", t)
+    if m:
+        result["budget_min"] = float(m.group(1))
+        return result
+
+    m = re.search(r"(?:around|about|sekitar|kira.kira)\s*(\d+(?:\.\d+)?)", t)
+    if m:
+        center = float(m.group(1))
+        result["budget_min"] = center - 50
+        result["budget_max"] = center + 50
+        return result
+
+    return result if result else None
+
+
+def filter_by_budget(df: pd.DataFrame, budget_slot: Text, tracker: Optional[Tracker] = None) -> pd.DataFrame:
+    """Apply HARD budget filter. Budget constraints are applied BEFORE ranking."""
+    if "price_myr" not in df.columns:
         return df
 
-    budget_text = str(budget_slot).strip()
-    budget_lower = budget_text.lower().replace(" ", "").replace("–", "-")
-    if "underrm100" in budget_lower:
-        return df[df["price_myr"] < 100]
-    if "rm100-rm250" in budget_lower:
-        return df[(df["price_myr"] >= 100) & (df["price_myr"] <= 250)]
-    if "rm250-rm300" in budget_lower:
-        return df[(df["price_myr"] >= 250) & (df["price_myr"] <= 300)]
-    if "aboverm300" in budget_lower:
-        return df[df["price_myr"] > 300]
+    b_min: Optional[float] = None
+    b_max: Optional[float] = None
+    b_bucket: Optional[str] = None
 
-    match_under = re.search(r"(?:under|below|lessthan)\s*(?:rm)?\s*(\d+(?:\.\d+)?)", budget_lower)
-    if match_under:
-        return df[df["price_myr"] <= float(match_under.group(1))]
+    # 1. Prefer explicit numeric slots (from integration layer opportunistic fill)
+    if tracker:
+        raw_min = tracker.get_slot("budget_min")
+        raw_max = tracker.get_slot("budget_max")
+        raw_bucket = tracker.get_slot("budget_bucket")
+        if raw_min is not None:
+            try:
+                b_min = float(raw_min)
+            except (TypeError, ValueError):
+                pass
+        if raw_max is not None:
+            try:
+                b_max = float(raw_max)
+            except (TypeError, ValueError):
+                pass
+        if raw_bucket:
+            b_bucket = str(raw_bucket)
 
-    match_over = re.search(r"(?:over|above|morethan)\s*(?:rm)?\s*(\d+(?:\.\d+)?)", budget_lower)
-    if match_over:
-        return df[df["price_myr"] >= float(match_over.group(1))]
+    # 2. Fall back to parsing the budget string slot
+    if b_min is None and b_max is None and not b_bucket and budget_slot:
+        budget_text = str(budget_slot).strip()
+        budget_lower = budget_text.lower().replace(" ", "").replace("–", "-")
+        if "underrm100" in budget_lower or "belowrm100" in budget_lower:
+            b_max = 100.0
+        elif "rm100-rm250" in budget_lower or "rm100rm250" in budget_lower:
+            b_min, b_max = 100.0, 250.0
+        elif "rm250-rm300" in budget_lower or "rm250rm300" in budget_lower:
+            b_min, b_max = 250.0, 300.0
+        elif "aboverm300" in budget_lower:
+            b_min = 300.0
+        else:
+            parsed = parse_budget_from_text(budget_text)
+            if parsed:
+                b_min = parsed.get("budget_min")
+                b_max = parsed.get("budget_max")
+                b_bucket = parsed.get("budget_bucket")
 
-    match_range = re.search(r"(?:between|from)?\s*(?:rm)?\s*(\d+(?:\.\d+)?)\s*(?:and|-|to)\s*(?:rm)?\s*(\d+(?:\.\d+)?)", budget_lower)
-    if match_range:
-        low = float(match_range.group(1))
-        high = float(match_range.group(2))
-        return df[(df["price_myr"] >= low) & (df["price_myr"] <= high)]
+    # 3. Also try parsing the raw message text if still no budget
+    if b_min is None and b_max is None and not b_bucket and tracker:
+        msg_text = tracker.latest_message.get("text") or ""
+        parsed = parse_budget_from_text(msg_text)
+        if parsed:
+            b_min = parsed.get("budget_min")
+            b_max = parsed.get("budget_max")
+            b_bucket = parsed.get("budget_bucket")
 
-    match_around = re.search(r"(?:around|about|approx(?:imately)?)\s*(?:rm)?\s*(\d+(?:\.\d+)?)", budget_lower)
-    if match_around:
-        center = float(match_around.group(1))
-        return df[(df["price_myr"] >= center - 50) & (df["price_myr"] <= center + 50)]
+    # Apply HARD filters
+    filtered = df
+    if b_min is not None:
+        filtered = filtered[filtered["price_myr"] >= b_min]
+    if b_max is not None:
+        filtered = filtered[filtered["price_myr"] <= b_max]
+    if b_bucket == "low":
+        filtered = filtered[filtered["price_myr"] <= 150]
+    elif b_bucket == "premium":
+        filtered = filtered[filtered["price_myr"] >= 400]
 
-    match_numeric = re.search(r"\b(\d+(?:\.\d+)?)\b", budget_text)
-    if match_numeric:
-        value = float(match_numeric.group(1))
-        return df[df["price_myr"] <= value]
-
-    return df
+    logger.info(
+        "[BUDGET] min=%s max=%s bucket=%s → %d/%d products remain",
+        b_min, b_max, b_bucket, len(filtered), len(df)
+    )
+    return filtered
 
 
 def format_product(row: pd.Series) -> str:
@@ -935,13 +1058,40 @@ class ActionDefaultFallback(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        consecutive_fallbacks = 0
+        for event in reversed(tracker.events):
+            if event.get("event") == "user":
+                continue
+            if event.get("event") == "action":
+                if event.get("name") == "action_default_fallback":
+                    consecutive_fallbacks += 1
+                elif event.get("name") not in {"action_listen", "action_set_language"}:
+                    break
+
         lang = get_language(tracker)
+        if consecutive_fallbacks >= 1:
+            dispatcher.utter_message(
+                text=tr(
+                    lang,
+                    "Here are some options to help you move forward:",
+                    "Berikut adalah beberapa pilihan untuk membantu anda:",
+                    "这里有一些选项可以帮助您："
+                ),
+                buttons=[
+                    {"title": tr(lang, "Browse Products", "Lihat Produk", "浏览产品"), "payload": "/browse_eyewear"},
+                    {"title": tr(lang, "Pricing", "Harga", "查看价格"), "payload": "/ask_pricing"},
+                    {"title": tr(lang, "Stores", "Kedai", "查找门店"), "payload": "/find_a_store"},
+                    {"title": tr(lang, "Support", "Sokongan", "售后支持"), "payload": "/after_sales_support"},
+                ],
+            )
+            return []
+
         dispatcher.utter_message(
             text=tr(
                 lang,
-                "I did not catch that clearly. I can help with products, pricing, stores, appointments, or support.",
-                "Saya kurang jelas dengan mesej itu. Saya boleh bantu dengan produk, harga, kedai, janji temu, atau sokongan.",
-                "我没有完全理解您的意思。我可以协助产品、价格、门店、预约或售后支持。"
+                "I am not sure what you mean. I can help with products, pricing, stores, appointments, or support.",
+                "Saya tidak pasti maksud anda. Saya boleh bantu dengan produk, harga, kedai, janji temu, atau sokongan.",
+                "我不确定您的意思。我可以协助产品、价格、门店、预约或售后支持。"
             ),
             buttons=[
                 {"title": tr(lang, "Browse Eyewear", "Lihat Produk", "浏览产品"), "payload": "/browse_eyewear"},
@@ -1111,8 +1261,23 @@ class ValidateLeadCaptureForm(FormValidationAction):
             return {
                 slot_name: None,
                 "requested_slot": None,
-                "current_flow": FLOW_BY_INTENT.get(intent["name"], "interrupted"),
+                "current_flow": resolve_interruption_flow(tracker, intent["name"]),
             }
+            
+        # Count how many times bot has asked for this slot (search full history)
+        ask_count = 0
+        for event in tracker.events:
+            if event.get("event") == "action" and event.get("name") == f"utter_ask_{requested_slot}":
+                ask_count += 1
+            if event.get("event") == "bot":
+                metadata_action = event.get("metadata", {}).get("utter_action", "")
+                if metadata_action == f"utter_ask_{requested_slot}":
+                    ask_count += 1
+
+        if ask_count >= 2:
+            # Skip this slot — already asked twice
+            logger.info("[FORM] slot=%s asked %d times, skipping", requested_slot, ask_count)
+            return {slot_name: "skipped"}
 
         dispatcher.utter_message(text=retry_text)
         dispatcher.utter_message(response=f"utter_ask_{requested_slot}")
@@ -1254,7 +1419,7 @@ class ActionHandleLeadCaptureInterruption(Action):
         events: List[Dict[Text, Any]] = [
             SlotSet("requested_slot", None),
             ActiveLoop(None),
-            SlotSet("current_flow", FLOW_BY_INTENT.get(intent_name, "interrupted")),
+            SlotSet("current_flow", resolve_interruption_flow(tracker, intent_name)),
         ]
 
         if intent_name == "browse_eyewear":
@@ -1283,8 +1448,14 @@ class ActionHandleLeadCaptureInterruption(Action):
             events.extend(ActionRecommendProducts().run(dispatcher, tracker, domain))
         elif intent_name == "select_product_type":
             events.extend(ActionAskBrand().run(dispatcher, tracker, domain))
-        elif intent_name in {"select_brand", "select_budget"}:
+        elif intent_name == "select_brand":
             events.extend(ActionFilterProducts().run(dispatcher, tracker, domain))
+        elif intent_name == "select_budget":
+            target_flow = resolve_interruption_flow(tracker, intent_name)
+            if target_flow == "lens_consultation":
+                events.extend(ActionFilterLenses().run(dispatcher, tracker, domain))
+            else:
+                events.extend(ActionFilterProducts().run(dispatcher, tracker, domain))
         elif intent_name == "ask_faq":
             events.append(FollowupAction("action_document_search"))
         else:
@@ -1332,7 +1503,10 @@ class ActionFilterProducts(Action):
         events = flow_entry_events(tracker, "product_search")
         lang = get_language(tracker)
         entities = canonicalize_entities(latest_entity_values(tracker))
-        product_type = canonicalize_slot_value("product_type", entities.get("product_type") or tracker.get_slot("product_type"))
+
+        product_type = canonicalize_slot_value(
+            "product_type", entities.get("product_type") or tracker.get_slot("product_type")
+        )
         brand = entities.get("brand") or tracker.get_slot("brand")
         price_range = (
             entities.get("price_range")
@@ -1344,13 +1518,14 @@ class ActionFilterProducts(Action):
         frame_shape = entities.get("frame_shape") or tracker.get_slot("frame_shape")
         frame_material = entities.get("frame_material") or tracker.get_slot("frame_material")
 
+        logger.info(
+            "[FILTER_PRODUCTS] type=%s brand=%s price_range=%s color=%s shape=%s material=%s",
+            product_type, brand, price_range, frame_color, frame_shape, frame_material
+        )
+
         backend_results = gateway.search_products({
-            "product_type": product_type,
-            "brand": brand,
-            "price_range": price_range,
-            "frame_color": frame_color,
-            "frame_shape": frame_shape,
-            "frame_material": frame_material,
+            "product_type": product_type, "brand": brand, "price_range": price_range,
+            "frame_color": frame_color, "frame_shape": frame_shape, "frame_material": frame_material,
         })
         if backend_results:
             dispatcher.utter_message(text=tr(lang, "Here are some products that match your request:", "Berikut ialah beberapa produk yang sepadan dengan permintaan anda:", "以下是一些符合您需求的产品："))
@@ -1359,14 +1534,23 @@ class ActionFilterProducts(Action):
             return events
 
         filtered_df = load_catalogue().copy()
+        logger.info("[FILTER_PRODUCTS] catalogue size=%d", len(filtered_df))
+
+        # Step 1: Apply HARD category filter
         if product_type:
             filtered_df = filtered_df[
                 filtered_df["product_type"].astype(str).str.contains(product_type, case=False, na=False)
             ]
+            logger.info("[FILTER_PRODUCTS] after product_type filter: %d", len(filtered_df))
+
+        # Step 2: Apply HARD brand filter
         if brand and str(brand).lower() != "show all brands":
             filtered_df = filtered_df[
-                filtered_df["brand"].astype(str).str.contains(brand, case=False, na=False)
+                filtered_df["brand"].astype(str).str.contains(str(brand), case=False, na=False)
             ]
+            logger.info("[FILTER_PRODUCTS] after brand filter: %d", len(filtered_df))
+
+        # Step 3: Apply attribute filters
         if frame_color:
             filtered_df = filtered_df[
                 filtered_df["frame_color"].astype(str).str.contains(str(frame_color), case=False, na=False)
@@ -1379,12 +1563,19 @@ class ActionFilterProducts(Action):
             filtered_df = filtered_df[
                 filtered_df["frame_material"].astype(str).str.contains(str(frame_material), case=False, na=False)
             ]
-        filtered_df = filter_by_budget(filtered_df, price_range)
+
+        # Step 4: Apply HARD budget filter BEFORE ranking
+        filtered_df = filter_by_budget(filtered_df, price_range, tracker)
+        logger.info("[FILTER_PRODUCTS] after budget filter: %d", len(filtered_df))
+
+        # Step 5: Rank remaining products AFTER filtering
         top_5 = rank_products_safely(filtered_df, product_type=product_type, brand=brand).head(5)
 
         if top_5.empty:
             dispatcher.utter_message(
-                text=tr(lang, "We could not find eyewear matching your criteria. Try another brand or budget.", "Kami tidak menemui produk yang sepadan dengan kriteria anda. Cuba jenama atau bajet lain.", "我们暂时找不到符合您条件的产品。请尝试其他品牌或预算。")
+                text=tr(lang, "We could not find eyewear matching your criteria. Try adjusting the budget or brand.",
+                        "Kami tidak menemui produk yang sepadan. Cuba laraskan bajet atau jenama.",
+                        "我们找不到符合您条件的产品，请尝试调整预算或品牌。")
             )
             return events
 
@@ -1440,7 +1631,17 @@ class ActionAskCity(Action):
     ) -> List[Dict[Text, Any]]:
         events = flow_entry_events(tracker, "store_lookup")
         lang = get_language(tracker)
-        city_candidate = tracker.get_slot("city") or tracker.get_slot("lead_location")
+        # Check latest entities first (message-level), then slots
+        entities = latest_entity_values(tracker)
+        city_candidate = (
+            entities.get("city")
+            or tracker.get_slot("city")
+            or tracker.get_slot("lead_location")
+        )
+        # Also scan the raw message for city names if no entity/slot
+        if not city_candidate:
+            msg = tracker.latest_message.get("text") or ""
+            city_candidate = resolve_city(msg) or None
         resolved_city = resolve_city(city_candidate)
         if resolved_city:
             city = resolved_city
@@ -1542,7 +1743,15 @@ class ActionHandleStoreHours(Action):
     ) -> List[Dict[Text, Any]]:
         events = flow_entry_events(tracker, "store_lookup")
         lang = get_language(tracker)
-        city_candidate = tracker.get_slot("city") or tracker.get_slot("lead_location")
+        entities = latest_entity_values(tracker)
+        city_candidate = (
+            entities.get("city")
+            or tracker.get_slot("city")
+            or tracker.get_slot("lead_location")
+        )
+        if not city_candidate:
+            msg = tracker.latest_message.get("text") or ""
+            city_candidate = resolve_city(msg) or None
         city = resolve_city(city_candidate)
         if city:
             dispatcher.utter_message(
@@ -1679,7 +1888,7 @@ class ActionRecommendProducts(Action):
             if not filtered_df[mask].empty:
                 filtered_df = filtered_df[mask]
 
-        filtered_df = filter_by_budget(filtered_df, budget)
+        filtered_df = filter_by_budget(filtered_df, budget, tracker)
         results = rank_products_safely(filtered_df, product_type=inferred_type, brand=brand, use_case=use_case).head(4)
 
         if results.empty:

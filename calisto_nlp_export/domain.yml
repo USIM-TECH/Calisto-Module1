@@ -47,6 +47,9 @@ entities:
   - frame_shape
   - frame_material
   - budget
+  - budget_min
+  - budget_max
+  - budget_bucket
   - lead_name
   - contact_number
   - email
@@ -127,6 +130,24 @@ slots:
     mappings:
       - type: from_entity
         entity: budget
+  budget_min:
+    type: float
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: budget_min
+  budget_max:
+    type: float
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: budget_max
+  budget_bucket:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: budget_bucket
   lead_name:
     type: text
     influence_conversation: false
@@ -394,7 +415,7 @@ responses:
         - type: slot
           name: preferred_language
           value: ms
-      text: "Baik. Saya boleh bantu anda semak julat harga dan pilihan bajet mengikut kategori. Harga kategori mana yang anda mahu lihat dahulu?"
+      text: "Baik, mari kita lihat julat harga. Anda berminat untuk melihat harga kategori mana dahulu?"
       buttons:
         - title: Harga Bingkai
           payload: /select_pricing_category{"preferred_service":"Designer Frames"}
@@ -406,7 +427,7 @@ responses:
         - type: slot
           name: preferred_language
           value: ms
-      text: "Baik, kita masuk ke aliran harga. Saya boleh tunjuk julat harga asas hingga premium untuk setiap kategori. Yang mana satu anda mahu semak dahulu?"
+      text: "Saya sedia membantu. Anda mahu saya semak harga untuk bingkai, cermin mata hitam, atau kanta?"
       buttons:
         - title: Harga Bingkai
           payload: /select_pricing_category{"preferred_service":"Designer Frames"}
@@ -418,7 +439,7 @@ responses:
         - type: slot
           name: preferred_language
           value: ms
-      text: "Baik. Saya akan bantu anda lihat anggaran harga mengikut kategori. Mulakan dengan kategori yang anda mahu semak dahulu."
+      text: "Boleh, mari kita semak pilihan harga yang ada. Mana satu yang anda mahu lihat dahulu?"
       buttons:
         - title: Harga Bingkai
           payload: /select_pricing_category{"preferred_service":"Designer Frames"}
@@ -430,7 +451,7 @@ responses:
         - type: slot
           name: preferred_language
           value: ms
-      text: "Baik, saya boleh mula dengan ringkasan julat harga bagi kategori utama kami. Kategori mana yang anda mahu buka dahulu?"
+      text: "Saya akan bantu senaraikan harga. Anda mencari bingkai biasa, cermin mata hitam, atau kanta baharu?"
       buttons:
         - title: Harga Bingkai
           payload: /select_pricing_category{"preferred_service":"Designer Frames"}
@@ -442,7 +463,7 @@ responses:
         - type: slot
           name: preferred_language
           value: zh
-      text: "当然可以。这是价格查询流程。我可以帮您查看不同类别的价格范围和预算选项。您想先看哪一类的价格？"
+      text: "当然。您想先看哪一类的价格？镜框、太阳镜还是镜片？"
       buttons:
         - title: 镜框价格
           payload: /select_pricing_category{"preferred_service":"Designer Frames"}
@@ -454,7 +475,7 @@ responses:
         - type: slot
           name: preferred_language
           value: zh
-      text: "好的，我们现在进入价格查询流程。我可以先给您看每个类别的大致价格区间。您想先看哪一类？"
+      text: "没问题。您需要我先帮您查哪类产品的价格？"
       buttons:
         - title: 镜框价格
           payload: /select_pricing_category{"preferred_service":"Designer Frames"}
@@ -466,7 +487,7 @@ responses:
         - type: slot
           name: preferred_language
           value: zh
-      text: "好的，我先帮您查看各类别的大致价格范围。您想先了解哪一类的价格？"
+      text: "好的，我们可以看看不同类别的价格。您想先了解哪一种？"
       buttons:
         - title: 镜框价格
           payload: /select_pricing_category{"preferred_service":"Designer Frames"}
@@ -478,7 +499,7 @@ responses:
         - type: slot
           name: preferred_language
           value: zh
-      text: "好的，我可以先展示主要类别的价格区间摘要。您想先看哪一类的报价？"
+      text: "我来帮您查看价格。您是要找镜框、太阳镜，还是想了解镜片价格？"
       buttons:
         - title: 镜框价格
           payload: /select_pricing_category{"preferred_service":"Designer Frames"}
@@ -486,7 +507,7 @@ responses:
           payload: /select_pricing_category{"preferred_service":"Luxury Sunglasses"}
         - title: 镜片价格
           payload: /select_pricing_category{"preferred_service":"Lens Consultation"}
-    - text: "Sure. I can help you check price ranges and budget-friendly options by category. Which category would you like pricing for first?"
+    - text: "Sure thing. What category would you like pricing for first?"
       buttons:
         - title: Frame Pricing
           payload: /select_pricing_category{"preferred_service":"Designer Frames"}
@@ -494,7 +515,7 @@ responses:
           payload: /select_pricing_category{"preferred_service":"Luxury Sunglasses"}
         - title: Lens Pricing
           payload: /select_pricing_category{"preferred_service":"Lens Consultation"}
-    - text: "Sure, let's look at pricing. I can show you entry, premium, and higher-end price bands for each category. Which one would you like to check first?"
+    - text: "I can help with that. Are you looking for frame, sunglass, or lens prices?"
       buttons:
         - title: Frame Pricing
           payload: /select_pricing_category{"preferred_service":"Designer Frames"}
@@ -502,7 +523,7 @@ responses:
           payload: /select_pricing_category{"preferred_service":"Luxury Sunglasses"}
         - title: Lens Pricing
           payload: /select_pricing_category{"preferred_service":"Lens Consultation"}
-    - text: "Absolutely. I can walk you through the typical price ranges for each category. Which pricing section would you like to open first?"
+    - text: "Absolutely. Let's check our pricing. Which category should we start with?"
       buttons:
         - title: Frame Pricing
           payload: /select_pricing_category{"preferred_service":"Designer Frames"}
@@ -510,7 +531,7 @@ responses:
           payload: /select_pricing_category{"preferred_service":"Luxury Sunglasses"}
         - title: Lens Pricing
           payload: /select_pricing_category{"preferred_service":"Lens Consultation"}
-    - text: "Sure. I can start by showing the typical price bands across our main categories. Which category would you like to price first?"
+    - text: "I'd be happy to share some prices. What are you looking to get today?"
       buttons:
         - title: Frame Pricing
           payload: /select_pricing_category{"preferred_service":"Designer Frames"}
@@ -524,43 +545,7 @@ responses:
         - type: slot
           name: preferred_language
           value: ms
-      text: "Baik. Ini ialah aliran penerokaan produk. Anda mahu saya tunjuk kategori produk yang mana dahulu?"
-      buttons:
-        - title: Bingkai Pereka
-          payload: /select_product_type{"product_type":"Designer Frames"}
-        - title: Cermin Mata Hitam
-          payload: /select_product_type{"product_type":"Luxury Sunglasses"}
-        - title: Kanta Sentuh
-          payload: /select_product_type{"product_type":"Contact Lenses"}
-    - condition:
-        - type: slot
-          name: preferred_language
-          value: ms
-      text: "Baik, mari teroka koleksi kami. Kategori mana yang anda mahu lihat dahulu?"
-      buttons:
-        - title: Bingkai Pereka
-          payload: /select_product_type{"product_type":"Designer Frames"}
-        - title: Cermin Mata Hitam
-          payload: /select_product_type{"product_type":"Luxury Sunglasses"}
-        - title: Kanta Sentuh
-          payload: /select_product_type{"product_type":"Contact Lenses"}
-    - condition:
-        - type: slot
-          name: preferred_language
-          value: ms
-      text: "Bagus. Saya boleh mulakan dengan kategori produk yang paling relevan untuk anda. Yang mana satu anda mahu buka dulu?"
-      buttons:
-        - title: Bingkai Pereka
-          payload: /select_product_type{"product_type":"Designer Frames"}
-        - title: Cermin Mata Hitam
-          payload: /select_product_type{"product_type":"Luxury Sunglasses"}
-        - title: Kanta Sentuh
-          payload: /select_product_type{"product_type":"Contact Lenses"}
-    - condition:
-        - type: slot
-          name: preferred_language
-          value: ms
-      text: "Baik. Untuk memudahkan pencarian, saya boleh mulakan dengan satu kategori produk dahulu. Pilih kategori yang anda mahu lihat."
+      text: "Apa jenis bingkai yang anda cari?"
       buttons:
         - title: Bingkai Pereka
           payload: /select_product_type{"product_type":"Designer Frames"}
@@ -572,7 +557,7 @@ responses:
         - type: slot
           name: preferred_language
           value: zh
-      text: "好的，这是产品浏览流程。您想先看哪一类产品？"
+      text: "您在找哪种类型的眼镜？"
       buttons:
         - title: 设计师镜框
           payload: /select_product_type{"product_type":"Designer Frames"}
@@ -580,67 +565,7 @@ responses:
           payload: /select_product_type{"product_type":"Luxury Sunglasses"}
         - title: 隐形眼镜
           payload: /select_product_type{"product_type":"Contact Lenses"}
-    - condition:
-        - type: slot
-          name: preferred_language
-          value: zh
-      text: "好的，我们先浏览产品。您想先看哪一个类别？"
-      buttons:
-        - title: 设计师镜框
-          payload: /select_product_type{"product_type":"Designer Frames"}
-        - title: 太阳镜
-          payload: /select_product_type{"product_type":"Luxury Sunglasses"}
-        - title: 隐形眼镜
-          payload: /select_product_type{"product_type":"Contact Lenses"}
-    - condition:
-        - type: slot
-          name: preferred_language
-          value: zh
-      text: "好的，我可以先为您打开一个产品类别。您想先浏览哪一类？"
-      buttons:
-        - title: 设计师镜框
-          payload: /select_product_type{"product_type":"Designer Frames"}
-        - title: 太阳镜
-          payload: /select_product_type{"product_type":"Luxury Sunglasses"}
-        - title: 隐形眼镜
-          payload: /select_product_type{"product_type":"Contact Lenses"}
-    - condition:
-        - type: slot
-          name: preferred_language
-          value: zh
-      text: "好的，为了更快帮您筛选，我可以先从一个产品类别开始。您想先看哪类？"
-      buttons:
-        - title: 设计师镜框
-          payload: /select_product_type{"product_type":"Designer Frames"}
-        - title: 太阳镜
-          payload: /select_product_type{"product_type":"Luxury Sunglasses"}
-        - title: 隐形眼镜
-          payload: /select_product_type{"product_type":"Contact Lenses"}
-    - text: "Great. This is the product browsing flow. Which category would you like to explore first?"
-      buttons:
-        - title: Designer Frames
-          payload: /select_product_type{"product_type":"Designer Frames"}
-        - title: Luxury Sunglasses
-          payload: /select_product_type{"product_type":"Luxury Sunglasses"}
-        - title: Contact Lenses
-          payload: /select_product_type{"product_type":"Contact Lenses"}
-    - text: "Great, let’s explore the collection. Which product category would you like to start with?"
-      buttons:
-        - title: Designer Frames
-          payload: /select_product_type{"product_type":"Designer Frames"}
-        - title: Luxury Sunglasses
-          payload: /select_product_type{"product_type":"Luxury Sunglasses"}
-        - title: Contact Lenses
-          payload: /select_product_type{"product_type":"Contact Lenses"}
-    - text: "Great. I can open the collection by category to keep things focused. Which one would you like to browse first?"
-      buttons:
-        - title: Designer Frames
-          payload: /select_product_type{"product_type":"Designer Frames"}
-        - title: Luxury Sunglasses
-          payload: /select_product_type{"product_type":"Luxury Sunglasses"}
-        - title: Contact Lenses
-          payload: /select_product_type{"product_type":"Contact Lenses"}
-    - text: "Great. To keep the browsing focused, I can start with one product category. Which would you like to open first?"
+    - text: "What kind of frames are you looking for?"
       buttons:
         - title: Designer Frames
           payload: /select_product_type{"product_type":"Designer Frames"}
@@ -654,49 +579,7 @@ responses:
         - type: slot
           name: preferred_language
           value: ms
-      text: "Untuk semak pilihan yang lebih tepat, julat bajet mana yang sesuai untuk anda?"
-      buttons:
-        - title: Bawah RM100
-          payload: /select_budget{"price_range":"Under RM100"}
-        - title: RM100 - RM250
-          payload: /select_budget{"price_range":"RM100 - RM250"}
-        - title: RM250 - RM300
-          payload: /select_budget{"price_range":"RM250 - RM300"}
-        - title: Atas RM300
-          payload: /select_budget{"price_range":"Above RM300"}
-    - condition:
-        - type: slot
-          name: preferred_language
-          value: ms
-      text: "Supaya saya boleh cadangkan pilihan yang lebih sesuai, bajet anda berada dalam julat yang mana?"
-      buttons:
-        - title: Bawah RM100
-          payload: /select_budget{"price_range":"Under RM100"}
-        - title: RM100 - RM250
-          payload: /select_budget{"price_range":"RM100 - RM250"}
-        - title: RM250 - RM300
-          payload: /select_budget{"price_range":"RM250 - RM300"}
-        - title: Atas RM300
-          payload: /select_budget{"price_range":"Above RM300"}
-    - condition:
-        - type: slot
-          name: preferred_language
-          value: ms
-      text: "Untuk tapis pilihan dengan lebih cepat, anda selesa dalam julat bajet yang mana?"
-      buttons:
-        - title: Bawah RM100
-          payload: /select_budget{"price_range":"Under RM100"}
-        - title: RM100 - RM250
-          payload: /select_budget{"price_range":"RM100 - RM250"}
-        - title: RM250 - RM300
-          payload: /select_budget{"price_range":"RM250 - RM300"}
-        - title: Atas RM300
-          payload: /select_budget{"price_range":"Above RM300"}
-    - condition:
-        - type: slot
-          name: preferred_language
-          value: ms
-      text: "Agar pilihan lebih tepat, saya perlukan anggaran bajet anda. Julat mana yang paling hampir?"
+      text: "Berapakah bajet yang anda pertimbangkan?"
       buttons:
         - title: Bawah RM100
           payload: /select_budget{"price_range":"Under RM100"}
@@ -710,7 +593,7 @@ responses:
         - type: slot
           name: preferred_language
           value: zh
-      text: "为了更准确地推荐，请问您的预算范围是多少？"
+      text: "您的预算范围大概是多少？"
       buttons:
         - title: 低于 RM100
           payload: /select_budget{"price_range":"Under RM100"}
@@ -720,49 +603,7 @@ responses:
           payload: /select_budget{"price_range":"RM250 - RM300"}
         - title: 高于 RM300
           payload: /select_budget{"price_range":"Above RM300"}
-    - condition:
-        - type: slot
-          name: preferred_language
-          value: zh
-      text: "为了更精准地推荐，请问您的预算大概在哪个范围？"
-      buttons:
-        - title: 低于 RM100
-          payload: /select_budget{"price_range":"Under RM100"}
-        - title: RM100 - RM250
-          payload: /select_budget{"price_range":"RM100 - RM250"}
-        - title: RM250 - RM300
-          payload: /select_budget{"price_range":"RM250 - RM300"}
-        - title: 高于 RM300
-          payload: /select_budget{"price_range":"Above RM300"}
-    - condition:
-        - type: slot
-          name: preferred_language
-          value: zh
-      text: "为了更快筛选合适选项，请问您的预算更接近哪个区间？"
-      buttons:
-        - title: 低于 RM100
-          payload: /select_budget{"price_range":"Under RM100"}
-        - title: RM100 - RM250
-          payload: /select_budget{"price_range":"RM100 - RM250"}
-        - title: RM250 - RM300
-          payload: /select_budget{"price_range":"RM250 - RM300"}
-        - title: 高于 RM300
-          payload: /select_budget{"price_range":"Above RM300"}
-    - condition:
-        - type: slot
-          name: preferred_language
-          value: zh
-      text: "为了把推荐控制在合适范围内，请问您的预算大概落在哪个区间？"
-      buttons:
-        - title: 低于 RM100
-          payload: /select_budget{"price_range":"Under RM100"}
-        - title: RM100 - RM250
-          payload: /select_budget{"price_range":"RM100 - RM250"}
-        - title: RM250 - RM300
-          payload: /select_budget{"price_range":"RM250 - RM300"}
-        - title: 高于 RM300
-          payload: /select_budget{"price_range":"Above RM300"}
-    - text: "To narrow this down properly, what budget range are you comfortable with?"
+    - text: "What budget range are you considering?"
       buttons:
         - title: Under RM100
           payload: /select_budget{"price_range":"Under RM100"}
@@ -772,32 +613,6 @@ responses:
           payload: /select_budget{"price_range":"RM250 - RM300"}
         - title: Above RM300
           payload: /select_budget{"price_range":"Above RM300"}
-    - text: "To refine the shortlist, which budget range works best for you?"
-      buttons:
-        - title: Under RM100
-          payload: /select_budget{"price_range":"Under RM100"}
-        - title: RM100 - RM250
-          payload: /select_budget{"price_range":"RM100 - RM250"}
-        - title: RM250 - RM300
-          payload: /select_budget{"price_range":"RM250 - RM300"}
-        - title: Above RM300
-          payload: /select_budget{"price_range":"Above RM300"}
-    - text: "To keep the options relevant, which budget range should I use?"
-      buttons:
-        - title: Under RM100
-          payload: /select_budget{"price_range":"Under RM100"}
-        - title: RM100 - RM250
-          payload: /select_budget{"price_range":"RM100 - RM250"}
-        - title: RM250 - RM300
-          payload: /select_budget{"price_range":"RM250 - RM300"}
-        - title: Above RM300
-          payload: /select_budget{"price_range":"Above RM300"}
-    - text: "To keep the recommendations aligned, which budget range should I work with?"
-      buttons:
-        - title: Under RM100
-          payload: /select_budget{"price_range":"Under RM100"}
-        - title: RM100 - RM250
-          payload: /select_budget{"price_range":"RM100 - RM250"}
         - title: RM250 - RM300
           payload: /select_budget{"price_range":"RM250 - RM300"}
         - title: Above RM300

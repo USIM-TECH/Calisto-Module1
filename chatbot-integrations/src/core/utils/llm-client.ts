@@ -44,6 +44,8 @@ export interface LlmClassification {
   raw: string
 }
 
+type LlmLanguage = LlmClassification['language']
+
 /**
  * All intents Rasa knows about. Keep this in sync with calisto_nlp_export/domain.yml.
  * The LLM is instructed to pick exactly one of these (or return `nlu_fallback`).
@@ -287,6 +289,23 @@ function sanitizeIntent(raw: unknown): ValidIntent {
   return (VALID_INTENTS as readonly string[]).includes(normalized) ? normalized : 'nlu_fallback'
 }
 
+function sanitizeLanguage(raw: unknown): LlmLanguage {
+  if (raw === 'en' || raw === 'ms' || raw === 'zh') {
+    return raw
+  }
+  return 'en'
+}
+
+function sanitizeBoolean(raw: unknown): boolean {
+  if (typeof raw === 'boolean') return raw
+  if (typeof raw === 'string') {
+    const normalized = raw.trim().toLowerCase()
+    return normalized === 'true' || normalized === '1' || normalized === 'yes'
+  }
+  if (typeof raw === 'number') return raw !== 0
+  return false
+}
+
 /**
  * Build the Rasa intent-trigger payload that replaces raw user text when the
  * LLM classification succeeds. Rasa treats strings starting with `/intent_name`
@@ -395,6 +414,9 @@ export class LlmIntentClassifier {
         intent: 'nlu_fallback',
         entities: {},
         confidence: 0,
+        language: 'en',
+        isInterruption: false,
+        isRefusal: false,
         raw: '',
       }
     }
@@ -436,6 +458,9 @@ export class LlmIntentClassifier {
       intent: sanitizeIntent(parsed.intent),
       entities: sanitizeEntities(parsed.entities),
       confidence: clampConfidence(parsed.confidence),
+      language: sanitizeLanguage(parsed.language),
+      isInterruption: sanitizeBoolean(parsed.is_interruption),
+      isRefusal: sanitizeBoolean(parsed.is_refusal),
       raw: rawJson,
     }
 
