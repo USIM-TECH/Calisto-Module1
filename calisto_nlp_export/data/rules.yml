@@ -303,3 +303,39 @@ rules:
       - active_loop: null
       - action: action_qualify_lead
       - action: action_submit_lead_capture
+
+  - rule: prioritize return support
+    steps:
+      - intent: return_request
+      - action: action_set_language
+      - action: action_handle_return_support
+
+  - rule: prioritize refund support
+    steps:
+      - intent: refund_request
+      - action: action_set_language
+      - action: action_handle_refund_support
+
+  - rule: prioritize repair support
+    steps:
+      - intent: repair_support
+      - action: action_set_language
+      - action: action_handle_repair_support
+
+  - rule: prioritize exchange support
+    steps:
+      - intent: exchange_request
+      - action: action_set_language
+      - action: action_handle_exchange_support
+
+  - rule: prioritize warranty support
+    steps:
+      - intent: warranty_support
+      - action: action_set_language
+      - action: action_handle_warranty_support
+
+  - rule: prioritize order support
+    steps:
+      - intent: order_support
+      - action: action_set_language
+      - action: action_handle_order_support

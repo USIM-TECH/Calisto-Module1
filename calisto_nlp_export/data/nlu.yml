@@ -107,51 +107,26 @@ nlu:
 
   - intent: search_product
     examples: |
-      - i want [gucci](brand) [glasses](product_type) [under 300](budget)
-      - show me [rayban](brand) [sunglasses](product_type) [below 500](budget)
-      - looking for [prada](brand) [frames](product_type) [around 250](budget)
-      - i need [oakley](brand) [sunglasses](product_type) [above 300](budget)
-      - [gucci](brand) [designer frames](product_type) [under 400](budget)
-      - cheap [bossini](brand) [glasses](product_type) [below 150](budget)
-      - [cartier](brand) [luxury sunglasses](product_type) [above 1000](budget)
-      - i want [black](frame_color) [gucci](brand) [sunglasses](product_type) [under 300](budget)
-      - show me [black](frame_color) [ray-ban](brand) [sunglasses](product_type) [below 450](budget)
-      - find [brown](frame_color) [prada](brand) [frames](product_type) [between 250 and 500](budget)
-      - i want [metal](frame_material) [oakley](brand) [sunglasses](product_type) [above 300](budget)
-      - show [round](frame_shape) [gucci](brand) [glasses](product_type) [under 350](budget)
-      - looking for [cartier](brand) [frames](product_type)
-      - do you have [rayban](brand) [sunglasses](product_type)
-      - i need [black](frame_color) [designer frames](product_type)
-      - show me [gucci](brand) [frames](product_type) [rm300](budget)
-      - i want [oakley](brand) [shades](product_type) [below 600](budget)
-      - find [spectacles](product_type) from [bossini](brand) [under 200](budget)
-      - any [blue](frame_color) [aviator](frame_shape) [sunglasses](product_type) [below 500](budget)
-      - show me [acetate](frame_material) [prada](brand) [glasses](product_type) [under 450](budget)
-      - i want [gucci](brand) [eyeglasses](product_type) [between 300 and 450](budget)
-      - find [black](frame_color) [luxury sunglasses](product_type) from [cartier](brand)
-      - looking for [designer frames](product_type) by [saint laurent](brand) [around 800](budget)
-      - i need [contact lenses](product_type) from [acuvue](brand) [under 200](budget)
-      - show me [designer frames](product_type) in [black](frame_color)
-      - i need [sunglasses](product_type) under [500](budget)
-      - find [contact lenses](product_type) around [200](budget)
-      - i want [frames](product_type) below [300](budget)
-      - show me [gucci](brand) options under [500](budget)
-      - recommend [designer frames](product_type) under [400](budget)
-      - find me [brown](frame_color) [glasses](product_type)
-      - do you have [acetate](frame_material) [frames](product_type)
-      - i need [cat-eye](frame_shape) [designer frames](product_type)
-      - show [contact lenses](product_type) for daily wear
-      - show me [black](frame_color) [frames](product_type) under [400](budget)
-      - need [designer frames](product_type) around [300](budget)
-      - any [ray-ban](brand) [sunglasses](product_type) under [600](budget)
-      - looking for [lightweight](frame_material) [frames](product_type)
-      - want [round](frame_shape) [glasses](product_type)
-      - i need [brown](frame_color) [sunglasses](product_type) for [driving](use_case)
-      - show me [contact lenses](product_type) for [daily wear](use_case)
-      - find [office](use_case) [glasses](product_type) under [500](budget)
-      - recommend [black](frame_color) [designer frames](product_type) for [formal](use_case) use
-      - show me [prada](brand) [designer frames](product_type) in [black](frame_color)
-
+      - gucci glasses under 700
+      - black sunglasses below rm500
+      - metal frames for office use
+      - contact lenses under rm200
+      - prada sunglasses
+      - rayban aviator sunglasses
+      - frame for driving under rm300
+      - clear contact lenses daily
+      - square black frames
+      - tom ford sunglasses
+      - titanium frames above 500
+      - cat eye sunglasses below 400
+      - rimless glasses rm200
+      - round metal frames
+      - oversized sunglasses
+      - gucci frames
+      - oakley sports sunglasses
+      - ray-ban wayfarer
+      - blue light blocking glasses metal
+      - plastic frames black color
   - intent: lens_vision_solutions
     examples: |
       - Lens & Vision Solutions
@@ -332,11 +307,11 @@ nlu:
       - saya perlukan [Contact Lenses](product_type)
       - saya pilih [Monthly Lenses](product_type)
       - saya mahu lihat [Daily Lenses](product_type)
-      - 请给我看[Designer Frames](product_type)
-      - 我想要[Luxury Sunglasses](product_type)
-      - 我需要[Contact Lenses](product_type)
-      - 选择[Monthly Lenses](product_type)
-      - 给我[Daily Lenses](product_type)
+      - 请给我看 [Designer Frames](product_type)
+      - 我想要 [Luxury Sunglasses](product_type)
+      - 我需要 [Contact Lenses](product_type)
+      - 选择 [Monthly Lenses](product_type)
+      - 给我 [Daily Lenses](product_type)
 
   - intent: select_brand
     examples: |
@@ -373,11 +348,11 @@ nlu:
       - ada [Ray-Ban](brand) tak
       - saya minat [Cartier](brand)
       - hanya [Saint Laurent](brand) sahaja
-      - 我想看[Gucci](brand)
-      - 有[Prada](brand)吗
-      - 请展示[Ray-Ban](brand)
-      - 我对[Cartier](brand)有兴趣
-      - 只看[Saint Laurent](brand)
+      - 我想看 [Gucci](brand)
+      - 有 [Prada](brand) 吗
+      - 请展示 [Ray-Ban](brand)
+      - 我对 [Cartier](brand) 有兴趣
+      - 只看 [Saint Laurent](brand)
 
   - intent: select_budget
     examples: |
@@ -400,10 +375,10 @@ nlu:
       - tunjukkan julat [RM100 - RM250](price_range)
       - saya mahu [RM250 - RM300](price_range)
       - ada pilihan [Above RM300](price_range)
-      - 我预算是[Under RM100](price_range)
-      - 请给我看[RM100 - RM250](price_range)
-      - 我想看[RM250 - RM300](price_range)
-      - 有没有[Above RM300](price_range)的
+      - 我预算是 [Under RM100](price_range)
+      - 请给我看 [RM100 - RM250](price_range)
+      - 我想看 [RM250 - RM300](price_range)
+      - 有没有 [Above RM300](price_range) 的
 
   - intent: ask_lens_type
     examples: |
@@ -611,12 +586,12 @@ nlu:
       - saya cari bingkai [brown](frame_color) bentuk [rectangle](frame_shape)
       - saya mahu cermin mata [cat-eye](frame_shape) warna [red](frame_color)
       - tunjuk bingkai [acetate](frame_material) warna [green](frame_color)
-      - 我想看[black](frame_color)色镜框
-      - 请给我看[round](frame_shape)款式
-      - 有[metal](frame_material)材质的吗
-      - 我想找[brown](frame_color)色[rectangle](frame_shape)眼镜
-      - 有[cat-eye](frame_shape)形状的太阳镜吗
-      - 给我看[green](frame_color)色[acetate](frame_material)镜框
+      - 我想看 [black](frame_color) 色镜框
+      - 请给我看 [round](frame_shape) 款式
+      - 有 [metal](frame_material) 材质的吗
+      - 我想找 [brown](frame_color) 色 [rectangle](frame_shape) 眼镜
+      - 有 [cat-eye](frame_shape) 形状的太阳镜吗
+      - 给我看 [green](frame_color) 色 [acetate](frame_material) 镜框
 
   - intent: inform_budget
     examples: |
@@ -638,10 +613,10 @@ nlu:
       - sekitar [300](budget)
       - bawah [400](budget)
       - saya boleh belanja [500](budget)
-      - 我的预算是[300](budget)
-      - 大概[250](budget)
-      - 低于[400](budget)
-      - 我最多可以花[500](budget)
+      - 我的预算是 [300](budget)
+      - 大概 [250](budget)
+      - 低于 [400](budget)
+      - 我最多可以花 [500](budget)
 
   - regex: budget
     examples: |
@@ -822,8 +797,8 @@ nlu:
       - [John Tan](lead_name)
       - nama saya [Farah](lead_name)
       - saya [Daniel Lee](lead_name)
-      - 我叫[王小明](lead_name)
-      - 我是[陈美玲](lead_name)
+      - 我叫 [王小明](lead_name)
+      - 我是 [陈美玲](lead_name)
 
   - intent: share_phone
     examples: |
@@ -837,7 +812,7 @@ nlu:
       - [60123456789](contact_number)
       - nombor saya [0171234567](contact_number)
       - boleh hubungi saya di [60199887766](contact_number)
-      - 我的电话是[0127788990](contact_number)
+      - 我的电话是 [0127788990](contact_number)
 
   - intent: share_email
     examples: |
@@ -850,7 +825,7 @@ nlu:
       - contact me at [hello@sample.com](email)
       - emel saya [farah@contoh.my](email)
       - boleh guna [sales@calisto.com](email)
-      - 我的邮箱是[chen@example.com](email)
+      - 我的邮箱是 [chen@example.com](email)
 
   - intent: share_location
     examples: |
@@ -864,8 +839,8 @@ nlu:
       - i am located in [Kuala Lumpur](lead_location)
       - saya di [Shah Alam](lead_location)
       - lokasi saya [Johor Bahru](lead_location)
-      - 我在[吉隆坡](lead_location)
-      - 我住在[八打灵再也](lead_location)
+      - 我在 [吉隆坡](lead_location)
+      - 我住在 [八打灵再也](lead_location)
 
   - intent: share_service_interest
     examples: |
@@ -887,12 +862,12 @@ nlu:
       - saya perlukan [After-sales Support](preferred_service)
       - saya mahu [Contact Lenses](preferred_service)
       - minat saya [Luxury Sunglasses](preferred_service)
-      - 我需要[After-sales Support](preferred_service)
-      - 我想要[Store Visit](preferred_service)
-      - 我需要[Lens Consultation](preferred_service)
-      - 我想看[Designer Frames](preferred_service)
-      - 我对[Luxury Sunglasses](preferred_service)有兴趣
-      - 我需要顾问协助[Contact Lenses](preferred_service)
+      - 我需要 [After-sales Support](preferred_service)
+      - 我想要 [Store Visit](preferred_service)
+      - 我需要 [Lens Consultation](preferred_service)
+      - 我想看 [Designer Frames](preferred_service)
+      - 我对 [Luxury Sunglasses](preferred_service) 有兴趣
+      - 我需要顾问协助 [Contact Lenses](preferred_service)
 
   - intent: share_timeline
     examples: |
@@ -912,9 +887,9 @@ nlu:
       - dalam dua minggu [Within 2 Weeks](purchase_timeline)
       - saya akan putuskan [This Week](purchase_timeline)
       - mungkin [Within 2 Weeks](purchase_timeline)
-      - 我想[This Week](purchase_timeline)决定
-      - 我会在[Within 2 Weeks](purchase_timeline)内决定
-      - 我先[Just Exploring](purchase_timeline)
+      - 我想 [This Week](purchase_timeline) 决定
+      - 我会在 [两周内](purchase_timeline) 决定
+      - 我先 [Just Exploring](purchase_timeline)
 
   - intent: ask_pricing
     examples: |
@@ -966,9 +941,9 @@ nlu:
       - [Designer Frames](preferred_service) 价格
       - [Luxury Sunglasses](preferred_service) 价格
       - [Lens Consultation](preferred_service) 价格
-      - 我想看[Designer Frames](preferred_service)价格
-      - 我想看[Luxury Sunglasses](preferred_service)价格
-      - 我想看[Lens Consultation](preferred_service)价格
+      - 我想看 [Designer Frames](preferred_service) 价格
+      - 我想看 [Luxury Sunglasses](preferred_service) 价格
+      - 我想看 [Lens Consultation](preferred_service) 价格
 
   - intent: book_appointment
     examples: |
@@ -1048,8 +1023,8 @@ nlu:
       - ada kemas kini untuk order saya
       - 请帮我查询订单状态
       - 我的订单到哪里了
-      - 我的订单号是[INV-12345](order_id)
-      - 请帮我查一下订单[ORD7788](order_id)
+      - 我的订单号是 [INV-12345](order_id)
+      - 请帮我查一下订单 [ORD7788](order_id)
       - 我还没收到订单
       - 我的眼镜订单现在到哪里了
 
@@ -1154,8 +1129,8 @@ nlu:
       - cadangkan cermin mata untuk [office](use_case)
       - apa yang sesuai untuk [driving](use_case)
       - saya mahu cadangan untuk [daily wear](use_case)
-      - 请推荐适合[screen](use_case)使用的眼镜
-      - 有适合[driving](use_case)的太阳镜吗
+      - 请推荐适合 [screen](use_case) 使用的眼镜
+      - 有适合 [driving](use_case) 的太阳镜吗
 
   - intent: after_sales_support
     examples: |
@@ -1262,3 +1237,242 @@ nlu:
       - 换货政策是什么
       - 运费是多少
       - 怎么联系客户服务
+
+  - intent: return_request
+    examples: |
+      - i need to return my glasses
+      - return my eyewear
+      - i want to return my sunglasses
+      - can i return these glasses
+      - i bought the wrong glasses
+      - return my gucci glasses
+      - return request
+      - how do i return
+      - i need a return
+      - send back my glasses
+      - i dont want these glasses
+      - return my order
+      - help me return this
+      - i want to send this back
+      - can i give this back
+      - i want to return
+      - process a return
+      - return policy
+      - how to return an item
+      - can i return my purchase
+      - returning my order
+      - want to return this
+      - need to send this item back
+      - where to return
+      - returning glasses
+      - return sunglasses
+      - i hate these glasses return them
+      - wrong glasses received
+      - wrong item want to return
+      - return for refund
+      - return for exchange
+      - is it possible to return
+      - how many days to return
+      - initiate a return
+      - start a return
+      - please accept my return
+      - need a return shipping label
+      - returning my frame
+      - send glasses back
+      - i made a mistake return this
+      - not what i expected return
+      - return my gucci frame
+  - intent: refund_request
+    examples: |
+      - i need refund
+      - refund policy
+      - can i get a refund
+      - refund my purchase
+      - i want my money back
+      - request refund
+      - refund for my glasses
+      - how do refunds work
+      - money back policy
+      - full refund please
+      - i want reimbursement
+      - can i cancel and refund
+      - refund these sunglasses
+      - give me a refund
+      - where is my refund
+      - refund status
+      - how to get a refund
+      - refund my money
+      - i want to cancel and get a refund
+      - refund my order
+      - processing my refund
+      - when will i get my refund
+      - need a refund immediately
+      - refund to my credit card
+      - can you refund me
+      - i demand a refund
+      - not happy need refund
+      - refund the amount
+      - please refund my money
+      - i require a refund
+      - issue a refund
+      - money back guarantee
+      - reimburse my order
+      - reimburse my payment
+      - refund payment
+      - full refund required
+      - partial refund
+      - i am waiting for a refund
+      - cancel order and refund
+  - intent: exchange_request
+    examples: |
+      - exchange my glasses
+      - can i exchange this frame
+      - swap my sunglasses
+      - wrong size frame
+      - exchange request
+      - i need replacement glasses
+      - replace this eyewear
+      - different frame please
+      - can i change model
+      - exchange these lenses
+      - i want an exchange
+      - exchange policy
+      - how to exchange
+      - swap for a different color
+      - exchange for a bigger size
+      - exchange item
+      - can i swap these
+      - replace with a different frame
+      - i want to replace these
+      - wrong size need exchange
+      - too small exchange
+      - too big exchange
+      - doesn't fit exchange
+      - exchange for another model
+      - how do i exchange
+      - process an exchange
+      - start an exchange
+      - exchanging my glasses
+      - can i get a replacement
+      - need to exchange for prescription
+      - exchange these contact lenses
+      - swap my purchase
+      - exchange for something else
+      - change my order item
+      - replace this frame
+  - intent: repair_support
+    examples: |
+      - my glasses broke
+      - broken frame
+      - scratched lens
+      - repair my glasses
+      - fix my sunglasses
+      - damaged eyewear
+      - my frame is damaged
+      - loose frame
+      - bent glasses
+      - repair support
+      - fix my lenses
+      - glasses need repair
+      - my glasses cracked
+      - fixing glasses
+      - glasses are broken
+      - can you fix this
+      - frame is bent
+      - lens fell out
+      - screw missing
+      - arm broke off
+      - hinge is broken
+      - glasses damaged in mail
+      - scratched my sunglasses
+      - how to repair
+      - where can i repair my glasses
+      - do you do repairs
+      - broken sunglasses
+      - repairing a frame
+      - my lenses have a crack
+      - cracked frame
+      - defective glasses
+      - my glasses are defective
+      - broken nose pad
+      - replace nose pads
+      - frame adjustment
+      - need to adjust my glasses
+      - glasses are crooked
+      - fix my broken glasses
+      - can this be repaired
+      - repair shop
+  - intent: warranty_support
+    examples: |
+      - warranty claim
+      - do you offer warranty
+      - warranty support
+      - claim warranty
+      - covered under warranty
+      - warranty for lenses
+      - frame warranty
+      - broken under warranty
+      - warranty policy
+      - lens warranty
+      - is this under warranty
+      - how long is the warranty
+      - warranty period
+      - does warranty cover scratches
+      - what is your warranty
+      - claim my warranty
+      - how to claim warranty
+      - warranty replacement
+      - under warranty
+      - is my frame under warranty
+      - warranty check
+      - warranty on sunglasses
+      - guarantee policy
+      - is there a guarantee
+      - warranty service
+      - warranty for my glasses
+      - does it have warranty
+      - submit a warranty claim
+      - warranty form
+      - warranty details
+      - activate warranty
+      - how to use warranty
+      - is damage covered under warranty
+      - lifetime warranty
+      - 1 year warranty
+  - intent: order_support
+    examples: |
+      - order problem
+      - issue with my order
+      - order support
+      - help with my purchase
+      - cancel my order
+      - tracking order
+      - where is my order
+      - order is delayed
+      - wrong order
+      - missing item
+      - order not received
+      - cancel my purchase
+      - how to cancel order
+      - change my order
+      - update my order
+      - modify my order
+      - order status
+      - track my shipment
+      - shipping delay
+      - where are my glasses
+      - package lost
+      - order delivery
+      - when will my order arrive
+      - check order status
+      - order confirmation
+      - didn't get an email
+      - support for my order
+      - customer service for my order
+      - need help with delivery
+      - delivery issue
+      - shipping problem
+      - courier problem
+      - cancel it
+      - i want to cancel
+      - cancel this order please

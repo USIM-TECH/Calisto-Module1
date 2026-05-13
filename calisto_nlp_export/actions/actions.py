@@ -5,6 +5,7 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
+from difflib import get_close_matches
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Text
 
@@ -142,6 +143,7 @@ FLOW_ALLOWED_SLOTS: Dict[str, set] = {
         "budget_min",
         "budget_max",
         "budget_bucket",
+        "use_case",
     },
     "product_recommendation": {"product_type", "brand", "budget", "use_case", "urgency"},
     "lead_capture": set(PERSISTENT_SLOTS),
@@ -338,8 +340,48 @@ gateway = ServiceGateway()
 @lru_cache(maxsize=1)
 def load_catalogue() -> pd.DataFrame:
     df = pd.read_csv(CATALOGUE_PATH).fillna("")
+
+    # Normalize common string fields early so downstream filtering is stable.
+    for col in ["brand", "product_name", "product_type", "category", "frame_material", "frame_shape", "frame_color"]:
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.strip()
+
     if "price_myr" in df.columns:
         df["price_myr"] = pd.to_numeric(df["price_myr"], errors="coerce")
+
+    # Fix mixed/fake brands in the sample catalogue.
+    # Frames/sunglasses product names follow: "<Brand> Premium Frame <n>" / "<Brand> Luxe Sunglasses <n>".
+    if "product_name" in df.columns and "brand" in df.columns:
+        extracted = df["product_name"].astype(str).str.extract(
+            r"^(?P<brand>.+?)\s+(?:Premium Frame|Luxe Sunglasses)\s+\d+\s*$",
+            flags=re.IGNORECASE,
+        )
+        extracted_brand = extracted["brand"].fillna("").astype(str).str.strip()
+        mask = extracted_brand.astype(bool)
+        if mask.any():
+            df.loc[mask, "brand"] = extracted_brand[mask]
+
+        # Normalize any concatenated brand strings and strip duplicate brand prefixes in names.
+        def _clean_brand(value: str) -> str:
+            parts = re.split(r"\s*[-/]\s*", value or "")
+            return parts[0].strip() if parts else str(value or "").strip()
+
+        def _clean_product_name(name: str, brand_value: str) -> str:
+            cleaned = str(name or "").strip()
+            if " - " in cleaned:
+                segments = [seg.strip() for seg in cleaned.split(" - ") if seg.strip()]
+                if len(segments) > 1:
+                    cleaned = " ".join(segments[1:])
+            if brand_value and cleaned.lower().startswith(brand_value.lower()):
+                cleaned = cleaned[len(brand_value):].strip(" -")
+            return cleaned or str(name or "").strip()
+
+        df["brand"] = df["brand"].astype(str).apply(_clean_brand)
+        df["product_name"] = [
+            _clean_product_name(name, brand)
+            for name, brand in zip(df["product_name"].tolist(), df["brand"].tolist())
+        ]
+
     return df
 
 
@@ -364,9 +406,12 @@ def parse_budget_from_text(text: str) -> Optional[Dict[str, Any]]:
     t = text.lower().replace("rm", "").replace(",", "").strip()
     result: Dict[str, Any] = {}
 
-    if re.search(r"\b(cheap|affordable|budget|murah|jimat)\b", t):
+    if re.search(r"\b(cheap|cheapest|lowest|murah|jimat)\b", t):
         result["budget_bucket"] = "low"
-    elif re.search(r"\b(premium|luxury|mewah|expensive|high.end)\b", t):
+    elif re.search(r"\b(affordable|budget)\b", t):
+        result["budget_max"] = 300.0
+    elif re.search(r"\b(premium|luxury|expensive|mewah|high.end)\b", t):
+        result["budget_min"] = 700.0
         result["budget_bucket"] = "premium"
 
     m = re.search(r"(?:between|dari|antara)?\s*(\d+(?:\.\d+)?)\s*(?:and|to|-|hingga|sampai)\s*(\d+(?:\.\d+)?)", t)
@@ -388,14 +433,20 @@ def parse_budget_from_text(text: str) -> Optional[Dict[str, Any]]:
     m = re.search(r"(?:around|about|sekitar|kira.kira)\s*(\d+(?:\.\d+)?)", t)
     if m:
         center = float(m.group(1))
-        result["budget_min"] = center - 50
-        result["budget_max"] = center + 50
+        delta = max(center * 0.2, 50.0)
+        result["budget_min"] = max(center - delta, 0)
+        result["budget_max"] = center + delta
         return result
 
     return result if result else None
 
 
-def filter_by_budget(df: pd.DataFrame, budget_slot: Text, tracker: Optional[Tracker] = None) -> pd.DataFrame:
+def filter_by_budget(
+    df: pd.DataFrame,
+    budget_slot: Text,
+    tracker: Optional[Tracker] = None,
+    overrides: Optional[Dict[str, Any]] = None,
+) -> pd.DataFrame:
     """Apply HARD budget filter. Budget constraints are applied BEFORE ranking."""
     if "price_myr" not in df.columns:
         return df
@@ -404,8 +455,23 @@ def filter_by_budget(df: pd.DataFrame, budget_slot: Text, tracker: Optional[Trac
     b_max: Optional[float] = None
     b_bucket: Optional[str] = None
 
-    # 1. Prefer explicit numeric slots (from integration layer opportunistic fill)
-    if tracker:
+    # 1. Prefer explicit overrides (from pre-parsed query)
+    if overrides:
+        try:
+            if overrides.get("budget_min") is not None:
+                b_min = float(overrides.get("budget_min"))
+        except (TypeError, ValueError):
+            pass
+        try:
+            if overrides.get("budget_max") is not None:
+                b_max = float(overrides.get("budget_max"))
+        except (TypeError, ValueError):
+            pass
+        if overrides.get("budget_bucket"):
+            b_bucket = str(overrides.get("budget_bucket"))
+
+    # 2. Prefer explicit numeric slots (from integration layer opportunistic fill)
+    if tracker and b_min is None and b_max is None and not b_bucket:
         raw_min = tracker.get_slot("budget_min")
         raw_max = tracker.get_slot("budget_max")
         raw_bucket = tracker.get_slot("budget_bucket")
@@ -422,7 +488,7 @@ def filter_by_budget(df: pd.DataFrame, budget_slot: Text, tracker: Optional[Trac
         if raw_bucket:
             b_bucket = str(raw_bucket)
 
-    # 2. Fall back to parsing the budget string slot
+    # 3. Fall back to parsing the budget string slot
     if b_min is None and b_max is None and not b_bucket and budget_slot:
         budget_text = str(budget_slot).strip()
         budget_lower = budget_text.lower().replace(" ", "").replace("–", "-")
@@ -441,7 +507,7 @@ def filter_by_budget(df: pd.DataFrame, budget_slot: Text, tracker: Optional[Trac
                 b_max = parsed.get("budget_max")
                 b_bucket = parsed.get("budget_bucket")
 
-    # 3. Also try parsing the raw message text if still no budget
+    # 4. Also try parsing the raw message text if still no budget
     if b_min is None and b_max is None and not b_bucket and tracker:
         msg_text = tracker.latest_message.get("text") or ""
         parsed = parse_budget_from_text(msg_text)
@@ -453,13 +519,17 @@ def filter_by_budget(df: pd.DataFrame, budget_slot: Text, tracker: Optional[Trac
     # Apply HARD filters
     filtered = df
     if b_min is not None:
+        filtered["price_myr"] = pd.to_numeric(filtered["price_myr"], errors="coerce")
         filtered = filtered[filtered["price_myr"] >= b_min]
     if b_max is not None:
+        filtered["price_myr"] = pd.to_numeric(filtered["price_myr"], errors="coerce")
         filtered = filtered[filtered["price_myr"] <= b_max]
     if b_bucket == "low":
+        filtered["price_myr"] = pd.to_numeric(filtered["price_myr"], errors="coerce")
         filtered = filtered[filtered["price_myr"] <= 150]
     elif b_bucket == "premium":
-        filtered = filtered[filtered["price_myr"] >= 400]
+        filtered["price_myr"] = pd.to_numeric(filtered["price_myr"], errors="coerce")
+        filtered = filtered[filtered["price_myr"] >= 700]
 
     logger.info(
         "[BUDGET] min=%s max=%s bucket=%s → %d/%d products remain",
@@ -508,21 +578,31 @@ CANONICAL_ALIASES: Dict[str, Dict[str, str]] = {
         "photochromic lenses": "Photochromic Lenses",
     },
     "product_type": {
-        "designer frame": "Designer Frames",
-        "designer frames": "Designer Frames",
-        "frames": "Designer Frames",
-        "frame": "Designer Frames",
-        "glasses": "Designer Frames",
-        "spectacles": "Designer Frames",
-        "eyeglasses": "Designer Frames",
-        "luxury sunglasses": "Luxury Sunglasses",
-        "sunglasses": "Luxury Sunglasses",
-        "sunglass": "Luxury Sunglasses",
-        "shades": "Luxury Sunglasses",
+        "designer frame": "Frames",
+        "designer frames": "Frames",
+        "frames": "Frames",
+        "frame": "Frames",
+        "glasses": "Frames",
+        "spectacles": "Frames",
+        "eyeglasses": "Frames",
+        "blue light glasses": "Frames",
+        "office glasses": "Frames",
+        "office wear glasses": "Frames",
+        "work glasses": "Frames",
+        "computer glasses": "Frames",
+        "gaming glasses": "Frames",
+        "luxury sunglasses": "Sunglasses",
+        "sunglasses": "Sunglasses",
+        "sunglass": "Sunglasses",
+        "shades": "Sunglasses",
+        "sun glasses": "Sunglasses",
+        "cermin mata hitam": "Sunglasses",
+        "太阳镜": "Sunglasses",
         "contact lenses": "Contact Lenses",
         "contact lens": "Contact Lenses",
         "contacts": "Contact Lenses",
         "kanta sentuh": "Contact Lenses",
+        "隐形眼镜": "Contact Lenses",
     },
     "preferred_service": {
         "designer frame": "Designer Frames",
@@ -553,6 +633,424 @@ def canonicalize_entities(values: Dict[str, Any]) -> Dict[str, Any]:
         key: canonicalize_slot_value(key, value)
         for key, value in values.items()
     }
+
+
+NORMALIZATION_MAP: Dict[str, str] = {
+    "guci": "gucci",
+    "rayban": "ray-ban",
+    "sunglass": "sunglasses",
+    "sun glass": "sunglasses",
+    "contacts": "contact lenses",
+    "contact lens": "contact lenses",
+    "contct lens": "contact lenses",
+    "kontak lens": "contact lenses",
+    "bluelight": "blue light",
+    "blue-light": "blue light",
+    "cermin mata hitam": "sunglasses",
+    "bingkai": "frames",
+    "kanta sentuh": "contact lenses",
+    "太阳镜": "sunglasses",
+    "镜框": "frames",
+    "隐形眼镜": "contact lenses",
+}
+
+BUDGET_KEYWORDS = re.compile(r"\b(under|below|max|budget|around|less\s*than|bawah|kurang\s*dari|di\s*bawah)\b", re.IGNORECASE)
+CHEAP_KEYWORDS = re.compile(r"\b(cheap|affordable|budget|murah|bajet|cheapest|lowest)\b", re.IGNORECASE)
+PREMIUM_KEYWORDS = re.compile(r"\b(premium|expensive|luxury|mewah|high.end)\b", re.IGNORECASE)
+BEST_KEYWORDS = re.compile(r"\b(best|top rated|top-rated|highest rated)\b", re.IGNORECASE)
+SUPPORT_KEYWORDS = {
+    "return", "refund", "exchange", "repair", "warranty", "broken", 
+    "damaged", "support", "scratched", "cracked", "cancel order", 
+    "defective", "after sales", "after-sales", "order tracking", 
+    "track order", "tracking", "complaint", "cancel", "wrong size", "different frame"
+}
+
+SUPPORT_INTENT_MAP = {
+    "return_request": ["return", "send back"],
+    "refund_request": ["refund", "reimbursement", "money back"],
+    "exchange_request": ["exchange", "swap", "replace", "wrong size", "different frame"],
+    "warranty_support": ["warranty", "claim warranty"],
+    "repair_support": ["repair", "broken", "damaged", "scratched", "cracked", "defective", "fix", "loose frame", "bent"],
+    "order_support": ["cancel order", "order tracking", "track order", "tracking", "delivery", "shipment", "order problem"],
+    "after_sales_support": ["after sales", "after-sales", "support", "complaint", "help with my order"],
+}
+
+SUPPORT_INTENTS = set(SUPPORT_INTENT_MAP.keys()) | {
+    "after_sales_support",
+    "warranty_claim",
+    "order_tracking",
+}
+
+SHOPPING_INTENTS = {
+    "browse_eyewear",
+    "select_product_type",
+    "select_brand",
+    "select_budget",
+    "ask_pricing",
+    "select_pricing_category",
+    "search_product",
+    "search_product_by_attribute",
+    "product_recommendation",
+    "inform_budget",
+}
+
+LENS_INTENTS = {"ask_lens_type", "lens_vision_solutions"}
+
+STORE_INTENTS = {"find_a_store", "store_hours", "choose_city"}
+
+APPOINTMENT_INTENTS = {
+    "capture_lead",
+    "share_name",
+    "share_phone",
+    "share_email",
+    "share_location",
+    "share_service_interest",
+    "share_timeline",
+    "book_appointment",
+    "reschedule_appointment",
+    "human_handoff",
+}
+
+FLOW_DOMAIN_MAP = {
+    "support_flow": "support",
+    "product_search": "shopping",
+    "browse_eyewear": "shopping",
+    "pricing": "shopping",
+    "product_recommendation": "shopping",
+    "lens_consultation": "lens",
+    "store_lookup": "store",
+    "lead_capture": "appointment",
+}
+
+ALLOWED_CARRYOVER_SLOTS = {
+    "brand",
+    "product_type",
+    "budget",
+    "budget_min",
+    "budget_max",
+    "budget_bucket",
+    "price_range",
+}
+
+USE_CASE_KEYWORDS: Dict[str, List[str]] = {
+    "office": [
+        "office",
+        "office wear",
+        "work",
+        "corporate",
+        "professional",
+        "business",
+        "desk work",
+        "zoom meetings",
+        "studying",
+        "student",
+        "pejabat",
+        "办公",
+        "工作",
+    ],
+    "screen": [
+        "screen",
+        "computer",
+        "laptop",
+        "blue light",
+        "bluelight",
+        "laptop use",
+        "coding",
+        "programmer",
+        "developer",
+        "gaming",
+        "skrin",
+        "屏幕",
+        "电脑",
+    ],
+    "driving": ["driving", "drive", "memandu", "驾驶"],
+    "fashion": ["fashion", "stylish", "trendy", "fesyen", "时尚"],
+    "sports": ["sports", "sport", "active", "running", "cycling", "sukan", "运动", "跑步", "骑行"],
+    "daily": ["daily", "everyday", "daily disposable", "daily contacts", "harian", "日常", "日抛", "日抛隐形眼镜"],
+}
+
+
+def _replace_term(text: str, term: str, replacement: str) -> str:
+    if re.search(r"[A-Za-z0-9]", term):
+        return re.sub(rf"\b{re.escape(term)}\b", replacement, text, flags=re.IGNORECASE)
+    return text.replace(term, replacement)
+
+
+def normalize_search_text(text: str) -> str:
+    normalized = re.sub(r"\s+", " ", str(text or "").strip().lower())
+    for key, value in sorted(NORMALIZATION_MAP.items(), key=lambda kv: -len(kv[0])):
+        normalized = _replace_term(normalized, key, value)
+    return normalized.strip()
+
+
+def detect_category_from_text(text: str) -> Optional[str]:
+    if not text:
+        return None
+    if any(token in text for token in ["sunglasses", "shades", "sun glasses", "cermin mata hitam", "太阳镜"]):
+        return "Sunglasses"
+    if any(token in text for token in ["contact lenses", "contact lens", "contacts", "kanta sentuh", "隐形眼镜"]):
+        return "Contact Lenses"
+    if any(token in text for token in ["frames", "frame", "glasses", "eyeglasses", "spectacles", "cermin mata", "镜框", "眼镜"]):
+        return "Frames"
+    return None
+
+
+def category_group(value: Optional[str]) -> str:
+    key = canonical_text_key(value)
+    if not key:
+        return ""
+    if "contact" in key or "lens" in key or "隐形" in key:
+        return "contacts"
+    if "sunglass" in key or "太阳镜" in key:
+        return "sunglasses"
+    if "frame" in key or "glasses" in key or "spectacle" in key or "镜框" in key or "眼镜" in key:
+        return "frames"
+    return ""
+
+
+def detect_use_case_from_text(text: str) -> Optional[str]:
+    for use_case, keywords in USE_CASE_KEYWORDS.items():
+        if any(keyword in text for keyword in keywords):
+            return use_case
+    return None
+
+
+def detect_support_intent(tracker) -> tuple[str, str, bool]:
+    # Returns (intent_name, override_reason, keyword_match)
+    # 1. Check intent confidence
+    intent = tracker.latest_message.get("intent", {})
+    intent_name = intent.get("name", "")
+    confidence = intent.get("confidence", 0.0)
+    
+    support_intents = set(SUPPORT_INTENT_MAP.keys()) | {"after_sales_support", "warranty_claim"}
+    if confidence >= 0.7 and intent_name in support_intents:
+        return (intent_name, "high_confidence_intent", False)
+
+    # 2. Check keywords as firewall
+    raw_text = tracker.latest_message.get("text") or ""
+    if not raw_text or raw_text.startswith("/"):
+        return ("", "", False)
+    
+    normalized = raw_text.lower()
+    for sup_intent, keywords in SUPPORT_INTENT_MAP.items():
+        if any(keyword in normalized for keyword in keywords):
+            return (sup_intent, f"keyword_match_{sup_intent}", True)
+            
+    if any(keyword in normalized for keyword in SUPPORT_KEYWORDS):
+        return ("after_sales_support", "keyword_match_generic_support", True)
+        
+    return ("", "", False)
+
+
+def get_active_loop_name(tracker: Tracker) -> str:
+    active_loop = tracker.active_loop
+    if isinstance(active_loop, dict):
+        return str(active_loop.get("name") or "").strip()
+    if isinstance(active_loop, str):
+        return active_loop.strip()
+    return ""
+
+
+def get_previous_intent(tracker: Tracker) -> str:
+    seen_latest = False
+    for event in reversed(tracker.events):
+        if event.get("event") != "user":
+            continue
+        if not seen_latest:
+            seen_latest = True
+            continue
+        intent_data = event.get("parse_data", {}).get("intent", {})
+        name = str(intent_data.get("name") or "").strip()
+        if name:
+            return name
+    return ""
+
+
+def resolve_domain_from_intent(intent_name: str) -> str:
+    if intent_name in SUPPORT_INTENTS:
+        return "support"
+    if intent_name in SHOPPING_INTENTS:
+        return "shopping"
+    if intent_name in LENS_INTENTS:
+        return "lens"
+    if intent_name in STORE_INTENTS:
+        return "store"
+    if intent_name in APPOINTMENT_INTENTS:
+        return "appointment"
+    return ""
+
+
+def resolve_new_domain(tracker: Tracker, intent_name: str, raw_text: str, support_intent: str) -> str:
+    if support_intent:
+        return "support"
+    domain = resolve_domain_from_intent(intent_name)
+    if domain:
+        return domain
+    if raw_text:
+        brand_lookup = build_brand_lookup(load_catalogue())
+        if looks_like_product_query(raw_text, brand_lookup):
+            return "shopping"
+    return ""
+
+
+def detect_domain_switch(
+    tracker: Tracker,
+    intent_name: str,
+    raw_text: str,
+    support_intent: str,
+) -> Dict[str, Any]:
+    current_flow = str(tracker.get_slot("current_flow") or "").strip()
+    previous_domain = FLOW_DOMAIN_MAP.get(current_flow, "")
+    if not previous_domain:
+        active_loop_name = get_active_loop_name(tracker)
+        if active_loop_name == "lead_capture_form":
+            previous_domain = "appointment"
+
+    new_domain = resolve_new_domain(tracker, intent_name, raw_text, support_intent)
+    previous_intent = get_previous_intent(tracker)
+    detected = bool(previous_domain and new_domain and previous_domain != new_domain)
+
+    return {
+        "previous_intent": previous_intent,
+        "previous_domain": previous_domain,
+        "new_intent": intent_name,
+        "new_domain": new_domain,
+        "detected": detected,
+    }
+
+
+def reset_conversation_state(tracker: Tracker) -> tuple[List[Dict[Text, Any]], List[str], bool]:
+    cleared_slots: List[str] = []
+    events: List[Dict[Text, Any]] = []
+    active_loop_name = get_active_loop_name(tracker)
+
+    if active_loop_name:
+        events.append(ActiveLoop(None))
+
+    if tracker.get_slot("requested_slot") is not None:
+        events.append(SlotSet("requested_slot", None))
+        cleared_slots.append("requested_slot")
+
+    if tracker.get_slot("current_flow") is not None:
+        events.append(SlotSet("current_flow", None))
+        cleared_slots.append("current_flow")
+
+    for slot_name in sorted(MANAGED_SLOTS):
+        if slot_name in ALLOWED_CARRYOVER_SLOTS:
+            continue
+        if tracker.get_slot(slot_name) is not None:
+            events.append(SlotSet(slot_name, None))
+            cleared_slots.append(slot_name)
+
+    return events, cleared_slots, bool(active_loop_name)
+
+
+def apply_domain_switch_reset(
+    tracker: Tracker,
+    intent_name: str,
+    raw_text: str,
+    support_intent: str,
+) -> List[Dict[Text, Any]]:
+    switch = detect_domain_switch(tracker, intent_name, raw_text, support_intent)
+    if not switch["detected"]:
+        return []
+
+    reset_events, cleared_slots, cleared_active_loop = reset_conversation_state(tracker)
+    logger.info({
+        "previous_intent": switch["previous_intent"],
+        "new_intent": switch["new_intent"],
+        "domain_switch_detected": True,
+        "cleared_active_loop": cleared_active_loop,
+        "cleared_slots": cleared_slots,
+    })
+    return reset_events
+
+
+def route_support_flow(
+    dispatcher: CollectingDispatcher,
+    tracker: Tracker,
+    intent_name: str,
+) -> List[Dict[Text, Any]]:
+    
+    service_map = {
+        "return_request": "Return Request",
+        "refund_request": "Refund Request",
+        "exchange_request": "Exchange Request",
+        "warranty_support": "Warranty Support",
+        "warranty_claim": "Warranty Support",
+        "repair_support": "Repair Support",
+        "order_support": "Order Tracking/Support",
+        "order_tracking": "Order Tracking/Support"
+    }
+    preferred_service = service_map.get(intent_name, "After-sales Support")
+    
+    dispatcher.utter_message(text=f"I understand you need help with a {preferred_service.lower()}. Let me connect you with our support team.")
+
+    events = ActionPrefillLeadCapture().run(dispatcher, tracker, {})
+    
+    # Always reset product search context entirely as per requirements
+    clearable = set(MANAGED_SLOTS) - set(PERSISTENT_SLOTS)
+    for slot_name in clearable:
+        if tracker.get_slot(slot_name) is not None:
+            events.append(SlotSet(slot_name, None))
+            
+    events.append(SlotSet("preferred_service", preferred_service))
+    events.append(SlotSet("current_flow", "support_flow"))
+    events.append(FollowupAction("lead_capture_form"))
+    return events
+
+
+def match_attribute_from_text(text: str, values: List[str]) -> Optional[str]:
+    if not text:
+        return None
+    text_key = canonical_text_key(text)
+    for value in values:
+        key = canonical_text_key(value)
+        if key and key in text_key:
+            return value
+    return None
+
+
+def build_brand_lookup(df: pd.DataFrame) -> Dict[str, str]:
+    brands = {
+        canonical_text_key(brand): str(brand).strip()
+        for brand in df.get("brand", pd.Series(dtype=str)).tolist()
+        if str(brand).strip()
+    }
+    return {key: value for key, value in brands.items() if key}
+
+
+def detect_brand_from_text(text: str, brand_lookup: Dict[str, str]) -> Optional[str]:
+    if not text or not brand_lookup:
+        return None
+    text_key = canonical_text_key(text)
+    for key, brand in brand_lookup.items():
+        if key and key in text_key:
+            return brand
+    tokens = [token for token in text_key.split() if len(token) > 2]
+    if not tokens:
+        return None
+    matches = get_close_matches(" ".join(tokens), brand_lookup.keys(), n=1, cutoff=0.85)
+    if matches:
+        return brand_lookup.get(matches[0])
+    for token in tokens:
+        matches = get_close_matches(token, brand_lookup.keys(), n=1, cutoff=0.85)
+        if matches:
+            return brand_lookup.get(matches[0])
+    return None
+
+
+def looks_like_product_query(text: str, brand_lookup: Optional[Dict[str, str]] = None) -> bool:
+    normalized = normalize_search_text(text)
+    if detect_category_from_text(normalized):
+        return True
+    if BUDGET_KEYWORDS.search(normalized) or parse_budget_from_text(normalized):
+        return True
+    if brand_lookup and detect_brand_from_text(normalized, brand_lookup):
+        return True
+    if any(token in normalized for token in ["frame", "sunglasses", "contact lenses", "glasses", "shades"]):
+        return True
+    return False
 
 
 def format_product_list(rows: pd.DataFrame, heading: str) -> str:
@@ -716,6 +1214,8 @@ def lead_buttons(lang: str, preferred_service: Optional[str] = None) -> List[Dic
 def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any], preferred_service: Optional[str], lang: str = "en") -> None:
     brand = str(product.get("brand") or "Brand").strip()
     name = str(product.get("product_name") or "Product").strip()
+    if brand and name.lower().startswith(brand.lower()):
+        name = name[len(brand):].strip(" -") or name
     price = float(product.get("price_myr", 0) or 0)
     product_type = str(product.get("product_type") or product.get("category") or "").strip()
     material = titleize(product.get("frame_material"))
@@ -939,6 +1439,7 @@ def normalize_timeline(value: str) -> Optional[str]:
         "this week": "This Week",
         "within 2 weeks": "Within 2 Weeks",
         "within two weeks": "Within 2 Weeks",
+        "两周内": "Within 2 Weeks",
         "just exploring": "Just Exploring",
     }
     if normalized in allowed:
@@ -946,6 +1447,8 @@ def normalize_timeline(value: str) -> Optional[str]:
     if "this week" in normalized:
         return "This Week"
     if "2 week" in normalized or "two week" in normalized:
+        return "Within 2 Weeks"
+    if "两周" in normalized:
         return "Within 2 Weeks"
     if any(token in normalized for token in ["exploring", "looking around", "just checking", "surveying"]):
         return "Just Exploring"
@@ -1058,6 +1561,37 @@ class ActionDefaultFallback(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        intent = get_latest_intent(tracker)
+        intent_name = intent["name"]
+        raw_text = tracker.latest_message.get("text") or ""
+        support_intent, override_reason, keyword_match = detect_support_intent(tracker)
+        if support_intent:
+            intent = get_latest_intent(tracker)
+            switch = detect_domain_switch(tracker, intent["name"], raw_text, support_intent)
+            reset_events: List[Dict[Text, Any]] = []
+            if switch["detected"]:
+                reset_events, cleared_slots, cleared_active_loop = reset_conversation_state(tracker)
+                logger.info({
+                    "previous_intent": switch["previous_intent"],
+                    "new_intent": switch["new_intent"],
+                    "domain_switch_detected": True,
+                    "cleared_active_loop": cleared_active_loop,
+                    "cleared_slots": cleared_slots,
+                })
+            logger.info({
+                "intent": "action_default_fallback",
+                "support_keyword_match": keyword_match,
+                "override": support_intent,
+                "override_reason": override_reason,
+                "final_route": "support_flow",
+                "context_state": {s: tracker.get_slot(s) for s in MANAGED_SLOTS}
+            })
+            support_events = route_support_flow(dispatcher, tracker, support_intent)
+            return [*reset_events, *support_events]
+        brand_lookup = build_brand_lookup(load_catalogue())
+        if looks_like_product_query(raw_text, brand_lookup):
+            return ActionSmartSearch().run(dispatcher, tracker, domain)
+
         consecutive_fallbacks = 0
         for event in reversed(tracker.events):
             if event.get("event") == "user":
@@ -1100,6 +1634,416 @@ class ActionDefaultFallback(Action):
             ],
         )
         return []
+
+
+class ActionGreetOrSearch(Action):
+    def name(self) -> Text:
+        return "action_greet_or_search"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        raw_text = tracker.latest_message.get("text") or ""
+        brand_lookup = build_brand_lookup(load_catalogue())
+        if looks_like_product_query(raw_text, brand_lookup):
+            return ActionSmartSearch().run(dispatcher, tracker, domain)
+
+        dispatcher.utter_message(response="utter_greet")
+        return []
+
+
+class ActionSmartSearch(Action):
+    def name(self) -> Text:
+        return "action_smart_search"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        raw_text = tracker.latest_message.get("text") or ""
+        intent = get_latest_intent(tracker)
+        intent_name = intent.get("name") if intent else ""
+        support_intent, override_reason, keyword_match = detect_support_intent(tracker)
+        
+        if support_intent:
+            switch = detect_domain_switch(tracker, intent_name, raw_text, support_intent)
+            reset_events: List[Dict[Text, Any]] = []
+            if switch["detected"]:
+                reset_events, cleared_slots, cleared_active_loop = reset_conversation_state(tracker)
+                logger.info({
+                    "previous_intent": switch["previous_intent"],
+                    "new_intent": switch["new_intent"],
+                    "domain_switch_detected": True,
+                    "cleared_active_loop": cleared_active_loop,
+                    "cleared_slots": cleared_slots,
+                })
+            logger.info({
+                "intent": intent_name,
+                "support_keyword_match": keyword_match,
+                "override": support_intent,
+                "override_reason": override_reason,
+                "final_route": "support_flow",
+                "context_state": {s: tracker.get_slot(s) for s in MANAGED_SLOTS}
+            })
+            support_events = route_support_flow(dispatcher, tracker, support_intent)
+            return [*reset_events, *support_events]
+
+        lang = get_language(tracker)
+        events: List[Dict[Text, Any]] = []
+        events.extend(apply_domain_switch_reset(tracker, intent_name, raw_text, support_intent))
+        events.extend(flow_entry_events(tracker, "product_search"))
+        normalized = normalize_search_text(raw_text)
+        entities = canonicalize_entities(latest_entity_values(tracker))
+
+        df = load_catalogue().copy()
+        brand_lookup = build_brand_lookup(df)
+
+        known_colors = sorted({str(v).strip() for v in df.get("frame_color", pd.Series(dtype=str)).tolist() if str(v).strip()}, key=str.lower)
+        known_shapes = sorted({str(v).strip() for v in df.get("frame_shape", pd.Series(dtype=str)).tolist() if str(v).strip()}, key=str.lower)
+        known_materials = sorted({str(v).strip() for v in df.get("frame_material", pd.Series(dtype=str)).tolist() if str(v).strip()}, key=str.lower)
+
+        previous_product_type = canonicalize_slot_value("product_type", tracker.get_slot("product_type"))
+        explicit_product_type = canonicalize_slot_value("product_type", entities.get("product_type"))
+        explicit_category = explicit_product_type or detect_category_from_text(normalized)
+
+        previous_group = category_group(previous_product_type)
+        explicit_group = category_group(explicit_category)
+        context_conflict = bool(explicit_group and previous_group and explicit_group != previous_group)
+        use_previous_slots = not context_conflict
+
+        if context_conflict:
+            for slot_name in [
+                "product_type",
+                "brand",
+                "frame_color",
+                "frame_shape",
+                "frame_material",
+                "use_case",
+                "budget",
+                "budget_min",
+                "budget_max",
+                "budget_bucket",
+                "price_range",
+            ]:
+                if tracker.get_slot(slot_name) is not None:
+                    events.append(SlotSet(slot_name, None))
+
+        slot_product_type = explicit_category or (previous_product_type if use_previous_slots else None)
+        use_case = (
+            entities.get("use_case")
+            or (tracker.get_slot("use_case") if use_previous_slots else None)
+            or detect_use_case_from_text(normalized)
+        )
+        category = slot_product_type or detect_category_from_text(normalized)
+
+        if not category and use_case in {"office", "screen"}:
+            category = "Frames"
+        if use_case == "driving":
+            category = category or "Sunglasses"
+        if use_case == "daily" and not category and "contact" in normalized:
+            category = "Contact Lenses"
+
+        brand = entities.get("brand") or (tracker.get_slot("brand") if use_previous_slots else None) or detect_brand_from_text(normalized, brand_lookup)
+        frame_color = entities.get("frame_color") or (tracker.get_slot("frame_color") if use_previous_slots else None) or match_attribute_from_text(normalized, known_colors)
+        frame_shape = entities.get("frame_shape") or (tracker.get_slot("frame_shape") if use_previous_slots else None) or match_attribute_from_text(normalized, known_shapes)
+        frame_material = entities.get("frame_material") or (tracker.get_slot("frame_material") if use_previous_slots else None) or match_attribute_from_text(normalized, known_materials)
+
+        budget_text = str(
+            entities.get("budget")
+            or (tracker.get_slot("budget") if use_previous_slots else None)
+            or (tracker.get_slot("price_range") if use_previous_slots else None)
+            or ""
+        ).strip()
+        parsed_budget = parse_budget_from_text(budget_text) or parse_budget_from_text(normalized)
+        has_numeric_budget = bool(parsed_budget and (parsed_budget.get("budget_min") is not None or parsed_budget.get("budget_max") is not None))
+        cheap_only = bool(parsed_budget and parsed_budget.get("budget_bucket") and not has_numeric_budget)
+        budget_overrides = None if cheap_only else parsed_budget
+        apply_budget = bool(
+            has_numeric_budget
+            or BUDGET_KEYWORDS.search(normalized)
+            or tracker.get_slot("budget_min")
+            or tracker.get_slot("budget_max")
+        )
+        hard_budget = bool(BUDGET_KEYWORDS.search(normalized) or has_numeric_budget)
+        sort_price_asc = bool(CHEAP_KEYWORDS.search(normalized)) and not hard_budget
+        sort_price_desc = bool(PREMIUM_KEYWORDS.search(normalized)) and not hard_budget
+        sort_rating_desc = bool(BEST_KEYWORDS.search(normalized))
+
+        derived_filters: Dict[str, Any] = {}
+        if use_case == "office":
+            if not frame_shape:
+                derived_filters["frame_shape"] = "rectangular"
+            if not frame_material:
+                derived_filters["frame_material"] = "titanium"
+            if not frame_color:
+                derived_filters["frame_color"] = "black"
+        elif use_case == "screen":
+            derived_filters["lens_feature"] = "blue light"
+        elif use_case == "driving":
+            derived_filters["polarized"] = "yes"
+        elif use_case == "sports":
+            derived_filters["frame_style"] = "wraparound"
+
+        explicit_constraints = {
+            "category": category,
+            "brand": brand,
+            "frame_color": frame_color,
+            "frame_shape": frame_shape,
+            "frame_material": frame_material,
+            "use_case": use_case,
+        }
+
+        has_specific_filters = any([
+            frame_color,
+            frame_shape,
+            frame_material,
+            use_case,
+            apply_budget,
+        ])
+        category_is_strong = bool(category and category.lower() in {"sunglasses", "contact lenses"})
+        is_generic_glasses = "glasses" in normalized and not any(
+            token in normalized for token in ["sunglasses", "contact", "frames", "frame", "shades"]
+        )
+        needs_product_type = not category and any([
+            brand,
+            apply_budget,
+            frame_color,
+            frame_shape,
+            frame_material,
+            use_case,
+        ])
+
+        prompt_allowed = intent_name not in {"select_budget", "select_brand", "inform_budget"}
+        if (needs_product_type or (is_generic_glasses and not has_specific_filters and not brand and not category_is_strong)) and prompt_allowed:
+            events = flow_entry_events(tracker, "browse_eyewear")
+            if brand:
+                events.append(SlotSet("brand", brand))
+            dispatcher.utter_message(response="utter_ask_product_type")
+            return events
+
+        def apply_constraints(
+            source: pd.DataFrame,
+            include_use_case: bool,
+            include_brand: bool,
+            include_color: bool,
+            include_shape: bool,
+            include_material: bool,
+            include_budget: bool,
+            relaxed_budget: bool,
+        ) -> pd.DataFrame:
+            filtered = source
+
+            if explicit_constraints["category"]:
+                filtered = filtered[
+                    filtered["category"].astype(str).str.contains(str(explicit_constraints["category"]), case=False, na=False)
+                ]
+            if include_brand and explicit_constraints["brand"]:
+                filtered = filtered[
+                    filtered["brand"].astype(str).str.contains(str(explicit_constraints["brand"]), case=False, na=False)
+                ]
+            if include_color and explicit_constraints["frame_color"]:
+                filtered = filtered[
+                    filtered["frame_color"].astype(str).str.contains(str(explicit_constraints["frame_color"]), case=False, na=False)
+                ]
+            if include_shape and explicit_constraints["frame_shape"]:
+                filtered = filtered[
+                    filtered["frame_shape"].astype(str).str.contains(str(explicit_constraints["frame_shape"]), case=False, na=False)
+                ]
+            if include_material and explicit_constraints["frame_material"]:
+                filtered = filtered[
+                    filtered["frame_material"].astype(str).str.contains(str(explicit_constraints["frame_material"]), case=False, na=False)
+                ]
+
+            if include_use_case:
+                use_case_value = explicit_constraints["use_case"]
+                if use_case_value:
+                    mask = (
+                        filtered["description"].astype(str).str.contains(str(use_case_value), case=False, na=False)
+                        | filtered["product_name"].astype(str).str.contains(str(use_case_value), case=False, na=False)
+                        | filtered["lens_feature"].astype(str).str.contains(str(use_case_value), case=False, na=False)
+                    )
+                    if not filtered[mask].empty:
+                        filtered = filtered[mask]
+
+                if derived_filters.get("lens_feature"):
+                    needle = str(derived_filters["lens_feature"])
+                    mask = (
+                        filtered["lens_feature"].astype(str).str.contains(needle, case=False, na=False)
+                        | filtered["description"].astype(str).str.contains(needle, case=False, na=False)
+                        | filtered["product_name"].astype(str).str.contains(needle, case=False, na=False)
+                    )
+                    if not filtered[mask].empty:
+                        filtered = filtered[mask]
+                if derived_filters.get("polarized"):
+                    filtered = filtered[
+                        filtered["polarized"].astype(str).str.lower().eq("yes")
+                    ]
+                if derived_filters.get("frame_style"):
+                    filtered = filtered[
+                        filtered["frame_style"].astype(str).str.contains(str(derived_filters["frame_style"]), case=False, na=False)
+                    ]
+
+                if include_color and derived_filters.get("frame_color") and not explicit_constraints["frame_color"]:
+                    filtered = filtered[
+                        filtered["frame_color"].astype(str).str.contains(str(derived_filters["frame_color"]), case=False, na=False)
+                    ]
+                if include_shape and derived_filters.get("frame_shape") and not explicit_constraints["frame_shape"]:
+                    filtered = filtered[
+                        filtered["frame_shape"].astype(str).str.contains(str(derived_filters["frame_shape"]), case=False, na=False)
+                    ]
+                if include_material and derived_filters.get("frame_material") and not explicit_constraints["frame_material"]:
+                    filtered = filtered[
+                        filtered["frame_material"].astype(str).str.contains(str(derived_filters["frame_material"]), case=False, na=False)
+                    ]
+
+            if include_budget and apply_budget:
+                overrides = budget_overrides
+                if relaxed_budget and overrides:
+                    widened = dict(overrides)
+                    if widened.get("budget_min") is not None:
+                        widened["budget_min"] = max(float(widened["budget_min"]) * 0.8, 0)
+                    if widened.get("budget_max") is not None:
+                        widened["budget_max"] = float(widened["budget_max"]) * 1.2
+                    overrides = widened
+                filtered = filter_by_budget(filtered, budget_text, tracker, overrides=overrides)
+
+            return filtered
+
+        relax_order = ["use_case", "frame_color", "frame_material", "frame_shape", "budget", "brand"]
+        active = {
+            "frame_material": bool(explicit_constraints["frame_material"] or derived_filters.get("frame_material")),
+            "frame_shape": bool(explicit_constraints["frame_shape"] or derived_filters.get("frame_shape")),
+            "frame_color": bool(explicit_constraints["frame_color"] or derived_filters.get("frame_color")),
+            "use_case": bool(explicit_constraints["use_case"] or derived_filters),
+            "brand": bool(explicit_constraints["brand"]),
+            "budget": bool(apply_budget),
+        }
+        relaxed_flags: List[str] = []
+        results = pd.DataFrame()
+        relaxed_budget = False
+        budget_can_relax = bool(apply_budget and not hard_budget)
+
+        for step in range(len(relax_order) + 1):
+            results = apply_constraints(
+                df,
+                include_use_case=active["use_case"],
+                include_brand=active["brand"],
+                include_color=active["frame_color"],
+                include_shape=active["frame_shape"],
+                include_material=active["frame_material"],
+                include_budget=active["budget"],
+                relaxed_budget=relaxed_budget,
+            )
+            if not results.empty:
+                break
+
+            if step < len(relax_order):
+                key = relax_order[step]
+                if key == "budget":
+                    if active["budget"] and not hard_budget:
+                        active["budget"] = False
+                        relaxed_flags.append(key)
+                elif active.get(key):
+                    active[key] = False
+                    relaxed_flags.append(key)
+
+        def record_search_slots(target_events: List[Dict[Text, Any]]) -> None:
+            if category:
+                target_events.append(SlotSet("product_type", category))
+            if brand:
+                target_events.append(SlotSet("brand", brand))
+            if frame_color:
+                target_events.append(SlotSet("frame_color", frame_color))
+            if frame_shape:
+                target_events.append(SlotSet("frame_shape", frame_shape))
+            if frame_material:
+                target_events.append(SlotSet("frame_material", frame_material))
+            if use_case:
+                target_events.append(SlotSet("use_case", use_case))
+            if budget_text:
+                target_events.append(SlotSet("budget", budget_text))
+            if parsed_budget:
+                if parsed_budget.get("budget_min") is not None:
+                    target_events.append(SlotSet("budget_min", parsed_budget.get("budget_min")))
+                if parsed_budget.get("budget_max") is not None:
+                    target_events.append(SlotSet("budget_max", parsed_budget.get("budget_max")))
+                if parsed_budget.get("budget_bucket"):
+                    target_events.append(SlotSet("budget_bucket", parsed_budget.get("budget_bucket")))
+
+        if results.empty:
+            if hard_budget and parsed_budget and parsed_budget.get("budget_max"):
+                max_b = parsed_budget.get("budget_max")
+                cat_text = category or "products"
+                msg = tr(
+                    lang,
+                    f"No {cat_text.lower()} found under RM{max_b:g}.",
+                    f"Tiada {cat_text.lower()} dijumpai di bawah RM{max_b:g}.",
+                    f"未找到 RM{max_b:g} 以下的{cat_text.lower()}。"
+                )
+            else:
+                msg = tr(
+                    lang,
+                    "I could not find an exact match. Tell me your preferred product type, budget, or brand to try again.",
+                    "Saya tidak menemui padanan tepat. Beritahu saya jenis produk, bajet, atau jenama pilihan anda untuk cuba lagi.",
+                    "我没有找到完全匹配的结果。请告诉我您偏好的产品类型、预算或品牌，以便再试一次。"
+                )
+            dispatcher.utter_message(text=msg)
+            record_search_slots(events)
+            return events
+
+        if relaxed_flags:
+            relaxed_text = ", ".join(relaxed_flags)
+            dispatcher.utter_message(
+                text=tr(
+                    lang,
+                    f"I could not find an exact match, so I relaxed {relaxed_text} and kept your key filters.",
+                    f"Saya tidak menemui padanan tepat, jadi saya longgarkan {relaxed_text} dan kekalkan penapis utama anda.",
+                    f"没有找到完全匹配的结果，因此我放宽了 {relaxed_text}，并保留了关键筛选条件。",
+                )
+            )
+
+        ranked = results
+        if sort_rating_desc and "rating" in ranked.columns:
+            ranked = ranked.sort_values(["rating", "price_myr"], ascending=[False, True])
+        elif sort_price_asc and "price_myr" in ranked.columns:
+            ranked = ranked.sort_values("price_myr", ascending=True)
+        elif sort_price_desc and "price_myr" in ranked.columns:
+            ranked = ranked.sort_values("price_myr", ascending=False)
+        else:
+            ranked = rank_products_safely(ranked, product_type=category, brand=brand, use_case=use_case)
+
+        top_results = ranked.head(5)
+
+        if not any([category, brand, frame_color, frame_shape, frame_material, use_case, apply_budget]):
+            dispatcher.utter_message(
+                text=tr(
+                    lang,
+                    "Here are some popular picks right now:",
+                    "Berikut pilihan popular ketika ini:",
+                    "这是目前的热门推荐：",
+                )
+            )
+        else:
+            dispatcher.utter_message(
+                text=tr(
+                    lang,
+                    "Here are the closest matches to your request:",
+                    "Berikut ialah pilihan paling hampir dengan permintaan anda:",
+                    "以下是最接近您需求的选择：",
+                )
+            )
+
+        for _, row in top_results.iterrows():
+            emit_product_card(dispatcher, row.to_dict(), str(category or brand or ""), lang)
+
+        record_search_slots(events)
+
+        return events
 
 
 class ActionDocumentSearch(Action):
@@ -1409,18 +2353,49 @@ class ActionHandleLeadCaptureInterruption(Action):
         intent = get_latest_intent(tracker)
         requested_slot = str(tracker.get_slot("requested_slot") or "").strip()
         intent_name = intent["name"]
+        raw_text = tracker.latest_message.get("text") or ""
+        support_intent, override_reason, keyword_match = detect_support_intent(tracker)
 
-        if intent_name not in FORM_INTERRUPTION_INTENTS or intent["confidence"] < INTENT_CONFIDENCE_THRESHOLD:
+        switch = detect_domain_switch(tracker, intent_name, raw_text, support_intent)
+        should_interrupt = bool(
+            switch["detected"]
+            or (intent_name in FORM_INTERRUPTION_INTENTS and intent["confidence"] >= INTENT_CONFIDENCE_THRESHOLD)
+        )
+
+        if not should_interrupt:
             dispatcher.utter_message(text=tr(lang, "I still need that detail to continue.", "Saya masih perlukan butiran itu untuk teruskan.", "我还需要这项信息才能继续。"))
             if requested_slot:
                 dispatcher.utter_message(response=f"utter_ask_{requested_slot}")
             return []
 
-        events: List[Dict[Text, Any]] = [
-            SlotSet("requested_slot", None),
-            ActiveLoop(None),
-            SlotSet("current_flow", resolve_interruption_flow(tracker, intent_name)),
-        ]
+        events: List[Dict[Text, Any]] = []
+        if switch["detected"]:
+            reset_events, cleared_slots, cleared_active_loop = reset_conversation_state(tracker)
+            logger.info({
+                "previous_intent": switch["previous_intent"],
+                "new_intent": switch["new_intent"],
+                "domain_switch_detected": True,
+                "cleared_active_loop": cleared_active_loop,
+                "cleared_slots": cleared_slots,
+            })
+            events.extend(reset_events)
+        else:
+            events.extend([
+                SlotSet("requested_slot", None),
+                ActiveLoop(None),
+                SlotSet("current_flow", resolve_interruption_flow(tracker, intent_name)),
+            ])
+
+        if support_intent:
+            logger.info({
+                "intent": "lead_capture_interruption",
+                "support_keyword_match": keyword_match,
+                "override": support_intent,
+                "override_reason": override_reason,
+                "final_route": "support_flow",
+            })
+            events.extend(route_support_flow(dispatcher, tracker, support_intent))
+            return events
 
         if intent_name == "browse_eyewear":
             events.extend(ActionResetEyewearSlots().run(dispatcher, tracker, domain))
@@ -1459,6 +2434,12 @@ class ActionHandleLeadCaptureInterruption(Action):
         elif intent_name == "ask_faq":
             events.append(FollowupAction("action_document_search"))
         else:
+            if switch["detected"] and switch["new_domain"] == "shopping":
+                events.extend(ActionSmartSearch().run(dispatcher, tracker, domain))
+                return events
+            if switch["detected"] and switch["new_domain"] == "lens":
+                events.extend(ActionExplainLens().run(dispatcher, tracker, domain))
+                return events
             if requested_slot:
                 dispatcher.utter_message(response=f"utter_ask_{requested_slot}")
             return []
@@ -1476,7 +2457,11 @@ class ActionResetEyewearSlots(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        events = flow_entry_events(tracker, "browse_eyewear")
+        raw_text = tracker.latest_message.get("text") or ""
+        intent = get_latest_intent(tracker)
+        events: List[Dict[Text, Any]] = []
+        events.extend(apply_domain_switch_reset(tracker, intent["name"], raw_text, ""))
+        events.extend(flow_entry_events(tracker, "browse_eyewear"))
         events.extend([
             SlotSet("product_type", None),
             SlotSet("brand", None),
@@ -1500,89 +2485,7 @@ class ActionFilterProducts(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        events = flow_entry_events(tracker, "product_search")
-        lang = get_language(tracker)
-        entities = canonicalize_entities(latest_entity_values(tracker))
-
-        product_type = canonicalize_slot_value(
-            "product_type", entities.get("product_type") or tracker.get_slot("product_type")
-        )
-        brand = entities.get("brand") or tracker.get_slot("brand")
-        price_range = (
-            entities.get("price_range")
-            or entities.get("budget")
-            or tracker.get_slot("price_range")
-            or tracker.get_slot("budget")
-        )
-        frame_color = entities.get("frame_color") or tracker.get_slot("frame_color")
-        frame_shape = entities.get("frame_shape") or tracker.get_slot("frame_shape")
-        frame_material = entities.get("frame_material") or tracker.get_slot("frame_material")
-
-        logger.info(
-            "[FILTER_PRODUCTS] type=%s brand=%s price_range=%s color=%s shape=%s material=%s",
-            product_type, brand, price_range, frame_color, frame_shape, frame_material
-        )
-
-        backend_results = gateway.search_products({
-            "product_type": product_type, "brand": brand, "price_range": price_range,
-            "frame_color": frame_color, "frame_shape": frame_shape, "frame_material": frame_material,
-        })
-        if backend_results:
-            dispatcher.utter_message(text=tr(lang, "Here are some products that match your request:", "Berikut ialah beberapa produk yang sepadan dengan permintaan anda:", "以下是一些符合您需求的产品："))
-            for product in backend_results[:4]:
-                emit_product_card(dispatcher, product, str(product_type or brand or ""), lang)
-            return events
-
-        filtered_df = load_catalogue().copy()
-        logger.info("[FILTER_PRODUCTS] catalogue size=%d", len(filtered_df))
-
-        # Step 1: Apply HARD category filter
-        if product_type:
-            filtered_df = filtered_df[
-                filtered_df["product_type"].astype(str).str.contains(product_type, case=False, na=False)
-            ]
-            logger.info("[FILTER_PRODUCTS] after product_type filter: %d", len(filtered_df))
-
-        # Step 2: Apply HARD brand filter
-        if brand and str(brand).lower() != "show all brands":
-            filtered_df = filtered_df[
-                filtered_df["brand"].astype(str).str.contains(str(brand), case=False, na=False)
-            ]
-            logger.info("[FILTER_PRODUCTS] after brand filter: %d", len(filtered_df))
-
-        # Step 3: Apply attribute filters
-        if frame_color:
-            filtered_df = filtered_df[
-                filtered_df["frame_color"].astype(str).str.contains(str(frame_color), case=False, na=False)
-            ]
-        if frame_shape:
-            filtered_df = filtered_df[
-                filtered_df["frame_shape"].astype(str).str.contains(str(frame_shape), case=False, na=False)
-            ]
-        if frame_material:
-            filtered_df = filtered_df[
-                filtered_df["frame_material"].astype(str).str.contains(str(frame_material), case=False, na=False)
-            ]
-
-        # Step 4: Apply HARD budget filter BEFORE ranking
-        filtered_df = filter_by_budget(filtered_df, price_range, tracker)
-        logger.info("[FILTER_PRODUCTS] after budget filter: %d", len(filtered_df))
-
-        # Step 5: Rank remaining products AFTER filtering
-        top_5 = rank_products_safely(filtered_df, product_type=product_type, brand=brand).head(5)
-
-        if top_5.empty:
-            dispatcher.utter_message(
-                text=tr(lang, "We could not find eyewear matching your criteria. Try adjusting the budget or brand.",
-                        "Kami tidak menemui produk yang sepadan. Cuba laraskan bajet atau jenama.",
-                        "我们找不到符合您条件的产品，请尝试调整预算或品牌。")
-            )
-            return events
-
-        dispatcher.utter_message(text=tr(lang, "Here are some products that match your request:", "Berikut ialah beberapa produk yang sepadan dengan permintaan anda:", "以下是一些符合您需求的产品："))
-        for _, row in top_5.iterrows():
-            emit_product_card(dispatcher, row.to_dict(), str(product_type or brand or ""), lang)
-        return events
+        return ActionSmartSearch().run(dispatcher, tracker, domain)
 
 
 class ActionExplainLens(Action):
@@ -1595,7 +2498,11 @@ class ActionExplainLens(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        events = flow_entry_events(tracker, "lens_consultation")
+        raw_text = tracker.latest_message.get("text") or ""
+        intent = get_latest_intent(tracker)
+        events: List[Dict[Text, Any]] = []
+        events.extend(apply_domain_switch_reset(tracker, intent["name"], raw_text, ""))
+        events.extend(flow_entry_events(tracker, "lens_consultation"))
         lang = get_language(tracker)
         lens_type = tracker.get_slot("lens_type")
         explanations = {
@@ -1629,7 +2536,11 @@ class ActionAskCity(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        events = flow_entry_events(tracker, "store_lookup")
+        raw_text = tracker.latest_message.get("text") or ""
+        intent = get_latest_intent(tracker)
+        events: List[Dict[Text, Any]] = []
+        events.extend(apply_domain_switch_reset(tracker, intent["name"], raw_text, ""))
+        events.extend(flow_entry_events(tracker, "store_lookup"))
         lang = get_language(tracker)
         # Check latest entities first (message-level), then slots
         entities = latest_entity_values(tracker)
@@ -1695,7 +2606,11 @@ class ActionFindStore(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        events = flow_entry_events(tracker, "store_lookup")
+        raw_text = tracker.latest_message.get("text") or ""
+        intent = get_latest_intent(tracker)
+        events: List[Dict[Text, Any]] = []
+        events.extend(apply_domain_switch_reset(tracker, intent["name"], raw_text, ""))
+        events.extend(flow_entry_events(tracker, "store_lookup"))
         lang = get_language(tracker)
         city_candidate = tracker.get_slot("city") or tracker.get_slot("lead_location")
         city = resolve_city(city_candidate)
@@ -1741,7 +2656,11 @@ class ActionHandleStoreHours(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        events = flow_entry_events(tracker, "store_lookup")
+        raw_text = tracker.latest_message.get("text") or ""
+        intent = get_latest_intent(tracker)
+        events: List[Dict[Text, Any]] = []
+        events.extend(apply_domain_switch_reset(tracker, intent["name"], raw_text, ""))
+        events.extend(flow_entry_events(tracker, "store_lookup"))
         lang = get_language(tracker)
         entities = latest_entity_values(tracker)
         city_candidate = (
@@ -1788,7 +2707,11 @@ class ActionShowPricing(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        events = flow_entry_events(tracker, "pricing")
+        raw_text = tracker.latest_message.get("text") or ""
+        intent = get_latest_intent(tracker)
+        events: List[Dict[Text, Any]] = []
+        events.extend(apply_domain_switch_reset(tracker, intent["name"], raw_text, ""))
+        events.extend(flow_entry_events(tracker, "pricing"))
         lang = get_language(tracker)
         entities = canonicalize_entities(latest_entity_values(tracker))
         preferred_service = str(
@@ -1859,7 +2782,37 @@ class ActionRecommendProducts(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        events = flow_entry_events(tracker, "product_recommendation")
+        support_intent, override_reason, keyword_match = detect_support_intent(tracker)
+        if support_intent:
+            raw_text = tracker.latest_message.get("text") or ""
+            intent = get_latest_intent(tracker)
+            switch = detect_domain_switch(tracker, intent["name"], raw_text, support_intent)
+            reset_events: List[Dict[Text, Any]] = []
+            if switch["detected"]:
+                reset_events, cleared_slots, cleared_active_loop = reset_conversation_state(tracker)
+                logger.info({
+                    "previous_intent": switch["previous_intent"],
+                    "new_intent": switch["new_intent"],
+                    "domain_switch_detected": True,
+                    "cleared_active_loop": cleared_active_loop,
+                    "cleared_slots": cleared_slots,
+                })
+            logger.info({
+                "intent": "product_recommendation",
+                "support_keyword_match": keyword_match,
+                "override": support_intent,
+                "override_reason": override_reason,
+                "final_route": "support_flow",
+                "context_state": {s: tracker.get_slot(s) for s in MANAGED_SLOTS}
+            })
+            support_events = route_support_flow(dispatcher, tracker, support_intent)
+            return [*reset_events, *support_events]
+        
+        raw_text = tracker.latest_message.get("text") or ""
+        intent = get_latest_intent(tracker)
+        events: List[Dict[Text, Any]] = []
+        events.extend(apply_domain_switch_reset(tracker, intent["name"], raw_text, support_intent))
+        events.extend(flow_entry_events(tracker, "product_recommendation"))
         lang = get_language(tracker)
         entities = canonicalize_entities(latest_entity_values(tracker))
         use_case = entities.get("use_case") or tracker.get_slot("use_case")
@@ -1937,49 +2890,7 @@ class ActionSearchProductByAttribute(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        events = flow_entry_events(tracker, "product_search")
-        lang = get_language(tracker)
-        frame_color = tracker.get_slot("frame_color")
-        frame_shape = tracker.get_slot("frame_shape")
-        frame_material = tracker.get_slot("frame_material")
-        user_message = (tracker.latest_message.get("text") or "").lower()
-
-        filtered_df = load_catalogue().copy()
-        if frame_color:
-            filtered_df = filtered_df[
-                filtered_df["frame_color"].astype(str).str.contains(frame_color, case=False, na=False)
-            ]
-        if frame_shape:
-            filtered_df = filtered_df[
-                filtered_df["frame_shape"].astype(str).str.contains(frame_shape, case=False, na=False)
-            ]
-        if frame_material:
-            filtered_df = filtered_df[
-                filtered_df["frame_material"].astype(str).str.contains(frame_material, case=False, na=False)
-            ]
-
-        if not frame_color and not frame_shape and not frame_material and len(user_message) > 3:
-            for part in user_message.split():
-                if len(part) <= 3:
-                    continue
-                mask = (
-                    filtered_df["frame_color"].astype(str).str.contains(part, case=False, na=False)
-                    | filtered_df["frame_shape"].astype(str).str.contains(part, case=False, na=False)
-                    | filtered_df["frame_material"].astype(str).str.contains(part, case=False, na=False)
-                    | filtered_df["description"].astype(str).str.contains(part, case=False, na=False)
-                    | filtered_df["product_name"].astype(str).str.contains(part, case=False, na=False)
-                )
-                if not filtered_df[mask].empty:
-                    filtered_df = filtered_df[mask]
-
-        top_5 = filtered_df.head(5)
-        if top_5.empty:
-            dispatcher.utter_message(text=tr(lang, "I could not find products matching that description.", "Saya tidak menemui produk yang sepadan dengan penerangan itu.", "我找不到符合该描述的产品。"))
-            return events
-
-        for _, row in top_5.iterrows():
-            emit_product_card(dispatcher, row.to_dict(), "Product Recommendation", lang)
-        return events
+        return ActionSmartSearch().run(dispatcher, tracker, domain)
 
 
 class ActionFilterLenses(Action):
@@ -1992,7 +2903,11 @@ class ActionFilterLenses(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        events = flow_entry_events(tracker, "lens_consultation")
+        raw_text = tracker.latest_message.get("text") or ""
+        intent = get_latest_intent(tracker)
+        events: List[Dict[Text, Any]] = []
+        events.extend(apply_domain_switch_reset(tracker, intent["name"], raw_text, ""))
+        events.extend(flow_entry_events(tracker, "lens_consultation"))
         lang = get_language(tracker)
         lens_type = tracker.get_slot("lens_type")
         price_range = tracker.get_slot("price_range")
@@ -2155,3 +3070,51 @@ class ActionSubmitLeadCapture(Action):
         if response and response.get("lead_id"):
             dispatcher.utter_message(text=tr(lang, f"Reference ID: {response['lead_id']}", f"ID Rujukan: {response['lead_id']}", f"参考编号：{response['lead_id']}"))
         return [SlotSet("current_flow", None), SlotSet("requested_slot", None)]
+
+
+class ActionHandleReturnSupport(Action):
+    def name(self) -> Text:
+        return "action_handle_return_support"
+
+    def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        return route_support_flow(dispatcher, tracker, "return_request")
+
+
+class ActionHandleRefundSupport(Action):
+    def name(self) -> Text:
+        return "action_handle_refund_support"
+
+    def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        return route_support_flow(dispatcher, tracker, "refund_request")
+
+
+class ActionHandleRepairSupport(Action):
+    def name(self) -> Text:
+        return "action_handle_repair_support"
+
+    def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        return route_support_flow(dispatcher, tracker, "repair_support")
+
+
+class ActionHandleExchangeSupport(Action):
+    def name(self) -> Text:
+        return "action_handle_exchange_support"
+
+    def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        return route_support_flow(dispatcher, tracker, "exchange_request")
+
+
+class ActionHandleWarrantySupport(Action):
+    def name(self) -> Text:
+        return "action_handle_warranty_support"
+
+    def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        return route_support_flow(dispatcher, tracker, "warranty_support")
+
+
+class ActionHandleOrderSupport(Action):
+    def name(self) -> Text:
+        return "action_handle_order_support"
+
+    def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        return route_support_flow(dispatcher, tracker, "order_support")

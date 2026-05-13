@@ -63,6 +63,54 @@ interface RasaParseResult {
   entities?: Record<string, string>
 }
 
+const SUPPORT_KEYWORDS = [
+  'return',
+  'refund',
+  'exchange',
+  'repair',
+  'warranty',
+  'broken',
+  'damaged',
+  'cracked',
+  'replacement',
+  'replace',
+  'send back',
+  'cancel order',
+  'money back',
+  'defect',
+  'issue',
+  'support',
+]
+
+const SHOPPING_SIGNAL_KEYWORDS = [
+  'buy',
+  'price',
+  'cost',
+  'cheap',
+  'under',
+  'below',
+  'rm',
+  'show me',
+  'find',
+  'looking for',
+  'i want',
+  'need',
+  'daily',
+  'office',
+  'round',
+  'metal',
+  'black',
+  'blue light',
+]
+
+// Unit-test style routing examples:
+// - "return my glasses" -> support_keyword_detected: true, route: raw
+// - "refund my sunglasses" -> support_keyword_detected: true, route: raw
+// - "repair broken frames" -> support_keyword_detected: true, route: raw
+// - "exchange contact lenses" -> support_keyword_detected: true, route: raw
+// - "cheap gucci glasses" -> support_keyword_detected: false, route: opportunistic
+// - "sunglasses under 1000rm" -> support_keyword_detected: false, route: opportunistic
+
 function parseBudget(text: string): { budget_min?: number; budget_max?: number; budget_bucket?: string } | null {
   const normalized = text.toLowerCase().replace(/rm/g, '').replace(/\s+/g, ' ').trim()
   const result: { budget_min?: number; budget_max?: number; budget_bucket?: string } = {}
@@ -93,6 +141,17 @@ function parseBudget(text: string): { budget_min?: number; budget_max?: number; 
   return Object.keys(result).length > 0 ? result : null
 }
 
+function detectSupportKeyword(text: string): boolean {
+  const normalized = text.toLowerCase().replace(/\s+/g, ' ').trim()
+  return SUPPORT_KEYWORDS.some((keyword) => normalized.includes(keyword))
+}
+
+function hasShoppingSignal(text: string, hasBudget: boolean, hasBrand: boolean): boolean {
+  if (hasBudget || hasBrand) return true
+  const normalized = text.toLowerCase().replace(/\s+/g, ' ').trim()
+  return SHOPPING_SIGNAL_KEYWORDS.some((keyword) => normalized.includes(keyword))
+}
+
 function opportunisticSlotFilling(text: string): string | null {
   const entities: Record<string, any> = {}
   const budget = parseBudget(text)
@@ -115,7 +174,11 @@ function opportunisticSlotFilling(text: string): string | null {
     entities.product_type = 'Contact Lenses'
   }
 
-  if (Object.keys(entities).length > 0 && (entities.product_type || entities.brand)) {
+  const hasProductSignal = Boolean(entities.product_type || entities.brand)
+  const allowOpportunistic = hasProductSignal
+    && hasShoppingSignal(text, Boolean(budget), Boolean(entities.brand))
+
+  if (Object.keys(entities).length > 0 && allowOpportunistic) {
     return `/search_product${JSON.stringify(entities)}`
   }
   if (budget && Object.keys(entities).length === Object.keys(budget).length) {
@@ -190,64 +253,79 @@ export class NLPClient {
     let llmResult: LlmClassification | undefined
     let rasaMessage = safeMessage
     let route: 'raw' | 'llm-trigger' | 'fallback-raw' | 'skip' | 'opportunistic' = 'raw'
+    let supportKeywordDetected = false
+    let opportunisticBlocked = false
 
     if (safeMessage.startsWith('/')) {
       route = 'skip'
     } else {
-      const opportunisticPayload = !isInsideForm ? opportunisticSlotFilling(safeMessage) : null
-      
-      if (opportunisticPayload) {
-        rasaMessage = opportunisticPayload
-        route = 'opportunistic'
-        this._logger.info(`[NLU] Deterministic opportunistic extraction -> ${rasaMessage}`)
-      } else if (isInsideForm) {
-        route = 'skip'
+      supportKeywordDetected = detectSupportKeyword(safeMessage)
+      opportunisticBlocked = supportKeywordDetected
+
+      if (supportKeywordDetected) {
+        this._logger.info(JSON.stringify({
+          message: safeMessage,
+          support_keyword_detected: true,
+          opportunistic_blocked: true,
+          route: 'raw',
+        }))
+        route = 'raw'
       } else {
-        const parseResult = await this._parseWithRasa(safeMessage)
+        const opportunisticPayload = !isInsideForm ? opportunisticSlotFilling(safeMessage) : null
 
-        if (parseResult && parseResult.intent !== 'nlu_fallback' && parseResult.confidence >= nluFloor) {
-          this._logger.debug(
-            `[NLU] Rasa classified "${truncateForLog(safeMessage)}" as ${parseResult.intent} ` +
-            `(confidence=${parseResult.confidence.toFixed(2)}) — forwarding raw text`,
-          )
-          route = 'raw'
-        } else if (this._llm) {
-          const reason = parseResult
-            ? `${parseResult.intent}@${parseResult.confidence.toFixed(2)}`
-            : 'parse-failed'
-          this._logger.info(
-            `[NLU] Rasa unsure (${reason}) for "${truncateForLog(safeMessage)}" — invoking LLM fallback`,
-          )
+        if (opportunisticPayload) {
+          rasaMessage = opportunisticPayload
+          route = 'opportunistic'
+          this._logger.info(`[NLU] Deterministic opportunistic extraction -> ${rasaMessage}`)
+        } else if (isInsideForm) {
+          route = 'skip'
+        } else {
+          const parseResult = await this._parseWithRasa(safeMessage)
 
-          try {
-            llmResult = await this._llm.classify(safeMessage, { preferredLanguage })
+          if (parseResult && parseResult.intent !== 'nlu_fallback' && parseResult.confidence >= nluFloor) {
+            this._logger.debug(
+              `[NLU] Rasa classified "${truncateForLog(safeMessage)}" as ${parseResult.intent} ` +
+              `(confidence=${parseResult.confidence.toFixed(2)}) — forwarding raw text`,
+            )
+            route = 'raw'
+          } else if (this._llm) {
+            const reason = parseResult
+              ? `${parseResult.intent}@${parseResult.confidence.toFixed(2)}`
+              : 'parse-failed'
+            this._logger.info(
+              `[NLU] Rasa unsure (${reason}) for "${truncateForLog(safeMessage)}" — invoking LLM fallback`,
+            )
 
-            if (
-              llmResult.intent !== 'nlu_fallback'
-              && llmResult.confidence >= llmFloor
-            ) {
-              rasaMessage = buildRasaIntentPayload(llmResult)
-              route = 'llm-trigger'
-              this._logger.info(
-                `[LLM] Routed "${truncateForLog(safeMessage)}" -> ${rasaMessage} ` +
-                `(confidence=${llmResult.confidence.toFixed(2)})`,
-              )
-            } else {
+            try {
+              llmResult = await this._llm.classify(safeMessage, { preferredLanguage })
+
+              if (
+                llmResult.intent !== 'nlu_fallback'
+                && llmResult.confidence >= llmFloor
+              ) {
+                rasaMessage = buildRasaIntentPayload(llmResult)
+                route = 'llm-trigger'
+                this._logger.info(
+                  `[LLM] Routed "${truncateForLog(safeMessage)}" -> ${rasaMessage} ` +
+                  `(confidence=${llmResult.confidence.toFixed(2)})`,
+                )
+              } else {
+                route = 'fallback-raw'
+                this._logger.info(
+                  `[LLM] Low confidence (${llmResult.confidence.toFixed(2)}) for ` +
+                  `"${truncateForLog(safeMessage)}" — letting Rasa fallback fire`,
+                )
+              }
+            } catch (error: any) {
+              this._logger.error(`[LLM] Classification failed, letting Rasa fallback fire: ${error.message}`)
               route = 'fallback-raw'
-              this._logger.info(
-                `[LLM] Low confidence (${llmResult.confidence.toFixed(2)}) for ` +
-                `"${truncateForLog(safeMessage)}" — letting Rasa fallback fire`,
-              )
             }
-          } catch (error: any) {
-            this._logger.error(`[LLM] Classification failed, letting Rasa fallback fire: ${error.message}`)
+          } else {
+            this._logger.debug(
+              `[NLU] Rasa unsure and LLM disabled — letting Rasa fallback fire for "${truncateForLog(safeMessage)}"`,
+            )
             route = 'fallback-raw'
           }
-        } else {
-          this._logger.debug(
-            `[NLU] Rasa unsure and LLM disabled — letting Rasa fallback fire for "${truncateForLog(safeMessage)}"`,
-          )
-          route = 'fallback-raw'
         }
       }
     }
@@ -286,6 +364,8 @@ export class NLPClient {
         sender_id: redactIdentifier(safeSender),
         route,
         intent: postTracker?.latestIntent,
+        support_keyword_detected: supportKeywordDetected,
+        opportunistic_blocked: opportunisticBlocked,
         llm_used: Boolean(llmResult),
         latency_ms: Date.now() - startedAt,
       }))
