@@ -112,6 +112,7 @@ MANAGED_SLOTS = {
     "budget_min",
     "budget_max",
     "budget_bucket",
+    "gender",
     *PERSISTENT_SLOTS,
 }
 
@@ -129,6 +130,7 @@ FLOW_ALLOWED_SLOTS: Dict[str, set] = {
         "budget_min",
         "budget_max",
         "budget_bucket",
+        "gender",
     },
     "lens_consultation": {"lens_type", "price_range"},
     "store_lookup": {"city"},
@@ -144,8 +146,9 @@ FLOW_ALLOWED_SLOTS: Dict[str, set] = {
         "budget_max",
         "budget_bucket",
         "use_case",
+        "gender",
     },
-    "product_recommendation": {"product_type", "brand", "budget", "use_case", "urgency"},
+    "product_recommendation": {"product_type", "brand", "budget", "use_case", "urgency", "gender"},
     "lead_capture": set(PERSISTENT_SLOTS),
 }
 
@@ -518,18 +521,20 @@ def filter_by_budget(
 
     # Apply HARD filters
     filtered = df
-    if b_min is not None:
-        filtered["price_myr"] = pd.to_numeric(filtered["price_myr"], errors="coerce")
-        filtered = filtered[filtered["price_myr"] >= b_min]
-    if b_max is not None:
-        filtered["price_myr"] = pd.to_numeric(filtered["price_myr"], errors="coerce")
-        filtered = filtered[filtered["price_myr"] <= b_max]
-    if b_bucket == "low":
-        filtered["price_myr"] = pd.to_numeric(filtered["price_myr"], errors="coerce")
-        filtered = filtered[filtered["price_myr"] <= 150]
-    elif b_bucket == "premium":
-        filtered["price_myr"] = pd.to_numeric(filtered["price_myr"], errors="coerce")
-        filtered = filtered[filtered["price_myr"] >= 700]
+    if b_min is not None or b_max is not None:
+        if b_min is not None:
+            filtered["price_myr"] = pd.to_numeric(filtered["price_myr"], errors="coerce")
+            filtered = filtered[filtered["price_myr"] >= b_min]
+        if b_max is not None:
+            filtered["price_myr"] = pd.to_numeric(filtered["price_myr"], errors="coerce")
+            filtered = filtered[filtered["price_myr"] <= b_max]
+    else:
+        if b_bucket == "low":
+            filtered["price_myr"] = pd.to_numeric(filtered["price_myr"], errors="coerce")
+            filtered = filtered[filtered["price_myr"] <= 150]
+        elif b_bucket == "premium":
+            filtered["price_myr"] = pd.to_numeric(filtered["price_myr"], errors="coerce")
+            filtered = filtered[filtered["price_myr"] >= 700]
 
     logger.info(
         "[BUDGET] min=%s max=%s bucket=%s → %d/%d products remain",
@@ -792,6 +797,22 @@ def detect_category_from_text(text: str) -> Optional[str]:
         return "Contact Lenses"
     if any(token in text for token in ["frames", "frame", "glasses", "eyeglasses", "spectacles", "cermin mata", "镜框", "眼镜"]):
         return "Frames"
+    return None
+
+
+GENDER_KEYWORDS = {
+    "Men": ["men", "mens", "male", "lelaki", "男"],
+    "Women": ["women", "womens", "female", "perempuan", "wanita", "女"],
+    "Unisex": ["unisex", "neutral", "男女通用"],
+}
+
+def detect_gender_from_text(text: str) -> Optional[str]:
+    if not text:
+        return None
+    normalized = text.lower()
+    for gender, keywords in GENDER_KEYWORDS.items():
+        if any(re.search(rf"\b{re.escape(k)}\b", normalized) for k in keywords):
+            return gender
     return None
 
 
@@ -1218,6 +1239,17 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
         name = name[len(brand):].strip(" -") or name
     price = float(product.get("price_myr", 0) or 0)
     product_type = str(product.get("product_type") or product.get("category") or "").strip()
+    
+    raw_gender = str(product.get("gender") or product.get("target_gender") or product.get("audience") or "").strip().lower()
+    if any(k in raw_gender for k in ["women", "female", "girls", "womens"]):
+        gender = "Women"
+    elif any(k in raw_gender for k in ["men", "male", "boys", "mens"]):
+        gender = "Men"
+    elif "unisex" in raw_gender:
+        gender = "Unisex"
+    else:
+        gender = ""
+        
     material = titleize(product.get("frame_material"))
     shape = titleize(product.get("frame_shape"))
     color = titleize(product.get("frame_color"))
@@ -1226,7 +1258,7 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
     store_location = str(product.get("store_location") or "").strip()
     city = str(product.get("city") or "").strip()
 
-    detail_parts = [part for part in [material, shape, color] if part]
+    detail_parts = [part for part in [gender, material, shape, color] if part]
     subtitle_sections = [
         tr(lang, f"Price: RM{price:.2f}", f"Harga: RM{price:.2f}", f"价格：RM{price:.2f}"),
         tr(lang, f"Category: {product_type}", f"Kategori: {product_type}", f"类别：{product_type}") if product_type else "",
@@ -1256,7 +1288,7 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
         json_message={
             "type": "card",
             "title": f"{brand} - {name}",
-            "subtitle": "\n\n".join(line for line in subtitle_sections if line),
+            "subtitle": "\n".join(line for line in subtitle_sections if line),
             "imageUrl": build_placeholder_image(f"{brand} {name}", theme),
             "actions": actions,
         }
@@ -1655,6 +1687,404 @@ class ActionGreetOrSearch(Action):
         return []
 
 
+@lru_cache(maxsize=1)
+def build_dynamic_attribute_registry() -> Dict[str, tuple[str, str]]:
+    df = load_catalogue()
+    registry: Dict[str, tuple[str, str]] = {}
+    
+    # IMPORTANT: frame_shape, frame_material, frame_color must come AFTER frame_style
+    # so their registry entries overwrite frame_style collisions (e.g. 'square', 'round')
+    target_columns = [
+        "gender", "frame_style",
+        "rim_type", "lens_feature", "polarized", "category", "product_type", 
+        "brand", "use_case", "stock_status", "lightweight", "sports", 
+        "office", "uv_protection", "blue_light",
+        "frame_shape", "frame_material", "frame_color",
+    ]
+    
+    for col in target_columns:
+        if col in df.columns:
+            unique_vals = df[col].dropna().unique()
+            for val in unique_vals:
+                val_str = str(val).strip()
+                if not val_str or val_str.lower() in ("no", "false", "nan", "none"):
+                    continue
+                if val_str.lower() in ("yes", "true", "y"):
+                    key = canonical_text_key(col.replace("_", " "))
+                    if key:
+                        registry[key] = (col, "Yes")
+                else:
+                    key = canonical_text_key(val_str)
+                    if key:
+                        registry[key] = (col, val_str)
+                        if col in ("frame_shape", "frame_material", "frame_color", "gender", "category"):
+                            tokens = key.split()
+                            if len(tokens) > 1:
+                                for token in tokens:
+                                    if len(token) > 3 and token not in registry:
+                                        registry[token] = (col, val_str)
+
+    aliases = {
+        # Gender
+        "men": ("gender", "men"), "mens": ("gender", "men"), "male": ("gender", "men"), "boys": ("gender", "men"),
+        "women": ("gender", "women"), "womens": ("gender", "women"), "female": ("gender", "women"), "girls": ("gender", "women"),
+        "unisex": ("gender", "unisex"),
+        # Category
+        "glasses": ("category", "Frames"), "frames": ("category", "Frames"), "spectacles": ("category", "Frames"),
+        "sunglasses": ("category", "Sunglasses"), "shades": ("category", "Sunglasses"),
+        "contacts": ("category", "Contact Lenses"), "contact lenses": ("category", "Contact Lenses"),
+        # Shape aliases (map to frame_shape — must use CSV-exact lowercase values)
+        "round": ("frame_shape", "round"), "circular": ("frame_shape", "round"),
+        "square": ("frame_shape", "square"), "square shaped": ("frame_shape", "square"),
+        "rectangle": ("frame_shape", "rectangle"), "rectangular": ("frame_shape", "rectangle"),
+        "aviator": ("frame_shape", "aviator"), "aviators": ("frame_shape", "aviator"),
+        "cat eye": ("frame_shape", "cat-eye"), "cat-eye": ("frame_shape", "cat-eye"), "cateye": ("frame_shape", "cat-eye"),
+        "oval": ("frame_shape", "oval"),
+        # Material aliases (map to frame_material)
+        "metal": ("frame_material", "metal"), "metallic": ("frame_material", "metal"),
+        "titanium": ("frame_material", "titanium"),
+        "acetate": ("frame_material", "acetate"), "plastic": ("frame_material", "acetate"),
+        "rimless": ("frame_material", "rimless"),
+        # Color aliases (map to frame_color)
+        "black": ("frame_color", "black"),
+        "brown": ("frame_color", "brown"),
+        "silver": ("frame_color", "silver"),
+        "gold": ("frame_color", "gold"), "golden": ("frame_color", "gold"),
+        "tortoise": ("frame_color", "tortoise"), "tortoiseshell": ("frame_color", "tortoise"),
+        # Use case / feature
+        "blue light": ("lens_feature", "Blue Light"), "bluelight": ("lens_feature", "Blue Light"),
+        "office": ("use_case", "Office"), "gaming": ("use_case", "Gaming"), "sports": ("use_case", "Sports"),
+        "driving": ("use_case", "Driving"), "daily wear": ("use_case", "Daily"), "daily": ("use_case", "Daily"),
+    }
+    for k, v in aliases.items():
+        registry[k] = v
+        
+    return registry
+
+def extract_dynamic_attributes(text: str, registry: Dict[str, tuple[str, str]]) -> Dict[str, set]:
+    extracted = {}
+    normalized = canonical_text_key(text)
+    words = normalized.split()
+    
+    ngrams = []
+    for n in range(3, 0, -1):
+        for i in range(len(words) - n + 1):
+            ngrams.append(" ".join(words[i:i+n]))
+            
+    matched_tokens = set()
+    for ngram in ngrams:
+        tokens = ngram.split()
+        if any(tok in matched_tokens for tok in tokens):
+            continue
+        if ngram in registry:
+            col, val = registry[ngram]
+            if col not in extracted:
+                extracted[col] = set()
+            extracted[col].add(val)
+            for tok in tokens:
+                matched_tokens.add(tok)
+                
+    return extracted
+
+def is_refinement_query(query: str) -> bool:
+    if not query:
+        return False
+    refinement_words = {"only", "instead", "same", "similar", "also", "show more", "narrower", "cheaper", "expensive", "another", "these", "those"}
+    query_lower = query.lower()
+    for word in refinement_words:
+        if re.search(rf"\b{re.escape(word)}\b", query_lower):
+            return True
+    return False
+
+def search_products_engine(
+    raw_text: str, 
+    tracker: Tracker, 
+    lang: str, 
+    intent_name: str,
+    dispatcher: CollectingDispatcher
+) -> tuple[List[Dict[str, Any]], bool]:
+    events: List[Dict[Text, Any]] = []
+    normalized = normalize_search_text(raw_text)
+    df = load_catalogue().copy()
+    registry = build_dynamic_attribute_registry()
+    
+    current_filters: Dict[str, set] = {}
+    current_b_min = None
+    current_b_max = None
+    
+    # 1. Extract exactly from current intent payload if present
+    if raw_text.startswith("/"):
+        try:
+            start = raw_text.find("{")
+            if start != -1:
+                payload = json.loads(raw_text[start:])
+                if "budget_min" in payload: current_b_min = payload["budget_min"]
+                if "budget_max" in payload: current_b_max = payload["budget_max"]
+                for k, v in payload.items():
+                    if k not in ["budget_min", "budget_max", "budget_bucket"]:
+                        current_filters[k] = {str(v)}
+        except:
+            pass
+            
+    # 2. Extract from free text
+    extracted_text = extract_dynamic_attributes(normalized, registry)
+    for k, v in extracted_text.items():
+        if k not in current_filters:
+            current_filters[k] = set()
+        current_filters[k].update(v)
+        
+    parsed_budget = parse_budget_from_text(normalized)
+    if parsed_budget:
+        if parsed_budget.get("budget_min") is not None: current_b_min = parsed_budget["budget_min"]
+        if parsed_budget.get("budget_max") is not None: current_b_max = parsed_budget["budget_max"]
+        
+    # 3. Handle Context Reset vs Refinement
+    is_refinement = is_refinement_query(normalized)
+    
+    previous_filters = {}
+    for slot in ["gender", "product_type", "brand", "frame_shape", "frame_material", "frame_color", "category"]:
+        val = tracker.get_slot(slot)
+        if val: previous_filters[slot] = str(val)
+    prev_b_min = tracker.get_slot("budget_min")
+    prev_b_max = tracker.get_slot("budget_max")
+    
+    extracted = {}
+    b_min, b_max = current_b_min, current_b_max
+    
+    if is_refinement:
+        for k, v in previous_filters.items():
+            extracted[k] = {v}
+        if b_min is None and prev_b_min is not None: b_min = prev_b_min
+        if b_max is None and prev_b_max is not None: b_max = prev_b_max
+        
+        for k, v in current_filters.items():
+            if k not in extracted:
+                extracted[k] = set()
+            extracted[k].update(v)
+    else:
+        extracted = current_filters
+        # Explicitly clear old slots so they don't persist
+        for slot in MANAGED_SLOTS:
+            events.append(SlotSet(slot, None))
+            
+    try:
+        b_min = float(b_min) if b_min is not None else None
+    except (ValueError, TypeError):
+        b_min = None
+        
+    try:
+        b_max = float(b_max) if b_max is not None else None
+    except (ValueError, TypeError):
+        b_max = None
+        
+    # Normalize category fallback from product_type if category not explicitly set
+    if "category" not in extracted and "product_type" in extracted:
+        extracted["category"] = set()
+        for pt in extracted["product_type"]:
+            cat_group = category_group(pt)
+            if cat_group:
+                extracted["category"].add(cat_group.capitalize())
+
+    # STEP 4: Apply STRICT FILTERS to CSV dataset
+    filtered = df.copy()
+    
+    debug_logs = {
+        "query": raw_text,
+        "is_refinement": is_refinement,
+        "previous_filters": previous_filters,
+        "current_filters": {k: list(v) for k, v in current_filters.items()},
+        "final_filters": {k: list(v) for k, v in extracted.items()}
+    }
+    if b_min is not None: debug_logs["final_filters"]["budget_min"] = b_min
+    if b_max is not None: debug_logs["final_filters"]["budget_max"] = b_max
+
+    # STRICT Budget Filtering FIRST
+    filtered["price_myr"] = pd.to_numeric(filtered["price_myr"], errors="coerce")
+    if b_min is not None:
+        filtered = filtered[filtered["price_myr"] >= b_min]
+    if b_max is not None:
+        filtered = filtered[filtered["price_myr"] <= b_max]
+    debug_logs["after_budget"] = len(filtered)
+    
+    # STRICT Attribute Intersection
+    for col, values in extracted.items():
+        if col in filtered.columns:
+            # For each attribute, logical OR within the same attribute, logical AND between different attributes
+            masks = [filtered[col].astype(str).str.contains(re.escape(val), case=False, na=False) for val in values]
+            
+            # Special case for gender: check target_gender and audience
+            if col == "gender":
+                for val in values:
+                    if "target_gender" in filtered.columns:
+                        masks.append(filtered["target_gender"].astype(str).str.contains(re.escape(val), case=False, na=False))
+                    if "audience" in filtered.columns:
+                        masks.append(filtered["audience"].astype(str).str.contains(re.escape(val), case=False, na=False))
+                    
+            if masks:
+                filtered = filtered[pd.concat(masks, axis=1).any(axis=1)]
+        debug_logs[f"after_{col}"] = len(filtered)
+
+    debug_logs["final_results"] = len(filtered)
+    
+    # STEP 5 & 6: Check filtered result count and apply ranking ONLY IF results exist
+    relaxed_flags = []
+    
+    if filtered.empty:
+        # STEP 7: Controlled Relaxation ONLY IF zero results
+        relax_order = ["use_case", "frame_color", "frame_material", "frame_shape", "brand"]
+        
+        # NEVER relax budget, gender, category, product_type
+        relaxed_filtered = df.copy()
+        relaxed_filtered["price_myr"] = pd.to_numeric(relaxed_filtered["price_myr"], errors="coerce")
+        if b_min is not None:
+            relaxed_filtered = relaxed_filtered[relaxed_filtered["price_myr"] >= b_min]
+        if b_max is not None:
+            relaxed_filtered = relaxed_filtered[relaxed_filtered["price_myr"] <= b_max]
+            
+        for col in ["category", "gender", "product_type"]:
+            if col in extracted and col in relaxed_filtered.columns:
+                masks = [relaxed_filtered[col].astype(str).str.contains(re.escape(val), case=False, na=False) for val in extracted[col]]
+                if col == "gender":
+                    for val in extracted[col]:
+                        if "target_gender" in relaxed_filtered.columns:
+                            masks.append(relaxed_filtered["target_gender"].astype(str).str.contains(re.escape(val), case=False, na=False))
+                        if "audience" in relaxed_filtered.columns:
+                            masks.append(relaxed_filtered["audience"].astype(str).str.contains(re.escape(val), case=False, na=False))
+                if masks:
+                    relaxed_filtered = relaxed_filtered[pd.concat(masks, axis=1).any(axis=1)]
+                    
+        active_constraints = {k: set(v) for k, v in extracted.items() if k not in ["category", "gender", "product_type"]}
+        
+        for step in range(len(relax_order) + 1):
+            temp_filtered = relaxed_filtered.copy()
+            for col, values in active_constraints.items():
+                if col in temp_filtered.columns:
+                    masks = [temp_filtered[col].astype(str).str.contains(re.escape(val), case=False, na=False) for val in values]
+                    if masks:
+                        temp_filtered = temp_filtered[pd.concat(masks, axis=1).any(axis=1)]
+            
+            if not temp_filtered.empty:
+                filtered = temp_filtered
+                break
+                
+            if step < len(relax_order):
+                col_to_relax = relax_order[step]
+                if col_to_relax in active_constraints:
+                    del active_constraints[col_to_relax]
+                    relaxed_flags.append(col_to_relax)
+
+    logger.info(json.dumps(debug_logs))
+
+    if filtered.empty:
+        if b_max is not None:
+            msg = tr(
+                lang,
+                f"No products found under RM{b_max:g}.",
+                f"Tiada produk dijumpai di bawah RM{b_max:g}.",
+                f"未找到 RM{b_max:g} 以下的产品。"
+            )
+        else:
+            msg = tr(
+                lang,
+                "I could not find an exact match. Tell me your preferred product type, budget, or brand to try again.",
+                "Saya tidak menemui padanan tepat. Beritahu saya jenis produk, bajet, atau jenama pilihan anda untuk cuba lagi.",
+                "我没有找到完全匹配的结果。请告诉我您偏好的产品类型、预算或品牌，以便再试一次。"
+            )
+        dispatcher.utter_message(text=msg)
+        return events, False
+
+    if relaxed_flags:
+        relaxed_text = ", ".join(relaxed_flags).replace("_", " ")
+        dispatcher.utter_message(
+            text=tr(
+                lang,
+                f"I could not find an exact match, so I relaxed {relaxed_text} and kept your key filters.",
+                f"Saya tidak menemui padanan tepat, jadi saya longgarkan {relaxed_text} dan kekalkan penapis utama anda.",
+                f"没有找到完全匹配的结果，因此我放宽了 {relaxed_text}，并保留了关键筛选条件。",
+            )
+        )
+
+    # RANKING ONLY ON FILTERED RESULTS
+    cat = list(extracted["category"])[0] if "category" in extracted and extracted["category"] else None
+    br = list(extracted["brand"])[0] if "brand" in extracted and extracted["brand"] else None
+    uc = list(extracted["use_case"])[0] if "use_case" in extracted and extracted["use_case"] else None
+    
+    ranked = rank_products_safely(filtered, product_type=cat, brand=br, use_case=uc)
+    top_results = ranked.head(5)
+
+    if not extracted and b_min is None and b_max is None:
+        dispatcher.utter_message(
+            text=tr(
+                lang,
+                "Here are some popular picks right now:",
+                "Berikut pilihan popular ketika ini:",
+                "这是目前的热门推荐："
+            )
+        )
+    elif relaxed_flags:
+        # Already emitted relaxation message
+        pass
+    else:
+        dispatcher.utter_message(
+            text=tr(
+                lang,
+                "Here are the exact matches for your request:",
+                "Berikut ialah pilihan paling tepat dengan permintaan anda:",
+                "以下是完全符合您需求的选择："
+            )
+        )
+
+    # Validation and Emission
+    emitted_count = 0
+    for _, row in top_results.iterrows():
+        p_price = pd.to_numeric(row.get("price_myr"), errors="coerce")
+        if pd.isna(p_price): p_price = 0
+        
+        # Mandatory Result Validation
+        if b_max is not None and p_price > b_max: continue
+        if b_min is not None and p_price < b_min: continue
+        if "gender" in extracted:
+            p_gender = str(row.get("gender", "")).lower()
+            p_tgt_gender = str(row.get("target_gender", "")).lower()
+            p_audience = str(row.get("audience", "")).lower()
+            match = False
+            for req_gender in extracted["gender"]:
+                rg = req_gender.lower()
+                if rg in p_gender or rg in p_tgt_gender or rg in p_audience:
+                    match = True
+                    break
+            if not match: continue
+        if "category" in extracted:
+            p_cat = str(row.get("category", "")).lower()
+            match = False
+            for req_cat in extracted["category"]:
+                if req_cat.lower() in p_cat:
+                    match = True
+                    break
+            if not match: continue
+
+        emit_product_card(dispatcher, row.to_dict(), str(cat) if cat else "", lang)
+        emitted_count += 1
+        
+    if emitted_count == 0:
+        # Failsafe if validation dropped everything
+        dispatcher.utter_message(text=tr(
+            lang,
+            "I couldn't find products exactly matching those strict requirements.",
+            "Saya tidak menjumpai produk yang tepat dengan keperluan ketat tersebut.",
+            "我没有找到完全符合这些严格要求的产品。"
+        ))
+
+    for col, values in extracted.items():
+        if col in MANAGED_SLOTS:
+            events.append(SlotSet(col, list(values)[0]))
+    if b_min is not None:
+        events.append(SlotSet("budget_min", b_min))
+    if b_max is not None:
+        events.append(SlotSet("budget_max", b_max))
+        
+    return events, True
+
 class ActionSmartSearch(Action):
     def name(self) -> Text:
         return "action_smart_search"
@@ -1697,352 +2127,10 @@ class ActionSmartSearch(Action):
         events: List[Dict[Text, Any]] = []
         events.extend(apply_domain_switch_reset(tracker, intent_name, raw_text, support_intent))
         events.extend(flow_entry_events(tracker, "product_search"))
-        normalized = normalize_search_text(raw_text)
-        entities = canonicalize_entities(latest_entity_values(tracker))
-
-        df = load_catalogue().copy()
-        brand_lookup = build_brand_lookup(df)
-
-        known_colors = sorted({str(v).strip() for v in df.get("frame_color", pd.Series(dtype=str)).tolist() if str(v).strip()}, key=str.lower)
-        known_shapes = sorted({str(v).strip() for v in df.get("frame_shape", pd.Series(dtype=str)).tolist() if str(v).strip()}, key=str.lower)
-        known_materials = sorted({str(v).strip() for v in df.get("frame_material", pd.Series(dtype=str)).tolist() if str(v).strip()}, key=str.lower)
-
-        previous_product_type = canonicalize_slot_value("product_type", tracker.get_slot("product_type"))
-        explicit_product_type = canonicalize_slot_value("product_type", entities.get("product_type"))
-        explicit_category = explicit_product_type or detect_category_from_text(normalized)
-
-        previous_group = category_group(previous_product_type)
-        explicit_group = category_group(explicit_category)
-        context_conflict = bool(explicit_group and previous_group and explicit_group != previous_group)
-        use_previous_slots = not context_conflict
-
-        if context_conflict:
-            for slot_name in [
-                "product_type",
-                "brand",
-                "frame_color",
-                "frame_shape",
-                "frame_material",
-                "use_case",
-                "budget",
-                "budget_min",
-                "budget_max",
-                "budget_bucket",
-                "price_range",
-            ]:
-                if tracker.get_slot(slot_name) is not None:
-                    events.append(SlotSet(slot_name, None))
-
-        slot_product_type = explicit_category or (previous_product_type if use_previous_slots else None)
-        use_case = (
-            entities.get("use_case")
-            or (tracker.get_slot("use_case") if use_previous_slots else None)
-            or detect_use_case_from_text(normalized)
-        )
-        category = slot_product_type or detect_category_from_text(normalized)
-
-        if not category and use_case in {"office", "screen"}:
-            category = "Frames"
-        if use_case == "driving":
-            category = category or "Sunglasses"
-        if use_case == "daily" and not category and "contact" in normalized:
-            category = "Contact Lenses"
-
-        brand = entities.get("brand") or (tracker.get_slot("brand") if use_previous_slots else None) or detect_brand_from_text(normalized, brand_lookup)
-        frame_color = entities.get("frame_color") or (tracker.get_slot("frame_color") if use_previous_slots else None) or match_attribute_from_text(normalized, known_colors)
-        frame_shape = entities.get("frame_shape") or (tracker.get_slot("frame_shape") if use_previous_slots else None) or match_attribute_from_text(normalized, known_shapes)
-        frame_material = entities.get("frame_material") or (tracker.get_slot("frame_material") if use_previous_slots else None) or match_attribute_from_text(normalized, known_materials)
-
-        budget_text = str(
-            entities.get("budget")
-            or (tracker.get_slot("budget") if use_previous_slots else None)
-            or (tracker.get_slot("price_range") if use_previous_slots else None)
-            or ""
-        ).strip()
-        parsed_budget = parse_budget_from_text(budget_text) or parse_budget_from_text(normalized)
-        has_numeric_budget = bool(parsed_budget and (parsed_budget.get("budget_min") is not None or parsed_budget.get("budget_max") is not None))
-        cheap_only = bool(parsed_budget and parsed_budget.get("budget_bucket") and not has_numeric_budget)
-        budget_overrides = None if cheap_only else parsed_budget
-        apply_budget = bool(
-            has_numeric_budget
-            or BUDGET_KEYWORDS.search(normalized)
-            or tracker.get_slot("budget_min")
-            or tracker.get_slot("budget_max")
-        )
-        hard_budget = bool(BUDGET_KEYWORDS.search(normalized) or has_numeric_budget)
-        sort_price_asc = bool(CHEAP_KEYWORDS.search(normalized)) and not hard_budget
-        sort_price_desc = bool(PREMIUM_KEYWORDS.search(normalized)) and not hard_budget
-        sort_rating_desc = bool(BEST_KEYWORDS.search(normalized))
-
-        derived_filters: Dict[str, Any] = {}
-        if use_case == "office":
-            if not frame_shape:
-                derived_filters["frame_shape"] = "rectangular"
-            if not frame_material:
-                derived_filters["frame_material"] = "titanium"
-            if not frame_color:
-                derived_filters["frame_color"] = "black"
-        elif use_case == "screen":
-            derived_filters["lens_feature"] = "blue light"
-        elif use_case == "driving":
-            derived_filters["polarized"] = "yes"
-        elif use_case == "sports":
-            derived_filters["frame_style"] = "wraparound"
-
-        explicit_constraints = {
-            "category": category,
-            "brand": brand,
-            "frame_color": frame_color,
-            "frame_shape": frame_shape,
-            "frame_material": frame_material,
-            "use_case": use_case,
-        }
-
-        has_specific_filters = any([
-            frame_color,
-            frame_shape,
-            frame_material,
-            use_case,
-            apply_budget,
-        ])
-        category_is_strong = bool(category and category.lower() in {"sunglasses", "contact lenses"})
-        is_generic_glasses = "glasses" in normalized and not any(
-            token in normalized for token in ["sunglasses", "contact", "frames", "frame", "shades"]
-        )
-        needs_product_type = not category and any([
-            brand,
-            apply_budget,
-            frame_color,
-            frame_shape,
-            frame_material,
-            use_case,
-        ])
-
-        prompt_allowed = intent_name not in {"select_budget", "select_brand", "inform_budget"}
-        if (needs_product_type or (is_generic_glasses and not has_specific_filters and not brand and not category_is_strong)) and prompt_allowed:
-            events = flow_entry_events(tracker, "browse_eyewear")
-            if brand:
-                events.append(SlotSet("brand", brand))
-            dispatcher.utter_message(response="utter_ask_product_type")
-            return events
-
-        def apply_constraints(
-            source: pd.DataFrame,
-            include_use_case: bool,
-            include_brand: bool,
-            include_color: bool,
-            include_shape: bool,
-            include_material: bool,
-            include_budget: bool,
-            relaxed_budget: bool,
-        ) -> pd.DataFrame:
-            filtered = source
-
-            if explicit_constraints["category"]:
-                filtered = filtered[
-                    filtered["category"].astype(str).str.contains(str(explicit_constraints["category"]), case=False, na=False)
-                ]
-            if include_brand and explicit_constraints["brand"]:
-                filtered = filtered[
-                    filtered["brand"].astype(str).str.contains(str(explicit_constraints["brand"]), case=False, na=False)
-                ]
-            if include_color and explicit_constraints["frame_color"]:
-                filtered = filtered[
-                    filtered["frame_color"].astype(str).str.contains(str(explicit_constraints["frame_color"]), case=False, na=False)
-                ]
-            if include_shape and explicit_constraints["frame_shape"]:
-                filtered = filtered[
-                    filtered["frame_shape"].astype(str).str.contains(str(explicit_constraints["frame_shape"]), case=False, na=False)
-                ]
-            if include_material and explicit_constraints["frame_material"]:
-                filtered = filtered[
-                    filtered["frame_material"].astype(str).str.contains(str(explicit_constraints["frame_material"]), case=False, na=False)
-                ]
-
-            if include_use_case:
-                use_case_value = explicit_constraints["use_case"]
-                if use_case_value:
-                    mask = (
-                        filtered["description"].astype(str).str.contains(str(use_case_value), case=False, na=False)
-                        | filtered["product_name"].astype(str).str.contains(str(use_case_value), case=False, na=False)
-                        | filtered["lens_feature"].astype(str).str.contains(str(use_case_value), case=False, na=False)
-                    )
-                    if not filtered[mask].empty:
-                        filtered = filtered[mask]
-
-                if derived_filters.get("lens_feature"):
-                    needle = str(derived_filters["lens_feature"])
-                    mask = (
-                        filtered["lens_feature"].astype(str).str.contains(needle, case=False, na=False)
-                        | filtered["description"].astype(str).str.contains(needle, case=False, na=False)
-                        | filtered["product_name"].astype(str).str.contains(needle, case=False, na=False)
-                    )
-                    if not filtered[mask].empty:
-                        filtered = filtered[mask]
-                if derived_filters.get("polarized"):
-                    filtered = filtered[
-                        filtered["polarized"].astype(str).str.lower().eq("yes")
-                    ]
-                if derived_filters.get("frame_style"):
-                    filtered = filtered[
-                        filtered["frame_style"].astype(str).str.contains(str(derived_filters["frame_style"]), case=False, na=False)
-                    ]
-
-                if include_color and derived_filters.get("frame_color") and not explicit_constraints["frame_color"]:
-                    filtered = filtered[
-                        filtered["frame_color"].astype(str).str.contains(str(derived_filters["frame_color"]), case=False, na=False)
-                    ]
-                if include_shape and derived_filters.get("frame_shape") and not explicit_constraints["frame_shape"]:
-                    filtered = filtered[
-                        filtered["frame_shape"].astype(str).str.contains(str(derived_filters["frame_shape"]), case=False, na=False)
-                    ]
-                if include_material and derived_filters.get("frame_material") and not explicit_constraints["frame_material"]:
-                    filtered = filtered[
-                        filtered["frame_material"].astype(str).str.contains(str(derived_filters["frame_material"]), case=False, na=False)
-                    ]
-
-            if include_budget and apply_budget:
-                overrides = budget_overrides
-                if relaxed_budget and overrides:
-                    widened = dict(overrides)
-                    if widened.get("budget_min") is not None:
-                        widened["budget_min"] = max(float(widened["budget_min"]) * 0.8, 0)
-                    if widened.get("budget_max") is not None:
-                        widened["budget_max"] = float(widened["budget_max"]) * 1.2
-                    overrides = widened
-                filtered = filter_by_budget(filtered, budget_text, tracker, overrides=overrides)
-
-            return filtered
-
-        relax_order = ["use_case", "frame_color", "frame_material", "frame_shape", "budget", "brand"]
-        active = {
-            "frame_material": bool(explicit_constraints["frame_material"] or derived_filters.get("frame_material")),
-            "frame_shape": bool(explicit_constraints["frame_shape"] or derived_filters.get("frame_shape")),
-            "frame_color": bool(explicit_constraints["frame_color"] or derived_filters.get("frame_color")),
-            "use_case": bool(explicit_constraints["use_case"] or derived_filters),
-            "brand": bool(explicit_constraints["brand"]),
-            "budget": bool(apply_budget),
-        }
-        relaxed_flags: List[str] = []
-        results = pd.DataFrame()
-        relaxed_budget = False
-        budget_can_relax = bool(apply_budget and not hard_budget)
-
-        for step in range(len(relax_order) + 1):
-            results = apply_constraints(
-                df,
-                include_use_case=active["use_case"],
-                include_brand=active["brand"],
-                include_color=active["frame_color"],
-                include_shape=active["frame_shape"],
-                include_material=active["frame_material"],
-                include_budget=active["budget"],
-                relaxed_budget=relaxed_budget,
-            )
-            if not results.empty:
-                break
-
-            if step < len(relax_order):
-                key = relax_order[step]
-                if key == "budget":
-                    if active["budget"] and not hard_budget:
-                        active["budget"] = False
-                        relaxed_flags.append(key)
-                elif active.get(key):
-                    active[key] = False
-                    relaxed_flags.append(key)
-
-        def record_search_slots(target_events: List[Dict[Text, Any]]) -> None:
-            if category:
-                target_events.append(SlotSet("product_type", category))
-            if brand:
-                target_events.append(SlotSet("brand", brand))
-            if frame_color:
-                target_events.append(SlotSet("frame_color", frame_color))
-            if frame_shape:
-                target_events.append(SlotSet("frame_shape", frame_shape))
-            if frame_material:
-                target_events.append(SlotSet("frame_material", frame_material))
-            if use_case:
-                target_events.append(SlotSet("use_case", use_case))
-            if budget_text:
-                target_events.append(SlotSet("budget", budget_text))
-            if parsed_budget:
-                if parsed_budget.get("budget_min") is not None:
-                    target_events.append(SlotSet("budget_min", parsed_budget.get("budget_min")))
-                if parsed_budget.get("budget_max") is not None:
-                    target_events.append(SlotSet("budget_max", parsed_budget.get("budget_max")))
-                if parsed_budget.get("budget_bucket"):
-                    target_events.append(SlotSet("budget_bucket", parsed_budget.get("budget_bucket")))
-
-        if results.empty:
-            if hard_budget and parsed_budget and parsed_budget.get("budget_max"):
-                max_b = parsed_budget.get("budget_max")
-                cat_text = category or "products"
-                msg = tr(
-                    lang,
-                    f"No {cat_text.lower()} found under RM{max_b:g}.",
-                    f"Tiada {cat_text.lower()} dijumpai di bawah RM{max_b:g}.",
-                    f"未找到 RM{max_b:g} 以下的{cat_text.lower()}。"
-                )
-            else:
-                msg = tr(
-                    lang,
-                    "I could not find an exact match. Tell me your preferred product type, budget, or brand to try again.",
-                    "Saya tidak menemui padanan tepat. Beritahu saya jenis produk, bajet, atau jenama pilihan anda untuk cuba lagi.",
-                    "我没有找到完全匹配的结果。请告诉我您偏好的产品类型、预算或品牌，以便再试一次。"
-                )
-            dispatcher.utter_message(text=msg)
-            record_search_slots(events)
-            return events
-
-        if relaxed_flags:
-            relaxed_text = ", ".join(relaxed_flags)
-            dispatcher.utter_message(
-                text=tr(
-                    lang,
-                    f"I could not find an exact match, so I relaxed {relaxed_text} and kept your key filters.",
-                    f"Saya tidak menemui padanan tepat, jadi saya longgarkan {relaxed_text} dan kekalkan penapis utama anda.",
-                    f"没有找到完全匹配的结果，因此我放宽了 {relaxed_text}，并保留了关键筛选条件。",
-                )
-            )
-
-        ranked = results
-        if sort_rating_desc and "rating" in ranked.columns:
-            ranked = ranked.sort_values(["rating", "price_myr"], ascending=[False, True])
-        elif sort_price_asc and "price_myr" in ranked.columns:
-            ranked = ranked.sort_values("price_myr", ascending=True)
-        elif sort_price_desc and "price_myr" in ranked.columns:
-            ranked = ranked.sort_values("price_myr", ascending=False)
-        else:
-            ranked = rank_products_safely(ranked, product_type=category, brand=brand, use_case=use_case)
-
-        top_results = ranked.head(5)
-
-        if not any([category, brand, frame_color, frame_shape, frame_material, use_case, apply_budget]):
-            dispatcher.utter_message(
-                text=tr(
-                    lang,
-                    "Here are some popular picks right now:",
-                    "Berikut pilihan popular ketika ini:",
-                    "这是目前的热门推荐：",
-                )
-            )
-        else:
-            dispatcher.utter_message(
-                text=tr(
-                    lang,
-                    "Here are the closest matches to your request:",
-                    "Berikut ialah pilihan paling hampir dengan permintaan anda:",
-                    "以下是最接近您需求的选择：",
-                )
-            )
-
-        for _, row in top_results.iterrows():
-            emit_product_card(dispatcher, row.to_dict(), str(category or brand or ""), lang)
-
-        record_search_slots(events)
-
+        
+        search_events, success = search_products_engine(raw_text, tracker, lang, intent_name, dispatcher)
+        events.extend(search_events)
+        
         return events
 
 
@@ -2782,101 +2870,25 @@ class ActionRecommendProducts(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        raw_text = tracker.latest_message.get("text") or ""
+        intent = get_latest_intent(tracker)
         support_intent, override_reason, keyword_match = detect_support_intent(tracker)
         if support_intent:
-            raw_text = tracker.latest_message.get("text") or ""
-            intent = get_latest_intent(tracker)
             switch = detect_domain_switch(tracker, intent["name"], raw_text, support_intent)
             reset_events: List[Dict[Text, Any]] = []
             if switch["detected"]:
                 reset_events, cleared_slots, cleared_active_loop = reset_conversation_state(tracker)
-                logger.info({
-                    "previous_intent": switch["previous_intent"],
-                    "new_intent": switch["new_intent"],
-                    "domain_switch_detected": True,
-                    "cleared_active_loop": cleared_active_loop,
-                    "cleared_slots": cleared_slots,
-                })
-            logger.info({
-                "intent": "product_recommendation",
-                "support_keyword_match": keyword_match,
-                "override": support_intent,
-                "override_reason": override_reason,
-                "final_route": "support_flow",
-                "context_state": {s: tracker.get_slot(s) for s in MANAGED_SLOTS}
-            })
             support_events = route_support_flow(dispatcher, tracker, support_intent)
             return [*reset_events, *support_events]
         
-        raw_text = tracker.latest_message.get("text") or ""
-        intent = get_latest_intent(tracker)
         events: List[Dict[Text, Any]] = []
         events.extend(apply_domain_switch_reset(tracker, intent["name"], raw_text, support_intent))
         events.extend(flow_entry_events(tracker, "product_recommendation"))
         lang = get_language(tracker)
-        entities = canonicalize_entities(latest_entity_values(tracker))
-        use_case = entities.get("use_case") or tracker.get_slot("use_case")
-        budget = entities.get("budget") or tracker.get_slot("budget") or tracker.get_slot("price_range")
-        brand = entities.get("brand") or tracker.get_slot("brand")
-        requested_type = canonicalize_slot_value("product_type", entities.get("product_type") or tracker.get_slot("product_type"))
-
-        inferred_type = requested_type or infer_product_type_from_use_case(str(use_case or ""))
-        filtered_df = load_catalogue().copy()
-
-        if inferred_type:
-            filtered_df = filtered_df[
-                filtered_df["product_type"].astype(str).str.contains(str(inferred_type), case=False, na=False)
-            ]
-        if brand:
-            filtered_df = filtered_df[
-                filtered_df["brand"].astype(str).str.contains(str(brand), case=False, na=False)
-            ]
-        if use_case:
-            use_case_text = str(use_case)
-            mask = (
-                filtered_df["description"].astype(str).str.contains(use_case_text, case=False, na=False)
-                | filtered_df["product_name"].astype(str).str.contains(use_case_text, case=False, na=False)
-                | filtered_df["lens_feature"].astype(str).str.contains(use_case_text, case=False, na=False)
-            )
-            if not filtered_df[mask].empty:
-                filtered_df = filtered_df[mask]
-
-        filtered_df = filter_by_budget(filtered_df, budget, tracker)
-        results = rank_products_safely(filtered_df, product_type=inferred_type, brand=brand, use_case=use_case).head(4)
-
-        if results.empty:
-            dispatcher.utter_message(
-                text=tr(
-                    lang,
-                    "I could not find a strong match yet. Tell me your preferred product type, budget, or use case such as office use, driving, daily wear, or fashion.",
-                    "Saya belum menemui padanan yang kuat. Beritahu saya jenis produk, bajet, atau kegunaan anda seperti untuk pejabat, memandu, kegunaan harian, atau fesyen.",
-                    "我暂时还没找到很合适的推荐。请告诉我您偏好的产品类型、预算，或使用场景，例如上班、驾驶、日常佩戴或时尚用途。"
-                ),
-                buttons=[
-                    {"title": tr(lang, "Browse Eyewear", "Lihat Produk", "浏览产品"), "payload": "/browse_eyewear"},
-                    {"title": tr(lang, "Check Pricing", "Semak Harga", "查看价格"), "payload": "/ask_pricing"},
-                    {"title": tr(lang, "Talk to Consultant", "Bercakap Dengan Konsultan", "联系顾问"), "payload": '/capture_lead{"preferred_service":"Eyewear Recommendation"}'},
-                ],
-            )
-            return events
-
-        intro_bits = []
-        if inferred_type:
-            intro_bits.append(str(inferred_type))
-        if use_case:
-            intro_bits.append(f"for {str(use_case).strip()}")
-        if budget:
-            intro_bits.append(f"within {str(budget).strip()}")
-        intro_text = " ".join(intro_bits).strip()
-        if intro_text:
-            dispatcher.utter_message(text=tr(lang, f"Here are a few recommendations {intro_text}:", f"Berikut beberapa cadangan {intro_text}:", f"以下是一些{intro_text}推荐："))
-        else:
-            dispatcher.utter_message(text=tr(lang, "Here are a few product recommendations for you:", "Berikut beberapa cadangan produk untuk anda:", "以下是为您推荐的几款产品："))
-
-        for _, row in results.iterrows():
-            emit_product_card(dispatcher, row.to_dict(), str(inferred_type or "Eyewear Recommendation"), lang)
-        if inferred_type:
-            events.append(SlotSet("product_type", inferred_type))
+        
+        search_events, success = search_products_engine(raw_text, tracker, lang, intent["name"], dispatcher)
+        events.extend(search_events)
+        
         return events
 
 

@@ -56,6 +56,7 @@ entities:
   - budget_min
   - budget_max
   - budget_bucket
+  - gender
   - lead_name
   - contact_number
   - email
@@ -154,6 +155,12 @@ slots:
     mappings:
       - type: from_entity
         entity: budget_bucket
+  gender:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: gender
   lead_name:
     type: text
     influence_conversation: false
