@@ -1796,6 +1796,31 @@ def is_refinement_query(query: str) -> bool:
             return True
     return False
 
+# ── Strict gender matching ────────────────────────────────────────────
+_GENDER_SYNONYMS: Dict[str, set] = {
+    "men":    {"men", "male", "mens", "man", "boys"},
+    "women":  {"women", "female", "womens", "woman", "girls"},
+    "unisex": {"unisex"},
+}
+
+def _gender_match_set(requested: str) -> set:
+    """Return the set of CSV gender values that satisfy *requested*."""
+    key = requested.strip().lower()
+    for canonical, synonyms in _GENDER_SYNONYMS.items():
+        if key in synonyms:
+            return {canonical}          # exact CSV value
+    return {key}                        # unknown → pass-through
+
+def _build_strict_gender_mask(df: pd.DataFrame, requested_genders: set) -> pd.Series:
+    """Return a boolean mask that is True only for rows whose gender
+    exactly matches one of the requested genders (no substring tricks)."""
+    allowed: set = set()
+    for rg in requested_genders:
+        allowed.update(_gender_match_set(rg))
+    col_lower = df["gender"].astype(str).str.strip().str.lower()
+    return col_lower.isin(allowed)
+
+
 def search_products_engine(
     raw_text: str, 
     tracker: Tracker, 
@@ -1907,21 +1932,24 @@ def search_products_engine(
     debug_logs["after_budget"] = len(filtered)
     
     # STRICT Attribute Intersection
-    for col, values in extracted.items():
+    # MANDATORY ORDER: category → brand → gender → shape → material → color
+    filter_order = ["category", "brand", "gender", "frame_shape", "frame_material", "frame_color"]
+    ordered_cols = [c for c in filter_order if c in extracted]
+    remaining = [c for c in extracted if c not in ordered_cols]
+    ordered_cols.extend(remaining)
+
+    for col in ordered_cols:
+        values = extracted[col]
         if col in filtered.columns:
-            # For each attribute, logical OR within the same attribute, logical AND between different attributes
-            masks = [filtered[col].astype(str).str.contains(re.escape(val), case=False, na=False) for val in values]
-            
-            # Special case for gender: check target_gender and audience
             if col == "gender":
-                for val in values:
-                    if "target_gender" in filtered.columns:
-                        masks.append(filtered["target_gender"].astype(str).str.contains(re.escape(val), case=False, na=False))
-                    if "audience" in filtered.columns:
-                        masks.append(filtered["audience"].astype(str).str.contains(re.escape(val), case=False, na=False))
-                    
-            if masks:
-                filtered = filtered[pd.concat(masks, axis=1).any(axis=1)]
+                # STRICT exact-match gender filter — never substring
+                gender_mask = _build_strict_gender_mask(filtered, values)
+                filtered = filtered[gender_mask]
+            else:
+                # For each attribute, logical OR within the same attribute, logical AND between different attributes
+                masks = [filtered[col].astype(str).str.contains(re.escape(val), case=False, na=False) for val in values]
+                if masks:
+                    filtered = filtered[pd.concat(masks, axis=1).any(axis=1)]
         debug_logs[f"after_{col}"] = len(filtered)
 
     debug_logs["final_results"] = len(filtered)
@@ -1943,15 +1971,14 @@ def search_products_engine(
             
         for col in ["category", "gender", "product_type"]:
             if col in extracted and col in relaxed_filtered.columns:
-                masks = [relaxed_filtered[col].astype(str).str.contains(re.escape(val), case=False, na=False) for val in extracted[col]]
                 if col == "gender":
-                    for val in extracted[col]:
-                        if "target_gender" in relaxed_filtered.columns:
-                            masks.append(relaxed_filtered["target_gender"].astype(str).str.contains(re.escape(val), case=False, na=False))
-                        if "audience" in relaxed_filtered.columns:
-                            masks.append(relaxed_filtered["audience"].astype(str).str.contains(re.escape(val), case=False, na=False))
-                if masks:
-                    relaxed_filtered = relaxed_filtered[pd.concat(masks, axis=1).any(axis=1)]
+                    # STRICT exact-match gender — never relax, never substring
+                    gender_mask = _build_strict_gender_mask(relaxed_filtered, extracted[col])
+                    relaxed_filtered = relaxed_filtered[gender_mask]
+                else:
+                    masks = [relaxed_filtered[col].astype(str).str.contains(re.escape(val), case=False, na=False) for val in extracted[col]]
+                    if masks:
+                        relaxed_filtered = relaxed_filtered[pd.concat(masks, axis=1).any(axis=1)]
                     
         active_constraints = {k: set(v) for k, v in extracted.items() if k not in ["category", "gender", "product_type"]}
         
@@ -2044,16 +2071,12 @@ def search_products_engine(
         if b_max is not None and p_price > b_max: continue
         if b_min is not None and p_price < b_min: continue
         if "gender" in extracted:
-            p_gender = str(row.get("gender", "")).lower()
-            p_tgt_gender = str(row.get("target_gender", "")).lower()
-            p_audience = str(row.get("audience", "")).lower()
-            match = False
+            p_gender = str(row.get("gender", "")).strip().lower()
+            allowed_genders: set = set()
             for req_gender in extracted["gender"]:
-                rg = req_gender.lower()
-                if rg in p_gender or rg in p_tgt_gender or rg in p_audience:
-                    match = True
-                    break
-            if not match: continue
+                allowed_genders.update(_gender_match_set(req_gender))
+            if p_gender not in allowed_genders:
+                continue
         if "category" in extracted:
             p_cat = str(row.get("category", "")).lower()
             match = False
