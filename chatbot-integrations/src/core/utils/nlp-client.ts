@@ -97,9 +97,15 @@ const SHOPPING_SIGNAL_KEYWORDS = [
   'need',
   'daily',
   'office',
-  'round',
-  'metal',
-  'black',
+  // shape
+  'round', 'square', 'rectangle', 'rectangular', 'aviator', 'cat-eye', 'cat eye', 'oval',
+  // material
+  'metal', 'titanium', 'acetate', 'rimless', 'plastic',
+  // color
+  'black', 'brown', 'silver', 'gold', 'tortoise',
+  // gender
+  'mens', 'womens', 'male', 'female', 'unisex',
+  // other
   'blue light',
 ]
 
@@ -152,6 +158,45 @@ function hasShoppingSignal(text: string, hasBudget: boolean, hasBrand: boolean):
   return SHOPPING_SIGNAL_KEYWORDS.some((keyword) => normalized.includes(keyword))
 }
 
+// Deterministic attribute maps — values must match CSV column values exactly (lowercase).
+const SHAPE_MAP: Record<string, string> = {
+  'round': 'round', 'circular': 'round',
+  'square': 'square', 'square shaped': 'square',
+  'rectangle': 'rectangle', 'rectangular': 'rectangle',
+  'aviator': 'aviator', 'aviators': 'aviator',
+  'cat-eye': 'cat-eye', 'cat eye': 'cat-eye', 'cateye': 'cat-eye',
+  'oval': 'oval',
+}
+const MATERIAL_MAP: Record<string, string> = {
+  'metal': 'metal', 'metallic': 'metal',
+  'titanium': 'titanium',
+  'acetate': 'acetate', 'plastic': 'acetate',
+  'rimless': 'rimless',
+}
+const COLOR_MAP: Record<string, string> = {
+  'black': 'black',
+  'brown': 'brown',
+  'silver': 'silver',
+  'gold': 'gold', 'golden': 'gold',
+  'tortoise': 'tortoise', 'tortoiseshell': 'tortoise',
+}
+const GENDER_MAP: Record<string, string> = {
+  'men': 'men', 'mens': 'men', "men's": 'men', 'male': 'men', 'guys': 'men',
+  'women': 'women', 'womens': 'women', "women's": 'women', 'female': 'women', 'ladies': 'women',
+  'unisex': 'unisex',
+}
+
+function extractFromMap(text: string, map: Record<string, string>): string | null {
+  // Try longest keys first to match multi-word entries like "cat eye" before "cat"
+  const sorted = Object.keys(map).sort((a, b) => b.length - a.length)
+  for (const key of sorted) {
+    if (new RegExp(`\\b${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text)) {
+      return map[key]
+    }
+  }
+  return null
+}
+
 function opportunisticSlotFilling(text: string): string | null {
   const entities: Record<string, any> = {}
   const budget = parseBudget(text)
@@ -166,6 +211,19 @@ function opportunisticSlotFilling(text: string): string | null {
     if (entities.brand === 'Rayban') entities.brand = 'Ray-Ban'
   }
   
+  // Extract deterministic attributes — shape, material, color, gender
+  const shape = extractFromMap(lower, SHAPE_MAP)
+  if (shape) entities.frame_shape = shape
+
+  const material = extractFromMap(lower, MATERIAL_MAP)
+  if (material) entities.frame_material = material
+
+  const color = extractFromMap(lower, COLOR_MAP)
+  if (color) entities.frame_color = color
+
+  const gender = extractFromMap(lower, GENDER_MAP)
+  if (gender) entities.gender = gender
+
   if (/sunglass|sun glass|shades/i.test(lower)) {
     entities.product_type = 'Luxury Sunglasses'
   } else if (/frame|glass|spectacle/i.test(lower)) {
@@ -175,10 +233,15 @@ function opportunisticSlotFilling(text: string): string | null {
   }
 
   const hasProductSignal = Boolean(entities.product_type || entities.brand)
-  const allowOpportunistic = hasProductSignal
+  const hasAttributeSignal = Boolean(shape || material || color || gender)
+  const allowOpportunistic = (hasProductSignal || hasAttributeSignal)
     && hasShoppingSignal(text, Boolean(budget), Boolean(entities.brand))
 
   if (Object.keys(entities).length > 0 && allowOpportunistic) {
+    // Default product_type if we have attributes but no explicit category
+    if (!entities.product_type && hasAttributeSignal) {
+      entities.product_type = 'Designer Frames'
+    }
     return `/search_product${JSON.stringify(entities)}`
   }
   if (budget && Object.keys(entities).length === Object.keys(budget).length) {
