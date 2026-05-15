@@ -22,8 +22,7 @@ Rasa core (:5005)  ── runs deterministic rules / forms / actions
         ▼
 Rasa action server (:5055)
         ▼
-Reply forwarded to the originating channel verbatim (no rewrite layer)
-```
+Reply forwarded to the originating channel verbatim 
 
 The LLM layer lives in `chatbot-integrations/src/core/utils/llm-client.ts` and
 is toggled with `LLM_LAYER_ENABLED=true|false` in `chatbot-integrations/.env`.

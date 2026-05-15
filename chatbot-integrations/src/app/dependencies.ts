@@ -18,6 +18,8 @@ import {
   LeadOrchestrator,
   type RuntimeStore,
 } from '../leads/index.js'
+import { getPrismaClient } from '../db/prisma.js'
+import { PrismaProductStore, type ProductStore } from '../products/index.js'
 import { createNlpMessageHandler } from './message-handler.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -28,6 +30,7 @@ export interface AppDependencies {
   logger: Logger
   deduplicator: MessageDeduplicator
   runtimeStore: RuntimeStore
+  productStore?: ProductStore
   orchestrator: LeadOrchestrator
   nlpClient: NLPClient
   whatsapp?: WhatsAppChannel
@@ -57,6 +60,11 @@ export function createDependencies(): AppDependencies {
     backend: config.storageBackend,
     dataDir: config.dataDir,
   })
+  const productStore: ProductStore | undefined =
+    config.storageBackend === 'postgres' ? new PrismaProductStore(getPrismaClient()) : undefined
+  if (!productStore) {
+    logger.warn('Product catalogue store unavailable: STORAGE_BACKEND must be postgres for /admin/products and /products/search.')
+  }
   const deduplicator = createMessageDeduplicator(runtimeStore, config.dedupTtlMs)
 
   const llmClassifier = config.llm.enabled
@@ -181,6 +189,7 @@ export function createDependencies(): AppDependencies {
     logger,
     deduplicator,
     runtimeStore,
+    productStore,
     orchestrator,
     nlpClient,
     whatsapp,

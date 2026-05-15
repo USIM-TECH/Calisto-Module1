@@ -57,6 +57,12 @@ const envSchema = z
 
     STORAGE_BACKEND: storageBackendSchema,
     DATABASE_URL: optionalString,
+    /**
+     * Absolute base URL used to prefix relative `imageUrl` values when the
+     * product card is shipped to channels (Telegram/WhatsApp/etc.) that fetch
+     * images from the public internet. In dev, set this to your tunnel URL.
+     */
+    PUBLIC_BASE_URL: optionalString,
 
   WEBSITE_AUTH_TOKEN: optionalString,
   WEBSITE_ALLOWED_ORIGINS: optionalString,
@@ -106,6 +112,7 @@ export interface AppConfig {
   storageBackend: 'file' | 'postgres'
   /** Set when postgres was requested but `DATABASE_URL` was missing; effective backend is file. */
   usedFileStorageFallback: boolean
+  publicBaseUrl?: string
   dedupTtlMs: number
   responseStyle: 'casual' | 'professional' | 'warm' | 'concierge'
   llm: {
@@ -145,6 +152,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     dataDir: parsed.DATA_DIR ?? 'data/runtime',
     storageBackend,
     usedFileStorageFallback: postgresMissingUrl,
+    publicBaseUrl: parsed.PUBLIC_BASE_URL,
     dedupTtlMs: parsed.DEDUP_TTL_MS,
     responseStyle: parsed.RESPONSE_STYLE,
     llm: {

@@ -35,6 +35,7 @@ import {
   renderCustomerWebchatHtml,
   renderWebchatPlaygroundHtml,
 } from '../frontend/webchat-playground.js'
+import { registerProductRoutes } from '../products/routes.js'
 import type { AppDependencies } from './dependencies.js'
 import { createWebsiteRateLimiter } from './website-rate-limiter.js'
 
@@ -52,6 +53,7 @@ export function createApp(dependencies: AppDependencies): Express {
     hubspot,
     orchestrator,
     runtimeStore,
+    productStore,
   } = dependencies
 
   const app = express()
@@ -213,6 +215,20 @@ export function createApp(dependencies: AppDependencies): Express {
       next(error)
     }
   })
+
+  if (productStore) {
+    registerProductRoutes({
+      app,
+      store: productStore,
+      logger,
+      publicBaseUrl: config.publicBaseUrl,
+    })
+    logger.info('Product catalogue routes registered: /admin/products + /products/search')
+  } else {
+    app.get('/admin/products', (_req, res) => {
+      res.status(503).type('html').send('<h1>Product catalogue unavailable</h1><p>Set <code>STORAGE_BACKEND=postgres</code> and restart.</p>')
+    })
+  }
 
   app.get('/reports/leads-dashboard/:customerId', async (req, res, next) => {
     try {

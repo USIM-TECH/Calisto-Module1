@@ -46,6 +46,18 @@ services:
       - "5055:5055"
     networks:
       - calisto-net
+    # Reach the host's Node integration service (chatbot-integrations on
+    # localhost:3000). Without this, ServiceGateway falls back to the CSV.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Host machine URL for chatbot-integrations (must match PORT in chatbot-integrations/.env).
+      BACKEND_API_BASE_URL: "http://host.docker.internal:3000"
+      # Base URL for absolutising /static/... product images in emit_product_card.
+      # Do not use ${VAR:-http://...} here: defaults with ":" break Compose interpolation.
+      # Override for a public tunnel, e.g.:
+      #   PUBLIC_BASE_URL=https://your-subdomain.trycloudflare.com docker compose up -d
+      PUBLIC_BASE_URL: "http://host.docker.internal:3000"
 
 networks:
   calisto-net:

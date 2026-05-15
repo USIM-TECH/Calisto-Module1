@@ -1284,6 +1284,9 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
 
     theme = choose_product_image_theme(product_type, preferred_service)
 
+    raw_image = product.get("imageUrl") or product.get("image_url")
+    image_url = _resolve_card_image_url(raw_image) or build_placeholder_image(f"{brand} {name}", theme)
+
     dispatcher.utter_message(
         json_message={
             "type": "card",
@@ -1293,6 +1296,24 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
             "actions": actions,
         }
     )
+
+
+def _resolve_card_image_url(raw: Any) -> Optional[str]:
+    """Absolutise a relative imageUrl (e.g. /static/products/abc.jpg) using
+    PUBLIC_BASE_URL so channels (Telegram/WhatsApp/Messenger) can fetch it
+    from the public internet. Already-absolute URLs are returned untouched.
+    Empty/missing values return None so the caller can fall back to the
+    placeholder image."""
+    if not raw:
+        return None
+    value = str(raw).strip()
+    if not value:
+        return None
+    if value.startswith("http://") or value.startswith("https://"):
+        return value
+    base = (os.getenv("PUBLIC_BASE_URL") or "http://localhost:3000").rstrip("/")
+    suffix = value if value.startswith("/") else f"/{value}"
+    return f"{base}{suffix}"
 
 
 def emit_store_card(dispatcher: CollectingDispatcher, store_location: str, city: str, lang: str = "en") -> None:
