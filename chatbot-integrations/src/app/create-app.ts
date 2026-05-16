@@ -35,6 +35,7 @@ import {
   renderCustomerWebchatHtml,
   renderWebchatPlaygroundHtml,
 } from '../frontend/webchat-playground.js'
+import { registerKnowledgeRoutes } from '../knowledge/routes.js'
 import { registerProductRoutes } from '../products/routes.js'
 import type { AppDependencies } from './dependencies.js'
 import { createWebsiteRateLimiter } from './website-rate-limiter.js'
@@ -54,6 +55,7 @@ export function createApp(dependencies: AppDependencies): Express {
     orchestrator,
     runtimeStore,
     productStore,
+    knowledgeChunkStore,
   } = dependencies
 
   const app = express()
@@ -227,6 +229,15 @@ export function createApp(dependencies: AppDependencies): Express {
   } else {
     app.get('/admin/products', (_req, res) => {
       res.status(503).type('html').send('<h1>Product catalogue unavailable</h1><p>Set <code>STORAGE_BACKEND=postgres</code> and restart.</p>')
+    })
+  }
+
+  if (knowledgeChunkStore) {
+    registerKnowledgeRoutes({ app, store: knowledgeChunkStore, logger })
+    logger.info('Knowledge routes registered: /admin/knowledge + /knowledge/chunks')
+  } else {
+    app.get('/admin/knowledge', (_req, res) => {
+      res.status(503).type('html').send('<h1>Knowledge store unavailable</h1><p>Set <code>STORAGE_BACKEND=postgres</code> and restart.</p>')
     })
   }
 

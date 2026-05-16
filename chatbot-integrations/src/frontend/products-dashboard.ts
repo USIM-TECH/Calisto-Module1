@@ -31,16 +31,22 @@ function thumbnailHtml(product: ProductRecord): string {
   return `<span>${escapeHtml(initials)}</span>`
 }
 
+function rowSearchBlob(product: ProductRecord): string {
+  return [
+    product.productId,
+    product.productName,
+    product.brand,
+    product.productType,
+    product.category,
+    product.description ?? '',
+  ]
+    .join(' ')
+    .toLowerCase()
+}
+
 function renderRow(product: ProductRecord): string {
   return `
-    <tr data-product-id="${escapeHtml(product.productId)}" data-product='${escapeHtml(JSON.stringify(product))}' data-search="${escapeHtml([
-      product.productId,
-      product.productName,
-      product.brand,
-      product.productType,
-      product.category,
-      product.description ?? '',
-    ].join(' ').toLowerCase())}">
+    <tr data-product-id="${escapeHtml(product.productId)}" data-search="${escapeHtml(rowSearchBlob(product))}" data-product-type="${escapeHtml(product.productType)}" data-product-brand="${escapeHtml(product.brand)}">
       <td><div class="thumb">${thumbnailHtml(product)}</div></td>
       <td class="mono">${escapeHtml(product.productId)}</td>
       <td>
@@ -124,8 +130,8 @@ export function renderProductsAdminHtml({
       </div>
     </main>
 
-    <div id="modalBackdrop" class="modal-backdrop" hidden>
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div id="modalBackdrop" class="modal-backdrop" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" onclick="event.stopPropagation()">
         <header class="modal-head">
           <h2 id="modalTitle">Add Product</h2>
           <button type="button" id="closeModal" class="btn link" aria-label="Close">x</button>
@@ -234,7 +240,9 @@ export function renderProductsAdminHtml({
       .thumb { width: 44px; height: 44px; border-radius: 10px; background: #f3f4f6; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; color: #6b7280; font-weight: 800; }
       .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-      .modal-backdrop { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.45); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; z-index: 50; }
+      /* display:flex would override the [hidden] attribute in some browsers — use .is-open only */
+      .modal-backdrop { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.45); display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; z-index: 50; }
+      .modal-backdrop.is-open { display: flex; }
       .modal { background: var(--panel); width: 100%; max-width: 720px; border-radius: 16px; box-shadow: 0 20px 60px rgba(17, 24, 39, 0.2); overflow: hidden; }
       .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--line); }
       .modal-head h2 { margin: 0; font-size: 1.1rem; font-weight: 800; }
@@ -284,10 +292,9 @@ export function renderProductsAdminHtml({
           const rows = Array.from(rowsEl.querySelectorAll('tr[data-product-id]'));
           let visible = 0;
           rows.forEach((row) => {
-            const data = JSON.parse(row.dataset.product);
             const matchesQ = !q || (row.dataset.search || '').includes(q);
-            const matchesType = !type || data.productType === type;
-            const matchesBrand = !brand || data.brand === brand;
+            const matchesType = !type || (row.dataset.productType || '') === type;
+            const matchesBrand = !brand || (row.dataset.productBrand || '') === brand;
             const ok = matchesQ && matchesType && matchesBrand;
             row.style.display = ok ? '' : 'none';
             if (ok) visible += 1;
@@ -329,17 +336,23 @@ export function renderProductsAdminHtml({
             idField.value = '';
             idField.readOnly = false;
           }
-          backdrop.hidden = false;
+          backdrop.classList.add('is-open');
+          backdrop.setAttribute('aria-hidden', 'false');
         }
 
         function closeModalNow() {
-          backdrop.hidden = true;
+          backdrop.classList.remove('is-open');
+          backdrop.setAttribute('aria-hidden', 'true');
         }
 
         addBtn.addEventListener('click', () => openModal(null));
         closeModal.addEventListener('click', closeModalNow);
         cancelBtn.addEventListener('click', closeModalNow);
         backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeModalNow(); });
+
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && backdrop.classList.contains('is-open')) closeModalNow();
+        });
 
         rowsEl.addEventListener('click', async (e) => {
           const target = e.target;
@@ -348,12 +361,17 @@ export function renderProductsAdminHtml({
           if (!action) return;
           const tr = target.closest('tr[data-product-id]');
           if (!tr) return;
-          const data = JSON.parse(tr.dataset.product);
+          const pid = tr.dataset.productId;
           if (action === 'edit') {
+            const res = await fetch('/admin/products/api/' + encodeURIComponent(pid));
+            if (!res.ok) { alert('Failed to load product'); return; }
+            const data = await res.json();
             openModal(data);
           } else if (action === 'delete') {
-            if (!confirm('Delete ' + data.productId + ' (' + data.productName + ')?')) return;
-            const res = await fetch('/admin/products/api/' + encodeURIComponent(data.productId), { method: 'DELETE' });
+            const label = tr.querySelector('.cell-strong');
+            const name = label ? label.textContent : pid;
+            if (!confirm('Delete ' + pid + ' (' + name + ')?')) return;
+            const res = await fetch('/admin/products/api/' + encodeURIComponent(pid), { method: 'DELETE' });
             if (res.ok) {
               window.location.reload();
             } else {

@@ -301,7 +301,7 @@ class ServiceGateway:
             headers["Authorization"] = f"Bearer {self.api_key}"
         return headers
 
-    def _request(self, method: str, endpoint: str, payload: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+    def _request(self, method: str, endpoint: str, payload: Optional[Dict[str, Any]] = None) -> Any:
         if not self.enabled():
             return None
 
@@ -314,24 +314,49 @@ class ServiceGateway:
         try:
             with urllib.request.urlopen(request, timeout=8) as response:
                 body = response.read().decode("utf-8")
-                return json.loads(body) if body else {}
+                return json.loads(body) if body else None
         except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError) as exc:
             logger.warning("Backend request to %s failed: %s", url, exc)
             return None
 
+    def get_json(self, endpoint: str) -> Any:
+        """GET JSON from the integration backend (list or object)."""
+        if not self.enabled():
+            return None
+        url = f"{self.base_url}{endpoint}"
+        headers: Dict[str, str] = {}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        request = urllib.request.Request(url, method="GET", headers=headers)
+        try:
+            with urllib.request.urlopen(request, timeout=12) as response:
+                body = response.read().decode("utf-8")
+                return json.loads(body) if body else None
+        except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError) as exc:
+            logger.warning("Backend GET %s failed: %s", url, exc)
+            return None
+
     def search_products(self, filters: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
         response = self._request("POST", "/products/search", filters)
-        if not response:
+        if response is None:
             return None
-        products = response.get("products")
-        return products if isinstance(products, list) else None
+        if isinstance(response, list):
+            return response
+        if isinstance(response, dict):
+            products = response.get("products")
+            return products if isinstance(products, list) else None
+        return None
 
     def search_stores(self, location: str) -> Optional[List[Dict[str, Any]]]:
         response = self._request("POST", "/stores/search", {"location": location})
-        if not response:
+        if response is None:
             return None
-        stores = response.get("stores")
-        return stores if isinstance(stores, list) else None
+        if isinstance(response, list):
+            return response
+        if isinstance(response, dict):
+            stores = response.get("stores")
+            return stores if isinstance(stores, list) else None
+        return None
 
     def submit_lead(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         return self._request("POST", "/leads", payload)
@@ -388,8 +413,21 @@ def load_catalogue() -> pd.DataFrame:
     return df
 
 
-@lru_cache(maxsize=1)
 def load_kb_metadata() -> List[Dict[str, Any]]:
+    """Load BM25-style chunks for FAQ routing. Prefer remote DB via integration service."""
+    remote: Any = gateway.get_json("/knowledge/chunks")
+    if isinstance(remote, list) and remote:
+        out: List[Dict[str, Any]] = []
+        for item in remote:
+            if not isinstance(item, dict):
+                continue
+            text = item.get("text")
+            source = item.get("source")
+            if isinstance(text, str) and text.strip() and isinstance(source, str):
+                out.append({"source": source, "text": text})
+        if out:
+            return out
+
     if not os.path.exists(KB_INDEX_META_PATH):
         return []
 

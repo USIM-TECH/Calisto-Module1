@@ -19,6 +19,7 @@ import {
   type RuntimeStore,
 } from '../leads/index.js'
 import { getPrismaClient } from '../db/prisma.js'
+import { PrismaKnowledgeChunkStore, type KnowledgeChunkStore } from '../knowledge/index.js'
 import { PrismaProductStore, type ProductStore } from '../products/index.js'
 import { createNlpMessageHandler } from './message-handler.js'
 
@@ -31,6 +32,7 @@ export interface AppDependencies {
   deduplicator: MessageDeduplicator
   runtimeStore: RuntimeStore
   productStore?: ProductStore
+  knowledgeChunkStore?: KnowledgeChunkStore
   orchestrator: LeadOrchestrator
   nlpClient: NLPClient
   whatsapp?: WhatsAppChannel
@@ -62,8 +64,13 @@ export function createDependencies(): AppDependencies {
   })
   const productStore: ProductStore | undefined =
     config.storageBackend === 'postgres' ? new PrismaProductStore(getPrismaClient()) : undefined
+  const knowledgeChunkStore: KnowledgeChunkStore | undefined =
+    config.storageBackend === 'postgres' ? new PrismaKnowledgeChunkStore(getPrismaClient()) : undefined
   if (!productStore) {
     logger.warn('Product catalogue store unavailable: STORAGE_BACKEND must be postgres for /admin/products and /products/search.')
+  }
+  if (!knowledgeChunkStore) {
+    logger.warn('Knowledge chunk store unavailable: STORAGE_BACKEND must be postgres for /admin/knowledge and /knowledge/chunks.')
   }
   const deduplicator = createMessageDeduplicator(runtimeStore, config.dedupTtlMs)
 
@@ -190,6 +197,7 @@ export function createDependencies(): AppDependencies {
     deduplicator,
     runtimeStore,
     productStore,
+    knowledgeChunkStore,
     orchestrator,
     nlpClient,
     whatsapp,

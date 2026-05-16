@@ -85,7 +85,7 @@ function iconDot(channel: ChannelName): string {
   }
 }
 
-export function renderAppShell(title: string, content: string, activeNav: 'leads' | 'webchat' | 'products' = 'leads'): string {
+export function renderAppShell(title: string, content: string, activeNav: 'leads' | 'webchat' | 'products' | 'knowledge' = 'leads'): string {
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -349,6 +349,7 @@ export function renderAppShell(title: string, content: string, activeNav: 'leads
           <a class="nav-item" href="#"><span class="nav-dot">D</span>Dashboard</a>
           <a class="nav-item ${activeNav === 'leads' ? 'active' : ''}" href="/reports/leads-dashboard"><span class="nav-dot">L</span>Leads</a>
           <a class="nav-item ${activeNav === 'products' ? 'active' : ''}" href="/admin/products"><span class="nav-dot">P</span>Products</a>
+          <a class="nav-item ${activeNav === 'knowledge' ? 'active' : ''}" href="/admin/knowledge"><span class="nav-dot">K</span>Knowledge</a>
           <a class="nav-item ${activeNav === 'webchat' ? 'active' : ''}" href="/webchat/test"><span class="nav-dot">W</span>Webchat</a>
         </nav>
         <div class="sidebar-footer">
