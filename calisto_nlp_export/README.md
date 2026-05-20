@@ -129,6 +129,14 @@ docker compose down
 ```
 
 ---
+## Telegram Webhook Setup
+```bash
+curl -X POST "https://api.telegram.org/botTELEGRAM_BOT_TOKEN_PLACEHOLDER/setWebhook" \
+-H "Content-Type: application/json" \
+-d '{
+  "url": "https://YOUR-NGROK-URL.ngrok-free.app/webhooks/telegram"
+}'
+```
 
 ## Setup & Run (Local — Requires Python 3.8–3.10)
 
