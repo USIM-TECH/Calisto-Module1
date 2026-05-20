@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import random
 import re
 import urllib.error
 import urllib.parse
@@ -724,6 +725,72 @@ SUPPORT_INTENTS = set(SUPPORT_INTENT_MAP.keys()) | {
     "order_tracking",
 }
 
+# ── CTA completion response variants ─────────────────────────────────────────
+# Five distinct, premium-tone responses per CTA flow (English only).
+# Malay / Chinese variants are handled inline via tr() where needed.
+
+_RESPONSES_BOOK_VISIT = [
+    "Your visit request is confirmed. We'll share the appointment details at the contact you've provided.",
+    "All set. Our team will reach out shortly to confirm your appointment and everything you need to know.",
+    "Your appointment has been requested. You'll receive a confirmation at the contact details you shared.",
+    "Noted. Expect to hear from us soon with your visit confirmation and store details.",
+    "Your visit is being arranged. We'll be in touch with all the details very soon.",
+]
+
+_RESPONSES_CONSULT_NOW = [
+    "Noted. One of our advisors will be in touch with you shortly.",
+    "Your consultation request is in. Our team will contact you at the details you've shared.",
+    "Received. A Calisto advisor will reach out to you soon.",
+    "All set. Expect a call or message from one of our specialists shortly.",
+    "Our team has your details. An advisor will connect with you very soon.",
+]
+
+_RESPONSES_SUPPORT = [
+    "Your support request has been logged. Our team will follow up with the next steps for your case.",
+    "We've noted your request. A member of our support team will be in touch with you shortly.",
+    "Your case is with us. Someone from our support team will reach out soon to assist.",
+    "Received. Our team will review your request and connect with you shortly.",
+    "Your request has been recorded. A support specialist will follow up with you soon.",
+]
+
+_RESPONSES_GENERAL = [
+    "Your details are with us. Our team will be in touch soon.",
+    "All noted. Expect to hear from our team shortly.",
+    "We have everything we need. Someone from our team will follow up with you.",
+    "Received. Our team will connect with you soon.",
+    "Your details are noted. We'll be in touch to take things forward.",
+]
+
+_SUPPORT_SERVICE_NAMES = {
+    "Return Request",
+    "Refund Request",
+    "Exchange Request",
+    "Warranty Support",
+    "Repair Support",
+    "Order Tracking/Support",
+    "After-sales Support",
+}
+
+_BOOK_VISIT_SERVICE_NAMES = {"Store Visit"}
+
+_CONSULT_SERVICE_NAMES = {
+    "Eyewear Recommendation",
+    "Lens Consultation",
+    "Designer Frames",
+    "Luxury Sunglasses",
+}
+
+
+def _pick_completion_response(preferred_service: str, current_flow: str, latest_intent: str) -> str:
+    """Return a contextual completion message based on the active CTA flow."""
+    if current_flow == "support_flow" or preferred_service in _SUPPORT_SERVICE_NAMES:
+        return random.choice(_RESPONSES_SUPPORT)
+    if preferred_service in _BOOK_VISIT_SERVICE_NAMES or latest_intent == "book_appointment":
+        return random.choice(_RESPONSES_BOOK_VISIT)
+    if preferred_service in _CONSULT_SERVICE_NAMES or latest_intent in {"capture_lead", "human_handoff"}:
+        return random.choice(_RESPONSES_CONSULT_NOW)
+    return random.choice(_RESPONSES_GENERAL)
+
 SHOPPING_INTENTS = {
     "browse_eyewear",
     "select_product_type",
@@ -1042,8 +1109,15 @@ def route_support_flow(
         "order_tracking": "Order Tracking/Support"
     }
     preferred_service = service_map.get(intent_name, "After-sales Support")
-    
-    dispatcher.utter_message(text=f"I understand you need help with a {preferred_service.lower()}. Let me connect you with our support team.")
+
+    _support_intros = [
+        f"Of course. I'll connect you with our support team for your {preferred_service.lower()} right away.",
+        f"Understood. Let me get our support team on your {preferred_service.lower()}.",
+        f"No problem. I'm routing your {preferred_service.lower()} to the right team now.",
+        f"Got it. Our support team will take care of your {preferred_service.lower()} from here.",
+        f"Noted. I'm passing your {preferred_service.lower()} to a specialist who can assist you.",
+    ]
+    dispatcher.utter_message(text=random.choice(_support_intros))
 
     events = ActionPrefillLeadCapture().run(dispatcher, tracker, {})
     
@@ -1271,6 +1345,7 @@ def lead_buttons(lang: str, preferred_service: Optional[str] = None) -> List[Dic
 
 
 def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any], preferred_service: Optional[str], lang: str = "en") -> None:
+    product_link_url = "https://www.lenskart.com/vincent-chase-vc-s11748-c8-sunglasses.html"
     brand = str(product.get("brand") or "Brand").strip()
     name = str(product.get("product_name") or "Product").strip()
     if brand and name.lower().startswith(brand.lower()):
@@ -1295,7 +1370,6 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
     rating = product.get("rating")
     store_location = str(product.get("store_location") or "").strip()
     city = str(product.get("city") or "").strip()
-
     detail_parts = [part for part in [gender, material, shape, color] if part]
     subtitle_sections = [
         tr(lang, f"Price: RM{price:.2f}", f"Harga: RM{price:.2f}", f"价格：RM{price:.2f}"),
@@ -1303,16 +1377,18 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
         tr(lang, f"Specs: {' • '.join(detail_parts)}", f"Spesifikasi: {' • '.join(detail_parts)}", f"规格：{' • '.join(detail_parts)}") if detail_parts else "",
         tr(lang, f"Availability: {stock}", f"Ketersediaan: {stock}", f"库存：{stock}") if stock else "",
         tr(lang, f"Rating: {rating}/5", f"Penilaian: {rating}/5", f"评分：{rating}/5") if rating not in (None, "") else "",
-        tr(lang, f"Store: {store_location}, {city}".strip(", "), f"Kedai: {store_location}, {city}".strip(", "), f"门店：{store_location}, {city}".strip(", ")) if (store_location or city) else "",
     ]
 
-    actions = []
-    if store_location or city:
-        actions.append({
+    theme = choose_product_image_theme(product_type, preferred_service)
+    raw_image = product.get("imageUrl") or product.get("image_url")
+    image_url = _resolve_card_image_url(raw_image) or build_placeholder_image(f"{brand} {name}", theme)
+    actions = [
+        {
             "type": "url",
-            "title": tr(lang, "Open Store Map", "Buka Peta Kedai", "打开门店地图"),
-            "value": build_maps_url(store_location, city, "Calisto Eyewear"),
-        })
+            "title": tr(lang, "Open Product Link", "Buka Pautan Produk", "打开产品链接"),
+            "value": product_link_url,
+        }
+    ]
     actions.append({"type": "postback", "title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "value": "/book_appointment"})
     actions.append({
         "type": "postback",
@@ -1320,17 +1396,12 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
         "value": lead_buttons(lang, preferred_service)[-1]["payload"],
     })
 
-    theme = choose_product_image_theme(product_type, preferred_service)
-
-    raw_image = product.get("imageUrl") or product.get("image_url")
-    image_url = _resolve_card_image_url(raw_image) or build_placeholder_image(f"{brand} {name}", theme)
-
     dispatcher.utter_message(
         json_message={
             "type": "card",
             "title": f"{brand} - {name}",
             "subtitle": "\n".join(line for line in subtitle_sections if line),
-            "imageUrl": build_placeholder_image(f"{brand} {name}", theme),
+            "imageUrl": image_url,
             "actions": actions,
         }
     )
@@ -3126,6 +3197,10 @@ class ActionSubmitLeadCapture(Action):
 
         response = gateway.submit_lead(payload)
         status = tracker.get_slot("lead_status")
+        preferred_service = str(payload.get("preferred_service") or "").strip()
+        current_flow = str(tracker.get_slot("current_flow") or "").strip()
+        latest_intent = str(payload.get("latest_intent") or "").strip()
+
         if status == "qualified":
             booking_line = tr(
                 lang,
@@ -3133,12 +3208,19 @@ class ActionSubmitLeadCapture(Action):
                 f"\nAnda juga boleh tempah terus di sini: {BOOKING_URL}" if BOOKING_URL else "",
                 f"\n您也可以直接在这里预约：{BOOKING_URL}" if BOOKING_URL else "",
             )
+            _qualified_en = random.choice([
+                f"You're all set. Our team will confirm your appointment and share all the details shortly.{booking_line}",
+                f"Your details are confirmed. Expect a personal follow-up from our team very soon.{booking_line}",
+                f"All set. A Calisto specialist will be in touch to finalise everything for you.{booking_line}",
+                f"Noted and confirmed. Our team will reach out shortly with your next steps.{booking_line}",
+                f"Your request is locked in. Someone from our team will be in touch shortly to arrange everything.{booking_line}",
+            ])
             dispatcher.utter_message(
                 text=tr(
                     lang,
-                    f"Thanks, your request is qualified and our team will follow up shortly.{booking_line}",
-                    f"Terima kasih, permintaan anda layak untuk susulan dan pasukan kami akan hubungi anda tidak lama lagi.{booking_line}",
-                    f"谢谢，您的请求已符合跟进条件，我们的团队会尽快联系您。{booking_line}"
+                    _qualified_en,
+                    f"Terima kasih. Pasukan kami akan hubungi anda tidak lama lagi untuk mengesahkan temujanji anda.{booking_line}",
+                    f"一切就绪。我们的团队将很快联系您，确认您的预约详情。{booking_line}"
                 ),
                 buttons=[
                     {"title": tr(lang, "Book Appointment", "Tempah Janji Temu", "预约"), "payload": "/book_appointment"},
@@ -3147,13 +3229,33 @@ class ActionSubmitLeadCapture(Action):
                 ],
             )
         else:
+            _en_text = _pick_completion_response(preferred_service, current_flow, latest_intent)
+            _ms_text = tr(
+                "ms",
+                _en_text,
+                random.choice([
+                    "Permintaan anda telah diterima. Pasukan kami akan menghubungi anda tidak lama lagi.",
+                    "Maklumat anda telah dicatat. Pasukan kami akan menghubungi anda dengan segera.",
+                    "Terima kasih. Kami akan berikan maklum balas kepada anda tidak lama lagi.",
+                    "Dicatat. Pasukan kami akan berhubung dengan anda tidak lama lagi.",
+                    "Permohonan anda telah kami terima. Kami akan menghubungi anda dengan segera.",
+                ]),
+                "",
+            )
+            _zh_text = tr(
+                "zh",
+                _en_text,
+                "",
+                random.choice([
+                    "您的请求已收到。我们的团队将尽快与您联系。",
+                    "已记录您的信息。我们的团队将尽快跟进。",
+                    "感谢您。我们会尽快回复您。",
+                    "已收到。我们的团队很快会与您联系。",
+                    "您的申请已提交。专员将尽快与您联系。",
+                ]),
+            )
             dispatcher.utter_message(
-                text=tr(
-                    lang,
-                    "Thank you. We have captured your inquiry and our team will review the best next step for you.",
-                    "Terima kasih. Kami telah merekodkan pertanyaan anda dan pasukan kami akan semak langkah seterusnya yang paling sesuai untuk anda.",
-                    "谢谢。我们已记录您的咨询，团队会为您评估最合适的下一步。"
-                ),
+                text=tr(lang, _en_text, _ms_text, _zh_text),
                 buttons=[
                     {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
                     {"title": tr(lang, "Browse Eyewear", "Lihat Produk", "浏览产品"), "payload": "/browse_eyewear"},
