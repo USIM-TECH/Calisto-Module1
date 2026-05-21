@@ -2231,10 +2231,9 @@ class ActionDocumentSearch(Action):
         query = normalize_free_text(tracker.latest_message.get("text") or "")
         query_lower = query.lower()
 
-        faq_entries = [
-            entry for entry in load_kb_metadata()
-            if "faq" in str(entry.get("source") or "").lower()
-        ]
+        kb_entries = list(load_kb_metadata())
+        latest_intent = (tracker.latest_message.get("intent") or {}).get("name") or ""
+        faq_boost = latest_intent == "ask_faq"
 
         keyword_groups = {
             "refund": {"refund", "return", "exchange", "policy", "size", "fit"},
@@ -2251,14 +2250,17 @@ class ActionDocumentSearch(Action):
                 break
 
         best_text = ""
-        if faq_entries:
+        if kb_entries:
             ranked: List[tuple[int, str]] = []
-            for entry in faq_entries:
+            for entry in kb_entries:
                 text = str(entry.get("text") or "").strip()
                 if not text:
                     continue
 
+                source = str(entry.get("source") or "").lower()
                 score = 0
+                if faq_boost and "faq" in source:
+                    score += 2
                 if requested_group == "refund":
                     score += 5 if "refund or return policy" in text.lower() else 0
                     score += 2 if "refund" in text.lower() else 0

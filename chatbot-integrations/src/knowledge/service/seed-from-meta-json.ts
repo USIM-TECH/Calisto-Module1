@@ -1,10 +1,9 @@
 import fs from 'fs/promises'
 import path from 'path'
-import crypto from 'crypto'
 import * as dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
 import { PrismaClient } from '@prisma/client'
-import { PrismaKnowledgeChunkStore } from '../storage/prisma-knowledge-chunk-store.js'
+import { chunkHash, PrismaKnowledgeChunkStore } from '../storage/prisma-knowledge-chunk-store.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -16,10 +15,6 @@ const DEFAULT_META = path.resolve(
   '..', '..', '..', '..',
   'calisto_nlp_export', 'knowledge_base', 'index', 'calisto_meta.json',
 )
-
-function chunkHash(source: string, text: string): string {
-  return crypto.createHash('sha256').update(`${source}\0${text}`, 'utf8').digest('hex')
-}
 
 async function main(): Promise<void> {
   const metaPath = process.env.KB_INDEX_META_PATH ?? DEFAULT_META
@@ -42,7 +37,8 @@ async function main(): Promise<void> {
   const prisma = new PrismaClient()
   const store = new PrismaKnowledgeChunkStore(prisma)
   const n = await store.upsertMany(items)
-  console.log(`[seed:knowledge] meta=${metaPath} upserted=${n} rows`)
+  const docCount = (await store.listDocuments()).length
+  console.log(`[seed:knowledge] meta=${metaPath} chunks=${n} documents=${docCount}`)
   await prisma.$disconnect()
 }
 

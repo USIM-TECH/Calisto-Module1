@@ -203,14 +203,27 @@ model Product {
   @@index([priceMyr])
 }
 
-model KnowledgeChunk {
+model KnowledgeDocument {
   id        String   @id @default(cuid())
-  chunkHash String   @unique
-  source    String
-  text      String   @db.Text
+  source    String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  chunks KnowledgeChunk[]
+}
+
+model KnowledgeChunk {
+  id         String   @id @default(cuid())
+  documentId String
+  chunkHash  String   @unique
+  source     String
+  text       String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
   @@index([source])
 }
 
