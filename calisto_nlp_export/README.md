@@ -131,7 +131,7 @@ docker compose down
 ---
 ## Telegram Webhook Setup
 ```bash
-curl -X POST "https://api.telegram.org/bot8632157525:AAGEX8WMFuXkh60LqrWdHNm7vJ1Sk8fI-3Y/setWebhook" \
+curl -X POST "https://api.telegram.org/bot<Telegram-Bot-Token>/setWebhook" \
 -H "Content-Type: application/json" \
 -d '{
   "url": "https://YOUR-NGROK-URL.ngrok-free.app/webhooks/telegram"
