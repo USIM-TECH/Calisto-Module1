@@ -143,6 +143,7 @@ nlu:
       - 我想看 sunglasses
       - 有什么 frames 推荐
 
+
   - intent: search_product
     examples: |
       - gucci glasses under 700
@@ -570,7 +571,6 @@ nlu:
       - kanta apa yang terbaik untuk saya
       - 告诉我单光镜片的信息
       - 我想要渐进镜片
-      - 我需要防蓝光镜片
       - 什么是光致变色镜片
       - 解释一下镜片类型
       - 比较单光和渐进镜片
@@ -1346,42 +1346,6 @@ nlu:
       - nak track order
       - check status order [ORD-1024](order_id)
 
-  - intent: warranty_claim
-    examples: |
-      - i need to claim warranty
-      - how do i claim warranty
-      - my frame has an issue and i need warranty help
-      - can you help with a warranty claim
-      - i need warranty support for my glasses
-      - i have a product defect
-      - my glasses broke and i need warranty help
-      - can i submit a warranty request
-      - my frame is damaged
-      - my glasses arm broke
-      - lens coating has an issue
-      - i think this should be under warranty
-      - can i replace this under warranty
-      - saya mahu tuntut waranti
-      - bingkai saya rosak
-      - boleh bantu waranti saya
-      - kanta saya ada masalah salutan
-      - boleh semak sama ada ini bawah waranti
-      - saya mahu hantar tuntutan waranti
-      - 我要申请保修
-      - 镜框坏了可以保修吗
-      - 镜片镀膜有问题
-      - 这个可以保修更换吗
-      - 请帮我提交保修申请
-      - saya perlu buat tuntutan waranti
-      - macam mana nak tuntut waranti
-      - bingkai saya ada masalah dan perlukan waranti
-      - boleh bantu untuk tuntutan waranti
-      - 我需要申请保修
-      - 怎么索赔保修
-      - 我的镜框有问题需要保修
-      - 能帮忙处理保修申请吗
-      - nak claim warranty
-      - how to claim waranti
 
   - intent: human_handoff
     examples: |
@@ -1511,23 +1475,15 @@ nlu:
       - can someone help with my exchange
       - i need help with my purchase
       - i have a post-purchase issue
-      - my glasses feel loose
-      - i need frame adjustment help
-      - can i exchange this frame
       - my order arrived damaged
       - i need help after i bought my glasses
       - saya perlukan bantuan selepas jualan
       - boleh semak waranti saya
       - saya perlukan bantuan untuk pesanan saya
-      - bingkai saya longgar
       - 我需要售后服务
       - 请帮我查看保修
       - 我的眼镜有问题
       - 订单到了但是有损坏
-      - saya mahu tukar bingkai ini
-      - boleh bantu laraskan bingkai saya
-      - 我的镜框松了
-      - 可以帮我调整眼镜吗
       - saya perlukan sokongan selepas jualan
       - bantuan waranti
       - tolong dengan pesanan saya
@@ -1652,6 +1608,26 @@ nlu:
       - 退货政策
       - return policy macam mana
       - ada refund tak
+      - refund policy
+      - money back policy
+      - polisi bayaran balik
+      - polisi pulangan wang
+      - 退款政策
+      - exchange policy
+      - polisi pertukaran
+      - 换货政策
+      - warranty policy
+      - guarantee policy
+      - polisi waranti
+      - 保修政策
+      - what is your refund policy
+      - what is your warranty policy
+      - what is your guarantee policy
+      - apakah polisi bayaran balik
+      - apakah polisi waranti
+      - 你们的退款政策是什么
+      - 你们的换货政策是什么
+      - 你们的保修政策是什么
 
   - intent: return_request
     examples: |
@@ -1672,7 +1648,6 @@ nlu:
       - can i give this back
       - i want to return
       - process a return
-      - return policy
       - how to return an item
       - can i return my purchase
       - returning my order
@@ -1684,8 +1659,6 @@ nlu:
       - i hate these glasses return them
       - wrong glasses received
       - wrong item want to return
-      - return for refund
-      - return for exchange
       - is it possible to return
       - how many days to return
       - initiate a return
@@ -1711,7 +1684,6 @@ nlu:
       - pulangkan pesanan saya
       - tolong saya pulangkan ini
       - saya mahu hantar ini kembali
-      - polisi pemulangan
       - 我要退还我的眼镜
       - 退回我的眼镜
       - 我想退还太阳镜
@@ -1725,7 +1697,6 @@ nlu:
       - 我不要这些眼镜了
       - 退掉我的订单
       - 帮我退了这个
-      - 退货政策是什么
       - 如何退回商品
       - saya nak return glasses ni
       - boleh tak saya return my order
@@ -1735,14 +1706,12 @@ nlu:
   - intent: refund_request
     examples: |
       - i need refund
-      - refund policy
       - can i get a refund
       - refund my purchase
       - i want my money back
       - request refund
       - refund for my glasses
       - how do refunds work
-      - money back policy
       - full refund please
       - i want reimbursement
       - can i cancel and refund
@@ -1774,14 +1743,12 @@ nlu:
       - i am waiting for a refund
       - cancel order and refund
       - saya perlukan bayaran balik
-      - polisi bayaran balik
       - boleh saya dapatkan refund
       - bayaran balik untuk pembelian saya
       - saya mahu wang saya dikembalikan
       - mohon bayaran balik
       - bayaran balik untuk cermin mata saya
       - macam mana proses refund
-      - polisi pulangan wang
       - minta bayaran balik penuh
       - saya nak claim balik duit saya
       - boleh saya batal dan dapatkan refund
@@ -1789,7 +1756,6 @@ nlu:
       - berikan saya bayaran balik
       - mana bayaran balik saya
       - 我需要退款
-      - 退款政策
       - 我可以退款吗
       - 退我的钱
       - 我要退款
@@ -1821,7 +1787,6 @@ nlu:
       - can i change model
       - exchange these lenses
       - i want an exchange
-      - exchange policy
       - how to exchange
       - swap for a different color
       - exchange for a bigger size
@@ -1856,7 +1821,6 @@ nlu:
       - boleh saya tukar model
       - tukar kanta ini
       - saya mahu pertukaran
-      - polisi pertukaran
       - 换我的眼镜
       - 我可以换这个镜框吗
       - 换一下我的太阳镜
@@ -1868,12 +1832,13 @@ nlu:
       - 可以换款式吗
       - 换这些镜片
       - 我要换货
-      - 换货政策
       - nak exchange glasses boleh
       - size salah, nak tukar
       - boleh swap untuk warna lain
       - 我想 exchange 这个镜框
       - size 不对需要换
+      - can i exchange this frame
+      - saya mahu tukar bingkai ini
   - intent: repair_support
     examples: |
       - my glasses broke
@@ -1945,6 +1910,12 @@ nlu:
       - lens scratch macam mana
       - 我的 frame 坏了
       - 可以 repair 我的眼镜吗
+      - my glasses feel loose
+      - i need frame adjustment help
+      - bingkai saya longgar
+      - boleh bantu laraskan bingkai saya
+      - 我的镜框松了
+      - 可以帮我调整眼镜吗
   - intent: warranty_support
     examples: |
       - warranty claim
@@ -1955,7 +1926,6 @@ nlu:
       - warranty for lenses
       - frame warranty
       - broken under warranty
-      - warranty policy
       - lens warranty
       - is this under warranty
       - how long is the warranty
@@ -1969,7 +1939,6 @@ nlu:
       - is my frame under warranty
       - warranty check
       - warranty on sunglasses
-      - guarantee policy
       - is there a guarantee
       - warranty service
       - warranty for my glasses
@@ -1990,7 +1959,6 @@ nlu:
       - waranti untuk kanta
       - waranti bingkai
       - patah bawah waranti
-      - polisi waranti
       - waranti kanta
       - adakah ini bawah waranti
       - berapa lama tempoh waranti
@@ -2002,7 +1970,6 @@ nlu:
       - 镜片保修
       - 镜框保修
       - 保修期内损坏
-      - 保修政策
       - 镜片有保修吗
       - 这个在保修期内吗
       - 保修期多长
@@ -2011,6 +1978,38 @@ nlu:
       - how to claim waranti
       - 我要 claim warranty
       - 这个有 warranty 吗
+      - i need to claim warranty
+      - how do i claim warranty
+      - my frame has an issue and i need warranty help
+      - can you help with a warranty claim
+      - i need warranty support for my glasses
+      - i have a product defect
+      - my glasses broke and i need warranty help
+      - can i submit a warranty request
+      - my glasses arm broke
+      - lens coating has an issue
+      - i think this should be under warranty
+      - can i replace this under warranty
+      - saya mahu tuntut waranti
+      - boleh bantu waranti saya
+      - kanta saya ada masalah salutan
+      - boleh semak sama ada ini bawah waranti
+      - saya mahu hantar tuntutan waranti
+      - 我要申请保修
+      - 镜框坏了可以保修吗
+      - 镜片镀膜有问题
+      - 这个可以保修更换吗
+      - 请帮我提交保修申请
+      - saya perlu buat tuntutan waranti
+      - macam mana nak tuntut waranti
+      - bingkai saya ada masalah dan perlukan waranti
+      - boleh bantu untuk tuntutan waranti
+      - 我需要申请保修
+      - 怎么索赔保修
+      - 我的镜框有问题需要保修
+      - 能帮忙处理保修申请吗
+      - nak claim warranty
+      - how to claim waranti
   - intent: order_support
     examples: |
       - order problem
@@ -2019,7 +2018,6 @@ nlu:
       - help with my purchase
       - cancel my order
       - tracking order
-      - where is my order
       - order is delayed
       - wrong order
       - missing item
@@ -2053,7 +2051,6 @@ nlu:
       - bantuan dengan pembelian saya
       - batalkan pesanan saya
       - jejak pesanan
-      - pesanan saya di mana
       - pesanan lambat
       - salah pesanan
       - barang hilang
@@ -2065,7 +2062,6 @@ nlu:
       - 购买求助
       - 取消我的订单
       - 跟踪订单
-      - 我的订单在哪里
       - 订单延迟了
       - 发错货了
       - 少件了
@@ -2076,4 +2072,4 @@ nlu:
       - my order tak sampai lagi
       - 我的 order 有问题
       - 帮我 check order
-      - cancel this order please
+      - cancel this order please  - intent:

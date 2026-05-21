@@ -95,8 +95,8 @@ Use this quick result format while testing:
 | en | `i need after sales support` | `after_sales_support`; intro in English |
 | ms | `saya perlukan bantuan selepas jualan` | `after_sales_support`; intro in Malay |
 | zh | `我需要售后服务` | `after_sales_support`; intro in Mandarin |
-| en | `my glasses feel loose` | `after_sales_support` or `warranty_claim`; support flow is acceptable |
-| zh | `我的镜框松了` | `after_sales_support` or `warranty_claim`; support flow in Mandarin |
+| en | `my glasses feel loose` | `repair_support`; support flow is acceptable |
+| zh | `我的镜框松了` | `repair_support`; support flow in Mandarin |
 
 ## Human Handoff
 
@@ -110,9 +110,9 @@ Use this quick result format while testing:
 
 | Language | Prompt | Expected |
 |---|---|---|
-| en | `i need to claim warranty` | `warranty_claim`; support flow |
-| ms | `saya mahu tuntut waranti` | `warranty_claim`; support flow in Malay |
-| zh | `我要申请保修` | `warranty_claim`; support flow in Mandarin |
+| en | `i need to claim warranty` | `warranty_support`; support flow |
+| ms | `saya mahu tuntut waranti` | `warranty_support`; support flow in Malay |
+| zh | `我要申请保修` | `warranty_support`; support flow in Mandarin |
 
 ## Order Tracking
 
@@ -151,6 +151,18 @@ Use this quick result format while testing:
 | en | `i need blue light lenses` | `lens_vision_solutions` or `ask_lens_type`; lens flow in English |
 | ms | `saya mahukan kanta blue light` | `lens_vision_solutions` or `ask_lens_type`; lens flow in Malay |
 | zh | `我需要防蓝光镜片` | `lens_vision_solutions` or `ask_lens_type`; lens flow in Mandarin |
+
+## FAQ vs Action Intents (Policy vs Request)
+
+| Language | Prompt | Expected |
+|---|---|---|
+| en | `what is your return policy` | `ask_faq`; FAQ answer about returns |
+| en | `i want to return my glasses` | `return_request`; support flow in English |
+| ms | `apakah polisi waranti anda` | `ask_faq`; FAQ answer about warranty in Malay |
+| ms | `saya mahu tuntut waranti` | `warranty_support`; support flow in Malay |
+| zh | `你们的退款政策是什么` | `ask_faq`; FAQ answer about refund in Mandarin |
+| zh | `我要退还我的眼镜` | `return_request`; support flow in Mandarin |
+
 
 ## Short Prompt Stability
 

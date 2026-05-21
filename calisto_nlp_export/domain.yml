@@ -29,7 +29,6 @@ intents:
   - reschedule_appointment
   - after_sales_support
   - order_tracking
-  - warranty_claim
   - order_support
   - repair_support
   - warranty_support
@@ -628,10 +627,6 @@ responses:
           payload: '/select_budget{"price_range":"Under RM100"}'
         - title: RM100 - RM250
           payload: '/select_budget{"price_range":"RM100 - RM250"}'
-        - title: RM250 - RM300
-          payload: '/select_budget{"price_range":"RM250 - RM300"}'
-        - title: Above RM300
-          payload: '/select_budget{"price_range":"Above RM300"}'
         - title: RM250 - RM300
           payload: '/select_budget{"price_range":"RM250 - RM300"}'
         - title: Above RM300
