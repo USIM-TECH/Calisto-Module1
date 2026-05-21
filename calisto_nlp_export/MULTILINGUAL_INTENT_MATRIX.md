@@ -25,7 +25,7 @@ Status guide:
 | `reschedule_appointment` | Change an appointment | good | partial | partial | More natural variants still needed |
 | `after_sales_support` | General post-purchase help | good | good | good | Core issues covered |
 | `order_tracking` | Track order status | good | partial | partial | More multilingual order-id phrasing recommended |
-| `warranty_claim` | Warranty issue/claim | good | partial | partial | Good starter set, still lighter than English |
+| `warranty_support` | Warranty issue/claim | good | partial | partial | Good starter set, still lighter than English |
 | `human_handoff` | Ask for a human | good | good | good | Strong enough for first pass |
 
 ## Product Discovery

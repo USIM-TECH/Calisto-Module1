@@ -268,15 +268,6 @@ rules:
       - action: lead_capture_form
       - active_loop: lead_capture_form
 
-  - rule: Start lead capture for warranty support
-    steps:
-      - intent: warranty_claim
-      - action: action_set_language
-      - action: utter_warranty_intro
-      - action: action_prefill_lead_capture
-      - action: lead_capture_form
-      - active_loop: lead_capture_form
-
   - rule: Start lead capture for human handoff
     steps:
       - intent: human_handoff

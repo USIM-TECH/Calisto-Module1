@@ -91,6 +91,17 @@ const SHOPPING_SIGNAL_KEYWORDS = [
   'below',
   'rm',
   'show me',
+  'sunglasses',
+  'sun glasses',
+  'shades',
+  'glasses',
+  'eyeglasses',
+  'spectacles',
+  'frames',
+  'frame',
+  'contacts',
+  'contact lenses',
+  'lenses',
   'find',
   'looking for',
   'i want',
@@ -119,11 +130,14 @@ const SHOPPING_SIGNAL_KEYWORDS = [
 
 function parseBudget(text: string): { budget_min?: number; budget_max?: number; budget_bucket?: string } | null {
   const normalized = text.toLowerCase().replace(/rm/g, '').replace(/\s+/g, ' ').trim()
+  const budgetIntentText = normalized
+    .replace(/\bluxury\s+sunglasses?\b/g, 'sunglasses')
+    .replace(/\bpremium\s+sunglasses?\b/g, 'sunglasses')
   const result: { budget_min?: number; budget_max?: number; budget_bucket?: string } = {}
 
-  if (/cheap|affordable|budget|low\s+price/i.test(normalized)) {
+  if (/cheap|affordable|budget|low\s+price/i.test(budgetIntentText)) {
     result.budget_bucket = 'low'
-  } else if (/premium|luxury|expensive|high\s+end/i.test(normalized)) {
+  } else if (/premium|luxury|expensive|high\s+end/i.test(budgetIntentText)) {
     result.budget_bucket = 'premium'
   }
 
@@ -152,8 +166,8 @@ function detectSupportKeyword(text: string): boolean {
   return SUPPORT_KEYWORDS.some((keyword) => normalized.includes(keyword))
 }
 
-function hasShoppingSignal(text: string, hasBudget: boolean, hasBrand: boolean): boolean {
-  if (hasBudget || hasBrand) return true
+function hasShoppingSignal(text: string, hasBudget: boolean): boolean {
+  if (hasBudget) return true
   const normalized = text.toLowerCase().replace(/\s+/g, ' ').trim()
   return SHOPPING_SIGNAL_KEYWORDS.some((keyword) => normalized.includes(keyword))
 }
@@ -185,6 +199,40 @@ const GENDER_MAP: Record<string, string> = {
   'women': 'women', 'womens': 'women', "women's": 'women', 'female': 'women', 'ladies': 'women',
   'unisex': 'unisex',
 }
+const BRAND_ALIAS_MAP: Record<string, string> = {
+  'acuvue': 'Acuvue',
+  'bausch & lomb': 'Bausch & Lomb',
+  'bausch and lomb': 'Bausch & Lomb',
+  'bausch lomb': 'Bausch & Lomb',
+  'bossini': 'Bossini',
+  'bottega veneta': 'Bottega Veneta',
+  'botega veneta': 'Bottega Veneta',
+  'bottega': 'Bottega Veneta',
+  'botega': 'Bottega Veneta',
+  'burberry': 'Burberry',
+  'calisto vision': 'Calisto Vision',
+  'calisto': 'Calisto Vision',
+  'cartier': 'Cartier',
+  'dior': 'Dior',
+  'gentle monster': 'Gentle Monster',
+  'gucci': 'Gucci',
+  'guci': 'Gucci',
+  'oakley': 'Oakley',
+  'oliver peoples': 'Oliver Peoples',
+  'persol': 'Persol',
+  'prada': 'Prada',
+  'projekt produkt': 'Projekt Produkt',
+  'projekt': 'Projekt Produkt',
+  'ray-ban': 'RayBan',
+  'ray ban': 'RayBan',
+  'rayban': 'RayBan',
+  'saint laurent': 'Saint Laurent',
+  'st laurent': 'Saint Laurent',
+  'ysl': 'Saint Laurent',
+  'tom ford': 'Tom Ford',
+  'tomford': 'Tom Ford',
+  'versace': 'Versace',
+}
 
 function extractFromMap(text: string, map: Record<string, string>): string | null {
   // Try longest keys first to match multi-word entries like "cat eye" before "cat"
@@ -205,11 +253,8 @@ function opportunisticSlotFilling(text: string): string | null {
   }
   
   const lower = text.toLowerCase()
-  const brandMatch = lower.match(/gucci|ray-ban|rayban|oakley|persol|prada|dior/i)
-  if (brandMatch) {
-    entities.brand = brandMatch[0].charAt(0).toUpperCase() + brandMatch[0].slice(1).toLowerCase()
-    if (entities.brand === 'Rayban') entities.brand = 'Ray-Ban'
-  }
+  const brand = extractFromMap(lower, BRAND_ALIAS_MAP)
+  if (brand) entities.brand = brand
   
   // Extract deterministic attributes — shape, material, color, gender
   const shape = extractFromMap(lower, SHAPE_MAP)
@@ -232,10 +277,18 @@ function opportunisticSlotFilling(text: string): string | null {
     entities.product_type = 'Contact Lenses'
   }
 
-  const hasProductSignal = Boolean(entities.product_type || entities.brand)
   const hasAttributeSignal = Boolean(shape || material || color || gender)
-  const allowOpportunistic = (hasProductSignal || hasAttributeSignal)
-    && hasShoppingSignal(text, Boolean(budget), Boolean(entities.brand))
+  const hasSearchDetail = Boolean(
+    (entities.brand && (entities.product_type || hasAttributeSignal || budget))
+    || (entities.product_type && (hasAttributeSignal || budget))
+    || hasAttributeSignal
+  )
+  if (entities.product_type && Object.keys(entities).length === 1 && hasShoppingSignal(text, false)) {
+    return `/select_product_type${JSON.stringify({ product_type: entities.product_type })}`
+  }
+
+  const allowOpportunistic = hasSearchDetail
+    && hasShoppingSignal(text, Boolean(budget))
 
   if (Object.keys(entities).length > 0 && allowOpportunistic) {
     // Default product_type if we have attributes but no explicit category

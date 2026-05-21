@@ -125,7 +125,7 @@ export class ProductSearchService {
     const wantsAllBrands = query.brand ? SHOW_ALL.has(query.brand.trim().toLowerCase()) : false
 
     const filtered = all.filter((p) => {
-      if (query.productType && !ciIncludes(p.productType, query.productType)) return false
+      if (query.productType && !ciEquals(p.productType, query.productType)) return false
       if (query.brand && !wantsAllBrands && !ciEquals(p.brand, query.brand)) return false
       if (query.frameColor && !ciEquals(p.frameColor, query.frameColor)) return false
       if (query.frameShape && !ciEquals(p.frameShape, query.frameShape)) return false
@@ -135,7 +135,7 @@ export class ProductSearchService {
 
     const window = resolveBudget(query)
     const budgetFiltered = filtered.filter((p) => {
-      if (window.min !== undefined && p.priceMyr < window.min) return false
+      if (window.min !== undefined && p.priceMyr <= window.min) return false
       if (window.max !== undefined && p.priceMyr > window.max) return false
       return true
     })
