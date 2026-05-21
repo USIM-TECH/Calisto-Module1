@@ -131,7 +131,7 @@ docker compose down
 ---
 ## Telegram Webhook Setup
 ```bash
-curl -X POST "https://api.telegram.org/botTELEGRAM_BOT_TOKEN_PLACEHOLDER/setWebhook" \
+curl -X POST "https://api.telegram.org/bot<Telegram-Bot-Token>/setWebhook" \
 -H "Content-Type: application/json" \
 -d '{
   "url": "https://YOUR-NGROK-URL.ngrok-free.app/webhooks/telegram"
@@ -318,6 +318,5 @@ rasa shell
 | Action server errors (`InvalidURL`) | Verify `endpoints.yml` has `url: "http://action-server:5055/webhook"` (no `${...}` syntax). |
 | Python version error (local setup) | Rasa 3.6.x needs Python 3.8–3.10. Use Docker instead. |
 | Port 5005 already in use | Stop existing containers: `docker compose down`, or kill the process: `lsof -ti :5005 \| xargs kill -9` |
-
 
 
