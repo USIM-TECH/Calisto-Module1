@@ -40,6 +40,34 @@ import { registerProductRoutes } from '../products/routes.js'
 import type { AppDependencies } from './dependencies.js'
 import { createWebsiteRateLimiter } from './website-rate-limiter.js'
 
+function applyCorsHeaders(
+  req: express.Request,
+  res: express.Response,
+  allowedOrigins: string[],
+): boolean {
+  const origin = typeof req.headers.origin === 'string' ? req.headers.origin : undefined
+  const allowAllOrigins = allowedOrigins.length === 0
+
+  if (allowAllOrigins && origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+  } else if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0] ?? '*')
+  } else if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+  }
+
+  res.setHeader('Vary', 'Origin')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST, PUT, PATCH, DELETE')
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).end()
+    return true
+  }
+
+  return false
+}
+
 export function createApp(dependencies: AppDependencies): Express {
   const {
     config,
@@ -70,30 +98,15 @@ export function createApp(dependencies: AppDependencies): Express {
     },
   }))
 
+  app.use(['/webchat', '/reports', '/admin', '/products', '/knowledge'], (req, res, next) => {
+    const handled = applyCorsHeaders(req, res, config.website.allowedOrigins)
+    if (handled) return
+    next()
+  })
+
   const router = express.Router()
   createWebhookRouter(router, { whatsapp, instagram, messenger, telegram, x, logger, runtimeStore })
   app.use(router)
-
-  app.use('/webchat', (_req, res, next) => {
-    const origin = typeof _req.headers.origin === 'string' ? _req.headers.origin : undefined
-    const allowedOrigins = config.website.allowedOrigins
-    const allowAllOrigins = allowedOrigins.length === 0
-    if (allowAllOrigins && origin) {
-      res.setHeader('Access-Control-Allow-Origin', origin)
-    } else if (!origin) {
-      res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0] ?? '*')
-    } else if (allowedOrigins.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin)
-    }
-    res.setHeader('Vary', 'Origin')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST')
-    if (_req.method === 'OPTIONS') {
-      res.status(204).end()
-      return
-    }
-    next()
-  })
 
   app.get('/webchat/test', (_req, res) => {
     res.type('html').send(renderWebchatPlaygroundHtml())
@@ -183,12 +196,14 @@ export function createApp(dependencies: AppDependencies): Express {
 
   app.get('/reports/leads', async (_req, res, next) => {
     try {
-      const [customers, summary] = await Promise.all([
+      const [customers, summary, identities] = await Promise.all([
         orchestrator.listCustomers(),
         orchestrator.getSummary(),
+        runtimeStore.listIdentities(),
       ])
       res.json({
         customers,
+        identities,
         summary,
         services: {
           hubspot: Boolean(hubspot),
