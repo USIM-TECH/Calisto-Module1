@@ -83,6 +83,7 @@ export function renderProductsAdminHtml({
       <header class="page-header">
         <div class="page-title">Product Catalogue</div>
         <div class="header-actions">
+          <button id="importBtn" class="btn" type="button">Import CSV</button>
           <button id="addBtn" class="btn dark" type="button">+ Add Product</button>
         </div>
       </header>
@@ -224,6 +225,40 @@ export function renderProductsAdminHtml({
       </div>
     </div>
 
+    <div id="importBackdrop" class="modal-backdrop" aria-hidden="true">
+      <div class="modal import-modal" role="dialog" aria-modal="true" aria-labelledby="importTitle" onclick="event.stopPropagation()">
+        <header class="modal-head">
+          <h2 id="importTitle">Import products from CSV</h2>
+          <button type="button" id="closeImport" class="btn link" aria-label="Close">x</button>
+        </header>
+        <form id="importForm" class="modal-form">
+          <p style="margin:0;color:#4b5563;line-height:1.55;font-size:0.88rem;">
+            Upload a CSV with the same columns as the catalogue export.
+            Required: <code>product_id</code>, <code>product_name</code>, <code>category</code>,
+            <code>product_type</code>, <code>brand</code>, <code>price_myr</code>.
+          </p>
+          <p style="margin:0;">
+            <a href="/admin/products/api/import/template.csv" class="btn link" style="padding:0;font-weight:700;">Download template CSV</a>
+          </p>
+          <label>CSV file *
+            <input name="file" type="file" accept=".csv,text/csv" required />
+          </label>
+          <fieldset class="import-mode">
+            <legend>If product ID already exists</legend>
+            <label class="radio"><input type="radio" name="mode" value="skip" checked /> Skip row</label>
+            <label class="radio"><input type="radio" name="mode" value="update" /> Update existing product</label>
+          </fieldset>
+          <div id="importResult" class="import-result" hidden></div>
+          <div id="importRowErrors" class="import-row-errors" hidden></div>
+          <div id="importError" class="form-error" hidden></div>
+          <div class="modal-actions">
+            <button type="button" id="cancelImport" class="btn">Cancel</button>
+            <button type="submit" id="importSubmit" class="btn dark">Import</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <style>
       .table-card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; }
       .data-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
@@ -259,6 +294,18 @@ export function renderProductsAdminHtml({
       .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
       .form-error { color: var(--danger-text); background: var(--danger); border-radius: 10px; padding: 10px 12px; font-size: 0.85rem; font-weight: 600; }
       #imagePreviewWrap img { max-width: 120px; max-height: 120px; border-radius: 10px; border: 1px solid var(--line); }
+      .import-modal { max-width: 560px; }
+      .import-mode { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+      .import-mode legend { padding: 0 8px; font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280; }
+      .import-mode .radio { flex-direction: row; align-items: center; gap: 8px; margin-top: 8px; }
+      .import-result { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; border-radius: 10px; padding: 12px 14px; font-size: 0.88rem; line-height: 1.5; }
+      .import-result.has-errors { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
+      .import-row-errors { margin-top: 10px; max-height: 220px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: #fafafa; padding: 10px 12px; font-size: 0.82rem; }
+      .import-row-errors h4 { margin: 0 0 8px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; }
+      .import-row-errors ul { margin: 0; padding-left: 18px; }
+      .import-row-errors li { margin-bottom: 6px; line-height: 1.45; color: #374151; }
+      .import-error-details { margin: 8px 0 0; padding-left: 18px; font-size: 0.85rem; line-height: 1.5; }
+      .import-error-details li { margin-bottom: 4px; }
       @media (max-width: 760px) { .field-grid { grid-template-columns: 1fr; } }
     </style>
 
@@ -282,6 +329,57 @@ export function renderProductsAdminHtml({
         const idField = document.getElementById('field-productIdEditable');
         const previewWrap = document.getElementById('imagePreviewWrap');
         const previewImg = document.getElementById('imagePreview');
+
+        const importBtn = document.getElementById('importBtn');
+        const importBackdrop = document.getElementById('importBackdrop');
+        const closeImport = document.getElementById('closeImport');
+        const cancelImport = document.getElementById('cancelImport');
+        const importForm = document.getElementById('importForm');
+        const importSubmit = document.getElementById('importSubmit');
+        const importError = document.getElementById('importError');
+        const importResult = document.getElementById('importResult');
+        const importRowErrors = document.getElementById('importRowErrors');
+
+        function clearImportFeedback() {
+          importError.hidden = true;
+          importError.innerHTML = '';
+          importResult.hidden = true;
+          importResult.textContent = '';
+          importResult.classList.remove('has-errors');
+          importRowErrors.hidden = true;
+          importRowErrors.innerHTML = '';
+        }
+
+        function showImportFileError(body) {
+          let html = '<div>' + (body.error || 'Import failed') + '</div>';
+          if (body.code === 'MISSING_COLUMNS' && Array.isArray(body.missingColumns)) {
+            html += '<ul class="import-error-details"><li><strong>Missing:</strong> ' + body.missingColumns.join(', ') + '</li>';
+            if (Array.isArray(body.foundColumns) && body.foundColumns.length) {
+              html += '<li><strong>Found in file:</strong> ' + body.foundColumns.join(', ') + '</li>';
+            }
+            if (Array.isArray(body.requiredColumns)) {
+              html += '<li><strong>Required:</strong> ' + body.requiredColumns.join(', ') + '</li>';
+            }
+            html += '</ul>';
+          } else if (body.code === 'NO_DATA_ROWS') {
+            html += '<ul class="import-error-details"><li>Add at least one product row below the header.</li></ul>';
+          }
+          importError.innerHTML = html;
+          importError.hidden = false;
+        }
+
+        function showImportRowErrors(rows) {
+          if (!rows || !rows.length) return;
+          const max = 20;
+          const slice = rows.slice(0, max);
+          const items = slice.map((row) => {
+            const id = row.productId ? ' (' + row.productId + ')' : '';
+            return '<li><strong>Line ' + row.line + '</strong>' + id + ': ' + row.reason + '</li>';
+          }).join('');
+          const more = rows.length > max ? '<li>…and ' + (rows.length - max) + ' more</li>' : '';
+          importRowErrors.innerHTML = '<h4>Row errors</h4><ul>' + items + more + '</ul>';
+          importRowErrors.hidden = false;
+        }
 
         let editingId = null;
 
@@ -350,8 +448,61 @@ export function renderProductsAdminHtml({
         cancelBtn.addEventListener('click', closeModalNow);
         backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeModalNow(); });
 
+        function openImportModal() {
+          importForm.reset();
+          clearImportFeedback();
+          importBackdrop.classList.add('is-open');
+          importBackdrop.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeImportModal() {
+          importBackdrop.classList.remove('is-open');
+          importBackdrop.setAttribute('aria-hidden', 'true');
+        }
+
+        importBtn.addEventListener('click', openImportModal);
+        closeImport.addEventListener('click', closeImportModal);
+        cancelImport.addEventListener('click', closeImportModal);
+        importBackdrop.addEventListener('click', (e) => { if (e.target === importBackdrop) closeImportModal(); });
+
+        importForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          importSubmit.disabled = true;
+          clearImportFeedback();
+          try {
+            const fd = new FormData(importForm);
+            const res = await fetch('/admin/products/api/import', { method: 'POST', body: fd });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              showImportFileError(body);
+              return;
+            }
+            const parts = [
+              body.inserted + ' added',
+              body.updated ? body.updated + ' updated' : null,
+              body.skipped ? body.skipped + ' skipped' : null,
+              body.invalid ? body.invalid + ' invalid' : null,
+            ].filter(Boolean);
+            importResult.textContent = 'Import finished: ' + parts.join(', ') + ' (' + body.total + ' rows in file).';
+            if (body.invalid > 0) {
+              importResult.classList.add('has-errors');
+              showImportRowErrors(body.invalidRows || []);
+            }
+            importResult.hidden = false;
+            if (body.inserted > 0 || body.updated > 0) {
+              setTimeout(() => window.location.reload(), body.invalid > 0 ? 2500 : 1200);
+            }
+          } catch (err) {
+            importError.textContent = err.message || String(err);
+            importError.hidden = false;
+          } finally {
+            importSubmit.disabled = false;
+          }
+        });
+
         document.addEventListener('keydown', (e) => {
           if (e.key === 'Escape' && backdrop.classList.contains('is-open')) closeModalNow();
+          if (e.key === 'Escape' && importBackdrop.classList.contains('is-open')) closeImportModal();
         });
 
         rowsEl.addEventListener('click', async (e) => {

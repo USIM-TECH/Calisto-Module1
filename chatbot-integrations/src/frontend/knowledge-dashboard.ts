@@ -101,8 +101,8 @@ export function renderKnowledgeAdminHtml({
             <input name="source" id="field-source" required placeholder="faq_customer_support.docx" />
             <span class="hint">Basename only (no folders)</span>
           </label>
-          <label>Upload file (PDF, DOCX, CSV, TXT — max 5 MB)
-            <input name="file" type="file" accept=".pdf,.docx,.csv,.txt,application/pdf,text/plain,text/csv" />
+          <label>Upload file (PDF, DOCX, or TXT — max 5 MB)
+            <input name="file" type="file" accept=".pdf,.docx,.txt,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
           </label>
           <p class="or-divider">— or paste text below —</p>
           <label class="full">Text content
@@ -169,6 +169,18 @@ export function renderKnowledgeAdminHtml({
         let editingSource = null;
         const CHUNK_SEP = '\\n\\n---\\n\\n';
 
+        function documentTextFromItems(items) {
+          return (items || []).map((row) => row.text || '').filter(Boolean).join(CHUNK_SEP);
+        }
+
+        const ALLOWED_UPLOAD = /\\.(pdf|docx|txt)$/i;
+
+        function assertAllowedUpload(file) {
+          if (!file || !ALLOWED_UPLOAD.test(file.name)) {
+            throw new Error('Only PDF, DOCX, and TXT files can be uploaded.');
+          }
+        }
+
         searchInput.addEventListener('input', () => {
           const q = (searchInput.value || '').trim().toLowerCase();
           rowsEl.querySelectorAll('tr[data-source]').forEach((row) => {
@@ -190,8 +202,7 @@ export function renderKnowledgeAdminHtml({
             fetch('/admin/knowledge/api/documents/' + encodeURIComponent(source) + '?limit=500')
               .then((r) => r.json())
               .then((data) => {
-                const parts = (data.items || []).map((row) => row.text || '');
-                textField.value = parts.join(CHUNK_SEP);
+                textField.value = documentTextFromItems(data.items);
               })
               .catch(() => { textField.value = ''; alert('Failed to load document'); });
           } else {
@@ -227,17 +238,16 @@ export function renderKnowledgeAdminHtml({
           if (!tr) return;
           const source = tr.dataset.source;
           if (action === 'preview') {
-            previewTitle.textContent = 'Preview: ' + source;
+            previewTitle.textContent = source;
             previewBody.textContent = 'Loading…';
             previewPanel.hidden = false;
-            const res = await fetch('/admin/knowledge/api/documents/' + encodeURIComponent(source) + '?limit=50');
+            const res = await fetch('/admin/knowledge/api/documents/' + encodeURIComponent(source) + '?limit=500');
             const data = await res.json();
-            const parts = (data.items || []).map((row, i) => '--- chunk ' + (i + 1) + ' ---\\n' + (row.text || ''));
-            previewBody.textContent = parts.join('\\n\\n') || '(empty)';
+            previewBody.textContent = documentTextFromItems(data.items) || '(empty)';
           } else if (action === 'edit') {
             openModal(source);
           } else if (action === 'delete') {
-            if (!confirm('Delete document "' + source + '" and all its chunks?')) return;
+            if (!confirm('Delete document "' + source + '"?')) return;
             const res = await fetch('/admin/knowledge/api/documents/' + encodeURIComponent(source), { method: 'DELETE' });
             if (res.ok) window.location.reload();
             else alert('Delete failed: ' + res.status);
@@ -254,7 +264,10 @@ export function renderKnowledgeAdminHtml({
             const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
             const text = (textField.value || '').trim();
             if (!hasFile && !text) {
-              throw new Error('Provide a file or pasted text');
+              throw new Error('Upload a PDF, DOCX, or TXT file, or paste text below');
+            }
+            if (hasFile) {
+              assertAllowedUpload(fileInput.files[0]);
             }
             if (!hasFile) {
               fd.delete('file');

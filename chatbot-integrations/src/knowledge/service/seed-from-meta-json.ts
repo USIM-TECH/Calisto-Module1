@@ -16,6 +16,12 @@ const DEFAULT_META = path.resolve(
   'calisto_nlp_export', 'knowledge_base', 'index', 'calisto_meta.json',
 )
 
+/** Product catalog CSVs belong in /admin/products, not the knowledge base. */
+const EXCLUDED_SOURCES = new Set([
+  'calisto_product_catalog_500.csv',
+  'product_catalog_calisto.csv',
+])
+
 async function main(): Promise<void> {
   const metaPath = process.env.KB_INDEX_META_PATH ?? DEFAULT_META
   const raw = await fs.readFile(metaPath, 'utf-8')
@@ -30,12 +36,20 @@ async function main(): Promise<void> {
     const rec = entry as Record<string, unknown>
     const source = typeof rec.source === 'string' ? rec.source : ''
     const text = typeof rec.text === 'string' ? rec.text : ''
-    if (!source || !text) continue
+    if (!source || !text || EXCLUDED_SOURCES.has(source)) continue
     items.push({ chunkHash: chunkHash(source, text), source, text })
   }
 
   const prisma = new PrismaClient()
   const store = new PrismaKnowledgeChunkStore(prisma)
+
+  for (const source of EXCLUDED_SOURCES) {
+    if (await store.documentExists(source)) {
+      await store.deleteDocument(source)
+      console.log(`[seed:knowledge] removed excluded document: ${source}`)
+    }
+  }
+
   const n = await store.upsertMany(items)
   const docCount = (await store.listDocuments()).length
   console.log(`[seed:knowledge] meta=${metaPath} chunks=${n} documents=${docCount}`)

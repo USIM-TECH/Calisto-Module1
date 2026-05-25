@@ -5,6 +5,7 @@ import { renderKnowledgeAdminHtml } from '../frontend/knowledge-dashboard.js'
 import {
   chunksFromFile,
   chunksFromPlainText,
+  isAllowedKnowledgeUpload,
   sanitizeSource,
 } from './service/ingest.js'
 import type { KnowledgeChunkStore } from './storage/knowledge-chunk-store.interface.js'
@@ -15,6 +16,13 @@ const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_UPLOAD_BYTES },
+  fileFilter: (_req, file, cb) => {
+    if (isAllowedKnowledgeUpload(file.originalname)) {
+      cb(null, true)
+    } else {
+      cb(new Error('Only PDF, DOCX, and TXT files are allowed'))
+    }
+  },
 })
 
 interface RegisterArgs {
@@ -242,6 +250,10 @@ export function registerKnowledgeRoutes({ app, store, logger }: RegisterArgs): v
         res.status(400).json({ error: `File too large (max ${MAX_UPLOAD_BYTES / (1024 * 1024)} MB)` })
         return
       }
+    }
+    if (err?.message === 'Only PDF, DOCX, and TXT files are allowed') {
+      res.status(400).json({ error: err.message })
+      return
     }
     next(err)
   })
