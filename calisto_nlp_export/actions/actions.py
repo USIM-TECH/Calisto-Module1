@@ -1538,18 +1538,11 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
     )
 
     actions = []
-    if store_location or city:
-        actions.append({
-            "type": "url",
-            "title": tr(lang, "Open Store Map", "Buka Peta Kedai", "打开门店地图"),
-            "value": build_maps_url(store_location, city, "Calisto Eyewear"),
-        })
-    else:
-        actions.append({
-            "type": "url",
-            "title": tr(lang, "Open Product Link", "Buka Pautan Produk", "打开产品链接"),
-            "value": "https://www.lenskart.com/vincent-chase-vc-s11748-c8-sunglasses.html",
-        })
+    actions.append({
+        "type": "url",
+        "title": tr(lang, "Open Product Link", "Buka Pautan Produk", "打开产品链接"),
+        "value": "https://www.lenskart.com/vincent-chase-vc-s11748-c8-sunglasses.html",
+    })
 
     actions.append({"type": "postback", "title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "value": "/book_appointment"})
     actions.append({
