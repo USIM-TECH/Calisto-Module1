@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import random
 import re
 import urllib.error
 import urllib.parse
@@ -347,6 +348,13 @@ class ServiceGateway:
             return products if isinstance(products, list) else None
         return None
 
+    def list_products(self) -> Optional[List[Dict[str, Any]]]:
+        response = self.get_json("/admin/products/api?limit=500")
+        if isinstance(response, dict):
+            products = response.get("items")
+            return products if isinstance(products, list) else None
+        return response if isinstance(response, list) else None
+
     def search_stores(self, location: str) -> Optional[List[Dict[str, Any]]]:
         response = self._request("POST", "/stores/search", {"location": location})
         if response is None:
@@ -365,9 +373,51 @@ class ServiceGateway:
 gateway = ServiceGateway()
 
 
-@lru_cache(maxsize=1)
+PRODUCT_FIELD_ALIASES = {
+    "productId": "product_id",
+    "productName": "product_name",
+    "productType": "product_type",
+    "priceMyr": "price_myr",
+    "frameMaterial": "frame_material",
+    "frameShape": "frame_shape",
+    "frameColor": "frame_color",
+    "uvProtection": "uv_protection",
+    "lensColor": "lens_color",
+    "frameStyle": "frame_style",
+    "lensType": "lens_type",
+    "lensFeature": "lens_feature",
+    "lensDuration": "lens_duration",
+    "storeLocation": "store_location",
+    "stockStatus": "stock_status",
+    "newArrival": "new_arrival",
+    "fallbackImageUrl": "fallback_image_url",
+}
+
+
+def normalize_product_record(product: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = dict(product)
+    for source_key, target_key in PRODUCT_FIELD_ALIASES.items():
+        if target_key not in normalized and source_key in normalized:
+            normalized[target_key] = normalized[source_key]
+    return normalized
+
+
 def load_catalogue() -> pd.DataFrame:
-    df = pd.read_csv(CATALOGUE_PATH).fillna("")
+    """Load product catalogue from the remote DB-backed integration API."""
+    remote_products: Any = gateway.list_products()
+    if isinstance(remote_products, list) and remote_products:
+        # Ensure we have a list of flat dictionaries before creating a DataFrame.
+        if all(isinstance(p, dict) for p in remote_products):
+            df = pd.DataFrame([normalize_product_record(p) for p in remote_products]).fillna("")
+            if "price_myr" in df.columns:
+                df["price_myr"] = pd.to_numeric(df["price_myr"], errors="coerce")
+        else:
+            raise RuntimeError("Remote product catalogue returned invalid product records.")
+    else:
+        raise RuntimeError(
+            "Remote product catalogue unavailable. "
+            "Set BACKEND_API_BASE_URL to the integration API and ensure it is using STORAGE_BACKEND=postgres."
+        )
 
     # Normalize common string fields early so downstream filtering is stable.
     for col in ["brand", "product_name", "product_type", "category", "frame_material", "frame_shape", "frame_color"]:
@@ -428,15 +478,37 @@ def load_kb_metadata() -> List[Dict[str, Any]]:
         if out:
             return out
 
-    if not os.path.exists(KB_INDEX_META_PATH):
-        return []
-
-    with open(KB_INDEX_META_PATH, "r", encoding="utf-8") as handle:
-        payload = json.load(handle)
-
-    if isinstance(payload, list):
-        return [item for item in payload if isinstance(item, dict)]
     return []
+
+
+def clean_faq_answer(text: str, requested_group: Optional[str] = None) -> str:
+    answer = " ".join(str(text or "").split()).strip()
+    if not answer:
+        return ""
+
+    question_patterns = {
+        "refund": r"Q:\s*What is your refund or return policy\?\s*A:\s*",
+        "warranty": r"Q\d*\.?\s*[^?]*warranty[^?]*\?\s*A:\s*",
+        "booking": r"Q\d*\.?\s*[^?]*(?:book|appointment|eye test)[^?]*\?\s*A:\s*",
+        "after_sales": r"Q\d*\.?\s*[^?]*(?:after-sales|after sales|support|adjustment)[^?]*\?\s*A:\s*",
+        "stores": r"Q\d*\.?\s*[^?]*(?:stores located|store locator|location)[^?]*\?\s*A:\s*",
+    }
+    patterns = []
+    if requested_group and requested_group in question_patterns:
+        patterns.append(question_patterns[requested_group])
+    patterns.append(r"Q\d*\.?\s*[^?]+\?\s*A:\s*")
+
+    for pattern in patterns:
+        matches = list(re.finditer(pattern, answer, flags=re.IGNORECASE))
+        if matches:
+            answer = answer[matches[-1].end():].strip()
+            break
+
+    next_question = re.search(r"\s+Q\d*\.?\s*[^?]+\?\s*A:\s*", answer, flags=re.IGNORECASE)
+    if next_question:
+        answer = answer[:next_question.start()].strip()
+
+    return answer
 
 
 def parse_budget_from_text(text: str) -> Optional[Dict[str, Any]]:
@@ -658,6 +730,10 @@ CANONICAL_ALIASES: Dict[str, Dict[str, str]] = {
         "store visit": "Store Visit",
         "after sales support": "After-sales Support",
         "after sales": "After-sales Support",
+        "appointment booking": "Appointment Booking",
+        "appointment reschedule": "Appointment Reschedule",
+        "consultant support": "Consultant Support",
+        "order tracking": "Order Tracking",
     },
 }
 
@@ -720,9 +796,77 @@ SUPPORT_INTENT_MAP = {
 
 SUPPORT_INTENTS = set(SUPPORT_INTENT_MAP.keys()) | {
     "after_sales_support",
-    "warranty_claim",
+    "warranty_support",
     "order_tracking",
 }
+
+# ── CTA completion response variants ─────────────────────────────────────────
+# Five distinct, premium-tone responses per CTA flow (English only).
+# Malay / Chinese variants are handled inline via tr() where needed.
+
+_RESPONSES_BOOK_VISIT = [
+    "Your visit request is confirmed. We'll share the appointment details at the contact you've provided.",
+    "All set. Our team will reach out shortly to confirm your appointment and everything you need to know.",
+    "Your appointment has been requested. You'll receive a confirmation at the contact details you shared.",
+    "Noted. Expect to hear from us soon with your visit confirmation and store details.",
+    "Your visit is being arranged. We'll be in touch with all the details very soon.",
+]
+
+_RESPONSES_CONSULT_NOW = [
+    "Noted. One of our advisors will be in touch with you shortly.",
+    "Your consultation request is in. Our team will contact you at the details you've shared.",
+    "Received. A Calisto advisor will reach out to you soon.",
+    "All set. Expect a call or message from one of our specialists shortly.",
+    "Our team has your details. An advisor will connect with you very soon.",
+]
+
+_RESPONSES_SUPPORT = [
+    "Your support request has been logged. Our team will follow up with the next steps for your case.",
+    "We've noted your request. A member of our support team will be in touch with you shortly.",
+    "Your case is with us. Someone from our support team will reach out soon to assist.",
+    "Received. Our team will review your request and connect with you shortly.",
+    "Your request has been recorded. A support specialist will follow up with you soon.",
+]
+
+_RESPONSES_GENERAL = [
+    "Your details are with us. Our team will be in touch soon.",
+    "All noted. Expect to hear from our team shortly.",
+    "We have everything we need. Someone from our team will follow up with you.",
+    "Received. Our team will connect with you soon.",
+    "Your details are noted. We'll be in touch to take things forward.",
+]
+
+_SUPPORT_SERVICE_NAMES = {
+    "Return Request",
+    "Refund Request",
+    "Exchange Request",
+    "Warranty Support",
+    "Repair Support",
+    "Order Tracking/Support",
+    "Order Tracking",
+    "After-sales Support",
+}
+
+_BOOK_VISIT_SERVICE_NAMES = {"Store Visit", "Appointment Booking", "Appointment Reschedule"}
+
+_CONSULT_SERVICE_NAMES = {
+    "Eyewear Recommendation",
+    "Lens Consultation",
+    "Designer Frames",
+    "Luxury Sunglasses",
+    "Consultant Support",
+}
+
+
+def _pick_completion_response(preferred_service: str, current_flow: str, latest_intent: str) -> str:
+    """Return a contextual completion message based on the active CTA flow."""
+    if current_flow == "support_flow" or preferred_service in _SUPPORT_SERVICE_NAMES:
+        return random.choice(_RESPONSES_SUPPORT)
+    if preferred_service in _BOOK_VISIT_SERVICE_NAMES or latest_intent == "book_appointment":
+        return random.choice(_RESPONSES_BOOK_VISIT)
+    if preferred_service in _CONSULT_SERVICE_NAMES or latest_intent in {"capture_lead", "human_handoff"}:
+        return random.choice(_RESPONSES_CONSULT_NOW)
+    return random.choice(_RESPONSES_GENERAL)
 
 SHOPPING_INTENTS = {
     "browse_eyewear",
@@ -881,7 +1025,7 @@ def detect_support_intent(tracker) -> tuple[str, str, bool]:
     intent_name = intent.get("name", "")
     confidence = intent.get("confidence", 0.0)
     
-    support_intents = set(SUPPORT_INTENT_MAP.keys()) | {"after_sales_support", "warranty_claim"}
+    support_intents = set(SUPPORT_INTENT_MAP.keys()) | {"after_sales_support", "warranty_support"}
     if confidence >= 0.7 and intent_name in support_intents:
         return (intent_name, "high_confidence_intent", False)
 
@@ -1036,14 +1180,21 @@ def route_support_flow(
         "refund_request": "Refund Request",
         "exchange_request": "Exchange Request",
         "warranty_support": "Warranty Support",
-        "warranty_claim": "Warranty Support",
+        "warranty_support": "Warranty Support",
         "repair_support": "Repair Support",
         "order_support": "Order Tracking/Support",
         "order_tracking": "Order Tracking/Support"
     }
     preferred_service = service_map.get(intent_name, "After-sales Support")
-    
-    dispatcher.utter_message(text=f"I understand you need help with a {preferred_service.lower()}. Let me connect you with our support team.")
+
+    _support_intros = [
+        f"Of course. I'll connect you with our support team for your {preferred_service.lower()} right away.",
+        f"Understood. Let me get our support team on your {preferred_service.lower()}.",
+        f"No problem. I'm routing your {preferred_service.lower()} to the right team now.",
+        f"Got it. Our support team will take care of your {preferred_service.lower()} from here.",
+        f"Noted. I'm passing your {preferred_service.lower()} to a specialist who can assist you.",
+    ]
+    dispatcher.utter_message(text=random.choice(_support_intros))
 
     events = ActionPrefillLeadCapture().run(dispatcher, tracker, {})
     
@@ -1240,7 +1391,6 @@ def build_placeholder_image(label: str, theme: str = "eyewear") -> str:
         f"&text={prefix}%0A%0A{safe_label}"
     )
 
-
 def choose_product_image_theme(product_type: str, preferred_service: Optional[str]) -> str:
     product_type_lower = str(product_type or "").lower()
     preferred_service_lower = str(preferred_service or "").lower()
@@ -1270,6 +1420,72 @@ def lead_buttons(lang: str, preferred_service: Optional[str] = None) -> List[Dic
     ]
 
 
+def stylist_recommendation(product: Dict[str, Any], lang: str = "en") -> str:
+    product_type = str(product.get("product_type") or product.get("category") or "").strip()
+    material = titleize(product.get("frame_material"))
+    shape = titleize(product.get("frame_shape"))
+    lens_feature = str(product.get("lens_feature") or "").strip()
+
+    if "contact" in product_type.lower():
+        duration = str(product.get("lens_duration") or "").strip()
+        if duration:
+            return tr(
+                lang,
+                f"This contact lens is a practical pick for {duration.lower()} comfort and easy daily wear.",
+                f"Kanta sentuh ini sesuai untuk keselesaan {duration.lower()} dan pemakaian harian yang mudah.",
+                f"这款隐形眼镜适合 {duration.lower()} 佩戴需求，兼顾舒适与日常便利。",
+            )
+        return tr(
+            lang,
+            "This contact lens is a reliable option for clear, comfortable daily wear.",
+            "Kanta sentuh ini ialah pilihan yang boleh dipercayai untuk pemakaian harian yang jelas dan selesa.",
+            "这款隐形眼镜适合追求清晰视野与日常舒适佩戴的人群。",
+        )
+
+    if "sunglass" in product_type.lower():
+        if shape and material:
+            return tr(
+                lang,
+                f"This {material.lower()} {shape.lower()} sunglass works well for polished outdoor wear.",
+                f"Cermin mata hitam {shape.lower()} daripada {material.lower()} ini sesuai untuk gaya luaran yang kemas.",
+                f"这款 {material.lower()} {shape.lower()} 太阳镜很适合利落的户外造型。",
+            )
+        return tr(
+            lang,
+            "This sunglass is a strong option for elevated outdoor styling and comfortable sun coverage.",
+            "Cermin mata hitam ini sesuai untuk gaya luaran yang lebih premium dan perlindungan cahaya matahari yang selesa.",
+            "这款太阳镜兼顾高级户外造型与舒适遮阳表现。",
+        )
+
+    if lens_feature:
+        return tr(
+            lang,
+            f"This frame is ideal if you want everyday comfort with {lens_feature.lower()} support.",
+            f"Bingkai ini sesuai jika anda mahukan keselesaan harian dengan sokongan {lens_feature.lower()}.",
+            f"这款镜框适合需要日常舒适感并搭配 {lens_feature.lower()} 功能的人群。",
+        )
+    if material and shape:
+        return tr(
+            lang,
+            f"This {material.lower()} {shape.lower()} frame is ideal for lightweight all-day wear.",
+            f"Bingkai {shape.lower()} daripada {material.lower()} ini sesuai untuk pemakaian ringan sepanjang hari.",
+            f"这款 {material.lower()} {shape.lower()} 镜框适合轻盈的全天佩戴。",
+        )
+    if shape:
+        return tr(
+            lang,
+            f"This {shape.lower()} frame is a versatile choice for refined daily wear.",
+            f"Bingkai {shape.lower()} ini ialah pilihan serba boleh untuk gaya harian yang kemas.",
+            f"这款 {shape.lower()} 镜框适合精致的日常佩戴风格。",
+        )
+    return tr(
+        lang,
+        "This style is a balanced choice for comfortable day-to-day wear.",
+        "Gaya ini ialah pilihan seimbang untuk pemakaian harian yang selesa.",
+        "这款式是兼顾舒适与日常搭配的稳妥选择。",
+    )
+
+
 def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any], preferred_service: Optional[str], lang: str = "en") -> None:
     brand = str(product.get("brand") or "Brand").strip()
     name = str(product.get("product_name") or "Product").strip()
@@ -1295,24 +1511,39 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
     rating = product.get("rating")
     store_location = str(product.get("store_location") or "").strip()
     city = str(product.get("city") or "").strip()
-
-    detail_parts = [part for part in [gender, material, shape, color] if part]
+    detail_parts = [part for part in [f"Brand: {brand}", gender, material, shape, color] if part]
+    stylist_note = stylist_recommendation(product, lang)
     subtitle_sections = [
         tr(lang, f"Price: RM{price:.2f}", f"Harga: RM{price:.2f}", f"价格：RM{price:.2f}"),
         tr(lang, f"Category: {product_type}", f"Kategori: {product_type}", f"类别：{product_type}") if product_type else "",
         tr(lang, f"Specs: {' • '.join(detail_parts)}", f"Spesifikasi: {' • '.join(detail_parts)}", f"规格：{' • '.join(detail_parts)}") if detail_parts else "",
         tr(lang, f"Availability: {stock}", f"Ketersediaan: {stock}", f"库存：{stock}") if stock else "",
         tr(lang, f"Rating: {rating}/5", f"Penilaian: {rating}/5", f"评分：{rating}/5") if rating not in (None, "") else "",
+        tr(lang, f"Stylist note: {stylist_note}", f"Cadangan stylist: {stylist_note}", f"造型建议：{stylist_note}") if stylist_note else "",
         tr(lang, f"Store: {store_location}, {city}".strip(", "), f"Kedai: {store_location}, {city}".strip(", "), f"门店：{store_location}, {city}".strip(", ")) if (store_location or city) else "",
     ]
 
+    theme = choose_product_image_theme(product_type, preferred_service)
+    raw_image = product.get("imageUrl") or product.get("image_url")
+    fallback_image = (
+        product.get("fallback_image_url")
+        or product.get("fallbackImageUrl")
+        or product.get("fallback_url")
+        or product.get("fallbackUrl")
+    )
+    image_url = (
+        _resolve_card_image_url(raw_image)
+        or _resolve_card_image_url(fallback_image)
+        or build_placeholder_image(f"{brand} {name}", theme)
+    )
+
     actions = []
-    if store_location or city:
-        actions.append({
-            "type": "url",
-            "title": tr(lang, "Open Store Map", "Buka Peta Kedai", "打开门店地图"),
-            "value": build_maps_url(store_location, city, "Calisto Eyewear"),
-        })
+    actions.append({
+        "type": "url",
+        "title": tr(lang, "Open Product Link", "Buka Pautan Produk", "打开产品链接"),
+        "value": "https://www.lenskart.com/vincent-chase-vc-s11748-c8-sunglasses.html",
+    })
+
     actions.append({"type": "postback", "title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "value": "/book_appointment"})
     actions.append({
         "type": "postback",
@@ -1320,17 +1551,12 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
         "value": lead_buttons(lang, preferred_service)[-1]["payload"],
     })
 
-    theme = choose_product_image_theme(product_type, preferred_service)
-
-    raw_image = product.get("imageUrl") or product.get("image_url")
-    image_url = _resolve_card_image_url(raw_image) or build_placeholder_image(f"{brand} {name}", theme)
-
     dispatcher.utter_message(
         json_message={
             "type": "card",
             "title": f"{brand} - {name}",
             "subtitle": "\n".join(line for line in subtitle_sections if line),
-            "imageUrl": build_placeholder_image(f"{brand} {name}", theme),
+            "imageUrl": image_url,
             "actions": actions,
         }
     )
@@ -1342,10 +1568,15 @@ def _resolve_card_image_url(raw: Any) -> Optional[str]:
     from the public internet. Already-absolute URLs are returned untouched.
     Empty/missing values return None so the caller can fall back to the
     placeholder image."""
-    if not raw:
+    if raw is None:
         return None
+    try:
+        if pd.isna(raw):
+            return None
+    except (TypeError, ValueError):
+        pass
     value = str(raw).strip()
-    if not value:
+    if not value or value.lower() in {"none", "null", "nan"}:
         return None
     if value.startswith("http://") or value.startswith("https://"):
         return value
@@ -1393,7 +1624,7 @@ def infer_service_from_intent(tracker: Tracker) -> str:
         "reschedule_appointment": "Appointment Reschedule",
         "after_sales_support": "After-sales Support",
         "order_tracking": "Order Tracking",
-        "warranty_claim": "Warranty Support",
+        "warranty_support": "Warranty Support",
         "human_handoff": "Consultant Support",
     }
     if intent_name in service_map:
@@ -1738,6 +1969,33 @@ class ActionGreetOrSearch(Action):
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
         raw_text = tracker.latest_message.get("text") or ""
+        intent = get_latest_intent(tracker)
+        intent_name = intent.get("name") if intent else ""
+
+        # Check if the user typed a free-text message (not a payload)
+        is_free_text_query = not raw_text.startswith("/")
+
+        # If it's a free text query for products, show results directly
+        if is_free_text_query and intent_name in {"search_product", "browse_eyewear", "select_product_type", "greet"}:
+            product_type = tracker.get_slot("product_type") or detect_category_from_text(raw_text)
+
+            # If they just said "hi", don't force a product search, let the regular greeting happen
+            if not product_type and intent_name == "greet":
+                pass
+            # If they asked for a product (even without a specific intent matched), show it
+            elif product_type or intent_name in {"search_product", "browse_eyewear", "select_product_type"}:
+                slots_to_set = [
+                    SlotSet("product_type", product_type or "Frames"),
+                    SlotSet("brand", "all"),
+                    SlotSet("price_range", None),
+                    SlotSet("budget", None),
+                    SlotSet("budget_min", None),
+                    SlotSet("budget_max", None)
+                ]
+
+                logger.info("Free-text product query detected in ActionGreetOrSearch. Applying default filters.")
+                return slots_to_set + [FollowupAction("action_filter_products")]
+
         brand_lookup = build_brand_lookup(load_catalogue())
         if looks_like_product_query(raw_text, brand_lookup):
             return ActionSmartSearch().run(dispatcher, tracker, domain)
@@ -1891,211 +2149,331 @@ def search_products_engine(
     normalized = normalize_search_text(raw_text)
     df = load_catalogue().copy()
     registry = build_dynamic_attribute_registry()
-    
+
+    def payload_flag(value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return False
+        return str(value).strip().lower() in {"1", "true", "yes", "y"}
+
+    def budget_label(minimum: Optional[float], maximum: Optional[float]) -> str:
+        if minimum is not None and maximum is not None:
+            return f"between RM{minimum:g} and RM{maximum:g}"
+        if minimum is not None:
+            return f"above RM{minimum:g}"
+        if maximum is not None:
+            return f"under RM{maximum:g}"
+        return ""
+
+    def is_show_all_brand(value: Any) -> bool:
+        return str(value or "").strip().lower() in {"show all brands", "all brands", "any", "any brand"}
+
+    def row_matches(row: pd.Series, column: str, values: set) -> bool:
+        if column == "gender":
+            allowed: set = set()
+            for requested in values:
+                allowed.update(_gender_match_set(requested))
+            return str(row.get("gender", "")).strip().lower() in allowed
+        if column == "brand":
+            allowed_brands = {str(value).strip().lower() for value in values}
+            return str(row.get("brand", "")).strip().lower() in allowed_brands
+        if column == "product_type":
+            allowed_product_types = {str(value).strip().lower() for value in values}
+            return str(row.get("product_type", "")).strip().lower() in allowed_product_types
+        candidate = str(row.get(column, ""))
+        return any(re.search(re.escape(value), candidate, re.IGNORECASE) for value in values)
+
+    def apply_filters(source: pd.DataFrame, filters: Dict[str, set]) -> pd.DataFrame:
+        filtered_df = source.copy()
+        ordered = [col for col in ["product_type", "brand", "gender", "frame_shape", "frame_material", "frame_color", "use_case"] if col in filters]
+        remaining = [col for col in filters if col not in ordered]
+        for col in [*ordered, *remaining]:
+            if col not in filtered_df.columns:
+                continue
+            values = filters[col]
+            if col == "gender":
+                filtered_df = filtered_df[_build_strict_gender_mask(filtered_df, values)]
+            elif col == "brand":
+                allowed_brands = {str(value).strip().lower() for value in values}
+                filtered_df = filtered_df[filtered_df["brand"].astype(str).str.strip().str.lower().isin(allowed_brands)]
+            elif col == "product_type":
+                allowed_product_types = {str(value).strip().lower() for value in values}
+                filtered_df = filtered_df[filtered_df["product_type"].astype(str).str.strip().str.lower().isin(allowed_product_types)]
+            else:
+                masks = [filtered_df[col].astype(str).str.contains(re.escape(value), case=False, na=False) for value in values]
+                if masks:
+                    filtered_df = filtered_df[pd.concat(masks, axis=1).any(axis=1)]
+        return filtered_df
+
+    payload: Dict[str, Any] = {}
     current_filters: Dict[str, set] = {}
     current_b_min = None
     current_b_max = None
-    
-    # 1. Extract exactly from current intent payload if present
+    current_price_range: Optional[str] = None
+    allow_similar_requested = False
+    current_budget_provided = False
+    clear_brand_filter = False
+
     if raw_text.startswith("/"):
         try:
             start = raw_text.find("{")
             if start != -1:
                 payload = json.loads(raw_text[start:])
-                if "budget_min" in payload: current_b_min = payload["budget_min"]
-                if "budget_max" in payload: current_b_max = payload["budget_max"]
+                allow_similar_requested = payload_flag(payload.get("allow_similar"))
+                if "budget_min" in payload:
+                    current_b_min = payload["budget_min"]
+                    current_budget_provided = True
+                if "budget_max" in payload:
+                    current_b_max = payload["budget_max"]
+                    current_budget_provided = True
+                if "budget_bucket" in payload:
+                    current_budget_provided = True
+                if "price_range" in payload:
+                    current_price_range = str(payload["price_range"])
+                    current_budget_provided = True
+                    parsed_payload_budget = parse_budget_from_text(current_price_range)
+                    if parsed_payload_budget:
+                        if parsed_payload_budget.get("budget_min") is not None:
+                            current_b_min = parsed_payload_budget["budget_min"]
+                        if parsed_payload_budget.get("budget_max") is not None:
+                            current_b_max = parsed_payload_budget["budget_max"]
                 for k, v in payload.items():
-                    if k not in ["budget_min", "budget_max", "budget_bucket"]:
+                    if k not in ["allow_similar", "budget_min", "budget_max", "budget_bucket", "price_range"]:
+                        if k == "brand" and is_show_all_brand(v):
+                            clear_brand_filter = True
+                            continue
                         current_filters[k] = {str(v)}
-        except:
-            pass
-            
-    # 2. Extract from free text
+        except Exception:
+            payload = {}
+
     extracted_text = extract_dynamic_attributes(normalized, registry)
     for k, v in extracted_text.items():
         if k not in current_filters:
             current_filters[k] = set()
         current_filters[k].update(v)
-        
-    parsed_budget = parse_budget_from_text(normalized)
+
+    parsed_budget = None if raw_text.startswith("/") else parse_budget_from_text(normalized)
     if parsed_budget:
-        if parsed_budget.get("budget_min") is not None: current_b_min = parsed_budget["budget_min"]
-        if parsed_budget.get("budget_max") is not None: current_b_max = parsed_budget["budget_max"]
-        
-    # 3. Handle Context Reset vs Refinement
-    is_refinement = is_refinement_query(normalized)
-    
-    previous_filters = {}
-    for slot in ["gender", "product_type", "brand", "frame_shape", "frame_material", "frame_color", "category"]:
+        current_budget_provided = True
+        if parsed_budget.get("budget_min") is not None:
+            current_b_min = parsed_budget["budget_min"]
+        if parsed_budget.get("budget_max") is not None:
+            current_b_max = parsed_budget["budget_max"]
+
+    previous_filters: Dict[str, str] = {}
+    for slot in ["gender", "product_type", "brand", "frame_shape", "frame_material", "frame_color", "category", "use_case"]:
         val = tracker.get_slot(slot)
-        if val: previous_filters[slot] = str(val)
+        if slot == "brand" and is_show_all_brand(val):
+            clear_brand_filter = True
+            continue
+        if val:
+            previous_filters[slot] = str(val)
     prev_b_min = tracker.get_slot("budget_min")
     prev_b_max = tracker.get_slot("budget_max")
-    
-    extracted = {}
+
+    is_refinement = intent_name == "select_budget" or is_refinement_query(normalized) or allow_similar_requested
+
+    extracted: Dict[str, set] = {}
     b_min, b_max = current_b_min, current_b_max
-    
+
     if is_refinement:
         for k, v in previous_filters.items():
             extracted[k] = {v}
-        if b_min is None and prev_b_min is not None: b_min = prev_b_min
-        if b_max is None and prev_b_max is not None: b_max = prev_b_max
-        
+        if not current_budget_provided:
+            if b_min is None and prev_b_min is not None:
+                b_min = prev_b_min
+            if b_max is None and prev_b_max is not None:
+                b_max = prev_b_max
         for k, v in current_filters.items():
             if k not in extracted:
                 extracted[k] = set()
             extracted[k].update(v)
     else:
         extracted = current_filters
-        # Explicitly clear old slots so they don't persist
         for slot in MANAGED_SLOTS:
             events.append(SlotSet(slot, None))
-            
+
     try:
         b_min = float(b_min) if b_min is not None else None
     except (ValueError, TypeError):
         b_min = None
-        
     try:
         b_max = float(b_max) if b_max is not None else None
     except (ValueError, TypeError):
         b_max = None
-        
-    # Normalize category fallback from product_type if category not explicitly set
-    if "category" not in extracted and "product_type" in extracted:
-        extracted["category"] = set()
-        for pt in extracted["product_type"]:
-            cat_group = category_group(pt)
-            if cat_group:
-                extracted["category"].add(cat_group.capitalize())
 
-    # STEP 4: Apply STRICT FILTERS to CSV dataset
+    if "product_type" not in extracted and "category" in extracted:
+        product_types_from_category = set()
+        for category in extracted["category"]:
+            category_key = str(category).strip().lower()
+            mapped_product_type = {
+                "frames": "Designer Frames",
+                "sunglasses": "Luxury Sunglasses",
+                "contact lenses": "Contact Lenses",
+            }.get(category_key)
+            if mapped_product_type:
+                product_types_from_category.add(mapped_product_type)
+        if product_types_from_category:
+            extracted["product_type"] = product_types_from_category
+    extracted.pop("category", None)
+
     filtered = df.copy()
-    
+    filtered["price_myr"] = pd.to_numeric(filtered["price_myr"], errors="coerce")
+    priority_filters = {
+        key: value
+        for key, value in extracted.items()
+        if key in {"product_type", "brand"}
+    }
+    style_filters = {
+        key: value
+        for key, value in extracted.items()
+        if key not in {"product_type", "brand", "category"}
+    }
+    filtered = apply_filters(filtered, priority_filters)
+    if b_min is not None:
+        filtered = filtered[filtered["price_myr"] > b_min]
+    if b_max is not None:
+        filtered = filtered[filtered["price_myr"] <= b_max]
+    filtered = apply_filters(filtered, style_filters)
+
     debug_logs = {
         "query": raw_text,
         "is_refinement": is_refinement,
+        "allow_similar_requested": allow_similar_requested,
         "previous_filters": previous_filters,
         "current_filters": {k: list(v) for k, v in current_filters.items()},
-        "final_filters": {k: list(v) for k, v in extracted.items()}
+        "final_filters": {k: list(v) for k, v in extracted.items()},
+        "strict_results": len(filtered),
     }
-    if b_min is not None: debug_logs["final_filters"]["budget_min"] = b_min
-    if b_max is not None: debug_logs["final_filters"]["budget_max"] = b_max
-
-    # STRICT Budget Filtering FIRST
-    filtered["price_myr"] = pd.to_numeric(filtered["price_myr"], errors="coerce")
     if b_min is not None:
-        filtered = filtered[filtered["price_myr"] >= b_min]
+        debug_logs["final_filters"]["budget_min"] = b_min
     if b_max is not None:
-        filtered = filtered[filtered["price_myr"] <= b_max]
-    debug_logs["after_budget"] = len(filtered)
-    
-    # STRICT Attribute Intersection
-    # MANDATORY ORDER: category → brand → gender → shape → material → color
-    filter_order = ["category", "brand", "gender", "frame_shape", "frame_material", "frame_color"]
-    ordered_cols = [c for c in filter_order if c in extracted]
-    remaining = [c for c in extracted if c not in ordered_cols]
-    ordered_cols.extend(remaining)
+        debug_logs["final_filters"]["budget_max"] = b_max
 
-    for col in ordered_cols:
-        values = extracted[col]
-        if col in filtered.columns:
-            if col == "gender":
-                # STRICT exact-match gender filter — never substring
-                gender_mask = _build_strict_gender_mask(filtered, values)
-                filtered = filtered[gender_mask]
-            else:
-                # For each attribute, logical OR within the same attribute, logical AND between different attributes
-                masks = [filtered[col].astype(str).str.contains(re.escape(val), case=False, na=False) for val in values]
-                if masks:
-                    filtered = filtered[pd.concat(masks, axis=1).any(axis=1)]
-        debug_logs[f"after_{col}"] = len(filtered)
+    relaxed_flags: List[str] = []
+    fallback_mode = False
 
-    debug_logs["final_results"] = len(filtered)
-    
-    # STEP 5 & 6: Check filtered result count and apply ranking ONLY IF results exist
-    relaxed_flags = []
-    
-    if filtered.empty:
-        # STEP 7: Controlled Relaxation ONLY IF zero results
-        relax_order = ["use_case", "frame_color", "frame_material", "frame_shape", "brand"]
-        
-        # NEVER relax budget, gender, category, product_type
+    if filtered.empty and allow_similar_requested:
+        fallback_mode = True
         relaxed_filtered = df.copy()
         relaxed_filtered["price_myr"] = pd.to_numeric(relaxed_filtered["price_myr"], errors="coerce")
+        locked_filters = {
+            key: value
+            for key, value in extracted.items()
+            if key in {"product_type", "gender"}
+        }
+        optional_filters = {
+            key: set(value)
+            for key, value in extracted.items()
+            if key not in {"product_type", "gender", "category"}
+        }
+        relaxed_filtered = apply_filters(relaxed_filtered, locked_filters)
         if b_min is not None:
-            relaxed_filtered = relaxed_filtered[relaxed_filtered["price_myr"] >= b_min]
+            relaxed_filtered = relaxed_filtered[relaxed_filtered["price_myr"] > b_min]
         if b_max is not None:
             relaxed_filtered = relaxed_filtered[relaxed_filtered["price_myr"] <= b_max]
-            
-        for col in ["category", "gender", "product_type"]:
-            if col in extracted and col in relaxed_filtered.columns:
-                if col == "gender":
-                    # STRICT exact-match gender — never relax, never substring
-                    gender_mask = _build_strict_gender_mask(relaxed_filtered, extracted[col])
-                    relaxed_filtered = relaxed_filtered[gender_mask]
-                else:
-                    masks = [relaxed_filtered[col].astype(str).str.contains(re.escape(val), case=False, na=False) for val in extracted[col]]
-                    if masks:
-                        relaxed_filtered = relaxed_filtered[pd.concat(masks, axis=1).any(axis=1)]
-                    
-        active_constraints = {k: set(v) for k, v in extracted.items() if k not in ["category", "gender", "product_type"]}
-        
+        relax_order = ["brand", "frame_shape", "frame_material", "frame_color", "use_case"]
+
         for step in range(len(relax_order) + 1):
-            temp_filtered = relaxed_filtered.copy()
-            for col, values in active_constraints.items():
-                if col in temp_filtered.columns:
-                    masks = [temp_filtered[col].astype(str).str.contains(re.escape(val), case=False, na=False) for val in values]
-                    if masks:
-                        temp_filtered = temp_filtered[pd.concat(masks, axis=1).any(axis=1)]
-            
+            temp_filtered = apply_filters(relaxed_filtered, optional_filters)
             if not temp_filtered.empty:
                 filtered = temp_filtered
                 break
-                
             if step < len(relax_order):
                 col_to_relax = relax_order[step]
-                if col_to_relax in active_constraints:
-                    del active_constraints[col_to_relax]
+                if col_to_relax in optional_filters:
+                    del optional_filters[col_to_relax]
                     relaxed_flags.append(col_to_relax)
+
+        debug_logs["relaxed_filters"] = relaxed_flags
+        debug_logs["fallback_results"] = len(filtered)
 
     logger.info(json.dumps(debug_logs))
 
-    if filtered.empty:
+    brand_value = list(extracted["brand"])[0] if "brand" in extracted and extracted["brand"] else ""
+    product_type_value = list(extracted["product_type"])[0] if "product_type" in extracted and extracted["product_type"] else ""
+    use_case_value = list(extracted["use_case"])[0] if "use_case" in extracted and extracted["use_case"] else ""
+
+    if filtered.empty and not allow_similar_requested:
+        for col, values in extracted.items():
+            if col in MANAGED_SLOTS and values:
+                events.append(SlotSet(col, list(values)[0]))
+        if clear_brand_filter:
+            events.append(SlotSet("brand", None))
+        if b_min is not None:
+            events.append(SlotSet("budget_min", b_min))
+        elif current_budget_provided:
+            events.append(SlotSet("budget_min", None))
         if b_max is not None:
-            msg = tr(
-                lang,
-                f"No products found under RM{b_max:g}.",
-                f"Tiada produk dijumpai di bawah RM{b_max:g}.",
-                f"未找到 RM{b_max:g} 以下的产品。"
-            )
-        else:
-            msg = tr(
-                lang,
-                "I could not find an exact match. Tell me your preferred product type, budget, or brand to try again.",
-                "Saya tidak menemui padanan tepat. Beritahu saya jenis produk, bajet, atau jenama pilihan anda untuk cuba lagi.",
-                "我没有找到完全匹配的结果。请告诉我您偏好的产品类型、预算或品牌，以便再试一次。"
-            )
-        dispatcher.utter_message(text=msg)
+            events.append(SlotSet("budget_max", b_max))
+        elif current_budget_provided:
+            events.append(SlotSet("budget_max", None))
+        if current_price_range is not None:
+            events.append(SlotSet("price_range", current_price_range))
+        elif current_budget_provided:
+            events.append(SlotSet("price_range", None))
+
+        product_type_label = product_type_value or tr(lang, "Not specified", "Tidak dinyatakan", "未指定")
+        brand_label = brand_value or tr(lang, "Not specified", "Tidak dinyatakan", "未指定")
+        budget_text = budget_label(b_min, b_max)
+        budget_label_text = budget_text or tr(lang, "Not specified", "Tidak dinyatakan", "未指定")
+        msg = tr(
+            lang,
+            (
+                "We currently do not have matching products for:\n"
+                f"- Product Type: {product_type_label}\n"
+                f"- Brand: {brand_label}\n"
+                f"- Budget: {budget_label_text}\n\n"
+                "Would you like to:\n"
+                "- View similar brands\n"
+                "- Change budget\n"
+                "- Explore other product categories"
+            ),
+            (
+                "Kami belum mempunyai produk yang sepadan untuk:\n"
+                f"- Jenis Produk: {product_type_label}\n"
+                f"- Jenama: {brand_label}\n"
+                f"- Bajet: {budget_label_text}\n\n"
+                "Adakah anda mahu:\n"
+                "- Lihat jenama serupa\n"
+                "- Ubah bajet\n"
+                "- Teroka kategori produk lain"
+            ),
+            (
+                "目前没有符合以下条件的产品：\n"
+                f"- 产品类型：{product_type_label}\n"
+                f"- 品牌：{brand_label}\n"
+                f"- 预算：{budget_label_text}\n\n"
+                "您想要：\n"
+                "- 查看相近品牌\n"
+                "- 更改预算\n"
+                "- 探索其他产品类别"
+            ),
+        )
+        dispatcher.utter_message(
+            text=msg,
+            buttons=[
+                {"title": tr(lang, "View Similar Brands", "Lihat Jenama Serupa", "查看相近品牌"), "payload": '/search_product{"allow_similar":true}'},
+                {"title": tr(lang, "Change Filters", "Ubah Penapis", "更改筛选"), "payload": "/browse_eyewear"},
+            ],
+        )
         return events, False
 
-    if relaxed_flags:
-        relaxed_text = ", ".join(relaxed_flags).replace("_", " ")
+    if filtered.empty:
         dispatcher.utter_message(
             text=tr(
                 lang,
-                f"I could not find an exact match, so I relaxed {relaxed_text} and kept your key filters.",
-                f"Saya tidak menemui padanan tepat, jadi saya longgarkan {relaxed_text} dan kekalkan penapis utama anda.",
-                f"没有找到完全匹配的结果，因此我放宽了 {relaxed_text}，并保留了关键筛选条件。",
+                "I still could not find suitable alternatives in that product type and budget. If you want, I can help you adjust the brand or price range next.",
+                "Saya masih tidak menemui alternatif yang sesuai dalam jenis produk dan bajet tersebut. Jika anda mahu, saya boleh bantu laraskan jenama atau julat harga seterusnya.",
+                "在该类别和预算内，我仍然找不到合适的相近款式。如果您愿意，我可以继续帮您调整品牌或价格范围。",
             )
         )
+        return events, False
 
-    # RANKING ONLY ON FILTERED RESULTS
-    cat = list(extracted["category"])[0] if "category" in extracted and extracted["category"] else None
-    br = list(extracted["brand"])[0] if "brand" in extracted and extracted["brand"] else None
-    uc = list(extracted["use_case"])[0] if "use_case" in extracted and extracted["use_case"] else None
-    
-    ranked = rank_products_safely(filtered, product_type=cat, brand=br, use_case=uc)
+    ranking_type = product_type_value or None
+    ranking_brand = None if "brand" in relaxed_flags else (brand_value or None)
+    ranked = rank_products_safely(filtered, product_type=ranking_type, brand=ranking_brand, use_case=use_case_value or None)
     top_results = ranked.head(5)
 
     if not extracted and b_min is None and b_max is None:
@@ -2107,64 +2485,87 @@ def search_products_engine(
                 "这是目前的热门推荐："
             )
         )
-    elif relaxed_flags:
-        # Already emitted relaxation message
-        pass
+    elif fallback_mode:
+        dispatcher.utter_message(
+            text=tr(
+                lang,
+                "Closest matching products in the same product type and budget:",
+                "Pilihan paling hampir dalam jenis produk dan bajet yang sama:",
+                "以下是同类别、同预算下最接近的可选款式："
+            )
+        )
     else:
         dispatcher.utter_message(
             text=tr(
                 lang,
-                "Here are the exact matches for your request:",
-                "Berikut ialah pilihan paling tepat dengan permintaan anda:",
-                "以下是完全符合您需求的选择："
+                "Recommended options matching your selected filters:",
+                "Pilihan disyorkan yang sepadan dengan penapis pilihan anda:",
+                "以下是符合您已选筛选条件的推荐款式："
             )
         )
 
-    # Validation and Emission
+    required_validation = {key: set(value) for key, value in extracted.items()}
+    if fallback_mode:
+        for relaxed in relaxed_flags:
+            required_validation.pop(relaxed, None)
+
     emitted_count = 0
     for _, row in top_results.iterrows():
         p_price = pd.to_numeric(row.get("price_myr"), errors="coerce")
-        if pd.isna(p_price): p_price = 0
-        
-        # Mandatory Result Validation
-        if b_max is not None and p_price > b_max: continue
-        if b_min is not None and p_price < b_min: continue
-        if "gender" in extracted:
-            p_gender = str(row.get("gender", "")).strip().lower()
-            allowed_genders: set = set()
-            for req_gender in extracted["gender"]:
-                allowed_genders.update(_gender_match_set(req_gender))
-            if p_gender not in allowed_genders:
-                continue
-        if "category" in extracted:
-            p_cat = str(row.get("category", "")).lower()
-            match = False
-            for req_cat in extracted["category"]:
-                if req_cat.lower() in p_cat:
-                    match = True
-                    break
-            if not match: continue
-
-        emit_product_card(dispatcher, row.to_dict(), str(cat) if cat else "", lang)
+        if pd.isna(p_price):
+            p_price = 0
+        if b_max is not None and p_price > b_max:
+            continue
+        if b_min is not None and p_price <= b_min:
+            continue
+        if any(not row_matches(row, col, values) for col, values in required_validation.items() if col in row.index):
+            continue
+        emit_product_card(dispatcher, row.to_dict(), str(ranking_type) if ranking_type else "", lang)
         emitted_count += 1
-        
+
     if emitted_count == 0:
-        # Failsafe if validation dropped everything
-        dispatcher.utter_message(text=tr(
-            lang,
-            "I couldn't find products exactly matching those strict requirements.",
-            "Saya tidak menjumpai produk yang tepat dengan keperluan ketat tersebut.",
-            "我没有找到完全符合这些严格要求的产品。"
-        ))
+        if clear_brand_filter:
+            events.append(SlotSet("brand", None))
+        if b_min is not None:
+            events.append(SlotSet("budget_min", b_min))
+        elif current_budget_provided:
+            events.append(SlotSet("budget_min", None))
+        if b_max is not None:
+            events.append(SlotSet("budget_max", b_max))
+        elif current_budget_provided:
+            events.append(SlotSet("budget_max", None))
+        if current_price_range is not None:
+            events.append(SlotSet("price_range", current_price_range))
+        elif current_budget_provided:
+            events.append(SlotSet("price_range", None))
+        dispatcher.utter_message(
+            text=tr(
+                lang,
+                "I couldn't find products that safely meet those filters.",
+                "Saya tidak menemui produk yang benar-benar memenuhi penapis tersebut.",
+                "我没有找到能稳妥满足这些筛选条件的产品。",
+            )
+        )
+        return events, False
 
     for col, values in extracted.items():
         if col in MANAGED_SLOTS:
             events.append(SlotSet(col, list(values)[0]))
+    if clear_brand_filter:
+        events.append(SlotSet("brand", None))
     if b_min is not None:
         events.append(SlotSet("budget_min", b_min))
+    elif current_budget_provided:
+        events.append(SlotSet("budget_min", None))
     if b_max is not None:
         events.append(SlotSet("budget_max", b_max))
-        
+    elif current_budget_provided:
+        events.append(SlotSet("budget_max", None))
+    if current_price_range is not None:
+        events.append(SlotSet("price_range", current_price_range))
+    elif current_budget_provided:
+        events.append(SlotSet("price_range", None))
+
     return events, True
 
 class ActionSmartSearch(Action):
@@ -2209,10 +2610,12 @@ class ActionSmartSearch(Action):
         events: List[Dict[Text, Any]] = []
         events.extend(apply_domain_switch_reset(tracker, intent_name, raw_text, support_intent))
         events.extend(flow_entry_events(tracker, "product_search"))
-        
+
         search_events, success = search_products_engine(raw_text, tracker, lang, intent_name, dispatcher)
         events.extend(search_events)
-        
+        if not success:
+            events.append(FollowupAction("action_listen"))
+
         return events
 
 
@@ -2297,6 +2700,7 @@ class ActionDocumentSearch(Action):
             )
 
         if best_text:
+            best_text = clean_faq_answer(best_text, requested_group)
             dispatcher.utter_message(text=best_text)
             dispatcher.utter_message(
                 text=tr(
@@ -2307,7 +2711,7 @@ class ActionDocumentSearch(Action):
                 ),
                 buttons=[
                     {"title": tr(lang, "After-sales Support", "Sokongan Selepas Jualan", "售后支持"), "payload": "/after_sales_support"},
-                    {"title": tr(lang, "Warranty Help", "Bantuan Waranti", "保修协助"), "payload": "/warranty_claim"},
+                    {"title": tr(lang, "Warranty Help", "Bantuan Waranti", "保修协助"), "payload": "/warranty_support"},
                     {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
                 ],
             )
@@ -2322,7 +2726,7 @@ class ActionDocumentSearch(Action):
             ),
             buttons=[
                 {"title": tr(lang, "Refund Policy", "Polisi Refund", "退款政策"), "payload": "/ask_faq"},
-                {"title": tr(lang, "Warranty", "Waranti", "保修"), "payload": "/warranty_claim"},
+                {"title": tr(lang, "Warranty", "Waranti", "保修"), "payload": "/warranty_support"},
                 {"title": tr(lang, "Book Eye Test", "Tempah Ujian Mata", "预约验光"), "payload": "/book_appointment"},
             ],
         )
@@ -2351,6 +2755,11 @@ class ActionPrefillLeadCapture(Action):
         }
 
         for slot_name, value in slot_mappings.items():
+            if slot_name == "preferred_service":
+                inferred = metadata.get("preferred_service") or infer_service_from_intent(tracker)
+                if inferred:
+                    events.append(SlotSet("preferred_service", inferred))
+                    continue
             if tracker.get_slot(slot_name):
                 continue
             normalized = str(value).strip() if isinstance(value, str) else ""
@@ -3128,6 +3537,10 @@ class ActionSubmitLeadCapture(Action):
 
         response = gateway.submit_lead(payload)
         status = tracker.get_slot("lead_status")
+        preferred_service = str(payload.get("preferred_service") or "").strip()
+        current_flow = str(tracker.get_slot("current_flow") or "").strip()
+        latest_intent = str(payload.get("latest_intent") or "").strip()
+
         if status == "qualified":
             booking_line = tr(
                 lang,
@@ -3135,12 +3548,19 @@ class ActionSubmitLeadCapture(Action):
                 f"\nAnda juga boleh tempah terus di sini: {BOOKING_URL}" if BOOKING_URL else "",
                 f"\n您也可以直接在这里预约：{BOOKING_URL}" if BOOKING_URL else "",
             )
+            _qualified_en = random.choice([
+                f"You're all set. Our team will confirm your appointment and share all the details shortly.{booking_line}",
+                f"Your details are confirmed. Expect a personal follow-up from our team very soon.{booking_line}",
+                f"All set. A Calisto specialist will be in touch to finalise everything for you.{booking_line}",
+                f"Noted and confirmed. Our team will reach out shortly with your next steps.{booking_line}",
+                f"Your request is locked in. Someone from our team will be in touch shortly to arrange everything.{booking_line}",
+            ])
             dispatcher.utter_message(
                 text=tr(
                     lang,
-                    f"Thanks, your request is qualified and our team will follow up shortly.{booking_line}",
-                    f"Terima kasih, permintaan anda layak untuk susulan dan pasukan kami akan hubungi anda tidak lama lagi.{booking_line}",
-                    f"谢谢，您的请求已符合跟进条件，我们的团队会尽快联系您。{booking_line}"
+                    _qualified_en,
+                    f"Terima kasih. Pasukan kami akan hubungi anda tidak lama lagi untuk mengesahkan temujanji anda.{booking_line}",
+                    f"一切就绪。我们的团队将很快联系您，确认您的预约详情。{booking_line}"
                 ),
                 buttons=[
                     {"title": tr(lang, "Book Appointment", "Tempah Janji Temu", "预约"), "payload": "/book_appointment"},
@@ -3149,13 +3569,33 @@ class ActionSubmitLeadCapture(Action):
                 ],
             )
         else:
+            _en_text = _pick_completion_response(preferred_service, current_flow, latest_intent)
+            _ms_text = tr(
+                "ms",
+                _en_text,
+                random.choice([
+                    "Permintaan anda telah diterima. Pasukan kami akan menghubungi anda tidak lama lagi.",
+                    "Maklumat anda telah dicatat. Pasukan kami akan menghubungi anda dengan segera.",
+                    "Terima kasih. Kami akan berikan maklum balas kepada anda tidak lama lagi.",
+                    "Dicatat. Pasukan kami akan berhubung dengan anda tidak lama lagi.",
+                    "Permohonan anda telah kami terima. Kami akan menghubungi anda dengan segera.",
+                ]),
+                "",
+            )
+            _zh_text = tr(
+                "zh",
+                _en_text,
+                "",
+                random.choice([
+                    "您的请求已收到。我们的团队将尽快与您联系。",
+                    "已记录您的信息。我们的团队将尽快跟进。",
+                    "感谢您。我们会尽快回复您。",
+                    "已收到。我们的团队很快会与您联系。",
+                    "您的申请已提交。专员将尽快与您联系。",
+                ]),
+            )
             dispatcher.utter_message(
-                text=tr(
-                    lang,
-                    "Thank you. We have captured your inquiry and our team will review the best next step for you.",
-                    "Terima kasih. Kami telah merekodkan pertanyaan anda dan pasukan kami akan semak langkah seterusnya yang paling sesuai untuk anda.",
-                    "谢谢。我们已记录您的咨询，团队会为您评估最合适的下一步。"
-                ),
+                text=tr(lang, _en_text, _ms_text, _zh_text),
                 buttons=[
                     {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
                     {"title": tr(lang, "Browse Eyewear", "Lihat Produk", "浏览产品"), "payload": "/browse_eyewear"},

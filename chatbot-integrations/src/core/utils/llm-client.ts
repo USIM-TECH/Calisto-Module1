@@ -101,6 +101,7 @@ export const VALID_ENTITIES = [
   'frame_color',
   'frame_shape',
   'frame_material',
+  'gender',
   'budget',
   'lead_name',
   'contact_number',
@@ -118,7 +119,7 @@ Intents (pick exactly one):
 - ask_pricing: asks about prices/how much without naming a category.
 - select_pricing_category: picks a pricing category (frames, lenses, sunglasses, contacts).
 - select_product_type: names a product category (frames/sunglasses/contacts/designer).
-- select_brand: names a specific brand (Ray-Ban, Gucci, Oakley, Persol etc.).
+- select_brand: names a specific brand (RayBan, Gucci, Bossini, Bottega Veneta, Oakley, Persol etc.).
 - select_budget: picks a budget bucket from a menu (Under RM100, RM100-RM250, etc.).
 - ask_lens_type: picks/asks about a specific lens type (single vision, progressive, blue light, photochromic).
 - lens_vision_solutions: general lens/vision consultation request.
@@ -154,8 +155,8 @@ Entities (optional — include only when clearly stated by the user):
     Lenses" belongs HERE, not in lens_type. If the user says "contact lenses",
     "contacts", "kanta sentuh", "隐形眼镜" — that's product_type="Contact Lenses",
     intent=select_product_type.
-- brand: canonical brand name (e.g. "Ray-Ban", "Gucci", "Oakley", "Persol", "Calisto")
-    Normalize obvious typos only when deterministic: "guci" -> "Gucci", "rayban" -> "Ray-Ban".
+- brand: canonical brand name (e.g. "RayBan", "Gucci", "Bossini", "Bottega Veneta", "Oakley", "Persol", "Calisto Vision")
+    Normalize obvious typos only when deterministic: "guci" -> "Gucci", "ray ban" -> "RayBan", "botega veneta" -> "Bottega Veneta".
 - price_range: one of "Under RM100" | "RM100-RM250" | "RM250-RM300" | "Above RM300"
 - lens_type: "Single Vision" | "Progressive" | "Blue Light" | "Photochromic"
     These are *prescription-lens technologies fitted into spectacle frames*.
@@ -166,6 +167,7 @@ Entities (optional — include only when clearly stated by the user):
 - urgency: "today" | "this week" | "next week" | free text
 - order_id: extract IDs like ORD12345
 - frame_color / frame_shape / frame_material: single word each
+- gender: "men" | "women" | "unisex"
 - budget: numeric RM statement, e.g. "RM200", "around 300"
 - lead_name / contact_number / email / lead_location / preferred_service / purchase_timeline:
   only set when the user is volunteering contact details or service interest outside a form.
@@ -177,8 +179,10 @@ Examples (these are authoritative — imitate them):
 - "Book Appointment" -> {"intent":"book_appointment","entities":{"preferred_service":"Appointment Booking"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
 - "gotta reschedule my appointment" -> {"intent":"reschedule_appointment","entities":{},"confidence":0.85,"language":"en","is_interruption":true,"is_refusal":false}
 - "i just wanna browse" -> {"intent":"browse_eyewear","entities":{},"confidence":0.85,"language":"en","is_interruption":true,"is_refusal":false}
-- "show me ray-ban" -> {"intent":"select_brand","entities":{"brand":"Ray-Ban"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
+- "show me ray-ban" -> {"intent":"select_brand","entities":{"brand":"RayBan"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
 - "guci glasses pls" -> {"intent":"search_product","entities":{"product_type":"Designer Frames","brand":"Gucci"},"confidence":0.9,"language":"en","is_interruption":false,"is_refusal":false}
+- "i need botega veneta mens glasses" -> {"intent":"search_product","entities":{"product_type":"Designer Frames","brand":"Bottega Veneta","gender":"men"},"confidence":0.9,"language":"en","is_interruption":false,"is_refusal":false}
+- "i need bossini sunglasses" -> {"intent":"search_product","entities":{"product_type":"Luxury Sunglasses","brand":"Bossini"},"confidence":0.9,"language":"en","is_interruption":false,"is_refusal":false}
 - "i want to look into contact lenses" -> {"intent":"select_product_type","entities":{"product_type":"Contact Lenses"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
 - "looking for designer frames" -> {"intent":"select_product_type","entities":{"product_type":"Designer Frames"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
 - "any sun glasses?" -> {"intent":"select_product_type","entities":{"product_type":"Luxury Sunglasses"},"confidence":0.9,"language":"en","is_interruption":false,"is_refusal":false}
@@ -354,6 +358,51 @@ const ENTITY_ALIASES: Record<string, Record<string, string>> = {
     contacts: 'Contact Lenses',
     'contact lens': 'Contact Lenses',
     'contact lenses': 'Contact Lenses',
+  },
+  brand: {
+    acuvue: 'Acuvue',
+    'bausch lomb': 'Bausch & Lomb',
+    'bausch and lomb': 'Bausch & Lomb',
+    'bausch & lomb': 'Bausch & Lomb',
+    bossini: 'Bossini',
+    bottega: 'Bottega Veneta',
+    botega: 'Bottega Veneta',
+    'bottega veneta': 'Bottega Veneta',
+    'botega veneta': 'Bottega Veneta',
+    burberry: 'Burberry',
+    calisto: 'Calisto Vision',
+    'calisto vision': 'Calisto Vision',
+    cartier: 'Cartier',
+    dior: 'Dior',
+    'gentle monster': 'Gentle Monster',
+    gucci: 'Gucci',
+    guci: 'Gucci',
+    oakley: 'Oakley',
+    'oliver peoples': 'Oliver Peoples',
+    persol: 'Persol',
+    prada: 'Prada',
+    projekt: 'Projekt Produkt',
+    'projekt produkt': 'Projekt Produkt',
+    rayban: 'RayBan',
+    'ray ban': 'RayBan',
+    saint: 'Saint Laurent',
+    'saint laurent': 'Saint Laurent',
+    'st laurent': 'Saint Laurent',
+    ysl: 'Saint Laurent',
+    'tom ford': 'Tom Ford',
+    tomford: 'Tom Ford',
+    versace: 'Versace',
+  },
+  gender: {
+    men: 'men',
+    mens: 'men',
+    "men's": 'men',
+    male: 'men',
+    women: 'women',
+    womens: 'women',
+    "women's": 'women',
+    female: 'women',
+    unisex: 'unisex',
   },
   preferred_service: {
     'designer frame': 'Designer Frames',

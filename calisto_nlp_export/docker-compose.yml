@@ -47,7 +47,7 @@ services:
     networks:
       - calisto-net
     # Reach the host's Node integration service (chatbot-integrations on
-    # localhost:3000). Without this, ServiceGateway falls back to the CSV.
+    # localhost:3000). Product catalogue actions require this remote DB-backed API.
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:

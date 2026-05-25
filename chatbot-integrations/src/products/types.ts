@@ -25,6 +25,7 @@ export interface ProductRecord {
   bestseller: boolean
   newArrival: boolean
   imageUrl?: string | null
+  fallbackImageUrl?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -93,6 +94,7 @@ export interface ProductWirePayload {
   bestseller: boolean
   new_arrival: boolean
   imageUrl?: string | null
+  fallback_image_url?: string | null
 }
 
 export function toWirePayload(record: ProductRecord, publicBaseUrl?: string): ProductWirePayload {
@@ -123,6 +125,7 @@ export function toWirePayload(record: ProductRecord, publicBaseUrl?: string): Pr
     bestseller: record.bestseller,
     new_arrival: record.newArrival,
     imageUrl: absoluteImageUrl(record.imageUrl, publicBaseUrl),
+    fallback_image_url: absoluteImageUrl(record.fallbackImageUrl, publicBaseUrl),
   }
 }
 
