@@ -35,6 +35,7 @@ type PrismaProduct = {
   bestseller: boolean
   newArrival: boolean
   imageUrl: string | null
+  fallbackImageUrl: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -67,6 +68,7 @@ function toRecord(p: PrismaProduct): ProductRecord {
     bestseller: p.bestseller,
     newArrival: p.newArrival,
     imageUrl: p.imageUrl,
+    fallbackImageUrl: p.fallbackImageUrl,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
   }
@@ -164,6 +166,7 @@ export class PrismaProductStore implements ProductStore {
         bestseller: input.bestseller,
         newArrival: input.newArrival,
         imageUrl: input.imageUrl ?? null,
+        fallbackImageUrl: input.fallbackImageUrl ?? null,
       },
     })
     return toRecord(created as PrismaProduct)

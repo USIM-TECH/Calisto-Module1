@@ -348,6 +348,13 @@ class ServiceGateway:
             return products if isinstance(products, list) else None
         return None
 
+    def list_products(self) -> Optional[List[Dict[str, Any]]]:
+        response = self.get_json("/admin/products/api?limit=500")
+        if isinstance(response, dict):
+            products = response.get("items")
+            return products if isinstance(products, list) else None
+        return response if isinstance(response, list) else None
+
     def search_stores(self, location: str) -> Optional[List[Dict[str, Any]]]:
         response = self._request("POST", "/stores/search", {"location": location})
         if response is None:
@@ -366,9 +373,51 @@ class ServiceGateway:
 gateway = ServiceGateway()
 
 
-@lru_cache(maxsize=1)
+PRODUCT_FIELD_ALIASES = {
+    "productId": "product_id",
+    "productName": "product_name",
+    "productType": "product_type",
+    "priceMyr": "price_myr",
+    "frameMaterial": "frame_material",
+    "frameShape": "frame_shape",
+    "frameColor": "frame_color",
+    "uvProtection": "uv_protection",
+    "lensColor": "lens_color",
+    "frameStyle": "frame_style",
+    "lensType": "lens_type",
+    "lensFeature": "lens_feature",
+    "lensDuration": "lens_duration",
+    "storeLocation": "store_location",
+    "stockStatus": "stock_status",
+    "newArrival": "new_arrival",
+    "fallbackImageUrl": "fallback_image_url",
+}
+
+
+def normalize_product_record(product: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = dict(product)
+    for source_key, target_key in PRODUCT_FIELD_ALIASES.items():
+        if target_key not in normalized and source_key in normalized:
+            normalized[target_key] = normalized[source_key]
+    return normalized
+
+
 def load_catalogue() -> pd.DataFrame:
-    df = pd.read_csv(CATALOGUE_PATH).fillna("")
+    """Load product catalogue from the remote DB-backed integration API."""
+    remote_products: Any = gateway.list_products()
+    if isinstance(remote_products, list) and remote_products:
+        # Ensure we have a list of flat dictionaries before creating a DataFrame.
+        if all(isinstance(p, dict) for p in remote_products):
+            df = pd.DataFrame([normalize_product_record(p) for p in remote_products]).fillna("")
+            if "price_myr" in df.columns:
+                df["price_myr"] = pd.to_numeric(df["price_myr"], errors="coerce")
+        else:
+            raise RuntimeError("Remote product catalogue returned invalid product records.")
+    else:
+        raise RuntimeError(
+            "Remote product catalogue unavailable. "
+            "Set BACKEND_API_BASE_URL to the integration API and ensure it is using STORAGE_BACKEND=postgres."
+        )
 
     # Normalize common string fields early so downstream filtering is stable.
     for col in ["brand", "product_name", "product_type", "category", "frame_material", "frame_shape", "frame_color"]:
@@ -429,15 +478,37 @@ def load_kb_metadata() -> List[Dict[str, Any]]:
         if out:
             return out
 
-    if not os.path.exists(KB_INDEX_META_PATH):
-        return []
-
-    with open(KB_INDEX_META_PATH, "r", encoding="utf-8") as handle:
-        payload = json.load(handle)
-
-    if isinstance(payload, list):
-        return [item for item in payload if isinstance(item, dict)]
     return []
+
+
+def clean_faq_answer(text: str, requested_group: Optional[str] = None) -> str:
+    answer = " ".join(str(text or "").split()).strip()
+    if not answer:
+        return ""
+
+    question_patterns = {
+        "refund": r"Q:\s*What is your refund or return policy\?\s*A:\s*",
+        "warranty": r"Q\d*\.?\s*[^?]*warranty[^?]*\?\s*A:\s*",
+        "booking": r"Q\d*\.?\s*[^?]*(?:book|appointment|eye test)[^?]*\?\s*A:\s*",
+        "after_sales": r"Q\d*\.?\s*[^?]*(?:after-sales|after sales|support|adjustment)[^?]*\?\s*A:\s*",
+        "stores": r"Q\d*\.?\s*[^?]*(?:stores located|store locator|location)[^?]*\?\s*A:\s*",
+    }
+    patterns = []
+    if requested_group and requested_group in question_patterns:
+        patterns.append(question_patterns[requested_group])
+    patterns.append(r"Q\d*\.?\s*[^?]+\?\s*A:\s*")
+
+    for pattern in patterns:
+        matches = list(re.finditer(pattern, answer, flags=re.IGNORECASE))
+        if matches:
+            answer = answer[matches[-1].end():].strip()
+            break
+
+    next_question = re.search(r"\s+Q\d*\.?\s*[^?]+\?\s*A:\s*", answer, flags=re.IGNORECASE)
+    if next_question:
+        answer = answer[:next_question.start()].strip()
+
+    return answer
 
 
 def parse_budget_from_text(text: str) -> Optional[Dict[str, Any]]:
@@ -1320,7 +1391,6 @@ def build_placeholder_image(label: str, theme: str = "eyewear") -> str:
         f"&text={prefix}%0A%0A{safe_label}"
     )
 
-
 def choose_product_image_theme(product_type: str, preferred_service: Optional[str]) -> str:
     product_type_lower = str(product_type or "").lower()
     preferred_service_lower = str(preferred_service or "").lower()
@@ -1454,18 +1524,29 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
 
     theme = choose_product_image_theme(product_type, preferred_service)
     raw_image = product.get("imageUrl") or product.get("image_url")
-    image_url = _resolve_card_image_url(raw_image) or build_placeholder_image(f"{brand} {name}", theme)
-    actions = [
-        {
-            "type": "postback",
-            "title": tr(lang, "Check Availability", "Semak Ketersediaan", "查看库存"),
-            "value": lead_buttons(lang, preferred_service)[-1]["payload"],
-        }
-    ]
+    fallback_image = (
+        product.get("fallback_image_url")
+        or product.get("fallbackImageUrl")
+        or product.get("fallback_url")
+        or product.get("fallbackUrl")
+    )
+    image_url = (
+        _resolve_card_image_url(raw_image)
+        or _resolve_card_image_url(fallback_image)
+        or build_placeholder_image(f"{brand} {name}", theme)
+    )
+    actions = []
+
+    actions.append({
+        "type": "url",
+        "title": tr(lang, "Open Product Link", "Buka Pautan Produk", "打开产品链接"),
+        "value": "https://www.lenskart.com/vincent-chase-vc-s11748-c8-sunglasses.html",
+    })
+
     actions.append({"type": "postback", "title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "value": "/book_appointment"})
     actions.append({
         "type": "postback",
-        "title": tr(lang, "Ask Stylist", "Tanya Stylist", "咨询造型顾问"),
+        "title": tr(lang, "Talk to Consultant", "Bercakap Dengan Konsultan", "联系顾问"),
         "value": lead_buttons(lang, preferred_service)[-1]["payload"],
     })
 
@@ -1486,10 +1567,15 @@ def _resolve_card_image_url(raw: Any) -> Optional[str]:
     from the public internet. Already-absolute URLs are returned untouched.
     Empty/missing values return None so the caller can fall back to the
     placeholder image."""
-    if not raw:
+    if raw is None:
         return None
+    try:
+        if pd.isna(raw):
+            return None
+    except (TypeError, ValueError):
+        pass
     value = str(raw).strip()
-    if not value:
+    if not value or value.lower() in {"none", "null", "nan"}:
         return None
     if value.startswith("http://") or value.startswith("https://"):
         return value
@@ -1882,6 +1968,33 @@ class ActionGreetOrSearch(Action):
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
         raw_text = tracker.latest_message.get("text") or ""
+        intent = get_latest_intent(tracker)
+        intent_name = intent.get("name") if intent else ""
+
+        # Check if the user typed a free-text message (not a payload)
+        is_free_text_query = not raw_text.startswith("/")
+
+        # If it's a free text query for products, show results directly
+        if is_free_text_query and intent_name in {"search_product", "browse_eyewear", "select_product_type", "greet"}:
+            product_type = tracker.get_slot("product_type") or detect_category_from_text(raw_text)
+
+            # If they just said "hi", don't force a product search, let the regular greeting happen
+            if not product_type and intent_name == "greet":
+                pass
+            # If they asked for a product (even without a specific intent matched), show it
+            elif product_type or intent_name in {"search_product", "browse_eyewear", "select_product_type"}:
+                slots_to_set = [
+                    SlotSet("product_type", product_type or "Frames"),
+                    SlotSet("brand", "all"),
+                    SlotSet("price_range", None),
+                    SlotSet("budget", None),
+                    SlotSet("budget_min", None),
+                    SlotSet("budget_max", None)
+                ]
+
+                logger.info("Free-text product query detected in ActionGreetOrSearch. Applying default filters.")
+                return slots_to_set + [FollowupAction("action_filter_products")]
+
         brand_lookup = build_brand_lookup(load_catalogue())
         if looks_like_product_query(raw_text, brand_lookup):
             return ActionSmartSearch().run(dispatcher, tracker, domain)
@@ -2496,10 +2609,12 @@ class ActionSmartSearch(Action):
         events: List[Dict[Text, Any]] = []
         events.extend(apply_domain_switch_reset(tracker, intent_name, raw_text, support_intent))
         events.extend(flow_entry_events(tracker, "product_search"))
-        
+
         search_events, success = search_products_engine(raw_text, tracker, lang, intent_name, dispatcher)
         events.extend(search_events)
-        
+        if not success:
+            events.append(FollowupAction("action_listen"))
+
         return events
 
 
@@ -2582,6 +2697,7 @@ class ActionDocumentSearch(Action):
             )
 
         if best_text:
+            best_text = clean_faq_answer(best_text, requested_group)
             dispatcher.utter_message(text=best_text)
             dispatcher.utter_message(
                 text=tr(

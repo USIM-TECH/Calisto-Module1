@@ -98,7 +98,9 @@ start_local() {
 
 start_actions() {
   echo "🚀 Starting Calisto Action Server on port 5055..."
-  HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 rasa run actions --actions actions.actions --port 5055 &
+  BACKEND_API_BASE_URL="${BACKEND_API_BASE_URL:-http://127.0.0.1:3000}" \
+  HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+  rasa run actions --actions actions.actions --port 5055 &
   ACTION_PID=$!
   echo "   Action server PID: $ACTION_PID"
   sleep 3
