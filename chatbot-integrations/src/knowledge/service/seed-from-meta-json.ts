@@ -10,12 +10,6 @@ const __dirname = path.dirname(__filename)
 
 dotenv.config({ path: path.resolve(__dirname, '..', '..', '..', '.env') })
 
-const DEFAULT_META = path.resolve(
-  __dirname,
-  '..', '..', '..', '..',
-  'calisto_nlp_export', 'knowledge_base', 'index', 'calisto_meta.json',
-)
-
 /** Product catalog CSVs belong in /admin/products, not the knowledge base. */
 const EXCLUDED_SOURCES = new Set([
   'calisto_product_catalog_500.csv',
@@ -23,7 +17,13 @@ const EXCLUDED_SOURCES = new Set([
 ])
 
 async function main(): Promise<void> {
-  const metaPath = process.env.KB_INDEX_META_PATH ?? DEFAULT_META
+  const metaPath = process.env.KB_INDEX_META_PATH
+  if (!metaPath) {
+    throw new Error(
+      'KB_INDEX_META_PATH is required. Local knowledge_base/index files were removed; point this at an exported calisto_meta.json if needed.',
+    )
+  }
+
   const raw = await fs.readFile(metaPath, 'utf-8')
   const parsed = JSON.parse(raw) as unknown
   if (!Array.isArray(parsed)) {

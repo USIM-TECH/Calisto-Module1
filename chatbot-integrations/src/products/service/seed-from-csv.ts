@@ -1,7 +1,7 @@
 import fs from 'fs/promises'
-import path from 'path'
 import * as dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
+import path from 'path'
 import { PrismaClient } from '@prisma/client'
 import { importProductsFromCsv } from './csv-import.js'
 import { PrismaProductStore } from '../storage/prisma-product-store.js'
@@ -11,14 +11,14 @@ const __dirname = path.dirname(__filename)
 
 dotenv.config({ path: path.resolve(__dirname, '..', '..', '..', '.env') })
 
-const DEFAULT_CSV_PATH = path.resolve(
-  __dirname,
-  '..', '..', '..', '..',
-  'calisto_nlp_export', 'knowledge_base', 'calisto_product_catalog_500.csv',
-)
-
 async function main(): Promise<void> {
-  const csvPath = process.env.KB_CATALOGUE_PATH ?? DEFAULT_CSV_PATH
+  const csvPath = process.env.KB_CATALOGUE_PATH
+  if (!csvPath) {
+    throw new Error(
+      'KB_CATALOGUE_PATH is required. Local product CSV files were removed from the repo; use admin CSV import or set this to an external catalogue file.',
+    )
+  }
+
   const text = await fs.readFile(csvPath, 'utf-8')
 
   const prisma = new PrismaClient()

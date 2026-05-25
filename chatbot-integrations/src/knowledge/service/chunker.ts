@@ -1,5 +1,5 @@
 /**
- * Port of calisto_nlp_export/actions/knowledge_base/chunker.py prepare_chunks logic.
+ * Text chunking for knowledge document ingest (paragraph windows).
  */
 
 function splitParagraphs(text: string): string[] {

@@ -10,9 +10,5 @@ tensorflow-estimator==2.12.0
 tensorflow-hub==0.13.0
 tensorflow-macos==2.12.0
 
-# RAG – Knowledge Base Retrieval
-faiss-cpu>=1.7.4
-sentence-transformers>=2.2.2
-pypdf>=3.0.0
-python-docx>=0.8.11
+# Tabular helpers for remote product catalogue in actions/actions.py
 pandas>=1.5.0
