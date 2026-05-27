@@ -19,16 +19,8 @@ from rasa_sdk.forms import FormValidationAction
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-CATALOGUE_PATH = os.getenv(
-    "KB_CATALOGUE_PATH",
-    "knowledge_base/calisto_product_catalog_500.csv",
-)
 BOOKING_URL = os.getenv("BOOKING_URL", "").strip()
 DEFAULT_STORE_HOURS = os.getenv("DEFAULT_STORE_HOURS", "10:00 AM to 10:00 PM daily").strip()
-KB_INDEX_META_PATH = os.getenv(
-    "KB_INDEX_META_PATH",
-    "knowledge_base/index/calisto_meta.json",
-)
 INTENT_CONFIDENCE_THRESHOLD = 0.7
 FORM_INTERRUPTION_INTENTS = {
     "ask_faq",
@@ -288,7 +280,7 @@ def is_probable_location(value: Any) -> bool:
 
 
 class ServiceGateway:
-    """Thin backend adapter with CSV fallback for local development."""
+    """HTTP adapter to the chatbot-integrations API (Postgres-backed catalogue & knowledge)."""
 
     def __init__(self) -> None:
         self.base_url = os.getenv("BACKEND_API_BASE_URL", "").rstrip("/")
@@ -405,6 +397,10 @@ def normalize_product_record(product: Dict[str, Any]) -> Dict[str, Any]:
 
 def load_catalogue() -> pd.DataFrame:
     """Load product catalogue from the remote DB-backed integration API."""
+    if not gateway.enabled():
+        raise RuntimeError(
+            "BACKEND_API_BASE_URL is not set. Product catalogue is only available via the integration API (Postgres)."
+        )
     remote_products: Any = gateway.list_products()
     if isinstance(remote_products, list) and remote_products:
         # Ensure we have a list of flat dictionaries before creating a DataFrame.
@@ -465,21 +461,28 @@ def load_catalogue() -> pd.DataFrame:
 
 
 def load_kb_metadata() -> List[Dict[str, Any]]:
-    """Load BM25-style chunks for FAQ routing. Prefer remote DB via integration service."""
+    """Load knowledge chunks for FAQ routing from the remote DB via integration service."""
+    if not gateway.enabled():
+        raise RuntimeError(
+            "BACKEND_API_BASE_URL is not set. Knowledge base is only available via the integration API (Postgres)."
+        )
     remote: Any = gateway.get_json("/knowledge/chunks")
-    if isinstance(remote, list) and remote:
-        out: List[Dict[str, Any]] = []
-        for item in remote:
-            if not isinstance(item, dict):
-                continue
-            text = item.get("text")
-            source = item.get("source")
-            if isinstance(text, str) and text.strip() and isinstance(source, str):
-                out.append({"source": source, "text": text})
-        if out:
-            return out
-
-    return []
+    if remote is None:
+        raise RuntimeError(
+            "Knowledge base unavailable from integration API. "
+            "Ensure chatbot-integrations is running with STORAGE_BACKEND=postgres."
+        )
+    if not isinstance(remote, list):
+        raise RuntimeError("Knowledge base API returned an unexpected response shape.")
+    out: List[Dict[str, Any]] = []
+    for item in remote:
+        if not isinstance(item, dict):
+            continue
+        text = item.get("text")
+        source = item.get("source")
+        if isinstance(text, str) and text.strip() and isinstance(source, str):
+            out.append({"source": source, "text": text})
+    return out
 
 
 def clean_faq_answer(text: str, requested_group: Optional[str] = None) -> str:
@@ -2676,10 +2679,22 @@ class ActionDocumentSearch(Action):
             )
             return []
 
-        intent = tracker.latest_message.get("intent") or {}
-        entities = tracker.latest_message.get("entities") or []
-        
-        faq_entries = load_kb_metadata()
+        try:
+            faq_entries = list(load_kb_metadata())
+        except RuntimeError as exc:
+            logger.error("Knowledge base load failed: %s", exc)
+            dispatcher.utter_message(
+                text=tr(
+                    lang,
+                    "I can't reach the knowledge base right now. Please try again in a moment or contact support.",
+                    "Pangkalan pengetahuan tidak dapat diakses buat masa ini. Sila cuba lagi atau hubungi sokongan.",
+                    "暂时无法访问知识库，请稍后再试或联系客服。",
+                ),
+            )
+            return []
+
+        latest_intent = (tracker.latest_message.get("intent") or {}).get("name") or ""
+        faq_boost = latest_intent == "ask_faq"
         query_lower = raw_query.lower()
 
         keyword_groups = {
@@ -2705,7 +2720,10 @@ class ActionDocumentSearch(Action):
                 if not text:
                     continue
 
+                source = str(entry.get("source") or "").lower()
                 score = 0
+                if faq_boost and "faq" in source:
+                    score += 2
                 if requested_group == "refund":
                     score += 5 if "refund or return policy" in text.lower() else 0
                     score += 2 if "refund" in text.lower() else 0

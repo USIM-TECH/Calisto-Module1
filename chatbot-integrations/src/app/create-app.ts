@@ -69,6 +69,7 @@ export function createApp(dependencies: AppDependencies): Express {
       req.rawBody = buf.toString()
     },
   }))
+  app.use(express.urlencoded({ extended: true }))
 
   const router = express.Router()
   createWebhookRouter(router, { whatsapp, instagram, messenger, telegram, x, logger, runtimeStore })
