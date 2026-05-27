@@ -1,6 +1,13 @@
 version: "3.1"
 
 intents:
+  - email_support
+  - support_and_policies
+  - support_actions
+  - warranty_policy_inquiry
+  - return_policy_inquiry
+  - ask_a_question
+  - ask_availability
   - greet
   - browse_eyewear
   - ask_faq
@@ -298,6 +305,62 @@ forms:
       - purchase_timeline
 
 responses:
+  utter_email_support:
+    - text: "For further assistance, please contact: calisto123@gmail.com"
+
+  utter_support_policies_menu:
+    - text: "How can we assist you today?"
+      buttons:
+        - title: Warranty Policy
+          payload: /warranty_policy_inquiry
+        - title: Return & Refund Policy
+          payload: /return_policy_inquiry
+        - title: Support Actions
+          payload: /support_actions
+
+  utter_warranty_policy_menu:
+    - text: "Would you like to file a claim?"
+      buttons:
+        - title: File Warranty Claim
+          payload: /warranty_support
+        - title: Back
+          payload: /support_and_policies
+
+  utter_return_policy_menu:
+    - text: "What would you like to do next?"
+      buttons:
+        - title: Start Return Request
+          payload: /return_request
+        - title: Exchange Product
+          payload: /exchange_request
+        - title: Back
+          payload: /support_and_policies
+
+  utter_support_actions_menu:
+    - text: "Please select a support option:"
+      buttons:
+        - title: Book Appointment
+          payload: /book_appointment
+        - title: Email Support
+          payload: /email_support
+        - title: Visit Store
+          payload: /find_a_store
+        - title: Ask Another Question
+          payload: /ask_a_question
+
+  utter_ask_a_question_menu:
+    - text: "What would you like help with?"
+      buttons:
+        - title: Product Availability
+          payload: /ask_availability
+        - title: Lens Guidance
+          payload: /lens_vision_solutions
+        - title: Warranty & Returns
+          payload: /support_and_policies
+        - title: Store Information
+          payload: /find_a_store
+        - title: Other Questions
+          payload: /ask_faq
   utter_greet:
     - condition:
         - type: slot
@@ -309,8 +372,8 @@ responses:
           payload: /browse_eyewear
         - title: Semak Harga
           payload: /ask_pricing
-        - title: Tempah Janji Temu
-          payload: /book_appointment
+        - title: Sokongan & Polisi
+          payload: /support_and_policies
     - condition:
         - type: slot
           name: preferred_language
@@ -321,8 +384,8 @@ responses:
           payload: /browse_eyewear
         - title: Semak Harga
           payload: /ask_pricing
-        - title: Tempah Janji Temu
-          payload: /book_appointment
+        - title: Sokongan & Polisi
+          payload: /support_and_policies
     - condition:
         - type: slot
           name: preferred_language
@@ -333,8 +396,8 @@ responses:
           payload: /browse_eyewear
         - title: Semak Harga
           payload: /ask_pricing
-        - title: Tempah Janji Temu
-          payload: /book_appointment
+        - title: Sokongan & Polisi
+          payload: /support_and_policies
     - condition:
         - type: slot
           name: preferred_language
@@ -345,8 +408,8 @@ responses:
           payload: /browse_eyewear
         - title: Semak Harga
           payload: /ask_pricing
-        - title: Tempah Janji Temu
-          payload: /book_appointment
+        - title: Sokongan & Polisi
+          payload: /support_and_policies
     - condition:
         - type: slot
           name: preferred_language
@@ -357,8 +420,8 @@ responses:
           payload: /browse_eyewear
         - title: 查看价格
           payload: /ask_pricing
-        - title: 预约
-          payload: /book_appointment
+        - title: 支持与政策
+          payload: /support_and_policies
     - condition:
         - type: slot
           name: preferred_language
@@ -369,8 +432,8 @@ responses:
           payload: /browse_eyewear
         - title: 查看价格
           payload: /ask_pricing
-        - title: 预约
-          payload: /book_appointment
+        - title: 支持与政策
+          payload: /support_and_policies
     - condition:
         - type: slot
           name: preferred_language
@@ -381,8 +444,8 @@ responses:
           payload: /browse_eyewear
         - title: 查看价格
           payload: /ask_pricing
-        - title: 预约
-          payload: /book_appointment
+        - title: 支持与政策
+          payload: /support_and_policies
     - condition:
         - type: slot
           name: preferred_language
@@ -393,40 +456,40 @@ responses:
           payload: /browse_eyewear
         - title: 查看价格
           payload: /ask_pricing
-        - title: 预约
-          payload: /book_appointment
+        - title: 支持与政策
+          payload: /support_and_policies
     - text: "Welcome to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?"
       buttons:
         - title: Browse Eyewear
           payload: /browse_eyewear
         - title: Check Pricing
           payload: /ask_pricing
-        - title: Book Appointment
-          payload: /book_appointment
+        - title: Support & Policies
+          payload: /support_and_policies
     - text: "Welcome to Calisto Eyewear.\nI can help you explore products, review pricing, find a nearby store, or arrange a consultation. Where would you like to start?"
       buttons:
         - title: Browse Eyewear
           payload: /browse_eyewear
         - title: Check Pricing
           payload: /ask_pricing
-        - title: Book Appointment
-          payload: /book_appointment
+        - title: Support & Policies
+          payload: /support_and_policies
     - text: "Welcome in.\nI can guide you through product options, pricing, store locations, or consultation booking. What would you like to do first?"
       buttons:
         - title: Browse Eyewear
           payload: /browse_eyewear
         - title: Check Pricing
           payload: /ask_pricing
-        - title: Book Appointment
-          payload: /book_appointment
+        - title: Support & Policies
+          payload: /support_and_policies
     - text: "Welcome to Calisto Eyewear.\nWhether you want to browse collections, compare pricing, find a store, or arrange a consultation, I can help. What would you like to start with?"
       buttons:
         - title: Browse Eyewear
           payload: /browse_eyewear
         - title: Check Pricing
           payload: /ask_pricing
-        - title: Book Appointment
-          payload: /book_appointment
+        - title: Support & Policies
+          payload: /support_and_policies
 
   utter_pricing_intro:
     - condition:
@@ -641,10 +704,10 @@ responses:
       buttons:
         - title: Cari Kedai
           payload: /find_a_store
-        - title: Tempah Janji Temu
-          payload: /book_appointment
-        - title: Bercakap Dengan Konsultan
-          payload: /capture_lead
+        - title: Sokongan & Polisi
+          payload: /support_and_policies
+        - title: Tanya Soalan
+          payload: /ask_a_question
     - condition:
         - type: slot
           name: preferred_language
@@ -653,10 +716,10 @@ responses:
       buttons:
         - title: Cari Kedai
           payload: /find_a_store
-        - title: Tempah Janji Temu
-          payload: /book_appointment
-        - title: Bercakap Dengan Konsultan
-          payload: /capture_lead
+        - title: Sokongan & Polisi
+          payload: /support_and_policies
+        - title: Tanya Soalan
+          payload: /ask_a_question
     - condition:
         - type: slot
           name: preferred_language
@@ -665,10 +728,10 @@ responses:
       buttons:
         - title: Cari Kedai
           payload: /find_a_store
-        - title: Tempah Janji Temu
-          payload: /book_appointment
-        - title: Bercakap Dengan Konsultan
-          payload: /capture_lead
+        - title: Sokongan & Polisi
+          payload: /support_and_policies
+        - title: Tanya Soalan
+          payload: /ask_a_question
     - condition:
         - type: slot
           name: preferred_language
@@ -677,10 +740,10 @@ responses:
       buttons:
         - title: Cari Kedai
           payload: /find_a_store
-        - title: Tempah Janji Temu
-          payload: /book_appointment
-        - title: Bercakap Dengan Konsultan
-          payload: /capture_lead
+        - title: Sokongan & Polisi
+          payload: /support_and_policies
+        - title: Tanya Soalan
+          payload: /ask_a_question
     - condition:
         - type: slot
           name: preferred_language
@@ -689,10 +752,10 @@ responses:
       buttons:
         - title: 查找门店
           payload: /find_a_store
-        - title: 预约
-          payload: /book_appointment
-        - title: 联系顾问
-          payload: /capture_lead
+        - title: 支持与政策
+          payload: /support_and_policies
+        - title: 提问
+          payload: /ask_a_question
     - condition:
         - type: slot
           name: preferred_language
@@ -701,10 +764,10 @@ responses:
       buttons:
         - title: 查找门店
           payload: /find_a_store
-        - title: 预约
-          payload: /book_appointment
-        - title: 联系顾问
-          payload: /capture_lead
+        - title: 支持与政策
+          payload: /support_and_policies
+        - title: 提问
+          payload: /ask_a_question
     - condition:
         - type: slot
           name: preferred_language
@@ -713,10 +776,10 @@ responses:
       buttons:
         - title: 查找门店
           payload: /find_a_store
-        - title: 预约
-          payload: /book_appointment
-        - title: 联系顾问
-          payload: /capture_lead
+        - title: 支持与政策
+          payload: /support_and_policies
+        - title: 提问
+          payload: /ask_a_question
     - condition:
         - type: slot
           name: preferred_language
@@ -725,42 +788,42 @@ responses:
       buttons:
         - title: 查找门店
           payload: /find_a_store
-        - title: 预约
-          payload: /book_appointment
-        - title: 联系顾问
-          payload: /capture_lead
+        - title: 支持与政策
+          payload: /support_and_policies
+        - title: 提问
+          payload: /ask_a_question
     - text: "Would you like to try these frames at a Calisto store?"
       buttons:
         - title: Find Nearest Store
           payload: /find_a_store
-        - title: Book Appointment
-          payload: /book_appointment
-        - title: Talk to Consultant
-          payload: /capture_lead
+        - title: Support & Policies
+          payload: /support_and_policies
+        - title: Ask a Question
+          payload: /ask_a_question
     - text: "If you'd like, you can try these styles at a Calisto store. What would you like to do next?"
       buttons:
         - title: Find Nearest Store
           payload: /find_a_store
-        - title: Book Appointment
-          payload: /book_appointment
-        - title: Talk to Consultant
-          payload: /capture_lead
+        - title: Support & Policies
+          payload: /support_and_policies
+        - title: Ask a Question
+          payload: /ask_a_question
     - text: "You can also try these styles in person at a Calisto store. Which next step would you prefer?"
       buttons:
         - title: Find Nearest Store
           payload: /find_a_store
-        - title: Book Appointment
-          payload: /book_appointment
-        - title: Talk to Consultant
-          payload: /capture_lead
+        - title: Support & Policies
+          payload: /support_and_policies
+        - title: Ask a Question
+          payload: /ask_a_question
     - text: "If you'd like a closer look, you can try these styles in person at a Calisto store. What would you like to do next?"
       buttons:
         - title: Find Nearest Store
           payload: /find_a_store
-        - title: Book Appointment
-          payload: /book_appointment
-        - title: Talk to Consultant
-          payload: /capture_lead
+        - title: Support & Policies
+          payload: /support_and_policies
+        - title: Ask a Question
+          payload: /ask_a_question
 
   utter_ask_lens_type:
     - condition:
@@ -1455,6 +1518,7 @@ actions:
   - action_handle_exchange_support
   - action_handle_warranty_support
   - action_handle_order_support
+  - action_book_appointment
 
 session_config:
   session_expiration_time: 60

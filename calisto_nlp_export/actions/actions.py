@@ -47,6 +47,7 @@ FORM_INTERRUPTION_INTENTS = {
     "search_product_by_attribute",
     "product_recommendation",
     "inform_budget",
+    "email_support",
 }
 FLOW_BY_INTENT = {
     "ask_faq": "faq",
@@ -1187,6 +1188,39 @@ def route_support_flow(
     }
     preferred_service = service_map.get(intent_name, "After-sales Support")
 
+    # Output relevant policy context if applicable
+    keyword_map = {
+        "return_request": "refund",
+        "refund_request": "refund",
+        "exchange_request": "refund",
+        "warranty_support": "warranty",
+        "repair_support": "warranty"
+    }
+    search_group = keyword_map.get(intent_name)
+    
+    if search_group:
+        try:
+            faq_entries = load_kb_metadata()
+            best_result = None
+            for entry in faq_entries:
+                text = str(entry.get("text") or "").strip().lower()
+                if search_group == "refund" and ("refund or return policy" in text or "refund" in text):
+                    best_result = entry
+                    break
+                elif search_group == "warranty" and "warranty" in text:
+                    best_result = entry
+                    break
+                    
+            if best_result:
+                answer = best_result.get("text", "").strip()
+                if " A:" in answer:
+                    answer = answer.split(" A:", 1)[1].strip()
+                if " Q:" in answer:
+                    answer = answer.split(" Q:", 1)[0].strip()
+                dispatcher.utter_message(text=f"📄 {answer}")
+        except Exception as e:
+            logger.error(f"Failed to fetch policy before escalation: {e}")
+
     _support_intros = [
         f"Of course. I'll connect you with our support team for your {preferred_service.lower()} right away.",
         f"Understood. Let me get our support team on your {preferred_service.lower()}.",
@@ -1416,7 +1450,7 @@ def lead_buttons(lang: str, preferred_service: Optional[str] = None) -> List[Dic
     return [
         {"title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "payload": "/book_appointment"},
         {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-        {"title": tr(lang, "Consult Now", "Hubungi Konsultan", "联系顾问"), "payload": payload},
+        {"title": tr(lang, "Ask a Question", "Tanya Soalan", "提问"), "payload": payload},
     ]
 
 
@@ -1547,7 +1581,7 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
     actions.append({"type": "postback", "title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "value": "/book_appointment"})
     actions.append({
         "type": "postback",
-        "title": tr(lang, "Consult Now", "Hubungi Konsultan", "联系顾问"),
+        "title": tr(lang, "Ask a Question", "Tanya Soalan", "提问"),
         "value": lead_buttons(lang, preferred_service)[-1]["payload"],
     })
 
@@ -2629,15 +2663,24 @@ class ActionDocumentSearch(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        events = flow_entry_events(tracker, "faq")
+        raw_query = (tracker.latest_message.get("text") or "").strip()
         lang = get_language(tracker)
-        query = normalize_free_text(tracker.latest_message.get("text") or "")
-        query_lower = query.lower()
+        if not raw_query:
+            dispatcher.utter_message(
+                text=tr(
+                    lang,
+                    "Could you please rephrase your question? I didn't catch that.",
+                    "Boleh anda nyatakan semula soalan anda? Saya kurang pasti.",
+                    "您能换个说法问吗？我没听懂。"
+                )
+            )
+            return []
 
-        faq_entries = [
-            entry for entry in load_kb_metadata()
-            if "faq" in str(entry.get("source") or "").lower()
-        ]
+        intent = tracker.latest_message.get("intent") or {}
+        entities = tracker.latest_message.get("entities") or []
+        
+        faq_entries = load_kb_metadata()
+        query_lower = raw_query.lower()
 
         keyword_groups = {
             "refund": {"refund", "return", "exchange", "policy", "size", "fit"},
@@ -2653,9 +2696,10 @@ class ActionDocumentSearch(Action):
                 requested_group = group_name
                 break
 
-        best_text = ""
+        best_result = None
+        best_score = 0
         if faq_entries:
-            ranked: List[tuple[int, str]] = []
+            ranked = []
             for entry in faq_entries:
                 text = str(entry.get("text") or "").strip()
                 if not text:
@@ -2679,56 +2723,52 @@ class ActionDocumentSearch(Action):
                     if len(token) > 2 and token in text.lower():
                         score += 1
 
-                if score:
-                    ranked.append((score, text))
+                if score > 0:
+                    ranked.append((score, entry))
 
             if ranked:
                 ranked.sort(key=lambda item: item[0], reverse=True)
-                best_text = ranked[0][1]
+                best_score = ranked[0][0]
+                best_result = ranked[0][1]
 
-        if requested_group == "refund" and not best_text:
-            best_text = (
-                "Calisto offers a 14-day return and refund policy for standard eyewear items in original unworn condition with the original receipt. "
-                "Custom prescription lenses are reviewed case by case."
-            )
-
-        if requested_group == "warranty" and not best_text:
-            best_text = (
-                "We can help with warranty and post-purchase issues. If you share the product issue, I can guide you or connect you with support."
-            )
-
-        if best_text:
-            best_text = clean_faq_answer(best_text, requested_group)
-            dispatcher.utter_message(text=best_text)
+        if not best_result:
             dispatcher.utter_message(
                 text=tr(
                     lang,
-                    "If you need help with a return, exchange, or support follow-up, I can connect you with the team.",
-                    "Jika anda perlukan bantuan untuk pemulangan, pertukaran, atau susulan sokongan, saya boleh hubungkan anda dengan pasukan kami.",
-                    "如果您需要退货、换货或售后协助，我可以帮您联系团队。"
-                ),
-                buttons=[
-                    {"title": tr(lang, "After-sales Support", "Sokongan Selepas Jualan", "售后支持"), "payload": "/after_sales_support"},
-                    {"title": tr(lang, "Warranty Help", "Bantuan Waranti", "保修协助"), "payload": "/warranty_support"},
-                    {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-                ],
+                    "I'm sorry, I couldn't find that information in the Calisto knowledge base.\n\nYou can try rephrasing, or I can connect you to support.",
+                    "Maaf, saya tidak temui maklumat tersebut.\n\nAnda boleh cuba lagi, atau saya boleh hubungkan anda dengan sokongan.",
+                    "抱歉，我找不到该信息。\n\n您可以重新描述，或者我帮您联系客服。"
+                )
             )
-            return events
+        else:
+            answer = best_result.get("text", "").strip()
+            
+            # Simple clean up of answer
+            if " A:" in answer:
+                answer = answer.split(" A:", 1)[1].strip()
+            if " Q:" in answer:
+                answer = answer.split(" Q:", 1)[0].strip()
 
-        dispatcher.utter_message(
-            text=tr(
-                lang,
-                "I can help with returns, warranty, store info, or booking questions. Tell me which one you need.",
-                "Saya boleh bantu dengan pemulangan, waranti, info kedai, atau tempahan. Beritahu saya yang mana anda perlukan.",
-                "我可以协助退货、保修、门店信息或预约问题。请告诉我您需要哪一项。"
-            ),
-            buttons=[
-                {"title": tr(lang, "Refund Policy", "Polisi Refund", "退款政策"), "payload": "/ask_faq"},
-                {"title": tr(lang, "Warranty", "Waranti", "保修"), "payload": "/warranty_support"},
-                {"title": tr(lang, "Book Eye Test", "Tempah Ujian Mata", "预约验光"), "payload": "/book_appointment"},
-            ],
-        )
-        return events
+            words = answer.split()
+            if len(words) > 150:
+                answer = " ".join(words[:150]) + " ..."
+
+            logger.info(
+                "Matched knowledge-base source '%s' with score %.3f",
+                best_result.get("source", "unknown"),
+                float(best_score),
+            )
+            dispatcher.utter_message(text=f"📄 {answer}")
+
+        # Provide contextual follow up instead of escalating automatically
+        if requested_group == "warranty":
+            dispatcher.utter_message(response="utter_warranty_policy_menu")
+        elif requested_group == "refund":
+            dispatcher.utter_message(response="utter_return_policy_menu")
+        else:
+            dispatcher.utter_message(response="utter_support_actions_menu")
+            
+        return []
 
 
 class ActionPrefillLeadCapture(Action):
@@ -3012,6 +3052,8 @@ class ActionHandleLeadCaptureInterruption(Action):
                 events.extend(ActionFilterProducts().run(dispatcher, tracker, domain))
         elif intent_name == "ask_faq":
             events.append(FollowupAction("action_document_search"))
+        elif intent_name == "email_support":
+            dispatcher.utter_message(response="utter_email_support")
         else:
             if switch["detected"] and switch["new_domain"] == "shopping":
                 events.extend(ActionSmartSearch().run(dispatcher, tracker, domain))
@@ -3099,7 +3141,7 @@ class ActionExplainLens(Action):
             buttons=[
                 {"title": tr(lang, "Set Budget", "Tetapkan Bajet", "设置预算"), "payload": '/select_budget{"price_range":"RM100 - RM250"}'},
                 {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-                {"title": tr(lang, "Talk to Consultant", "Bercakap Dengan Konsultan", "联系顾问"), "payload": '/capture_lead{"preferred_service":"Lens Consultation"}'},
+                {"title": tr(lang, "Ask a Question", "Tanya Soalan", "提问"), "payload": '/capture_lead{"preferred_service":"Lens Consultation"}'},
             ],
         )
         return events
@@ -3312,7 +3354,7 @@ class ActionShowPricing(Action):
                 "buttons": [
                     {"title": tr(lang, "Browse Frames", "Lihat Bingkai", "浏览镜框"), "payload": '/select_product_type{"product_type":"Designer Frames"}'},
                     {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-                    {"title": tr(lang, "Talk to Consultant", "Bercakap Dengan Konsultan", "联系顾问"), "payload": '/capture_lead{"preferred_service":"Designer Frames"}'},
+                    {"title": tr(lang, "Ask a Question", "Tanya Soalan", "提问"), "payload": '/capture_lead{"preferred_service":"Designer Frames"}'},
                 ],
             },
             "Luxury Sunglasses": {
@@ -3326,7 +3368,7 @@ class ActionShowPricing(Action):
                 "buttons": [
                     {"title": tr(lang, "Browse Sunglasses", "Lihat Cermin Mata Hitam", "浏览太阳镜"), "payload": '/select_product_type{"product_type":"Luxury Sunglasses"}'},
                     {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-                    {"title": tr(lang, "Talk to Consultant", "Bercakap Dengan Konsultan", "联系顾问"), "payload": '/capture_lead{"preferred_service":"Luxury Sunglasses"}'},
+                    {"title": tr(lang, "Ask a Question", "Tanya Soalan", "提问"), "payload": '/capture_lead{"preferred_service":"Luxury Sunglasses"}'},
                 ],
             },
             "Lens Consultation": {
@@ -3340,7 +3382,7 @@ class ActionShowPricing(Action):
                 "buttons": [
                     {"title": tr(lang, "Lens Options", "Pilihan Kanta", "镜片方案"), "payload": "/lens_vision_solutions"},
                     {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-                    {"title": tr(lang, "Talk to Consultant", "Bercakap Dengan Konsultan", "联系顾问"), "payload": '/capture_lead{"preferred_service":"Lens Consultation"}'},
+                    {"title": tr(lang, "Ask a Question", "Tanya Soalan", "提问"), "payload": '/capture_lead{"preferred_service":"Lens Consultation"}'},
                 ],
             },
         }
@@ -3652,3 +3694,55 @@ class ActionHandleOrderSupport(Action):
 
     def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         return route_support_flow(dispatcher, tracker, "order_support")
+class ActionBookAppointment(Action):
+    def name(self) -> Text:
+        return "action_book_appointment"
+
+    def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
+        
+        # Try to fetch booking instructions
+        try:
+            faq_entries = load_kb_metadata()
+            best_result = None
+            for entry in faq_entries:
+                text = str(entry.get("text") or "").strip().lower()
+                if "book an eye test online" in text or "booking" in text:
+                    best_result = entry
+                    break
+                    
+            if best_result:
+                answer = best_result.get("text", "").strip()
+                if " A:" in answer:
+                    answer = answer.split(" A:", 1)[1].strip()
+                if " Q:" in answer:
+                    answer = answer.split(" Q:", 1)[0].strip()
+                dispatcher.utter_message(text=f"📄 {answer}")
+            else:
+                dispatcher.utter_message(
+                    text=tr(
+                        lang,
+                        "You can easily book an appointment through our website or by visiting a store.",
+                        "Anda boleh menempah janji temu melalui laman web kami atau di kedai fizikal.",
+                        "您可以通过我们的网站或前往门店轻松预约。"
+                    )
+                )
+        except Exception as e:
+            logger.error(f"Failed to fetch booking policy: {e}")
+            dispatcher.utter_message(text="You can book an appointment directly on our website.")
+            
+        # Instead of triggering a lead form, give them options
+        dispatcher.utter_message(
+            text=tr(
+                lang,
+                "What would you like to do next?",
+                "Apakah langkah seterusnya yang anda mahu ambil?",
+                "您想接下来怎么继续？"
+            ),
+            buttons=[
+                {"title": "Find Nearest Store", "payload": "/find_a_store"},
+                {"title": "Ask a Question", "payload": "/ask_a_question"},
+                {"title": "Support & Policies", "payload": "/support_and_policies"}
+            ]
+        )
+        return []

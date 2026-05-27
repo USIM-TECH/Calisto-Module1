@@ -75,12 +75,62 @@ class ActionDocumentSearch(Action):
             "entities": entities,
         }
 
-        # Use the ServiceGateway from actions.py
-        from actions.actions import gateway
+        # Use the ServiceGateway and load_kb_metadata from actions.py
+        from actions.actions import gateway, load_kb_metadata
 
-        results = gateway._request("POST", "/knowledge/search", payload)
+        faq_entries = load_kb_metadata()
+        query_lower = raw_query.lower()
 
-        if not results:
+        keyword_groups = {
+            "refund": {"refund", "return", "exchange", "policy", "size", "fit"},
+            "warranty": {"warranty", "cover", "broken", "damage"},
+            "booking": {"book", "appointment", "eye test", "online"},
+            "after_sales": {"adjustment", "after-sales", "after sales", "fitting", "support"},
+            "stores": {"store", "location", "branch", "outlet"},
+        }
+
+        requested_group: Optional = None
+        for group_name, keywords in keyword_groups.items():
+            if any(keyword in query_lower for keyword in keywords):
+                requested_group = group_name
+                break
+
+        best_result = None
+        best_score = 0
+        if faq_entries:
+            ranked = []
+            for entry in faq_entries:
+                text = str(entry.get("text") or "").strip()
+                if not text:
+                    continue
+
+                score = 0
+                if requested_group == "refund":
+                    score += 5 if "refund or return policy" in text.lower() else 0
+                    score += 2 if "refund" in text.lower() else 0
+                    score += 2 if "exchange" in text.lower() else 0
+                elif requested_group == "warranty":
+                    score += 3 if "warranty" in text.lower() else 0
+                elif requested_group == "booking":
+                    score += 3 if "book an eye test online" in text.lower() else 0
+                elif requested_group == "after_sales":
+                    score += 3 if "after-sales support" in text.lower() else 0
+                elif requested_group == "stores":
+                    score += 3 if "stores located" in text.lower() else 0
+
+                for token in re.findall(r"[a-z0-9]+", query_lower):
+                    if len(token) > 2 and token in text.lower():
+                        score += 1
+
+                if score > 0:
+                    ranked.append((score, entry))
+
+            if ranked:
+                ranked.sort(key=lambda item: item[0], reverse=True)
+                best_score = ranked[0][0]
+                best_result = ranked[0][1]
+
+        if not best_result:
             dispatcher.utter_message(
                 text=(
                     "I'm sorry, I couldn't find that information in the Calisto knowledge base.\n\n"
@@ -89,8 +139,6 @@ class ActionDocumentSearch(Action):
             )
             return []
 
-        # Assuming the backend returns a list of results like the old hybrid_search
-        best_result = results[0]
         answer = _clean_retrieved_answer((best_result.get("text") or "").strip())
 
         words = answer.split()
@@ -100,7 +148,7 @@ class ActionDocumentSearch(Action):
         logger.info(
             "Matched knowledge-base source '%s' with score %.3f",
             best_result.get("source", "unknown"),
-            float(best_result.get("score", 0.0)),
+            float(best_score),
         )
         dispatcher.utter_message(text=f"📄 {answer}")
         return []
