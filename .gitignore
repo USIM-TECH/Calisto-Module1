@@ -4,6 +4,10 @@ chatbot-integrations/dist/
 chatbot-integrations/.turbo/
 chatbot-integrations/.eslintcache
 chatbot-integrations/.tsbuildinfo
+chatbot-frontend/dist/
+chatbot-frontend/*.tsbuildinfo
+chatbot-frontend/vite.config.js
+chatbot-frontend/vite.config.d.ts
 
 # Python / Rasa
 .calisto-env/
