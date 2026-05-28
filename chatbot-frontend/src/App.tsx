@@ -10,7 +10,7 @@ export default function App() {
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<Navigate to="/webchat" replace />} />
+        <Route path="/" element={<Navigate to="/leads" replace />} />
         <Route path="/webchat" element={<WebchatPage />} />
         <Route path="/leads" element={<LeadsPage />} />
         <Route path="/products" element={<ProductsPage />} />
