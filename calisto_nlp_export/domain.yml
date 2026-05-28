@@ -29,7 +29,6 @@ intents:
   - reschedule_appointment
   - after_sales_support
   - order_tracking
-  - warranty_claim
   - order_support
   - repair_support
   - warranty_support
@@ -628,10 +627,6 @@ responses:
           payload: '/select_budget{"price_range":"Under RM100"}'
         - title: RM100 - RM250
           payload: '/select_budget{"price_range":"RM100 - RM250"}'
-        - title: RM250 - RM300
-          payload: '/select_budget{"price_range":"RM250 - RM300"}'
-        - title: Above RM300
-          payload: '/select_budget{"price_range":"Above RM300"}'
         - title: RM250 - RM300
           payload: '/select_budget{"price_range":"RM250 - RM300"}'
         - title: Above RM300
@@ -1364,26 +1359,26 @@ responses:
         - type: slot
           name: preferred_language
           value: ms
-      text: "Terima kasih. Saya sudah simpan butiran hubungan anda dan pasukan kami akan hubungi anda tidak lama lagi."
+      text: "Maklumat anda telah dicatat. Pasukan kami akan menghubungi anda tidak lama lagi."
     - condition:
         - type: slot
           name: preferred_language
           value: zh
-      text: "谢谢。我已经记录您的联系资料，团队会尽快跟进您。"
-    - text: "Thanks. I have your contact details and our team will follow up shortly."
+      text: "已记录您的信息。我们的团队将尽快与您联系。"
+    - text: "All set. Our team will be in touch with you shortly."
 
   utter_lead_not_qualified:
     - condition:
         - type: slot
           name: preferred_language
           value: ms
-      text: "Terima kasih. Kami telah merekodkan pertanyaan anda dan pasukan kami akan semak langkah seterusnya yang paling sesuai untuk anda."
+      text: "Permintaan anda telah kami terima. Pasukan kami akan menghubungi anda dengan segera."
     - condition:
         - type: slot
           name: preferred_language
           value: zh
-      text: "谢谢。我们已记录您的咨询，团队会为您评估最合适的下一步。"
-    - text: "Thank you. We have captured your inquiry and our team will review the best next step for you."
+      text: "您的请求已收到。我们的团队将尽快与您联系。"
+    - text: "Your details are with us. Our team will be in touch soon."
 
   utter_explain_lens:
     - condition:

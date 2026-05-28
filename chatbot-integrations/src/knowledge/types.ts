@@ -11,3 +11,16 @@ export interface KnowledgeChunkWire {
   source: string
   text: string
 }
+
+export interface KnowledgeDocumentSummary {
+  source: string
+  chunkCount: number
+  updatedAt: string
+}
+
+export interface KnowledgeDocumentDetail extends KnowledgeDocumentSummary {
+  chunks: KnowledgeChunkRecord[]
+  total: number
+  page: number
+  limit: number
+}

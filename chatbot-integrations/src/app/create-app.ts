@@ -97,6 +97,7 @@ export function createApp(dependencies: AppDependencies): Express {
       req.rawBody = buf.toString()
     },
   }))
+  app.use(express.urlencoded({ extended: true }))
 
   app.use(['/webchat', '/reports', '/admin', '/products', '/knowledge'], (req, res, next) => {
     const handled = applyCorsHeaders(req, res, config.website.allowedOrigins)

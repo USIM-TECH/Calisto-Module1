@@ -9,7 +9,6 @@ Rasa project used by the chatbot integration service.
 - `data/`: NLU, rules, and stories
 - `domain.yml`: intents, slots, forms, responses
 - `actions/actions.py`: custom actions and validators
-- `knowledge_base/`: local CSV, DOCX, PDF, and retrieval index files
 - `docker-compose.yml`: Rasa server + action server
 
 ```
@@ -35,7 +34,7 @@ calisto_nlp_export/
 └── calisto_rasa_client.js   ← Node.js integration example
 ```
 
-The current action layer reads from the local `knowledge_base/` folder. Product, brand, city, and store-location lookups come from `knowledge_base/calisto_product_catalog_500.csv`, while document Q&A uses the local FAISS/BM25 retrieval index under `knowledge_base/index/`. There is no PostgreSQL or external vector database dependency in the current branch.
+Product catalogue and knowledge chunks are loaded at runtime from **chatbot-integrations** (Postgres via `BACKEND_API_BASE_URL`). Manage them in the admin UI at `/admin/products` and `/admin/knowledge`. Set `STORAGE_BACKEND=postgres` and `DATABASE_URL` in `chatbot-integrations/.env`.
 
 ## Multilingual Support
 
@@ -83,10 +82,12 @@ This builds and starts two containers:
 
 The containers are connected via an internal Docker network (`calisto-net`). The Rasa server automatically loads the pre-trained model from `models/`.
 
-The action server reads its runtime knowledge from:
-- `knowledge_base/calisto_product_catalog_500.csv`
-- `knowledge_base/index/calisto.faiss`
-- `knowledge_base/index/calisto_meta.json`
+The action server requires the integration API:
+
+- `GET /admin/products/api?limit=500` — product catalogue
+- `GET /knowledge/chunks` — knowledge chunks
+
+Configure `BACKEND_API_BASE_URL` in `docker-compose.yml` (default `http://host.docker.internal:3000`).
 
 ### 2. Verify containers are running
 
@@ -129,6 +130,14 @@ docker compose down
 ```
 
 ---
+## Telegram Webhook Setup
+```bash
+curl -X POST "https://api.telegram.org/bot<Telegram-Bot-Token>/setWebhook" \
+-H "Content-Type: application/json" \
+-d '{
+  "url": "https://YOUR-NGROK-URL.ngrok-free.app/webhooks/telegram"
+}'
+```
 
 ## Setup & Run (Local — Requires Python 3.8–3.10)
 
@@ -310,6 +319,5 @@ rasa shell
 | Action server errors (`InvalidURL`) | Verify `endpoints.yml` has `url: "http://action-server:5055/webhook"` (no `${...}` syntax). |
 | Python version error (local setup) | Rasa 3.6.x needs Python 3.8–3.10. Use Docker instead. |
 | Port 5005 already in use | Stop existing containers: `docker compose down`, or kill the process: `lsof -ti :5005 \| xargs kill -9` |
-
 
 
