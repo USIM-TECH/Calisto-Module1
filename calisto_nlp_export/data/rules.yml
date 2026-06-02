@@ -1,6 +1,10 @@
 version: "3.1"
 
 rules:
+  - rule: Handle email support
+    steps:
+      - intent: email_support
+      - action: utter_email_support
   - rule: Greet user at any time
     steps:
       - intent: greet
@@ -225,14 +229,11 @@ rules:
       - action: action_set_language
       - action: action_recommend_products
 
-  - rule: Start lead capture from booking
+  - rule: Handle book appointment
     steps:
       - intent: book_appointment
       - action: action_set_language
-      - action: utter_booking_intro
-      - action: action_prefill_lead_capture
-      - action: lead_capture_form
-      - active_loop: lead_capture_form
+      - action: action_book_appointment
 
   - rule: Start lead capture directly
     steps:
@@ -330,3 +331,55 @@ rules:
       - intent: order_support
       - action: action_set_language
       - action: action_handle_order_support
+
+  - rule: Support and policies menu
+    steps:
+      - intent: support_and_policies
+      - action: action_set_language
+      - action: utter_support_policies_menu
+
+  - rule: Interrupt lead capture for support and policies
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: support_and_policies
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Ask a question menu
+    steps:
+      - intent: ask_a_question
+      - action: action_set_language
+      - action: utter_ask_a_question_menu
+
+  - rule: Interrupt lead capture for ask a question
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: ask_a_question
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Support actions menu
+    steps:
+      - intent: support_actions
+      - action: action_set_language
+      - action: utter_support_actions_menu
+
+  - rule: Warranty policy inquiry
+    steps:
+      - intent: warranty_policy_inquiry
+      - action: action_set_language
+      - action: utter_warranty_policy_menu
+
+  - rule: Return policy inquiry
+    steps:
+      - intent: return_policy_inquiry
+      - action: action_set_language
+      - action: utter_return_policy_menu
+
+  - rule: Ask availability inquiry
+    steps:
+      - intent: ask_availability
+      - action: action_set_language
+      - action: action_document_search

@@ -3,21 +3,11 @@
 # ============================================================
 FROM rasa/rasa-sdk:3.6.2
 
-# Run as root to install requirements
 USER root
 
-# Torch/sentence-transformers expect a resolvable runtime user and writable cache dirs.
-ENV USER=root
-ENV LOGNAME=root
-ENV HOME=/tmp
-ENV TORCHINDUCTOR_CACHE_DIR=/tmp/torchinductor
-
-# Install the custom action dependencies
 COPY action-requirements.txt /app/action-requirements.txt
 RUN pip install --no-cache-dir -r /app/action-requirements.txt
 
-# Copy custom actions and knowledge_base
 COPY actions/ /app/actions/
-COPY knowledge_base/ /app/knowledge_base/
 
 EXPOSE 5055

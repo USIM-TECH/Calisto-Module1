@@ -1,6 +1,51 @@
 version: "3.1"
 
 nlu:
+  - intent: support_and_policies
+    examples: |
+      - support
+      - policies
+      - i need help with policies
+      - warranty and returns
+      - customer service
+      - after sales support
+      - sokongan dan polisi
+      - 支持与政策
+
+  - intent: support_actions
+    examples: |
+      - support actions
+      - other support options
+
+  - intent: warranty_policy_inquiry
+    examples: |
+      - warranty policy
+      - what is your warranty
+      - how long is the warranty
+      - tell me about the warranty
+
+  - intent: return_policy_inquiry
+    examples: |
+      - return policy
+      - refund policy
+      - how do I return something
+
+
+  - intent: ask_a_question
+    examples: |
+      - ask a question
+      - i have a question
+      - can i ask something
+      - talk to consultant
+      - tanya soalan
+      - 问个问题
+
+  - intent: ask_availability
+    examples: |
+      - product availability
+      - is this in stock
+      - do you have this in store
+
   - intent: greet
     examples: |
       - hello
@@ -1554,7 +1599,7 @@ nlu:
       - shipping times and costs?
       - do you have a warranty?
       - how to claim a refund
-      - return policy
+
       - FAQ
       - what happens if my glasses break?
       - can i return if the size does not fit
@@ -1608,7 +1653,7 @@ nlu:
       - 退货政策
       - return policy macam mana
       - ada refund tak
-      - refund policy
+
       - money back policy
       - polisi bayaran balik
       - polisi pulangan wang
@@ -1616,7 +1661,7 @@ nlu:
       - exchange policy
       - polisi pertukaran
       - 换货政策
-      - warranty policy
+
       - guarantee policy
       - polisi waranti
       - 保修政策
@@ -1928,10 +1973,10 @@ nlu:
       - broken under warranty
       - lens warranty
       - is this under warranty
-      - how long is the warranty
+
       - warranty period
       - does warranty cover scratches
-      - what is your warranty
+
       - claim my warranty
       - how to claim warranty
       - warranty replacement
@@ -2073,3 +2118,20 @@ nlu:
       - 我的 order 有问题
       - 帮我 check order
       - cancel this order please  - intent:
+  - intent: email_support
+    examples: |
+      - email support
+      - i want to email you
+      - what is your email
+      - can i email you
+      - support email
+      - email us
+      - emel sokongan
+      - saya nak hantar emel
+      - apakah e-mel anda
+      - 邮件支持
+      - 你们的邮箱是多少
+      - 我想发邮件
+      - email address
+      - alamat emel
+      - 邮箱地址
