@@ -8,8 +8,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<ButtonVariant, string> = {
-  primary: 'border-calisto-accent bg-calisto-accent text-white shadow-sm hover:bg-orange-700',
-  secondary: 'border-slate-200 bg-white text-calisto-ink hover:bg-slate-50',
+  primary: 'border-calisto-accent bg-calisto-accent text-calisto-surface shadow-sm hover:bg-orange-700',
+  secondary: 'border-calisto-line bg-calisto-surface text-calisto-ink hover:bg-calisto-surface-muted',
   ghost: 'border-transparent bg-transparent text-calisto-accent hover:bg-orange-50',
 }
 
@@ -36,3 +36,4 @@ export default function Button({
     </button>
   )
 }
+

@@ -13,3 +13,4 @@ export default function Topbar({ actions, title }: TopbarProps) {
     </header>
   )
 }
+

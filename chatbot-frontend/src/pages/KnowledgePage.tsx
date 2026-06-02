@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { getKnowledgePreview, getKnowledgeSummary } from '../api/client'
+import Button from '../components/Button'
+import PageContainer from '../components/PageContainer'
+import Topbar from '../components/Topbar'
 
 interface KnowledgeSource {
   source: string
@@ -31,54 +34,65 @@ export default function KnowledgePage() {
   }
 
   return (
-    <>
-      <header className="page-header">
-        <div className="page-title">Knowledge base (indexed chunks)</div>
-        <div className="header-actions">
-          <span style={{ color: '#6b7280', fontSize: '0.9rem', fontWeight: 600 }}>
+    <PageContainer>
+      <Topbar
+        title="Knowledge base (indexed chunks)"
+        actions={(
+          <span className="text-sm font-semibold text-calisto-muted">
             {sources.reduce((sum, source) => sum + source.count, 0)} chunks in DB
           </span>
+        )}
+      />
+
+      {error && (
+        <div className="mb-5 rounded-2xl border border-rose-100 bg-calisto-surface p-5 text-sm font-medium text-rose-700 shadow-sm">
+          {error}
         </div>
-      </header>
-      <div className="page-body">
-        <div className="page-inner">
-          {error && <div className="card">{error}</div>}
-          <p style={{ color: '#4b5563', maxWidth: 720, lineHeight: 1.55 }}>
-            Chunks are seeded from <code>calisto_meta.json</code> (same content as PDF/DOCX/CSV in
-            <code> knowledge_base/</code>). Rasa <code>action_document_search</code> reads them from
-            <code> GET /knowledge/chunks</code> when <code>BACKEND_API_BASE_URL</code> is set.
-            Re-run <code>npm run db:seed:knowledge</code> after regenerating the index JSON.
-          </p>
-          <section className="table-card" style={{ marginTop: 20 }}>
-            <table className="data-table">
-              <thead>
-                <tr><th>Source file</th><th>Chunks</th><th></th></tr>
-              </thead>
-              <tbody>
-                {sources.length === 0 && (
-                  <tr><td colSpan={3} className="empty-cell">No chunks. Run npm run db:seed:knowledge</td></tr>
-                )}
-                {sources.map((source) => (
-                  <tr key={source.source}>
-                    <td className="mono">{source.source}</td>
-                    <td>{source.count}</td>
-                    <td><button type="button" className="btn link preview-btn" onClick={() => loadPreview(source.source)}>Preview</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-          {selected && (
-            <section id="previewPanel" className="preview-panel">
-              <div className="preview-head">
-                <h3 id="previewTitle">Preview: {selected}</h3>
-                <button type="button" id="closePreview" className="btn" onClick={() => setSelected(null)}>Close</button>
-              </div>
-              <pre id="previewBody" className="preview-body">{preview}</pre>
-            </section>
-          )}
+      )}
+      <section className="rounded-2xl border border-calisto-line-subtle bg-calisto-surface p-5 text-sm leading-6 text-calisto-body shadow-sm">
+        Chunks are seeded from <code className="rounded bg-calisto-table px-1.5 py-0.5 font-mono text-xs text-calisto-body">calisto_meta.json</code> (same content as PDF/DOCX/CSV in
+        <code className="rounded bg-calisto-table px-1.5 py-0.5 font-mono text-xs text-calisto-body"> knowledge_base/</code>). Rasa <code className="rounded bg-calisto-table px-1.5 py-0.5 font-mono text-xs text-calisto-body">action_document_search</code> reads them from
+        <code className="rounded bg-calisto-table px-1.5 py-0.5 font-mono text-xs text-calisto-body"> GET /knowledge/chunks</code> when <code className="rounded bg-calisto-table px-1.5 py-0.5 font-mono text-xs text-calisto-body">BACKEND_API_BASE_URL</code> is set.
+        Re-run <code className="rounded bg-calisto-table px-1.5 py-0.5 font-mono text-xs text-calisto-body">npm run db:seed:knowledge</code> after regenerating the index JSON.
+      </section>
+
+      <section className="mt-5 overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+            <thead>
+              <tr className="bg-calisto-table/90 text-xs font-bold uppercase tracking-wider text-calisto-ink">
+                <th className="px-7 py-5">Source file</th>
+                <th className="px-7 py-5">Chunks</th>
+                <th className="px-7 py-5 text-right"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-calisto-line-subtle">
+              {sources.length === 0 && (
+                <tr><td colSpan={3} className="px-7 py-12 text-center text-sm font-medium text-calisto-muted">No chunks. Run npm run db:seed:knowledge</td></tr>
+              )}
+              {sources.map((source) => (
+                <tr key={source.source} className="transition hover:bg-calisto-surface-muted">
+                  <td className="px-7 py-4 font-mono text-[0.86rem] break-all">{source.source}</td>
+                  <td className="px-7 py-4 text-calisto-body">{source.count}</td>
+                  <td className="px-7 py-4 text-right">
+                    <button type="button" className="text-sm font-bold text-blue-600 transition hover:text-blue-700" onClick={() => loadPreview(source.source)}>Preview</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
-    </>
+      </section>
+      {selected && (
+        <section id="previewPanel" className="mt-6 overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-sm">
+          <div className="flex items-center justify-between gap-3 border-b border-calisto-line px-5 py-4">
+            <h3 id="previewTitle" className="text-base font-extrabold text-calisto-ink">Preview: {selected}</h3>
+            <Button id="closePreview" onClick={() => setSelected(null)}>Close</Button>
+          </div>
+          <pre id="previewBody" className="max-h-[420px] overflow-auto whitespace-pre-wrap bg-calisto-surface-muted px-5 py-4 text-sm leading-6 text-calisto-body">{preview}</pre>
+        </section>
+      )}
+    </PageContainer>
   )
 }
+

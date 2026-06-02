@@ -8,12 +8,24 @@ export default {
       },
       colors: {
         calisto: {
-          sidebar: '#3f4f4f',
-          sidebarActive: '#566565',
-          accent: '#d85f0d',
-          ink: '#303133',
-          muted: '#737b86',
-          canvas: '#f6f4f1',
+          canvas: 'rgb(var(--color-calisto-canvas) / <alpha-value>)',
+          surface: {
+            DEFAULT: 'rgb(var(--color-calisto-surface) / <alpha-value>)',
+            muted: 'rgb(var(--color-calisto-surface-muted) / <alpha-value>)',
+          },
+          sidebar: 'rgb(var(--color-calisto-sidebar) / <alpha-value>)',
+          sidebarActive: 'rgb(var(--color-calisto-sidebar-active) / <alpha-value>)',
+          accent: 'rgb(var(--color-calisto-accent) / <alpha-value>)',
+          ink: 'rgb(var(--color-calisto-ink) / <alpha-value>)',
+          body: 'rgb(var(--color-calisto-body) / <alpha-value>)',
+          muted: 'rgb(var(--color-calisto-muted) / <alpha-value>)',
+          soft: 'rgb(var(--color-calisto-soft) / <alpha-value>)',
+          line: {
+            DEFAULT: 'rgb(var(--color-calisto-line) / <alpha-value>)',
+            subtle: 'rgb(var(--color-calisto-line-subtle) / <alpha-value>)',
+          },
+          table: 'rgb(var(--color-calisto-table) / <alpha-value>)',
+          focus: 'rgb(var(--color-calisto-focus) / <alpha-value>)',
         },
       },
       boxShadow: {
