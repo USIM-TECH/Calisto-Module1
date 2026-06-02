@@ -1,4 +1,22 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: calisto
+      POSTGRES_PASSWORD: calisto
+      POSTGRES_DB: calisto_chatbot
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U calisto -d calisto_chatbot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - calisto-net
+
   integration:
     build:
       context: ./chatbot-integrations
@@ -52,6 +70,8 @@ services:
     volumes:
       - ./chatbot-integrations/data/runtime:/app/data/runtime
     depends_on:
+      postgres:
+        condition: service_healthy
       rasa:
         condition: service_started
     networks:
@@ -104,6 +124,7 @@ services:
 
 volumes:
   ollama-data:
+  postgres-data:
 
 networks:
   calisto-net:

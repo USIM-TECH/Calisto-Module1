@@ -1,39 +1,51 @@
-# Prisma (PostgreSQL)
+# Database: local PostgreSQL + Prisma tooling
 
-Runtime data for leads, conversations, webhook audit logs, and deduplication is stored in **PostgreSQL by default**. JSON file storage (`data/runtime/runtime-store.json`) is optional via `STORAGE_BACKEND=file` or as a fallback when `DATABASE_URL` is missing.
+## What stores your data
 
-## Setup
+**PostgreSQL on your machine** (Docker or native install). All leads, products, knowledge, and related tables live there.
 
-1. Create a database and set in `.env`:
+## What Prisma is in this project (and what it is not)
 
-   - `DATABASE_URL` — PostgreSQL connection string, e.g. `postgresql://USER:PASSWORD@localhost:5432/calisto_chatbot`
-   - `STORAGE_BACKEND` — defaults to `postgres`; omit or set explicitly
+| Piece | Role |
+|-------|------|
+| **PostgreSQL** | The actual database — where rows are stored |
+| **Prisma ORM** (`@prisma/client`) | TypeScript layer that reads/writes Postgres (used by the app) |
+| **Prisma Migrate** | Applies `prisma/migrations/*.sql` to your local Postgres |
+| **Prisma Studio** (`npm run db:studio`) | Browser UI to view/edit local Postgres tables |
 
-2. Apply migrations:
+Prisma is **not** your database server. There is no Prisma Cloud / `db.prisma.io` connection in this repo. The app only connects via `DATABASE_URL` to **local** Postgres.
 
-   ```bash
-   npm run db:migrate:dev   # development (creates migration if schema changed)
-   # or
-   npm run db:migrate       # production: prisma migrate deploy
-   ```
+## Quick start
 
-3. Generate the client (also runs on `npm install` via `postinstall`):
-
-   ```bash
-   npm run db:generate
-   ```
-
-## Optional: import existing JSON
-
-If you have `data/runtime/runtime-store.json` from the file backend:
+From `chatbot-integrations/`:
 
 ```bash
-npm run db:import-json
+docker compose -f docker-compose.postgres.yml up -d
+npm run db:migrate:dev
+npm run db:studio    # http://localhost:5555
+npm run dev
 ```
 
-Requires `DATABASE_URL` set. Run against an empty database or expect unique conflicts on re-run.
+`.env`:
+
+```env
+STORAGE_BACKEND=postgres
+DATABASE_URL=postgresql://calisto:calisto@localhost:5432/calisto_chatbot
+```
+
+## Scripts
+
+| Command | Purpose |
+|---------|---------|
+| `npm run db:migrate:dev` | Dev migrations |
+| `npm run db:migrate` | Production deploy |
+| `npm run db:generate` | Regenerate Prisma Client |
+| `npm run db:studio` | Open Prisma Studio |
+| `npm run db:reset:dev` | Reset DB and re-apply migrations |
+| `npm run db:seed:products` | Seed products from CSV |
+| `npm run db:seed:knowledge` | Seed knowledge from meta JSON |
 
 ## Retention
 
-- **WebhookEvent**: After each insert, rows beyond the latest **999** (by `receivedAt`) are deleted, matching the previous file-store behaviour.
-- **DedupeKey**: Entries older than `DEDUP_TTL_MS` are removed when checking deduplication.
+- **WebhookEvent**: capped at 999 rows (by `receivedAt`).
+- **DedupeKey**: entries older than `DEDUP_TTL_MS` are pruned on check.

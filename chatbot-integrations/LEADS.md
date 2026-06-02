@@ -67,7 +67,7 @@ Persistence happens through a `RuntimeStore` implementation:
 
 | Mode | Configuration | Location |
 |---|---|---|
-| **PostgreSQL (default)** | `STORAGE_BACKEND=postgres` and `DATABASE_URL` | Tables managed by [Prisma](prisma/schema.prisma) |
+| **Local PostgreSQL (default)** | `STORAGE_BACKEND=postgres` and `DATABASE_URL` | Tables via [Prisma ORM](prisma/schema.prisma); browse with `npm run db:studio` |
 | **File (fallback / opt-in)** | `STORAGE_BACKEND=file`, or postgres requested without `DATABASE_URL` | `data/runtime/runtime-store.json` |
 
 Both backends honour the same `RuntimeStore` interface and produce identical record shapes (`CustomerRecord`, `ChannelIdentityRecord`, `InterestRecord`, `ConversationRecord`, `ConversationMessageRecord`, `WebhookEventRecord`).
