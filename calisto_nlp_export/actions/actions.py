@@ -1520,7 +1520,6 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
         tr(lang, f"Availability: {stock}", f"Ketersediaan: {stock}", f"库存：{stock}") if stock else "",
         tr(lang, f"Rating: {rating}/5", f"Penilaian: {rating}/5", f"评分：{rating}/5") if rating not in (None, "") else "",
         tr(lang, f"Stylist note: {stylist_note}", f"Cadangan stylist: {stylist_note}", f"造型建议：{stylist_note}") if stylist_note else "",
-        tr(lang, f"Store: {store_location}, {city}".strip(", "), f"Kedai: {store_location}, {city}".strip(", "), f"门店：{store_location}, {city}".strip(", ")) if (store_location or city) else "",
     ]
 
     theme = choose_product_image_theme(product_type, preferred_service)
