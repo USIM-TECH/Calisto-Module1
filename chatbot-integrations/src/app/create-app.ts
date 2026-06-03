@@ -39,6 +39,7 @@ import { registerKnowledgeRoutes } from '../knowledge/routes.js'
 import { registerProductRoutes } from '../products/routes.js'
 import type { AppDependencies } from './dependencies.js'
 import { createWebsiteRateLimiter } from './website-rate-limiter.js'
+import { normaliseEmail, normalisePhone } from '../leads/storage/helpers.js'
 
 export function createApp(dependencies: AppDependencies): Express {
   const {
@@ -259,6 +260,67 @@ export function createApp(dependencies: AppDependencies): Express {
       ])
       const conversation = findConversationByCustomerId(conversations, customer.id)
       res.type('html').send(renderLeadDetailHtml({ customer, identities, conversation, interests }))
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  // ── POST /leads ───────────────────────────────────────────────────────────
+  // Called by Rasa's ActionSubmitLeadCapture after the lead capture form
+  // completes. Finds the customer by email or phone and updates their
+  // qualification status, preferred service, and purchase timeline.
+  app.post('/leads', async (req, res, next) => {
+    try {
+      const body = req.body ?? {}
+      const email = typeof body.email === 'string' ? normaliseEmail(body.email.trim()) : undefined
+      const phone = typeof body.phone === 'string' ? normalisePhone(body.phone.trim()) : undefined
+      const leadName = typeof body.name === 'string' ? body.name.trim() : undefined
+      const location = typeof body.location === 'string' ? body.location.trim() : undefined
+      const preferredService = typeof body.preferred_service === 'string' ? body.preferred_service.trim() : undefined
+      const purchaseTimeline = typeof body.purchase_timeline === 'string' ? body.purchase_timeline.trim() : undefined
+      const rawStatus = typeof body.lead_status === 'string' ? body.lead_status.trim() : undefined
+
+      // Find matching customer by email or phone
+      const customers = await orchestrator.listCustomers()
+      let customer = customers.find((c) => {
+        if (email && c.email && normaliseEmail(c.email) === email) return true
+        if (phone && c.phone && normalisePhone(c.phone) === phone) return true
+        return false
+      })
+
+      if (!customer) {
+        // No matching customer found — not an error, orchestrator already
+        // captures data in-flight. Return 202 so Rasa doesn't retry.
+        logger.warn(`[POST /leads] No customer matched for email=${email} phone=${phone} — skipping update`)
+        res.status(202).json({ status: 'no_match', message: 'No matching customer record found' })
+        return
+      }
+
+      const validStatuses = ['qualified', 'unqualified', 'needs_review', 'new'] as const
+      type QualStatus = typeof validStatuses[number]
+      const qualificationStatus: QualStatus | undefined =
+        rawStatus && validStatuses.includes(rawStatus as QualStatus)
+          ? (rawStatus as QualStatus)
+          : undefined
+
+      const snapshot: Record<string, string | undefined> = {}
+      if (leadName && leadName !== customer.leadName) snapshot['leadName'] = leadName
+      if (location && location !== customer.location) snapshot['location'] = location
+      if (preferredService && preferredService !== customer.preferredService) snapshot['preferredService'] = preferredService
+      if (qualificationStatus && qualificationStatus !== customer.qualificationStatus) snapshot['qualificationStatus'] = qualificationStatus
+
+      if (Object.keys(snapshot).length > 0) {
+        customer = (await runtimeStore.updateCustomer(customer.id, snapshot)) ?? customer
+      }
+
+      // Append purchase_timeline as an urgency interest
+      if (purchaseTimeline) {
+        await runtimeStore.appendInterest(customer.id, 'urgency', purchaseTimeline)
+        await runtimeStore.appendCurrentInterest(customer.id, 'urgency', purchaseTimeline)
+      }
+
+      logger.info(`[POST /leads] Updated customer ${customer.id}: status=${qualificationStatus ?? 'unchanged'} service=${preferredService ?? 'unchanged'}`)
+      res.json({ status: 'ok', customerId: customer.id })
     } catch (error) {
       next(error)
     }

@@ -5,11 +5,10 @@ stories:
     steps:
       - intent: greet
       - action: action_set_language
-      - action: utter_greet
+      - action: action_handle_greet
       - intent: browse_eyewear
       - action: action_set_language
       - action: action_reset_eyewear_slots
-      - action: utter_ask_product_type
       - intent: select_product_type
       - action: action_set_language
       - slot_was_set:
@@ -18,7 +17,7 @@ stories:
       - intent: select_brand
       - slot_was_set:
           - brand
-      - action: utter_ask_budget_range
+      - action: action_ask_budget_range
       - intent: select_budget
       - slot_was_set:
           - price_range
@@ -35,7 +34,7 @@ stories:
       - slot_was_set:
           - lens_type
       - action: action_explain_lens
-      - action: utter_ask_budget_range
+      - action: action_ask_budget_range
       - intent: select_budget
       - slot_was_set:
           - price_range
@@ -46,7 +45,7 @@ stories:
       - intent: select_brand
       - slot_was_set:
           - brand
-      - action: utter_ask_budget_range
+      - action: action_ask_budget_range
       - intent: select_budget
       - slot_was_set:
           - price_range

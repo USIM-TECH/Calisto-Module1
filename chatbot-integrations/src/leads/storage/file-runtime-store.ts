@@ -14,10 +14,12 @@ import type {
   ChannelIdentityRecord,
   ConversationMessageRecord,
   ConversationRecord,
+  CurrentInterestRecord,
   CustomerRecord,
   InterestKind,
   InterestRecord,
   RuntimeDataShape,
+  SupportCaseRecord,
   WebhookEventRecord,
 } from '../types/records.js'
 import { normaliseEmail, normalisePhone } from './helpers.js'
@@ -38,6 +40,8 @@ export class FileRuntimeStore implements RuntimeStore {
       customers: [],
       identities: [],
       interests: [],
+      currentInterests: [],
+      supportCases: [],
       conversations: [],
       webhookEvents: [],
       deduplication: [],
@@ -219,6 +223,12 @@ export class FileRuntimeStore implements RuntimeStore {
           c.customerId === loser.id ? { ...c, customerId: merged.id } : c,
         ),
         interests: interestsKept,
+        currentInterests: state.currentInterests.map((ci) =>
+          ci.customerId === loser.id ? { ...ci, customerId: merged.id } : ci,
+        ),
+        supportCases: state.supportCases.map((sc) =>
+          sc.customerId === loser.id ? { ...sc, customerId: merged.id } : sc,
+        ),
         webhookEvents: state.webhookEvents.map((e) =>
           e.customerId === loser.id ? { ...e, customerId: merged.id } : e,
         ),
@@ -258,6 +268,101 @@ export class FileRuntimeStore implements RuntimeStore {
       }
       result = created
       return { ...state, interests: [...state.interests, created] }
+    })
+
+    return result
+  }
+
+  public async appendCurrentInterest(
+    customerId: string,
+    kind: InterestKind | string,
+    value: string,
+  ): Promise<CurrentInterestRecord | undefined> {
+    const trimmed = value.trim()
+    if (!trimmed) return undefined
+
+    let result: CurrentInterestRecord | undefined
+
+    this._store.update((state) => {
+      if (!state.customers.some((c) => c.id === customerId)) {
+        return state
+      }
+      const existingIdx = state.currentInterests.findIndex(
+        (entry) => entry.customerId === customerId && entry.kind === kind,
+      )
+      
+      const now = nowIso()
+      if (existingIdx !== -1) {
+        const existing = state.currentInterests[existingIdx]
+        const updated = { ...existing, value: trimmed, updatedAt: now }
+        result = updated
+        const newCurrentInterests = [...state.currentInterests]
+        newCurrentInterests[existingIdx] = updated
+        return { ...state, currentInterests: newCurrentInterests }
+      }
+
+      const created: CurrentInterestRecord = {
+        id: nextId('cint'),
+        customerId,
+        kind,
+        value: trimmed,
+        createdAt: now,
+        updatedAt: now,
+      }
+      result = created
+      return { ...state, currentInterests: [...state.currentInterests, created] }
+    })
+
+    return result
+  }
+
+  public async createSupportCase(
+    customerId: string,
+    caseType: string,
+    status: string = 'pending',
+    id?: string,
+  ): Promise<SupportCaseRecord> {
+    const now = nowIso()
+    const record: SupportCaseRecord = {
+      id: id || nextId('case'),
+      customerId,
+      caseType,
+      status,
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    this._store.update((state) => ({
+      ...state,
+      supportCases: [...state.supportCases, record],
+    }))
+
+    return record
+  }
+
+  public async getSupportCase(supportCaseId: string): Promise<SupportCaseRecord | undefined> {
+    const state = this._store.read()
+    return state.supportCases.find((sc) => sc.id === supportCaseId)
+  }
+
+  public async updateSupportCaseStatus(
+    supportCaseId: string,
+    status: string,
+  ): Promise<SupportCaseRecord | undefined> {
+    let result: SupportCaseRecord | undefined
+
+    this._store.update((state) => {
+      const idx = state.supportCases.findIndex((sc) => sc.id === supportCaseId)
+      if (idx === -1) return state
+      
+      const existing = state.supportCases[idx]
+      const updated = { ...existing, status, updatedAt: nowIso() }
+      result = updated
+      
+      const newSupportCases = [...state.supportCases]
+      newSupportCases[idx] = updated
+      
+      return { ...state, supportCases: newSupportCases }
     })
 
     return result

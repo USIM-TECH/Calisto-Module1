@@ -77,6 +77,24 @@ function ciEquals(value: string | null | undefined, target: string): boolean {
   return value.toLowerCase() === target.toLowerCase()
 }
 
+function yesNoMatches(value: string | null | undefined, target: string | boolean): boolean {
+  const expected = typeof target === 'boolean'
+    ? (target ? 'yes' : 'no')
+    : target.trim().toLowerCase()
+  if (!value || !expected) return false
+  const actual = value.trim().toLowerCase()
+  if (['true', '1', 'y'].includes(expected)) return ['yes', 'true', '1', 'y'].includes(actual)
+  if (['false', '0', 'n'].includes(expected)) return ['no', 'false', '0', 'n'].includes(actual)
+  return actual === expected
+}
+
+function lensFeatureMatches(value: string | null | undefined, target: string): boolean {
+  const normalized = target.trim().toLowerCase()
+  if (!normalized) return true
+  if (normalized.includes('blue light')) return ciIncludes(value, 'blue light')
+  return ciIncludes(value, target)
+}
+
 /**
  * Score products like `rank_products_safely` does in actions.py:
  *   product_type substring match -> +4 (productType) / +2 (category)
@@ -125,6 +143,13 @@ export class ProductSearchService {
     const wantsAllBrands = query.brand ? SHOW_ALL.has(query.brand.trim().toLowerCase()) : false
 
     const filtered = all.filter((p) => {
+      if (query.uvProtection && !yesNoMatches(p.uvProtection, query.uvProtection)) return false
+      if (query.polarized && !yesNoMatches(p.polarized, query.polarized)) return false
+      if (query.multifocal !== undefined && !yesNoMatches(p.multifocal, query.multifocal)) return false
+      if (query.lensColor && !ciIncludes(p.lensColor, query.lensColor)) return false
+      if (query.lensType && !ciIncludes(p.lensType, query.lensType)) return false
+      if (query.lensFeature && !lensFeatureMatches(p.lensFeature, query.lensFeature)) return false
+      if (query.lensDuration && !ciIncludes(p.lensDuration, query.lensDuration)) return false
       if (query.productType && !ciEquals(p.productType, query.productType)) return false
       if (query.brand && !wantsAllBrands && !ciEquals(p.brand, query.brand)) return false
       if (query.frameColor && !ciEquals(p.frameColor, query.frameColor)) return false

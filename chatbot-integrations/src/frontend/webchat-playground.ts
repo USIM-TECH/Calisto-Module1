@@ -746,7 +746,11 @@ export function renderCustomerWebchatHtml(): string {
       </section>
     </div>
     <script>
-      const senderId = 'website-user-demo';
+      let senderId = localStorage.getItem('calisto_webchat_senderId');
+      if (!senderId) {
+        senderId = 'website-' + Math.random().toString(36).substring(2, 10);
+        localStorage.setItem('calisto_webchat_senderId', senderId);
+      }
       const messagesEl = document.getElementById('messages');
       const messageInput = document.getElementById('messageInput');
       const sendButton = document.getElementById('sendButton');

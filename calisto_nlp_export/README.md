@@ -144,8 +144,8 @@ curl -X POST "https://api.telegram.org/bot<Telegram-Bot-Token>/setWebhook" \
 > ⚠️ Rasa 3.6.x does **not** support Python 3.11+. If your system Python is newer, use Docker instead.
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+       # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 chmod +x start.sh

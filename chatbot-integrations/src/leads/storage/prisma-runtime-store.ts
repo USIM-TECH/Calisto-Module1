@@ -23,9 +23,11 @@ import type {
   ChannelIdentityRecord,
   ConversationMessageRecord,
   ConversationRecord,
+  CurrentInterestRecord,
   CustomerRecord,
   InterestKind,
   InterestRecord,
+  SupportCaseRecord,
   WebhookEventRecord,
 } from '../types/records.js'
 import { normaliseEmail, normalisePhone } from './helpers.js'
@@ -109,6 +111,28 @@ function interestToRecord(row: { id: string; customerId: string; kind: string; v
     kind: row.kind,
     value: row.value,
     capturedAt: row.capturedAt.toISOString(),
+  }
+}
+
+function currentInterestToRecord(row: { id: string; customerId: string; kind: string; value: string; createdAt: Date; updatedAt: Date }): CurrentInterestRecord {
+  return {
+    id: row.id,
+    customerId: row.customerId,
+    kind: row.kind,
+    value: row.value,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  }
+}
+
+function supportCaseToRecord(row: { id: string; customerId: string; caseType: string; status: string; createdAt: Date; updatedAt: Date }): SupportCaseRecord {
+  return {
+    id: row.id,
+    customerId: row.customerId,
+    caseType: row.caseType,
+    status: row.status,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   }
 }
 
@@ -375,6 +399,30 @@ export class PrismaRuntimeStore implements RuntimeStore {
         })
       }
       await tx.interest.deleteMany({ where: { customerId: losing.id } })
+      
+      const losingCurrentInterests = await tx.currentInterest.findMany({ where: { customerId: losing.id } })
+      for (const i of losingCurrentInterests) {
+        await tx.currentInterest.upsert({
+          where: { customerId_kind: { customerId: survivor.id, kind: i.kind } },
+          create: {
+            customerId: survivor.id,
+            kind: i.kind,
+            value: i.value,
+            createdAt: i.createdAt,
+            updatedAt: i.updatedAt,
+          },
+          update: {
+            value: i.value,
+            updatedAt: new Date(),
+          },
+        })
+      }
+      await tx.currentInterest.deleteMany({ where: { customerId: losing.id } })
+
+      await tx.supportCase.updateMany({
+        where: { customerId: losing.id },
+        data: { customerId: survivor.id },
+      })
 
       await tx.customer.update({
         where: { id: survivor.id },
@@ -428,6 +476,80 @@ export class PrismaRuntimeStore implements RuntimeStore {
     }
   }
 
+  public async appendCurrentInterest(
+    customerId: string,
+    kind: InterestKind | string,
+    value: string,
+  ): Promise<CurrentInterestRecord | undefined> {
+    const trimmed = value.trim()
+    if (!trimmed) return undefined
+
+    try {
+      const row = await this._prisma.currentInterest.upsert({
+        where: { customerId_kind: { customerId, kind } },
+        create: {
+          customerId,
+          kind,
+          value: trimmed,
+        },
+        update: {
+          value: trimmed,
+        },
+      })
+      return currentInterestToRecord(row)
+    } catch (error: unknown) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+        return undefined
+      }
+      throw error
+    }
+  }
+
+  public async createSupportCase(
+    customerId: string,
+    caseType: string,
+    status: string = 'pending',
+    id?: string,
+  ): Promise<SupportCaseRecord> {
+    const data: Prisma.SupportCaseUncheckedCreateInput = {
+      customerId,
+      caseType,
+      status,
+    }
+    if (id) {
+      data.id = id
+    }
+    const row = await this._prisma.supportCase.create({
+      data,
+    })
+    return supportCaseToRecord(row)
+  }
+
+  public async getSupportCase(supportCaseId: string): Promise<SupportCaseRecord | undefined> {
+    const row = await this._prisma.supportCase.findUnique({
+      where: { id: supportCaseId },
+    })
+    return row ? supportCaseToRecord(row) : undefined
+  }
+
+  public async updateSupportCaseStatus(
+    supportCaseId: string,
+    status: string,
+  ): Promise<SupportCaseRecord | undefined> {
+    try {
+      const row = await this._prisma.supportCase.update({
+        where: { id: supportCaseId },
+        data: { status },
+      })
+      return supportCaseToRecord(row)
+    } catch (error: unknown) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return undefined
+      }
+      throw error
+    }
+  }
+
   public async appendConversationMessage(
     customerId: string,
     channelIdentityId: string,
@@ -468,11 +590,27 @@ export class PrismaRuntimeStore implements RuntimeStore {
             channelIdentityId,
           },
         })
-        const full = await tx.conversation.findUniqueOrThrow({
-          where: { id: conversationId },
-          include: { messages: { orderBy: { timestamp: 'asc' } } },
+        // Build the result from already-fetched data to avoid a third
+        // round-trip that can breach the transaction timeout.
+        const newMsg = {
+          direction,
+          messageId: message.messageId,
+          text: message.text ?? null,
+          messageType: message.messageType,
+          timestamp: ts,
+          metadata: metadata as Prisma.JsonValue,
+        }
+        const allMessages = [
+          ...existing.messages,
+          newMsg,
+        ].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+        return conversationToRecord({
+          ...existing,
+          customerId,
+          channelIdentityId,
+          updatedAt: now,
+          messages: allMessages,
         })
-        return conversationToRecord(full)
       }
 
       const created = await tx.conversation.create({

@@ -64,10 +64,12 @@ model Customer {
   firstSeenAt         DateTime
   updatedAt           DateTime
 
-  identities    ChannelIdentity[]
-  interests     Interest[]
-  conversations Conversation[]
-  webhookEvents WebhookEvent[]
+  identities       ChannelIdentity[]
+  interests        Interest[]
+  currentInterests CurrentInterest[]
+  supportCases     SupportCase[]
+  conversations    Conversation[]
+  webhookEvents    WebhookEvent[]
 
   @@index([phone])
   @@index([email])
@@ -108,6 +110,33 @@ model Interest {
 
   @@unique([customerId, kind, value])
   @@index([customerId, capturedAt])
+}
+
+model CurrentInterest {
+  id         String   @id @default(cuid())
+  customerId String
+  kind       String
+  value      String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, kind])
+  @@index([customerId])
+}
+
+model SupportCase {
+  id         String   @id @default(cuid())
+  customerId String
+  caseType   String
+  status     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
 }
 
 model Conversation {
@@ -169,35 +198,35 @@ model DedupeKey {
 /// Editable product catalogue. Seeded once from the CSV and managed
 /// through the admin UI thereafter. Rasa reads via POST /products/search.
 model Product {
-  productId      String   @id
-  productName    String
-  category       String
-  productType    String
-  brand          String
-  priceMyr       Float
-  description    String?
-  frameMaterial  String?
-  frameShape     String?
-  frameColor     String?
-  gender         String?
-  uvProtection   String?
-  polarized      String?
-  lensColor      String?
-  frameStyle     String?
-  lensType       String?
-  lensFeature    String?
-  lensDuration   String?
-  multifocal     String?
-  storeLocation  String?
-  city           String?
-  stockStatus    String   @default("in_stock")
-  rating         Float?
-  bestseller     Boolean  @default(false)
-  newArrival     Boolean  @default(false)
-  imageUrl       String?
+  productId        String   @id
+  productName      String
+  category         String
+  productType      String
+  brand            String
+  priceMyr         Float
+  description      String?
+  frameMaterial    String?
+  frameShape       String?
+  frameColor       String?
+  gender           String?
+  uvProtection     String?
+  polarized        String?
+  lensColor        String?
+  frameStyle       String?
+  lensType         String?
+  lensFeature      String?
+  lensDuration     String?
+  multifocal       String?
+  storeLocation    String?
+  city             String?
+  stockStatus      String   @default("in_stock")
+  rating           Float?
+  bestseller       Boolean  @default(false)
+  newArrival       Boolean  @default(false)
+  imageUrl         String?
   fallbackImageUrl String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@index([productType])
   @@index([brand])
@@ -227,4 +256,3 @@ model KnowledgeChunk {
   @@index([documentId])
   @@index([source])
 }
-

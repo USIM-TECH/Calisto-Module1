@@ -211,6 +211,19 @@ nlu:
       - ray-ban wayfarer
       - blue light blocking glasses metal
       - plastic frames black color
+      - i need blue light glasses
+      - blue light lens
+      - anti blue light glasses
+      - glasses for computer work
+      - screen protection glasses
+      - gaming glasses
+      - office glasses
+      - progressive lenses
+      - bifocal lenses
+      - multifocal glasses
+      - polarized sunglasses with uv protection
+      - transition lenses
+      - photochromic glasses
       - cermin mata gucci bawah 700
       - spek hitam bawah rm500
       - bingkai besi untuk ofis
@@ -220,6 +233,12 @@ nlu:
       - gucci 眼镜低于 700
       - 黑色太阳镜 rm500 以下
       - 办公用金属镜框
+      - saya nak blue light glasses
+      - cari progressive lenses
+      - saya perlukan bifocal lenses
+      - tunjuk multifocal glasses
+      - saya mahu polarized sunglasses dengan uv protection
+      - saya nak photochromic glasses
       - 隐形眼镜 rm200 以下
       - prada 太阳镜
       - 钛金属镜框 500 以上
@@ -246,42 +265,39 @@ nlu:
       - help me choose the right lenses
       - i want vision correction options
       - show me lens recommendations
-      - what lenses are suitable for screen use
-      - i need blue light lenses
-      - i want progressive lens options
-      - i need help with eye strain from screens
-      - what lenses do you suggest for office work
-      - lens options for reading and distance
-      - i need vision lenses for work
-      - can you suggest better lenses for daily use
+      - what is a blue light lens
+      - explain progressive lenses
+      - what is the difference between progressive and bifocal
+      - what does photochromic mean
+      - tell me about multifocal lenses
+      - how do polarized lenses work
       - saya perlukan pilihan kanta
       - saya mahu cadangan kanta
       - boleh terangkan jenis kanta
       - saya perlukan bantuan untuk pilih kanta
-      - kanta apa sesuai untuk kerja pejabat
-      - saya mahukan kanta blue light
+      - apakah kanta blue light
       - saya mahu tahu pilihan pembetulan penglihatan
-      - boleh cadangkan kanta untuk kerja skrin
+      - boleh terangkan kanta photochromic
+      - apakah beza progressive dan bifocal
       - 我想看镜片方案
       - 我需要镜片建议
       - 请介绍一下镜片类型
-      - 有适合办公的镜片吗
-      - 我需要防蓝光镜片
+      - 什么是防蓝光镜片
+      - 解释一下渐进镜片
+      - 渐进和双光有什么区别
+      - 什么叫光致变色
       - 请帮我选择合适的镜片
-      - 有阅读和远近都适合的镜片吗
       - 我想了解视力矫正方案
       - tunjuk pilihan kanta
       - saya perlukan kanta
       - bantu saya dengan penyelesaian penglihatan
       - jenis kanta apa yang anda tawarkan
       - saya minat nak upgrade kanta
-      - saya perlukan kanta untuk kurangkan ketegangan mata dari skrin
       - 给我看镜片选项
       - 我需要镜片
       - 帮我解决视力问题
       - 你们提供什么类型的镜片
       - 我想升级镜片
-      - 我需要能缓解屏幕眼疲劳的镜片
       - nak tengok lens options
       - show me kanta
       - 需要 lens 解决方案
@@ -572,58 +588,44 @@ nlu:
       - Blue Light Protection
       - Photochromic Lenses
       - tell me about single vision lenses
-      - i want progressive lenses
-      - i need blue light protection lenses
+      - what is a progressive lens
+      - what is blue light protection
       - what are photochromic lenses
       - explain lens types
       - compare single vision and progressive lenses
-      - show me blue light lenses
       - recommend a lens type
       - i want to learn about lens options
       - which lens is best for me
-      - i need single vision lenses
-      - i want multifocal lenses
-      - i need reading lenses
-      - suggest lenses for screen work
-      - i need lenses for computer use
       - what is the difference between progressive and single vision
-      - do you have lenses for blue light protection
-      - best lenses for office use
-      - lenses for digital screens
-      - reading lenses please
       - what lens should i choose
       - kanta single vision itu apa
-      - saya mahu kanta progresif
+      - apakah kanta progresif
       - boleh terangkan kanta blue light
       - apakah kanta photochromic
-      - kanta apa sesuai untuk kerja komputer
+      - apakah kanta multifocal
       - beza single vision dan progressive apa
-      - saya perlukan kanta untuk membaca
+      - bagaimana kanta polarized berfungsi
       - 我想了解单光镜片
       - 请解释渐进镜片
-      - 有防蓝光镜片吗
+      - 什么是防蓝光镜片
       - 光致变色镜片是什么
-      - 电脑工作适合什么镜片
       - 单光和渐进有什么区别
-      - 我需要阅读镜片
-      - need lens recommendation
+      - 什么是多焦点镜片
       - beritahu saya pasal kanta single vision
-      - saya nak kanta progresif
-      - saya perlukan kanta perlindungan blue light
+      - apa itu kanta progresif
+      - apa itu kanta perlindungan blue light
       - terangkan jenis kanta
       - bandingkan kanta single vision dan progresif
-      - cadangkan jenis kanta
+      - terangkan kanta multifocal
       - kanta apa yang terbaik untuk saya
       - 告诉我单光镜片的信息
-      - 我想要渐进镜片
+      - 我想了解渐进镜片
       - 什么是光致变色镜片
       - 解释一下镜片类型
       - 比较单光和渐进镜片
-      - 推荐一款镜片
       - 哪种镜片最适合我
       - nak tahu pasal single vision lenses
       - explain kanta progresif
-      - 推荐 progressive lenses
 
   - intent: choose_city
     examples: |
@@ -880,6 +882,8 @@ nlu:
     examples: |
       - Gucci
       - Ray-Ban
+      - rayban
+      - ray ban
       - Prada
       - Oakley
       - Bossini
@@ -1486,6 +1490,11 @@ nlu:
       - recommend sunglasses for [outdoor](use_case) use
       - what is best for [eye strain](use_case)
       - can you suggest something for [gaming](use_case)
+      - recommend polarized driving sunglasses with uv protection
+      - suggest blue light glasses for office work
+      - recommend progressive lenses with blue light protection
+      - need multifocal glasses with uv protection
+      - what should i get for sunlight exposure
       - cadangkan cermin mata untuk [office](use_case)
       - apa yang sesuai untuk [driving](use_case)
       - saya mahu cadangan untuk [daily wear](use_case)
@@ -1505,6 +1514,10 @@ nlu:
       - recommend glasses for [driving](use_case)
       - nak eyewear untuk [sports](use_case)
       - 适合 [office](use_case) 的眼镜
+      - 推荐偏光驾驶太阳镜加防紫外线
+      - 办公用防蓝光镜片推荐
+      - 带防蓝光的渐进镜片推荐
+      - 需要多焦点镜片和防紫外线
 
   - intent: after_sales_support
     examples: |

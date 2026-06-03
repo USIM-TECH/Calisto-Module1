@@ -41,6 +41,7 @@ export interface NLPResponse {
   raw: Array<{ text?: string; image?: string; buttons?: any[]; custom?: Record<string, unknown> }>
   tracker?: {
     latestIntent?: string
+    latestMessageText?: string
     activeLoop?: string
     slots: Record<string, unknown>
   }
@@ -118,6 +119,13 @@ const SHOPPING_SIGNAL_KEYWORDS = [
   'mens', 'womens', 'male', 'female', 'unisex',
   // other
   'blue light',
+  'progressive',
+  'bifocal',
+  'multifocal',
+  'polarized',
+  'polarised',
+  'uv protection',
+  'photochromic',
 ]
 
 // Unit-test style routing examples:
@@ -245,6 +253,35 @@ function extractFromMap(text: string, map: Record<string, string>): string | nul
   return null
 }
 
+function extractLensFilters(text: string): Record<string, string> {
+  const entities: Record<string, string> = {}
+  const normalized = text.toLowerCase()
+
+  if (/\b(blue light|anti blue light|screen protection|computer work|screen time|gaming glasses|office glasses|digital screens?)\b/i.test(normalized)) {
+    entities.lens_feature = 'Blue Light Filter'
+  }
+  if (/\b(progressive|reading and distance|age related vision correction)\b/i.test(normalized)) {
+    entities.lens_type = 'Progressive'
+  }
+  if (/\b(bifocal|near and far vision)\b/i.test(normalized)) {
+    entities.lens_type = 'Bifocal'
+  }
+  if (/\b(multifocal)\b/i.test(normalized)) {
+    entities.multifocal = 'yes'
+  }
+  if (/\b(polarized|polarised|glare reduction|driving sunglasses?)\b/i.test(normalized)) {
+    entities.polarized = 'yes'
+  }
+  if (/\b(uv protection|uv blocking|sun protection|sunlight|protect eyes from sunlight)\b/i.test(normalized)) {
+    entities.uv_protection = 'yes'
+  }
+  if (/\b(transition lenses?|photochromic|darken outdoors?)\b/i.test(normalized)) {
+    entities.lens_feature = 'Photochromic'
+  }
+
+  return entities
+}
+
 function opportunisticSlotFilling(text: string): string | null {
   const entities: Record<string, any> = {}
   const budget = parseBudget(text)
@@ -269,6 +306,8 @@ function opportunisticSlotFilling(text: string): string | null {
   const gender = extractFromMap(lower, GENDER_MAP)
   if (gender) entities.gender = gender
 
+  Object.assign(entities, extractLensFilters(lower))
+
   if (/sunglass|sun glass|shades/i.test(lower)) {
     entities.product_type = 'Luxury Sunglasses'
   } else if (/frame|glass|spectacle/i.test(lower)) {
@@ -277,22 +316,29 @@ function opportunisticSlotFilling(text: string): string | null {
     entities.product_type = 'Contact Lenses'
   }
 
-  const hasAttributeSignal = Boolean(shape || material || color || gender)
+  const hasLensSignal = Boolean(
+    entities.lens_type
+    || entities.lens_feature
+    || entities.uv_protection
+    || entities.polarized
+    || entities.multifocal
+  )
+  const hasAttributeSignal = Boolean(shape || material || color || gender || hasLensSignal)
   const hasSearchDetail = Boolean(
     (entities.brand && (entities.product_type || hasAttributeSignal || budget))
     || (entities.product_type && (hasAttributeSignal || budget))
     || hasAttributeSignal
   )
   if (entities.product_type && Object.keys(entities).length === 1 && hasShoppingSignal(text, false)) {
-    return `/select_product_type${JSON.stringify({ product_type: entities.product_type })}`
+    return `/search_product${JSON.stringify({ product_type: entities.product_type })}`
   }
 
   const allowOpportunistic = hasSearchDetail
     && hasShoppingSignal(text, Boolean(budget))
 
   if (Object.keys(entities).length > 0 && allowOpportunistic) {
-    // Default product_type if we have attributes but no explicit category
-    if (!entities.product_type && hasAttributeSignal) {
+    // Default product_type only for frame-style searches; lens-only requests should stay broad.
+    if (!entities.product_type && hasAttributeSignal && !hasLensSignal) {
       entities.product_type = 'Designer Frames'
     }
     return `/search_product${JSON.stringify(entities)}`
@@ -540,6 +586,9 @@ export class NLPClient {
         ? response.data.slots as Record<string, unknown>
         : {}
       const latestIntent = response.data?.latest_message?.intent?.name
+      const latestMessageText = typeof response.data?.latest_message?.text === 'string'
+        ? response.data.latest_message.text as string
+        : undefined
       const activeLoopRaw = response.data?.active_loop
       const activeLoop = typeof activeLoopRaw === 'string'
         ? activeLoopRaw
@@ -547,7 +596,7 @@ export class NLPClient {
           ? activeLoopRaw.name as string
           : undefined
 
-      return { latestIntent, activeLoop, slots }
+      return { latestIntent, latestMessageText, activeLoop, slots }
     } catch (error: any) {
       this._logger.warn(`[NLP] Failed to fetch tracker for ${userId}: ${describeAxiosError(error, url)}`)
       return undefined

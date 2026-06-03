@@ -9,17 +9,7 @@ rules:
     steps:
       - intent: greet
       - action: action_set_language
-      - action: utter_greet
-
-  - rule: Restart flow from greet during lead capture
-    condition:
-      - active_loop: lead_capture_form
-    steps:
-      - intent: greet
-      - action: action_set_language
-      - action: action_deactivate_loop
-      - active_loop: null
-      - action: utter_greet
+      - action: action_handle_greet
 
   - rule: Interrupt lead capture for FAQ
     condition:
@@ -154,7 +144,6 @@ rules:
       - intent: browse_eyewear
       - action: action_set_language
       - action: action_reset_eyewear_slots
-      - action: utter_ask_product_type
 
   - rule: Start pricing flow
     steps:
@@ -185,7 +174,7 @@ rules:
       - intent: ask_lens_type
       - action: action_set_language
       - action: action_explain_lens
-      - action: utter_ask_budget_range
+      - action: action_ask_budget_range
 
   - rule: Find a store generic
     steps:

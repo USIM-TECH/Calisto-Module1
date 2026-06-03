@@ -3,12 +3,15 @@ import logging
 import os
 import random
 import re
+import time
+import uuid
 import urllib.error
 import urllib.parse
 import urllib.request
 from difflib import get_close_matches
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Text
+from collections import defaultdict
 
 import pandas as pd
 from rasa_sdk import Action, Tracker
@@ -102,6 +105,12 @@ MANAGED_SLOTS = {
     "frame_color",
     "frame_shape",
     "frame_material",
+    "uv_protection",
+    "polarized",
+    "lens_color",
+    "lens_feature",
+    "lens_duration",
+    "multifocal",
     "budget",
     "budget_min",
     "budget_max",
@@ -120,13 +129,20 @@ FLOW_ALLOWED_SLOTS: Dict[str, set] = {
         "frame_color",
         "frame_shape",
         "frame_material",
+        "uv_protection",
+        "polarized",
+        "lens_color",
+        "lens_type",
+        "lens_feature",
+        "lens_duration",
+        "multifocal",
         "budget",
         "budget_min",
         "budget_max",
         "budget_bucket",
         "gender",
     },
-    "lens_consultation": {"lens_type", "price_range"},
+    "lens_consultation": {"lens_type", "lens_feature", "uv_protection", "polarized", "lens_color", "lens_duration", "multifocal", "price_range"},
     "store_lookup": {"city"},
     "product_search": {
         "product_type",
@@ -135,6 +151,13 @@ FLOW_ALLOWED_SLOTS: Dict[str, set] = {
         "frame_color",
         "frame_shape",
         "frame_material",
+        "uv_protection",
+        "polarized",
+        "lens_color",
+        "lens_type",
+        "lens_feature",
+        "lens_duration",
+        "multifocal",
         "budget",
         "budget_min",
         "budget_max",
@@ -142,7 +165,7 @@ FLOW_ALLOWED_SLOTS: Dict[str, set] = {
         "use_case",
         "gender",
     },
-    "product_recommendation": {"product_type", "brand", "budget", "use_case", "urgency", "gender"},
+    "product_recommendation": {"product_type", "brand", "budget", "use_case", "urgency", "gender", "uv_protection", "polarized", "lens_color", "lens_type", "lens_feature", "lens_duration", "multifocal"},
     "lead_capture": set(PERSISTENT_SLOTS),
 }
 
@@ -1178,6 +1201,7 @@ def route_support_flow(
     tracker: Tracker,
     intent_name: str,
 ) -> List[Dict[Text, Any]]:
+    lang = detect_language_from_text(tracker.latest_message.get("text") or "") or "en"
     
     service_map = {
         "return_request": "Return Request",
@@ -1195,7 +1219,6 @@ def route_support_flow(
     keyword_map = {
         "return_request": "refund",
         "refund_request": "refund",
-        "exchange_request": "refund",
         "warranty_support": "warranty",
         "repair_support": "warranty"
     }
@@ -1220,7 +1243,12 @@ def route_support_flow(
                     answer = answer.split(" A:", 1)[1].strip()
                 if " Q:" in answer:
                     answer = answer.split(" Q:", 1)[0].strip()
-                dispatcher.utter_message(text=f"📄 {answer}")
+                dispatcher.utter_message(text=tr(
+                    lang,
+                    f"📄 {answer}",
+                    f"📄 {answer}",
+                    f"📄 {answer}",
+                ))
         except Exception as e:
             logger.error(f"Failed to fetch policy before escalation: {e}")
 
@@ -1241,8 +1269,16 @@ def route_support_flow(
         if tracker.get_slot(slot_name) is not None:
             events.append(SlotSet(slot_name, None))
             
+    support_case_id = str(tracker.get_slot("support_case_id") or uuid.uuid4())
+            
+    events.append(SlotSet("preferred_language", lang))
     events.append(SlotSet("preferred_service", preferred_service))
+    events.append(SlotSet("support_case_type", preferred_service))
+    events.append(SlotSet("support_case_id", support_case_id))
+    events.append(SlotSet("support_case_status", "pending"))
     events.append(SlotSet("current_flow", "support_flow"))
+    events.append(SlotSet("requested_slot", None))
+    events.append(ActiveLoop(None))
     events.append(FollowupAction("lead_capture_form"))
     return events
 
@@ -1289,6 +1325,8 @@ def detect_brand_from_text(text: str, brand_lookup: Dict[str, str]) -> Optional[
 
 def looks_like_product_query(text: str, brand_lookup: Optional[Dict[str, str]] = None) -> bool:
     normalized = normalize_search_text(text)
+    if extract_lens_requirements(normalized):
+        return True
     if detect_category_from_text(normalized):
         return True
     if BUDGET_KEYWORDS.search(normalized) or parse_budget_from_text(normalized):
@@ -1298,6 +1336,65 @@ def looks_like_product_query(text: str, brand_lookup: Optional[Dict[str, str]] =
     if any(token in normalized for token in ["frame", "sunglasses", "contact lenses", "glasses", "shades"]):
         return True
     return False
+
+
+LENS_FILTER_COLUMNS = {
+    "uv_protection",
+    "polarized",
+    "lens_color",
+    "lens_type",
+    "lens_feature",
+    "lens_duration",
+    "multifocal",
+}
+
+
+def is_explicit_lens_education_query(text: str) -> bool:
+    normalized = normalize_search_text(text)
+    return bool(re.search(r"\b(what is|what are|explain|difference|compare|meaning|tell me about|learn about)\b", normalized))
+
+
+def extract_lens_requirements(text: str) -> Dict[str, set]:
+    normalized = normalize_search_text(text)
+    compact = normalized.replace(" ", "")
+    filters: Dict[str, set] = {}
+
+    def add(column: str, value: str) -> None:
+        filters.setdefault(column, set()).add(value)
+
+    if re.search(r"\b(blue light|anti blue light|screen protection|computer work|screen time|gaming glasses|office glasses|digital screens?)\b", normalized):
+        add("lens_feature", "Blue Light Filter")
+    if re.search(r"\b(progressive|reading and distance|age related vision correction)\b", normalized):
+        add("lens_type", "Progressive")
+    if re.search(r"\b(bifocal|near and far vision)\b", normalized):
+        add("lens_type", "Bifocal")
+    if re.search(r"\b(multifocal)\b", normalized):
+        add("multifocal", "yes")
+    if re.search(r"\b(polarized|polarised|glare reduction|driving sunglasses?)\b", normalized):
+        add("polarized", "yes")
+    if re.search(r"\b(uv protection|uv blocking|sun protection|sunlight|protect eyes from sunlight)\b", normalized) or "uvblocking" in compact:
+        add("uv_protection", "yes")
+    if re.search(r"\b(transition lenses?|photochromic|darken outdoors?)\b", normalized):
+        add("lens_feature", "Photochromic")
+
+    return filters
+
+
+def _lens_feature_match(series: pd.Series, requested: str) -> pd.Series:
+    requested_text = str(requested or "").strip()
+    requested_lower = requested_text.lower()
+    if "blue light" in requested_lower:
+        return series.astype(str).str.contains("blue light", case=False, na=False)
+    return series.astype(str).str.contains(re.escape(requested_text), case=False, na=False)
+
+
+def _yes_no_match(series: pd.Series, requested: str) -> pd.Series:
+    expected = str(requested or "").strip().lower()
+    if expected in {"true", "1", "y"}:
+        expected = "yes"
+    if expected in {"false", "0", "n"}:
+        expected = "no"
+    return series.astype(str).str.strip().str.lower().isin({expected})
 
 
 def format_product_list(rows: pd.DataFrame, heading: str) -> str:
@@ -1457,11 +1554,67 @@ def lead_buttons(lang: str, preferred_service: Optional[str] = None) -> List[Dic
     ]
 
 
+def lens_recommendation_note(product: Dict[str, Any], lang: str = "en") -> str:
+    lens_feature = str(product.get("lens_feature") or "").strip().lower()
+    lens_type = str(product.get("lens_type") or "").strip().lower()
+    polarized = str(product.get("polarized") or "").strip().lower()
+    uv_protection = str(product.get("uv_protection") or "").strip().lower()
+    multifocal = str(product.get("multifocal") or "").strip().lower()
+
+    if "blue light" in lens_feature:
+        return tr(
+            lang,
+            "Recommended for office work, students, gaming, and long screen usage.",
+            "Disyorkan untuk kerja pejabat, pelajar, gaming, dan penggunaan skrin yang lama.",
+            "推荐用于办公、学习、游戏和长时间使用屏幕。",
+        )
+    if "progressive" in lens_type:
+        return tr(
+            lang,
+            "Recommended for reading and distance vision, presbyopia, and multifocal correction.",
+            "Disyorkan untuk penglihatan membaca dan jarak jauh, presbiopia, dan pembetulan multifokal.",
+            "推荐用于阅读和远距离视力、老花及多焦点矫正。",
+        )
+    if "bifocal" in lens_type or multifocal in {"yes", "true", "1", "y"}:
+        return tr(
+            lang,
+            "Recommended for near and far vision needs and multifocal correction.",
+            "Disyorkan untuk keperluan penglihatan dekat dan jauh serta pembetulan multifokal.",
+            "推荐用于近远视力需求及多焦点矫正。",
+        )
+    if polarized in {"yes", "true", "1", "y"}:
+        return tr(
+            lang,
+            "Recommended for driving, outdoor activities, and reducing glare.",
+            "Disyorkan untuk memandu, aktiviti luar, dan mengurangkan silau.",
+            "推荐用于驾驶、户外活动和减少眩光。",
+        )
+    if uv_protection in {"yes", "true", "1", "y"}:
+        return tr(
+            lang,
+            "Recommended for sunlight exposure, outdoor wear, and eye protection.",
+            "Disyorkan untuk pendedahan cahaya matahari, pemakaian luar, dan perlindungan mata.",
+            "推荐用于阳光环境、户外佩戴和眼部保护。",
+        )
+    if "photochromic" in lens_feature:
+        return tr(
+            lang,
+            "Recommended for all-day wear that moves between indoor and outdoor light.",
+            "Disyorkan untuk pemakaian seharian antara cahaya dalaman dan luaran.",
+            "推荐用于室内外光线切换的全天佩戴。",
+        )
+    return ""
+
+
 def stylist_recommendation(product: Dict[str, Any], lang: str = "en") -> str:
     product_type = str(product.get("product_type") or product.get("category") or "").strip()
     material = titleize(product.get("frame_material"))
     shape = titleize(product.get("frame_shape"))
     lens_feature = str(product.get("lens_feature") or "").strip()
+    lens_note = lens_recommendation_note(product, lang)
+
+    if lens_note:
+        return lens_note
 
     if "contact" in product_type.lower():
         duration = str(product.get("lens_duration") or "").strip()
@@ -1495,12 +1648,7 @@ def stylist_recommendation(product: Dict[str, Any], lang: str = "en") -> str:
         )
 
     if lens_feature:
-        return tr(
-            lang,
-            f"This frame is ideal if you want everyday comfort with {lens_feature.lower()} support.",
-            f"Bingkai ini sesuai jika anda mahukan keselesaan harian dengan sokongan {lens_feature.lower()}.",
-            f"这款镜框适合需要日常舒适感并搭配 {lens_feature.lower()} 功能的人群。",
-        )
+        return tr(lang, "Recommended for clear, comfortable daily eyewear.", "Disyorkan untuk cermin mata harian yang jelas dan selesa.", "推荐用于清晰舒适的日常眼镜。")
     if material and shape:
         return tr(
             lang,
@@ -1544,17 +1692,18 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
     material = titleize(product.get("frame_material"))
     shape = titleize(product.get("frame_shape"))
     color = titleize(product.get("frame_color"))
-    stock = str(product.get("stock_status") or "").replace("_", " ").title()
+    lens_feature = titleize(product.get("lens_feature"))
+    lens_type = titleize(product.get("lens_type"))
     rating = product.get("rating")
     store_location = str(product.get("store_location") or "").strip()
     city = str(product.get("city") or "").strip()
-    detail_parts = [part for part in [f"Brand: {brand}", gender, material, shape, color] if part]
+    detail_parts = [part for part in [gender, material, shape, color, lens_feature, lens_type] if part]
     stylist_note = stylist_recommendation(product, lang)
     subtitle_sections = [
         tr(lang, f"Price: RM{price:.2f}", f"Harga: RM{price:.2f}", f"价格：RM{price:.2f}"),
+        tr(lang, f"Brand: {brand}", f"Jenama: {brand}", f"品牌：{brand}") if brand else "",
         tr(lang, f"Category: {product_type}", f"Kategori: {product_type}", f"类别：{product_type}") if product_type else "",
         tr(lang, f"Specs: {' • '.join(detail_parts)}", f"Spesifikasi: {' • '.join(detail_parts)}", f"规格：{' • '.join(detail_parts)}") if detail_parts else "",
-        tr(lang, f"Availability: {stock}", f"Ketersediaan: {stock}", f"库存：{stock}") if stock else "",
         tr(lang, f"Rating: {rating}/5", f"Penilaian: {rating}/5", f"评分：{rating}/5") if rating not in (None, "") else "",
         tr(lang, f"Stylist note: {stylist_note}", f"Cadangan stylist: {stylist_note}", f"造型建议：{stylist_note}") if stylist_note else "",
     ]
@@ -1905,7 +2054,10 @@ class ActionSetLanguage(Action):
     ) -> List[Dict[Text, Any]]:
         current = str(tracker.get_slot("preferred_language") or "").strip().lower()
         detected = detect_language_from_text(tracker.latest_message.get("text") or "")
-        language = detected or (current if current in {"en", "ms", "zh"} else "en")
+        if current in {"en", "ms", "zh"}:
+            language = current
+        else:
+            language = detected or "en"
         return [SlotSet("preferred_language", language)]
 
 
@@ -2049,7 +2201,7 @@ def build_dynamic_attribute_registry() -> Dict[str, tuple[str, str]]:
     # so their registry entries overwrite frame_style collisions (e.g. 'square', 'round')
     target_columns = [
         "gender", "frame_style",
-        "rim_type", "lens_feature", "polarized", "category", "product_type", 
+        "rim_type", "lens_type", "lens_feature", "lens_color", "lens_duration", "polarized", "multifocal", "category", "product_type",
         "brand", "use_case", "stock_status", "lightweight", "sports", 
         "office", "uv_protection", "blue_light",
         "frame_shape", "frame_material", "frame_color",
@@ -2105,7 +2257,18 @@ def build_dynamic_attribute_registry() -> Dict[str, tuple[str, str]]:
         "gold": ("frame_color", "gold"), "golden": ("frame_color", "gold"),
         "tortoise": ("frame_color", "tortoise"), "tortoiseshell": ("frame_color", "tortoise"),
         # Use case / feature
-        "blue light": ("lens_feature", "Blue Light"), "bluelight": ("lens_feature", "Blue Light"),
+        "blue light": ("lens_feature", "Blue Light Filter"), "bluelight": ("lens_feature", "Blue Light Filter"),
+        "anti blue light": ("lens_feature", "Blue Light Filter"),
+        "screen protection": ("lens_feature", "Blue Light Filter"),
+        "computer work": ("lens_feature", "Blue Light Filter"),
+        "gaming glasses": ("lens_feature", "Blue Light Filter"),
+        "office glasses": ("lens_feature", "Blue Light Filter"),
+        "progressive": ("lens_type", "Progressive"), "progressive lenses": ("lens_type", "Progressive"), "progressive glasses": ("lens_type", "Progressive"),
+        "bifocal": ("lens_type", "Bifocal"), "bifocal lenses": ("lens_type", "Bifocal"), "bifocal glasses": ("lens_type", "Bifocal"),
+        "multifocal": ("multifocal", "yes"), "multifocal lenses": ("multifocal", "yes"), "multifocal glasses": ("multifocal", "yes"),
+        "polarized": ("polarized", "yes"), "polarised": ("polarized", "yes"), "glare reduction": ("polarized", "yes"),
+        "uv protection": ("uv_protection", "yes"), "uv blocking": ("uv_protection", "yes"), "sun protection": ("uv_protection", "yes"),
+        "photochromic": ("lens_feature", "Photochromic"), "transition lenses": ("lens_feature", "Photochromic"),
         "office": ("use_case", "Office"), "gaming": ("use_case", "Gaming"), "sports": ("use_case", "Sports"),
         "driving": ("use_case", "Driving"), "daily wear": ("use_case", "Daily"), "daily": ("use_case", "Daily"),
     }
@@ -2206,6 +2369,10 @@ def search_products_engine(
         return str(value or "").strip().lower() in {"show all brands", "all brands", "any", "any brand"}
 
     def row_matches(row: pd.Series, column: str, values: set) -> bool:
+        if column in {"uv_protection", "polarized", "multifocal"}:
+            return any(_yes_no_match(pd.Series([row.get(column, "")]), str(value)).iloc[0] for value in values)
+        if column == "lens_feature":
+            return any(_lens_feature_match(pd.Series([row.get(column, "")]), str(value)).iloc[0] for value in values)
         if column == "gender":
             allowed: set = set()
             for requested in values:
@@ -2222,13 +2389,28 @@ def search_products_engine(
 
     def apply_filters(source: pd.DataFrame, filters: Dict[str, set]) -> pd.DataFrame:
         filtered_df = source.copy()
-        ordered = [col for col in ["product_type", "brand", "gender", "frame_shape", "frame_material", "frame_color", "use_case"] if col in filters]
+        ordered = [
+            col
+            for col in [
+                "uv_protection", "polarized", "multifocal", "lens_type", "lens_feature", "lens_color", "lens_duration",
+                "product_type", "brand", "gender", "frame_shape", "frame_material", "frame_color", "use_case",
+            ]
+            if col in filters
+        ]
         remaining = [col for col in filters if col not in ordered]
         for col in [*ordered, *remaining]:
             if col not in filtered_df.columns:
                 continue
             values = filters[col]
-            if col == "gender":
+            if col in {"uv_protection", "polarized", "multifocal"}:
+                masks = [_yes_no_match(filtered_df[col], str(value)) for value in values]
+                if masks:
+                    filtered_df = filtered_df[pd.concat(masks, axis=1).any(axis=1)]
+            elif col == "lens_feature":
+                masks = [_lens_feature_match(filtered_df[col], str(value)) for value in values]
+                if masks:
+                    filtered_df = filtered_df[pd.concat(masks, axis=1).any(axis=1)]
+            elif col == "gender":
                 filtered_df = filtered_df[_build_strict_gender_mask(filtered_df, values)]
             elif col == "brand":
                 allowed_brands = {str(value).strip().lower() for value in values}
@@ -2284,6 +2466,11 @@ def search_products_engine(
             payload = {}
 
     extracted_text = extract_dynamic_attributes(normalized, registry)
+    extracted_lens = extract_lens_requirements(normalized)
+    for k, v in extracted_lens.items():
+        if k not in extracted_text:
+            extracted_text[k] = set()
+        extracted_text[k].update(v)
     for k, v in extracted_text.items():
         if k not in current_filters:
             current_filters[k] = set()
@@ -2298,7 +2485,7 @@ def search_products_engine(
             current_b_max = parsed_budget["budget_max"]
 
     previous_filters: Dict[str, str] = {}
-    for slot in ["gender", "product_type", "brand", "frame_shape", "frame_material", "frame_color", "category", "use_case"]:
+    for slot in ["gender", "product_type", "brand", "frame_shape", "frame_material", "frame_color", "category", "use_case", "uv_protection", "polarized", "lens_color", "lens_type", "lens_feature", "lens_duration", "multifocal"]:
         val = tracker.get_slot(slot)
         if slot == "brand" and is_show_all_brand(val):
             clear_brand_filter = True
@@ -2359,12 +2546,12 @@ def search_products_engine(
     priority_filters = {
         key: value
         for key, value in extracted.items()
-        if key in {"product_type", "brand"}
+        if key in LENS_FILTER_COLUMNS or key in {"product_type", "brand"}
     }
     style_filters = {
         key: value
         for key, value in extracted.items()
-        if key not in {"product_type", "brand", "category"}
+        if key not in LENS_FILTER_COLUMNS and key not in {"product_type", "brand", "category"}
     }
     filtered = apply_filters(filtered, priority_filters)
     if b_min is not None:
@@ -2389,6 +2576,7 @@ def search_products_engine(
 
     relaxed_flags: List[str] = []
     fallback_mode = False
+    has_lens_filters = any(key in LENS_FILTER_COLUMNS for key in extracted)
 
     if filtered.empty and allow_similar_requested:
         fallback_mode = True
@@ -2397,12 +2585,12 @@ def search_products_engine(
         locked_filters = {
             key: value
             for key, value in extracted.items()
-            if key in {"product_type", "gender"}
+            if key in LENS_FILTER_COLUMNS or key in {"product_type", "gender"}
         }
         optional_filters = {
             key: set(value)
             for key, value in extracted.items()
-            if key not in {"product_type", "gender", "category"}
+            if key not in LENS_FILTER_COLUMNS and key not in {"product_type", "gender", "category"}
         }
         relaxed_filtered = apply_filters(relaxed_filtered, locked_filters)
         if b_min is not None:
@@ -2449,6 +2637,21 @@ def search_products_engine(
             events.append(SlotSet("price_range", current_price_range))
         elif current_budget_provided:
             events.append(SlotSet("price_range", None))
+
+        if has_lens_filters:
+            dispatcher.utter_message(
+                text=tr(
+                    lang,
+                    "I couldn't find products matching all selected requirements. Would you like to see the closest alternatives?",
+                    "Saya tidak menemui produk yang sepadan dengan semua keperluan yang dipilih. Adakah anda mahu lihat alternatif paling hampir?",
+                    "我找不到符合所有已选要求的产品。您想看看最接近的替代选择吗？",
+                ),
+                buttons=[
+                    {"title": tr(lang, "Show Alternatives", "Lihat Alternatif", "查看替代选择"), "payload": '/search_product{"allow_similar":true}'},
+                    {"title": tr(lang, "Change Filters", "Ubah Penapis", "更改筛选"), "payload": "/browse_eyewear"},
+                ],
+            )
+            return events, False
 
         product_type_label = product_type_value or tr(lang, "Not specified", "Tidak dinyatakan", "未指定")
         brand_label = brand_value or tr(lang, "Not specified", "Tidak dinyatakan", "未指定")
@@ -2574,6 +2777,20 @@ def search_products_engine(
             events.append(SlotSet("price_range", current_price_range))
         elif current_budget_provided:
             events.append(SlotSet("price_range", None))
+        if has_lens_filters and not allow_similar_requested:
+            dispatcher.utter_message(
+                text=tr(
+                    lang,
+                    "I couldn't find products matching all selected requirements. Would you like to see the closest alternatives?",
+                    "Saya tidak menemui produk yang sepadan dengan semua keperluan yang dipilih. Adakah anda mahu lihat alternatif paling hampir?",
+                    "我找不到符合所有已选要求的产品。您想看看最接近的替代选择吗？",
+                ),
+                buttons=[
+                    {"title": tr(lang, "Show Alternatives", "Lihat Alternatif", "查看替代选择"), "payload": '/search_product{"allow_similar":true}'},
+                    {"title": tr(lang, "Change Filters", "Ubah Penapis", "更改筛选"), "payload": "/browse_eyewear"},
+                ],
+            )
+            return events, False
         dispatcher.utter_message(
             text=tr(
                 lang,
@@ -3096,6 +3313,12 @@ class ActionResetEyewearSlots(Action):
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
         raw_text = tracker.latest_message.get("text") or ""
+        is_free_text_query = not raw_text.startswith("/")
+        print(f"DEBUG ActionResetEyewearSlots: raw_text='{raw_text}', is_free_text_query={is_free_text_query}")
+        if is_free_text_query:
+            print("DEBUG ActionResetEyewearSlots: Returning FollowupAction('action_filter_products')")
+            return [FollowupAction("action_filter_products")]
+
         intent = get_latest_intent(tracker)
         events: List[Dict[Text, Any]] = []
         events.extend(apply_domain_switch_reset(tracker, intent["name"], raw_text, ""))
@@ -3109,6 +3332,7 @@ class ActionResetEyewearSlots(Action):
             SlotSet("frame_material", None),
             SlotSet("lens_type", None),
             SlotSet("city", None),
+            FollowupAction("utter_ask_product_type")
         ])
         return events
 
@@ -3138,19 +3362,35 @@ class ActionExplainLens(Action):
     ) -> List[Dict[Text, Any]]:
         raw_text = tracker.latest_message.get("text") or ""
         intent = get_latest_intent(tracker)
+        if extract_lens_requirements(raw_text) and not is_explicit_lens_education_query(raw_text) and not raw_text.startswith("/ask_lens_type"):
+            return ActionSmartSearch().run(dispatcher, tracker, domain)
+
         events: List[Dict[Text, Any]] = []
         events.extend(apply_domain_switch_reset(tracker, intent["name"], raw_text, ""))
         events.extend(flow_entry_events(tracker, "lens_consultation"))
         lang = get_language(tracker)
         lens_type = tracker.get_slot("lens_type")
+        lens_feature = tracker.get_slot("lens_feature")
         explanations = {
+            "Single Vision": "Single vision lenses have one prescription power across the lens and are ideal for distance or near correction.",
             "Single Vision Lenses": "Single vision lenses have one prescription power across the lens and are ideal for distance or near correction.",
+            "Progressive": "Progressive lenses combine near, intermediate, and distance vision without visible lines.",
             "Progressive Lenses": "Progressive lenses combine near, intermediate, and distance vision without visible lines.",
+            "Bifocal": "Bifocal lenses provide two prescription zones for near and distance vision.",
+            "Bifocal Lenses": "Bifocal lenses provide two prescription zones for near and distance vision.",
+            "Blue Light": "Blue light lenses help reduce digital eye strain and filter high-energy visible light from screens.",
             "Blue Light Protection": "Blue light lenses help reduce digital eye strain and filter high-energy visible light from screens.",
+            "Blue Light Filter": "Blue light lenses help reduce digital eye strain and filter high-energy visible light from screens.",
+            "Photochromic": "Photochromic lenses darken outdoors and turn clear indoors for all-day convenience.",
             "Photochromic Lenses": "Photochromic lenses darken outdoors and turn clear indoors for all-day convenience.",
+            "Polarized": "Polarized lenses help reduce glare from reflective surfaces and bright outdoor light.",
+            "UV Protection": "UV protection helps shield your eyes from sunlight exposure.",
+            "Multifocal": "Multifocal lenses combine multiple vision zones to support both near and distance viewing.",
         }
         if lens_type in explanations:
             dispatcher.utter_message(text=explanations[lens_type])
+        elif lens_feature in explanations:
+            dispatcher.utter_message(text=explanations[lens_feature])
         else:
             dispatcher.utter_message(text=tr(lang, "I can explain different lens solutions if you tell me which one you are considering.", "Saya boleh terangkan pilihan kanta yang berbeza jika anda beritahu yang mana anda sedang pertimbangkan.", "如果您告诉我您正在考虑哪一种，我可以为您解释不同的镜片方案。"))
         dispatcher.utter_message(
@@ -3194,18 +3434,6 @@ class ActionAskCity(Action):
         resolved_city = resolve_city(city_candidate)
         if resolved_city:
             city = resolved_city
-            backend_stores = gateway.search_stores(city)
-            if backend_stores:
-                for store in backend_stores[:6]:
-                    emit_store_card(
-                        dispatcher,
-                        str(store.get("store_location", "Calisto Store")),
-                        str(store.get("city", city)),
-                        lang,
-                    )
-                events.append(SlotSet("city", city))
-                return events
-
             stores = search_store_rows(load_catalogue(), city)
             if stores.empty:
                 dispatcher.utter_message(text=tr(lang, f"I could not find any Calisto stores in {titleize(city)}.", f"Saya tidak menemui mana-mana kedai Calisto di {titleize(city)}.", f"我暂时找不到 {titleize(city)} 的 Calisto 门店。"))
@@ -3256,17 +3484,6 @@ class ActionFindStore(Action):
             dispatcher.utter_message(text=tr(lang, "Please specify the city to find a store.", "Sila nyatakan bandar untuk mencari kedai.", "请提供要查询的城市。"))
             if tracker.get_slot("city") is not None:
                 events.append(SlotSet("city", None))
-            return events
-
-        backend_stores = gateway.search_stores(str(city))
-        if backend_stores:
-            for store in backend_stores[:6]:
-                emit_store_card(
-                    dispatcher,
-                    str(store.get('store_location', 'Calisto Store')),
-                    str(store.get('city', city)),
-                    lang,
-                )
             return events
 
         stores = search_store_rows(load_catalogue(), str(city))
@@ -3509,6 +3726,13 @@ class ActionAskBrand(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        raw_text = tracker.latest_message.get("text") or ""
+        is_free_text_query = not raw_text.startswith("/")
+        print(f"DEBUG ActionAskBrand: raw_text='{raw_text}', is_free_text_query={is_free_text_query}")
+        if is_free_text_query:
+            print("DEBUG ActionAskBrand: Returning FollowupAction('action_filter_products')")
+            return [FollowupAction("action_filter_products")]
+
         events = flow_entry_events(tracker, "browse_eyewear")
         lang = get_language(tracker)
         product_type = tracker.get_slot("product_type")
@@ -3536,6 +3760,65 @@ class ActionAskBrand(Action):
 
         dispatcher.utter_message(text=text, buttons=buttons)
         return events
+
+
+class ActionAskBudgetRange(Action):
+    def name(self) -> Text:
+        return "action_ask_budget_range"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        raw_text = tracker.latest_message.get("text") or ""
+        is_free_text_query = not raw_text.startswith("/")
+        if is_free_text_query:
+            return [FollowupAction("action_filter_products")]
+
+        return [FollowupAction("utter_ask_budget_range")]
+
+
+class ActionAskPurchaseTimeline(Action):
+    def name(self) -> Text:
+        return "action_ask_purchase_timeline"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        current_flow = str(tracker.get_slot("current_flow") or "").strip()
+        support_case_type = str(tracker.get_slot("support_case_type") or "").strip()
+        raw_text = str(tracker.latest_message.get("text") or "").strip()
+        if current_flow == "support_flow" or support_case_type or raw_text.startswith("/"):
+            lang = "en"
+        else:
+            lang = get_language(tracker)
+        text = tr(
+            lang,
+            "Anda merancang untuk membuat keputusan atau melawat kedai dalam tempoh bila?",
+            "您打算多久内做决定或到门店看看？",
+            "How soon are you planning to make a decision or visit a store?",
+        )
+        buttons = [
+            {
+                "title": tr(lang, "Minggu Ini", "本周", "This Week"),
+                "payload": '/share_timeline{"purchase_timeline":"This Week"}',
+            },
+            {
+                "title": tr(lang, "Dalam 2 Minggu", "两周内", "Within 2 Weeks"),
+                "payload": '/share_timeline{"purchase_timeline":"Within 2 Weeks"}',
+            },
+            {
+                "title": tr(lang, "Sekadar Melihat", "先看看", "Just Exploring"),
+                "payload": '/share_timeline{"purchase_timeline":"Just Exploring"}',
+            },
+        ]
+        dispatcher.utter_message(text=text, buttons=buttons)
+        return []
 
 
 class ActionQualifyLead(Action):
@@ -3597,6 +3880,8 @@ class ActionSubmitLeadCapture(Action):
         preferred_service = str(payload.get("preferred_service") or "").strip()
         current_flow = str(tracker.get_slot("current_flow") or "").strip()
         latest_intent = str(payload.get("latest_intent") or "").strip()
+        support_case_type = str(tracker.get_slot("support_case_type") or "").strip()
+        is_support_case = bool(support_case_type) or preferred_service in _SUPPORT_SERVICE_NAMES
 
         if status == "qualified":
             booking_line = tr(
@@ -3627,42 +3912,70 @@ class ActionSubmitLeadCapture(Action):
             )
         else:
             _en_text = _pick_completion_response(preferred_service, current_flow, latest_intent)
-            _ms_text = tr(
-                "ms",
-                _en_text,
-                random.choice([
-                    "Permintaan anda telah diterima. Pasukan kami akan menghubungi anda tidak lama lagi.",
-                    "Maklumat anda telah dicatat. Pasukan kami akan menghubungi anda dengan segera.",
-                    "Terima kasih. Kami akan berikan maklum balas kepada anda tidak lama lagi.",
-                    "Dicatat. Pasukan kami akan berhubung dengan anda tidak lama lagi.",
-                    "Permohonan anda telah kami terima. Kami akan menghubungi anda dengan segera.",
-                ]),
-                "",
-            )
-            _zh_text = tr(
-                "zh",
-                _en_text,
-                "",
-                random.choice([
-                    "您的请求已收到。我们的团队将尽快与您联系。",
-                    "已记录您的信息。我们的团队将尽快跟进。",
-                    "感谢您。我们会尽快回复您。",
-                    "已收到。我们的团队很快会与您联系。",
-                    "您的申请已提交。专员将尽快与您联系。",
-                ]),
-            )
+            if is_support_case:
+                _ms_text = random.choice([
+                    "Permintaan sokongan anda telah diterima. Pasukan kami akan menghubungi anda tidak lama lagi.",
+                    "Maklumat kes anda telah dicatat. Pasukan sokongan kami akan berhubung dengan anda segera.",
+                    "Terima kasih. Kami akan bantu susulan kes sokongan anda secepat mungkin.",
+                    "Kes sokongan anda telah dihantar. Pasukan kami akan berhubung dengan anda tidak lama lagi.",
+                    "Dicatat. Seorang ejen sokongan akan menghubungi anda secepat mungkin.",
+                ])
+                _zh_text = random.choice([
+                    "您的支持请求已收到。我们的团队将尽快与您联系。",
+                    "您的案件信息已记录。我们的支持团队会尽快跟进。",
+                    "感谢您。我们会尽快处理您的支持请求。",
+                    "支持案件已提交。我们的团队很快会联系您。",
+                    "已记录。支持专员会尽快与您联系。",
+                ])
+            else:
+                _ms_text = tr(
+                    "ms",
+                    _en_text,
+                    random.choice([
+                        "Permintaan anda telah diterima. Pasukan kami akan menghubungi anda tidak lama lagi.",
+                        "Maklumat anda telah dicatat. Pasukan kami akan menghubungi anda dengan segera.",
+                        "Terima kasih. Kami akan berikan maklum balas kepada anda tidak lama lagi.",
+                        "Dicatat. Pasukan kami akan berhubung dengan anda tidak lama lagi.",
+                        "Permohonan anda telah kami terima. Kami akan menghubungi anda dengan segera.",
+                    ]),
+                    "",
+                )
+                _zh_text = tr(
+                    "zh",
+                    _en_text,
+                    "",
+                    random.choice([
+                        "您的请求已收到。我们的团队将尽快与您联系。",
+                        "已记录您的信息。我们的团队将尽快跟进。",
+                        "感谢您。我们会尽快回复您。",
+                        "已收到。我们的团队很快会与您联系。",
+                        "您的申请已提交。专员将尽快与您联系。",
+                    ]),
+                )
+
+            support_buttons = [
+                {"title": tr(lang, "Support & Policies", "Sokongan & Polisi", "支持与政策"), "payload": "/support_and_policies"},
+                {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
+                {"title": tr(lang, "Ask Another Question", "Tanya Soalan Lain", "再问一个问题"), "payload": "/greet"},
+            ]
+            generic_buttons = [
+                {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
+                {"title": tr(lang, "Browse Eyewear", "Lihat Produk", "浏览产品"), "payload": "/browse_eyewear"},
+                {"title": tr(lang, "Ask Another Question", "Tanya Soalan Lain", "再问一个问题"), "payload": "/greet"},
+            ]
             dispatcher.utter_message(
                 text=tr(lang, _en_text, _ms_text, _zh_text),
-                buttons=[
-                    {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-                    {"title": tr(lang, "Browse Eyewear", "Lihat Produk", "浏览产品"), "payload": "/browse_eyewear"},
-                    {"title": tr(lang, "Ask Another Question", "Tanya Soalan Lain", "再问一个问题"), "payload": "/greet"},
-                ],
+                buttons=support_buttons if is_support_case else generic_buttons,
             )
 
         if response and response.get("lead_id"):
             dispatcher.utter_message(text=tr(lang, f"Reference ID: {response['lead_id']}", f"ID Rujukan: {response['lead_id']}", f"参考编号：{response['lead_id']}"))
-        return [SlotSet("current_flow", None), SlotSet("requested_slot", None)]
+            
+        events = [SlotSet("current_flow", None), SlotSet("requested_slot", None)]
+        if tracker.get_slot("support_case_type"):
+            events.append(SlotSet("support_case_status", "open"))
+            
+        return events
 
 
 class ActionHandleReturnSupport(Action):
@@ -3711,6 +4024,30 @@ class ActionHandleOrderSupport(Action):
 
     def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         return route_support_flow(dispatcher, tracker, "order_support")
+
+
+class ActionHandleGreet(Action):
+    def name(self) -> Text:
+        return "action_handle_greet"
+
+    def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        active_loop = get_active_loop_name(tracker)
+        requested_slot = tracker.get_slot("requested_slot")
+        
+        if not active_loop:
+            dispatcher.utter_message(response="utter_greet")
+            return []
+            
+        if active_loop and requested_slot:
+            logger.info(f"Active form detected ({active_loop} waiting for {requested_slot}) on greet. Continuing.")
+            return [FollowupAction(active_loop)]
+            
+        # Stale form without a requested slot
+        logger.info("Stale form detected on greet (no requested_slot). Resetting state.")
+        events, _, _ = reset_conversation_state(tracker)
+        dispatcher.utter_message(response="utter_greet")
+        return events
+
 class ActionBookAppointment(Action):
     def name(self) -> Text:
         return "action_book_appointment"
