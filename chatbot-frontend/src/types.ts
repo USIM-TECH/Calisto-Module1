@@ -90,9 +90,29 @@ export interface ProductRecord {
   productType: string
   category: string
   priceMyr: number
+  description?: string | null
+  frameMaterial?: string | null
+  frameShape?: string | null
+  frameColor?: string | null
+  gender?: string | null
+  uvProtection?: string | null
+  polarized?: string | null
+  lensColor?: string | null
+  frameStyle?: string | null
+  lensType?: string | null
+  lensFeature?: string | null
+  lensDuration?: string | null
+  multifocal?: string | null
+  storeLocation?: string | null
+  city?: string | null
   stockStatus: string
   rating?: number | null
+  bestseller?: boolean
+  newArrival?: boolean
   imageUrl?: string | null
+  fallbackImageUrl?: string | null
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface ProductListResult {
@@ -100,6 +120,26 @@ export interface ProductListResult {
   total: number
   page: number
   limit: number
+}
+
+export type ProductImportMode = 'skip' | 'update'
+
+export interface ProductImportInvalidRow {
+  line: number
+  productId?: string
+  reason: string
+  missingFields?: string[]
+}
+
+export interface ProductImportResult {
+  ok: boolean
+  total: number
+  inserted: number
+  updated: number
+  skipped: number
+  invalid: number
+  invalidRows: ProductImportInvalidRow[]
+  warnings: string[]
 }
 
 export interface KnowledgeSummaryResponse {
