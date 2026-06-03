@@ -1,0 +1,24 @@
+# Local PostgreSQL for chatbot-integrations (Prisma ORM + Prisma Studio).
+# Start: docker compose -f docker-compose.postgres.yml up -d
+# Stop:  docker compose -f docker-compose.postgres.yml down
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: calisto-postgres
+    environment:
+      POSTGRES_USER: calisto
+      POSTGRES_PASSWORD: calisto
+      POSTGRES_DB: calisto_chatbot
+    ports:
+      - "5432:5432"
+    volumes:
+      - calisto-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U calisto -d calisto_chatbot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  calisto-postgres-data:

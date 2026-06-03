@@ -75,7 +75,7 @@ npm run build
 npm start
 ```
 
-By default the integration layer uses **PostgreSQL** via Prisma: set `DATABASE_URL` in `.env`, run `npm run db:migrate:dev` (or `db:migrate` in production), then `npm start`. For JSON-only storage, set `STORAGE_BACKEND=file`. If `DATABASE_URL` is missing while postgres is selected, the service falls back to `data/runtime/runtime-store.json` and logs a warning. See [chatbot-integrations/LEADS.md](chatbot-integrations/LEADS.md) and [chatbot-integrations/prisma/README.md](chatbot-integrations/prisma/README.md).
+Start Postgres with `docker compose -f chatbot-integrations/docker-compose.postgres.yml up -d`, set `DATABASE_URL` in `.env` (see `.env.example`), run `npm run db:migrate:dev`, then `npm start`. Use `npm run db:studio` to open the data browser. For JSON-only storage, set `STORAGE_BACKEND=file`. See [chatbot-integrations/LEADS.md](chatbot-integrations/LEADS.md) and [chatbot-integrations/prisma/README.md](chatbot-integrations/prisma/README.md).
 
 Integration service endpoints:
 - `http://localhost:3000/`

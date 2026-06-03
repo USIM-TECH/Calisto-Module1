@@ -14,6 +14,7 @@
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
     "db:reset:dev": "prisma migrate reset --force",
+    "db:studio": "prisma studio",
     "db:seed:products": "tsx src/products/service/seed-from-csv.ts",
     "db:seed:knowledge": "tsx src/knowledge/service/seed-from-meta-json.ts"
   },
