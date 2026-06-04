@@ -822,6 +822,26 @@ nlu:
       - 找 [metal](frame_material) frames
       - ada bingkai [round](frame_shape)
 
+  - intent: refine_by_brand
+    examples: |
+      - refine by brand
+      - filter by brand
+      - narrow by brand
+      - by brand
+      - show by brand
+      - tapis mengikut jenama
+      - 按品牌筛选
+
+  - intent: refine_by_budget
+    examples: |
+      - refine by budget
+      - filter by budget
+      - narrow by budget
+      - by budget
+      - show by budget
+      - tapis mengikut bajet
+      - 按预算筛选
+
   - intent: inform_budget
     examples: |
       - my budget is [100](budget)
@@ -1049,6 +1069,16 @@ nlu:
       - this is [Sarah Lim](lead_name)
       - i am [Jason Wong](lead_name)
       - [John Tan](lead_name)
+      - [Vaibhav](lead_name)
+      - [Ashy](lead_name)
+      - [John](lead_name)
+      - [Sarah](lead_name)
+      - [Mohammed Ali](lead_name)
+      - [R Kumar](lead_name)
+      - [Wei Li](lead_name)
+      - [Kevin](lead_name)
+      - [Siti](lead_name)
+      - [Ahmad](lead_name)
       - nama saya [Farah](lead_name)
       - saya [Daniel Lee](lead_name)
       - 我叫 [王小明](lead_name)
@@ -1075,6 +1105,10 @@ nlu:
       - my contact is [0127788990](contact_number)
       - [0123456789](contact_number)
       - [60123456789](contact_number)
+      - [2929220222920](contact_number)
+      - [+60123456789](contact_number)
+      - [601234567890](contact_number)
+      - [0198765432](contact_number)
       - nombor saya [0171234567](contact_number)
       - boleh hubungi saya di [60199887766](contact_number)
       - 我的电话是 [0127788990](contact_number)
@@ -1096,6 +1130,11 @@ nlu:
       - my email address is [sales@calisto.com](email)
       - [chen@example.com](email)
       - contact me at [hello@sample.com](email)
+      - [ashy@gmail.com](email)
+      - [john.doe@company.com](email)
+      - [test+filter@example.com](email)
+      - [user.name@domain.co.uk](email)
+      - [vaibhav@gmail.com](email)
       - emel saya [farah@contoh.my](email)
       - boleh guna [sales@calisto.com](email)
       - 我的邮箱是 [chen@example.com](email)
@@ -1715,6 +1754,20 @@ nlu:
       - i made a mistake return this
       - not what i expected return
       - return my gucci frame
+      - return my glasses please
+      - i want to return the glasses
+      - need to return my frame
+      - return the sunglasses
+      - return my order of glasses
+      - i received the wrong glasses return
+      - return my defective glasses
+      - the glasses are defective i want to return
+      - my glasses are broken return them
+      - return my damaged eyewear
+      - the frame is damaged i need to return
+      - my sunglasses arrived broken return
+      - return the broken glasses
+      - defective product return my glasses
       - saya mahu pulangkan cermin mata saya
       - pulangkan eyewear saya
       - saya nak pulangkan cermin mata hitam saya
@@ -1787,6 +1840,16 @@ nlu:
       - partial refund
       - i am waiting for a refund
       - cancel order and refund
+      - refund my glasses
+      - i want a refund for my glasses
+      - refund my sunglasses please
+      - need refund for my eyewear
+      - refund the frame
+      - refund my defective glasses
+      - my glasses are defective refund
+      - the glasses broke i need refund
+      - refund my damaged sunglasses
+      - i want refund for damaged item
       - saya perlukan bayaran balik
       - boleh saya dapatkan refund
       - bayaran balik untuk pembelian saya
@@ -1855,6 +1918,15 @@ nlu:
       - exchange for something else
       - change my order item
       - replace this frame
+      - exchange the glasses
+      - i want to exchange my frame
+      - exchange my eyewear
+      - swap the sunglasses
+      - need to exchange my glasses
+      - exchange my defective frame
+      - the glasses don't fit exchange
+      - exchange my order
+      - i received wrong size exchange my glasses
       - tukar cermin mata saya
       - boleh saya tukar bingkai ini
       - tukar cermin mata hitam saya

@@ -52,7 +52,7 @@ export async function sendInstagramMessage(
       return response.message_id
     }
     case 'card': {
-      const response = await sendRawMessage({ id: recipientId }, { text: normalizeCardToText(message) })
+      const response = await sendRawMessage({ id: recipientId }, buildInstagramCardMessage(message))
       return response.message_id
     }
     default:
@@ -94,5 +94,42 @@ export function buildInstagramChoiceMessage(message: Extract<OutgoingMessage, { 
       title: option.label,
       payload: option.value,
     })),
+  }
+}
+
+function buildInstagramCardMessage(message: Extract<OutgoingMessage, { type: 'card' }>): any {
+  const buttons = (message.actions ?? [])
+    .slice(0, 3)
+    .map((action) => {
+      if (action.type === 'url') {
+        return {
+          type: 'web_url',
+          title: action.title.substring(0, 20),
+          url: action.value,
+        }
+      }
+
+      return {
+        type: 'postback',
+        title: action.title.substring(0, 20),
+        payload: action.value,
+      }
+    })
+
+  return {
+    attachment: {
+      type: 'template',
+      payload: {
+        template_type: 'generic',
+        elements: [
+          {
+            title: message.title.substring(0, 80),
+            image_url: message.imageUrl,
+            subtitle: message.subtitle?.substring(0, 80),
+            buttons,
+          },
+        ],
+      },
+    },
   }
 }
