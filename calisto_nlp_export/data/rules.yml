@@ -144,6 +144,7 @@ rules:
       - intent: browse_eyewear
       - action: action_set_language
       - action: action_reset_eyewear_slots
+      - action: utter_ask_product_type
 
   - rule: Start pricing flow
     steps:

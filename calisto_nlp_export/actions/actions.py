@@ -1228,16 +1228,35 @@ def route_support_flow(
         try:
             faq_entries = load_kb_metadata()
             best_result = None
+            best_score = 0
+            
             for entry in faq_entries:
                 text = str(entry.get("text") or "").strip().lower()
-                if search_group == "refund" and ("refund or return policy" in text or "refund" in text):
+                score = 0
+                
+                if search_group == "refund":
+                    # Prioritize exact match for return policy question
+                    if "what is your refund or return policy" in text:
+                        score = 100
+                    elif "refund or return policy" in text:
+                        score = 50
+                    elif "14-day return" in text or "return and refund" in text:
+                        score = 40
+                    elif "refund" in text and "exchange" in text:
+                        score = 30
+                    # Penalize if it's about stores/locations
+                    if "store locator" in text or "stores located" in text or "physical outlets" in text:
+                        score = 0
+                        
+                elif search_group == "warranty":
+                    if "warranty" in text:
+                        score = 50
+                        
+                if score > best_score:
+                    best_score = score
                     best_result = entry
-                    break
-                elif search_group == "warranty" and "warranty" in text:
-                    best_result = entry
-                    break
                     
-            if best_result:
+            if best_result and best_score > 0:
                 answer = best_result.get("text", "").strip()
                 if " A:" in answer:
                     answer = answer.split(" A:", 1)[1].strip()
@@ -3332,7 +3351,6 @@ class ActionResetEyewearSlots(Action):
             SlotSet("frame_material", None),
             SlotSet("lens_type", None),
             SlotSet("city", None),
-            FollowupAction("utter_ask_product_type")
         ])
         return events
 
@@ -3790,30 +3808,24 @@ class ActionAskPurchaseTimeline(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        current_flow = str(tracker.get_slot("current_flow") or "").strip()
-        support_case_type = str(tracker.get_slot("support_case_type") or "").strip()
-        raw_text = str(tracker.latest_message.get("text") or "").strip()
-        if current_flow == "support_flow" or support_case_type or raw_text.startswith("/"):
-            lang = "en"
-        else:
-            lang = get_language(tracker)
+        lang = get_language(tracker)
         text = tr(
             lang,
+            "How soon are you planning to make a decision or visit a store?",
             "Anda merancang untuk membuat keputusan atau melawat kedai dalam tempoh bila?",
             "您打算多久内做决定或到门店看看？",
-            "How soon are you planning to make a decision or visit a store?",
         )
         buttons = [
             {
-                "title": tr(lang, "Minggu Ini", "本周", "This Week"),
+                "title": tr(lang, "This Week", "Minggu Ini", "本周"),
                 "payload": '/share_timeline{"purchase_timeline":"This Week"}',
             },
             {
-                "title": tr(lang, "Dalam 2 Minggu", "两周内", "Within 2 Weeks"),
+                "title": tr(lang, "Within 2 Weeks", "Dalam 2 Minggu", "两周内"),
                 "payload": '/share_timeline{"purchase_timeline":"Within 2 Weeks"}',
             },
             {
-                "title": tr(lang, "Sekadar Melihat", "先看看", "Just Exploring"),
+                "title": tr(lang, "Just Exploring", "Sekadar Melihat", "先看看"),
                 "payload": '/share_timeline{"purchase_timeline":"Just Exploring"}',
             },
         ]
