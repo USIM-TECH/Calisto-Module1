@@ -52,10 +52,10 @@ interface AddProductModalProps {
 
 type FormErrors = Partial<Record<keyof ProductFormData, string>>
 
-const labelClass = 'mb-2 block text-[0.68rem] font-extrabold uppercase tracking-wider text-black'
-const inputClass = 'h-11 w-full rounded-xl border border-calisto-line bg-calisto-table px-3 text-sm text-black outline-none transition placeholder:text-calisto-soft focus:border-orange-300 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus'
-const fileInputClass = 'block h-11 w-full rounded-xl border border-calisto-line bg-calisto-table px-3 py-1.5 text-sm text-black outline-none transition file:mr-3 file:h-8 file:rounded-lg file:border-0 file:bg-calisto-surface file:px-3 file:text-xs file:font-semibold file:text-black hover:file:bg-calisto-surface-muted focus:border-orange-300 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus'
-const textareaClass = 'min-h-28 w-full resize-y rounded-xl border border-calisto-line bg-calisto-table p-4 text-sm leading-6 text-black outline-none transition placeholder:text-calisto-soft focus:border-orange-300 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus'
+const labelClass = 'mb-2 block text-[0.68rem] font-bold uppercase tracking-wider text-calisto-ink'
+const inputClass = 'h-11 w-full rounded-xl border border-calisto-line bg-calisto-table px-3 text-sm font-medium text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-orange-300 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus'
+const fileInputClass = 'block h-11 w-full rounded-xl border border-calisto-line bg-calisto-table px-3 py-1.5 text-sm font-medium text-calisto-body outline-none transition file:mr-3 file:h-8 file:rounded-lg file:border-0 file:bg-calisto-surface file:px-3 file:text-xs file:font-semibold file:text-calisto-ink hover:file:bg-calisto-surface-muted focus:border-orange-300 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus'
+const textareaClass = 'min-h-28 w-full resize-y rounded-xl border border-calisto-line bg-calisto-table p-4 text-sm font-medium leading-6 text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-orange-300 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus'
 const errorClass = 'mt-1 text-xs font-semibold text-rose-600'
 
 function generateProductId() {
@@ -249,17 +249,17 @@ export default function AddProductModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="addProductTitle"
-          className="w-full max-w-5xl overflow-hidden rounded-3xl border border-calisto-line bg-calisto-surface text-black shadow-dashboard"
+          className="w-full max-w-5xl overflow-hidden rounded-3xl border border-calisto-line bg-calisto-surface text-calisto-ink shadow-dashboard"
           onMouseDown={(event) => event.stopPropagation()}
         >
         <div className="flex items-start justify-between gap-4 border-b border-calisto-line px-6 py-5">
           <div>
-            <h2 id="addProductTitle" className="text-lg font-bold text-black">{isEditMode ? 'Edit Product' : 'Add Product'}</h2>
-            <p className="mt-1 text-sm text-black">Capture product metadata for the catalogue.</p>
+            <h2 id="addProductTitle" className="text-lg font-bold text-calisto-ink">{isEditMode ? 'Edit Product' : 'Add Product'}</h2>
+            <p className="mt-1 text-sm text-calisto-body">Capture product metadata for the catalogue.</p>
           </div>
           <button
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-calisto-line bg-calisto-surface text-black transition hover:bg-calisto-surface-muted"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-calisto-line bg-calisto-surface text-calisto-ink transition hover:bg-calisto-surface-muted"
             onClick={onClose}
             aria-label="Close add product modal"
           >
@@ -269,7 +269,7 @@ export default function AddProductModal({
 
         <form onSubmit={handleSave} className="max-h-[75vh] overflow-y-auto px-6 py-5">
           <section className="grid gap-4">
-            <div className="text-xs font-extrabold uppercase tracking-wider text-black">Identity</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-calisto-ink">Identity</div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div>
                 <label className={labelClass} htmlFor="productId">Product ID</label>
@@ -311,7 +311,7 @@ export default function AddProductModal({
           </section>
 
           <section className="mt-6 grid gap-4 border-t border-calisto-line-subtle pt-6">
-            <div className="text-xs font-extrabold uppercase tracking-wider text-black">Catalogue</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-calisto-ink">Catalogue</div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div>
                 <label className={labelClass} htmlFor="category">Category *</label>
@@ -362,7 +362,7 @@ export default function AddProductModal({
           </section>
 
           <section className="mt-6 grid gap-4 border-t border-calisto-line-subtle pt-6">
-            <div className="text-xs font-extrabold uppercase tracking-wider text-black">Pricing &amp; Stock</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-calisto-ink">Pricing &amp; Stock</div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div>
                 <label className={labelClass} htmlFor="price">Price (MYR) *</label>
@@ -404,7 +404,7 @@ export default function AddProductModal({
           </section>
 
           <section className="mt-6 grid gap-4 border-t border-calisto-line-subtle pt-6">
-            <div className="text-xs font-extrabold uppercase tracking-wider text-black">Frame</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-calisto-ink">Frame</div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div>
                 <label className={labelClass} htmlFor="material">Material</label>
@@ -450,7 +450,7 @@ export default function AddProductModal({
           </section>
 
           <section className="mt-6 grid gap-4 border-t border-calisto-line-subtle pt-6">
-            <div className="text-xs font-extrabold uppercase tracking-wider text-black">Lens &amp; Optics</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-calisto-ink">Lens &amp; Optics</div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div>
                 <label className={labelClass} htmlFor="lensType">Lens Type</label>
@@ -537,7 +537,7 @@ export default function AddProductModal({
           </section>
 
           <section className="mt-6 grid gap-4 border-t border-calisto-line-subtle pt-6">
-            <div className="text-xs font-extrabold uppercase tracking-wider text-black">Location</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-calisto-ink">Location</div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div>
                 <label className={labelClass} htmlFor="storeLocation">Store Location</label>
@@ -563,9 +563,9 @@ export default function AddProductModal({
           </section>
 
           <section className="mt-6 grid gap-4 border-t border-calisto-line-subtle pt-6">
-            <div className="text-xs font-extrabold uppercase tracking-wider text-black">Flags</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-calisto-ink">Flags</div>
             <div className="flex flex-wrap gap-6">
-              <label className="inline-flex items-center gap-2 text-sm font-semibold text-black">
+              <label className="inline-flex items-center gap-2 text-sm font-semibold text-calisto-body">
                 <input
                   type="checkbox"
                   className="h-4 w-4 rounded border-calisto-line text-calisto-accent focus:ring-2 focus:ring-calisto-focus"
@@ -574,7 +574,7 @@ export default function AddProductModal({
                 />
                 Bestseller
               </label>
-              <label className="inline-flex items-center gap-2 text-sm font-semibold text-black">
+              <label className="inline-flex items-center gap-2 text-sm font-semibold text-calisto-body">
                 <input
                   type="checkbox"
                   className="h-4 w-4 rounded border-calisto-line text-calisto-accent focus:ring-2 focus:ring-calisto-focus"
@@ -587,7 +587,7 @@ export default function AddProductModal({
           </section>
 
           <section className="mt-6 grid gap-4 border-t border-calisto-line-subtle pt-6">
-            <div className="text-xs font-extrabold uppercase tracking-wider text-black">Image</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-calisto-ink">Image</div>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className={labelClass} htmlFor="imageFile">Image Upload</label>
@@ -598,7 +598,7 @@ export default function AddProductModal({
                   accept=".jpg,.jpeg,.png,.webp"
                   onChange={(event) => updateField('imageFile', event.target.files?.[0] ?? null)}
                 />
-                <p className="mt-2 text-xs font-semibold text-black">
+                <p className="mt-2 text-xs font-semibold text-calisto-muted">
                   {formData.imageFile ? `Selected: ${formData.imageFile.name}` : 'Accepted: jpg, jpeg, png, webp'}
                 </p>
               </div>

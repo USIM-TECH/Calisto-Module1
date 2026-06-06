@@ -12,8 +12,8 @@ const requiredColumns = [
   'price_myr',
 ]
 
-const labelClass = 'mb-2 block text-[0.68rem] font-extrabold uppercase tracking-wider text-black'
-const fileInputClass = 'block h-11 w-full rounded-xl border border-calisto-line bg-calisto-table px-3 py-1.5 text-sm text-black outline-none transition file:mr-3 file:h-8 file:rounded-lg file:border-0 file:bg-calisto-surface file:px-3 file:text-xs file:font-semibold file:text-black hover:file:bg-calisto-surface-muted focus:border-orange-300 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus'
+const labelClass = 'mb-2 block text-[0.68rem] font-bold uppercase tracking-wider text-calisto-ink'
+const fileInputClass = 'block h-11 w-full rounded-xl border border-calisto-line bg-calisto-table px-3 py-1.5 text-sm font-medium text-calisto-body outline-none transition file:mr-3 file:h-8 file:rounded-lg file:border-0 file:bg-calisto-surface file:px-3 file:text-xs file:font-semibold file:text-calisto-ink hover:file:bg-calisto-surface-muted focus:border-orange-300 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus'
 const radioClass = 'h-4 w-4 border-calisto-line text-calisto-accent focus:ring-2 focus:ring-calisto-focus'
 
 interface ImportCsvModalProps {
@@ -96,19 +96,19 @@ export default function ImportCsvModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="importCsvTitle"
-          className="w-full max-w-2xl overflow-hidden rounded-3xl border border-calisto-line bg-calisto-surface text-black shadow-dashboard"
+          className="w-full max-w-2xl overflow-hidden rounded-3xl border border-calisto-line bg-calisto-surface text-calisto-ink shadow-dashboard"
           onMouseDown={(event) => event.stopPropagation()}
         >
           <div className="flex items-start justify-between gap-4 border-b border-calisto-line px-6 py-5">
             <div>
-              <h2 id="importCsvTitle" className="text-lg font-bold text-black">Import products from CSV</h2>
+              <h2 id="importCsvTitle" className="text-lg font-bold text-calisto-ink">Import products from CSV</h2>
               <p className="mt-1 text-sm leading-6 text-calisto-body">
                 Upload a CSV with the same columns as the catalogue export.
               </p>
             </div>
             <button
               type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-calisto-line bg-calisto-surface text-black transition hover:bg-calisto-surface-muted"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-calisto-line bg-calisto-surface text-calisto-ink transition hover:bg-calisto-surface-muted"
               onClick={onClose}
               aria-label="Close import CSV modal"
             >
@@ -118,7 +118,7 @@ export default function ImportCsvModal({
 
           <form className="max-h-[75vh] overflow-y-auto px-6 py-5" onSubmit={handleSubmit}>
             <section className="grid gap-4">
-              <div className="text-xs font-extrabold uppercase tracking-wider text-black">Required columns</div>
+              <div className="text-xs font-bold uppercase tracking-wider text-calisto-ink">Required columns</div>
               <div className="flex flex-wrap gap-2">
                 {requiredColumns.map((column) => (
                   <span
@@ -132,7 +132,7 @@ export default function ImportCsvModal({
             </section>
 
             <section className="mt-6 grid gap-3 border-t border-calisto-line-subtle pt-6">
-              <div className="text-xs font-extrabold uppercase tracking-wider text-black">Download template CSV</div>
+              <div className="text-xs font-bold uppercase tracking-wider text-calisto-ink">Download template CSV</div>
               <Button className="w-fit" icon={<Download className="h-4 w-4" />} onClick={onDownloadTemplate}>
                 Download template CSV
               </Button>
@@ -158,7 +158,7 @@ export default function ImportCsvModal({
             </section>
 
             <section className="mt-6 grid gap-4 border-t border-calisto-line-subtle pt-6">
-              <div className="text-xs font-extrabold uppercase tracking-wider text-black">If product ID already exists</div>
+              <div className="text-xs font-bold uppercase tracking-wider text-calisto-ink">If product ID already exists</div>
               <div className="grid gap-3">
                 <label className="inline-flex items-center gap-3 text-sm font-semibold text-calisto-body">
                   <input

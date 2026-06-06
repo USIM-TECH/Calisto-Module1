@@ -54,6 +54,7 @@ export interface ProductImportInvalidRow {
 
 export interface ProductImportResult {
   ok: boolean
+  
   total: number
   inserted: number
   updated: number

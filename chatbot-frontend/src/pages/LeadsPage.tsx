@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock3, Download, Mail, MessageCircle, RefreshCw, Search, UserRoundCheck, UsersRound, X } from 'lucide-react'
+import { CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, Mail, MessageCircle, RefreshCw, Search, UserRoundCheck, UsersRound, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { getLeads } from '../api/client'
@@ -8,6 +8,8 @@ import Topbar from '../components/Topbar'
 import type { ChannelIdentityRecord, CustomerRecord, LeadsResponse } from '../types'
 
 type ChannelName = ChannelIdentityRecord['channel']
+
+const PAGE_SIZE = 5
 
 interface FilterOption {
   label: string
@@ -219,10 +221,24 @@ function SearchFilters({
 
 function LeadsTable({
   customers,
+  currentPage,
   identitiesByCustomer,
+  onNextPage,
+  onPreviousPage,
+  pageCount,
+  totalCount,
+  visibleEnd,
+  visibleStart,
 }: {
   customers: CustomerRecord[]
+  currentPage: number
   identitiesByCustomer: Map<string, ChannelIdentityRecord[]>
+  onNextPage: () => void
+  onPreviousPage: () => void
+  pageCount: number
+  totalCount: number
+  visibleEnd: number
+  visibleStart: number
 }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
@@ -314,6 +330,34 @@ function LeadsTable({
           </tbody>
         </table>
       </div>
+      <div className="flex flex-col gap-3 border-t border-calisto-line-subtle px-5 py-4 text-sm text-calisto-muted sm:flex-row sm:items-center sm:justify-between">
+        <span className="font-semibold">
+          Showing {visibleStart}-{visibleEnd} of {totalCount}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            className="inline-flex h-9 items-center gap-1 rounded-lg border border-calisto-line bg-calisto-surface px-3 text-sm font-semibold text-calisto-ink transition hover:bg-calisto-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
+            type="button"
+            onClick={onPreviousPage}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Prev
+          </button>
+          <span className="min-w-24 text-center text-sm font-semibold text-calisto-body">
+            Page {currentPage} of {pageCount}
+          </span>
+          <button
+            className="inline-flex h-9 items-center gap-1 rounded-lg border border-calisto-line bg-calisto-surface px-3 text-sm font-semibold text-calisto-ink transition hover:bg-calisto-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
+            type="button"
+            onClick={onNextPage}
+            disabled={currentPage === pageCount}
+          >
+            Next
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
     </section>
   )
 }
@@ -324,6 +368,7 @@ export default function LeadsPage() {
   const [search, setSearch] = useState('')
   const [channelFilter, setChannelFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     getLeads()
@@ -375,6 +420,22 @@ export default function LeadsPage() {
         return matchesQuery && matchesStatus && matchesChannel
       })
   }, [channelFilter, data, identitiesByCustomer, search, statusFilter])
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const pageStart = (currentPage - 1) * PAGE_SIZE
+  const paginated = filtered.slice(pageStart, pageStart + PAGE_SIZE)
+  const visibleStart = filtered.length === 0 ? 0 : pageStart + 1
+  const visibleEnd = Math.min(pageStart + PAGE_SIZE, filtered.length)
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [channelFilter, search, statusFilter])
+
+  useEffect(() => {
+    if (currentPage > pageCount) {
+      setCurrentPage(pageCount)
+    }
+  }, [currentPage, pageCount])
 
   function clearFilters() {
     setSearch('')
@@ -450,7 +511,17 @@ export default function LeadsPage() {
             </span>
           </div>
 
-          <LeadsTable customers={filtered} identitiesByCustomer={identitiesByCustomer} />
+          <LeadsTable
+            customers={paginated}
+            currentPage={currentPage}
+            identitiesByCustomer={identitiesByCustomer}
+            onNextPage={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
+            onPreviousPage={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            pageCount={pageCount}
+            totalCount={filtered.length}
+            visibleEnd={visibleEnd}
+            visibleStart={visibleStart}
+          />
         </>
       )}
     </PageContainer>

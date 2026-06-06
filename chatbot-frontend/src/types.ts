@@ -145,3 +145,32 @@ export interface ProductImportResult {
 export interface KnowledgeSummaryResponse {
   sources: Array<{ source: string; count: number }>
 }
+
+export interface KnowledgeChunkRecord {
+  id: string
+  chunkHash: string
+  source: string
+  text: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface KnowledgeDocumentSummary {
+  source: string
+  chunkCount: number
+  updatedAt: string
+}
+
+export interface KnowledgeDocumentsResponse {
+  documents: KnowledgeDocumentSummary[]
+}
+
+export interface KnowledgeDocumentDetail {
+  source: string
+  chunkCount: number
+  updatedAt: string | null
+  items: KnowledgeChunkRecord[]
+  total: number
+  page: number
+  limit: number
+}
