@@ -26,6 +26,7 @@ BOOKING_URL = os.getenv("BOOKING_URL", "").strip()
 DEFAULT_STORE_HOURS = os.getenv("DEFAULT_STORE_HOURS", "10:00 AM to 10:00 PM daily").strip()
 INTENT_CONFIDENCE_THRESHOLD = 0.7
 FORM_INTERRUPTION_INTENTS = {
+    "greet",
     "ask_faq",
     "ask_pricing",
     "select_pricing_category",
@@ -1899,6 +1900,11 @@ def is_valid_name(value: str) -> bool:
     if re.search(r"[?!]", normalized):
         return False
     disallowed_keywords = {
+        "hi",
+        "hello",
+        "hey",
+        "halo",
+        "yo",
         "glasses",
         "frames",
         "sunglasses",
@@ -2514,7 +2520,7 @@ def search_products_engine(
     prev_b_min = tracker.get_slot("budget_min")
     prev_b_max = tracker.get_slot("budget_max")
 
-    is_refinement = intent_name == "select_budget" or is_refinement_query(normalized) or allow_similar_requested
+    is_refinement = intent_name in {"select_budget", "select_brand"} or is_refinement_query(normalized) or allow_similar_requested
 
     extracted: Dict[str, set] = {}
     b_min, b_max = current_b_min, current_b_max
@@ -3071,11 +3077,15 @@ class ValidateLeadCaptureForm(FormValidationAction):
         retry_text: str,
     ) -> Dict[Text, Any]:
         intent = get_latest_intent(tracker)
+        raw_text = tracker.latest_message.get("text") or ""
         requested_slot = tracker.get_slot("requested_slot") or slot_name
+        support_intent, override_reason, keyword_match = detect_support_intent(tracker)
 
-        if intent["name"] in FORM_INTERRUPTION_INTENTS and intent["confidence"] >= INTENT_CONFIDENCE_THRESHOLD:
+        # Check for domain switch or strong intent interruption
+        if support_intent or (intent["name"] in FORM_INTERRUPTION_INTENTS and intent["confidence"] >= INTENT_CONFIDENCE_THRESHOLD):
+            # Exit form immediately without filling - leave as "Not provided"
             return {
-                slot_name: None,
+                slot_name: None,  # Clear the slot to prevent invalid data
                 "requested_slot": None,
                 "current_flow": resolve_interruption_flow(tracker, intent["name"]),
             }
@@ -3240,7 +3250,9 @@ class ActionHandleLeadCaptureInterruption(Action):
                 dispatcher.utter_message(response=f"utter_ask_{requested_slot}")
             return []
 
+        # Exit form cleanly without auto-filling - leave fields as "Not provided"
         events: List[Dict[Text, Any]] = []
+        
         if switch["detected"]:
             reset_events, cleared_slots, cleared_active_loop = reset_conversation_state(tracker)
             logger.info({
@@ -3792,10 +3804,14 @@ class ActionAskBudgetRange(Action):
     ) -> List[Dict[Text, Any]]:
         raw_text = tracker.latest_message.get("text") or ""
         is_free_text_query = not raw_text.startswith("/")
+        
+        # If user typed a free text query (not button click), filter immediately
         if is_free_text_query:
             return [FollowupAction("action_filter_products")]
 
-        return [FollowupAction("utter_ask_budget_range")]
+        # For button clicks, just ask for budget and wait for user selection
+        dispatcher.utter_message(response="utter_ask_budget_range")
+        return []
 
 
 class ActionAskPurchaseTimeline(Action):
@@ -3873,6 +3889,12 @@ class ActionSubmitLeadCapture(Action):
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
         lang = get_language(tracker)
+        
+        # If form was interrupted, don't submit or show completion message
+        if tracker.get_slot("form_interrupted"):
+            logger.info("Form was interrupted - skipping lead submission")
+            return [SlotSet("form_interrupted", None)]  # Clear the flag
+        
         payload = {
             "name": tracker.get_slot("lead_name"),
             "phone": tracker.get_slot("contact_number"),
@@ -4049,13 +4071,9 @@ class ActionHandleGreet(Action):
         if not active_loop:
             dispatcher.utter_message(response="utter_greet")
             return []
-            
-        if active_loop and requested_slot:
-            logger.info(f"Active form detected ({active_loop} waiting for {requested_slot}) on greet. Continuing.")
-            return [FollowupAction(active_loop)]
-            
-        # Stale form without a requested slot
-        logger.info("Stale form detected on greet (no requested_slot). Resetting state.")
+        
+        # User said "hi" during a form - they want to exit/restart
+        logger.info(f"User greeted during form ({active_loop}). Resetting state and showing greeting.")
         events, _, _ = reset_conversation_state(tracker)
         dispatcher.utter_message(response="utter_greet")
         return events

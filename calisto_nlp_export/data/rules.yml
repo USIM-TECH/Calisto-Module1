@@ -11,6 +11,14 @@ rules:
       - action: action_set_language
       - action: action_handle_greet
 
+  - rule: Interrupt lead capture for greet
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: greet
+      - action: action_set_language
+      - action: action_handle_greet
+
   - rule: Interrupt lead capture for FAQ
     condition:
       - active_loop: lead_capture_form
