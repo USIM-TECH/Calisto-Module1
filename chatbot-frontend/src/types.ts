@@ -57,6 +57,7 @@ export interface CustomerRecord {
   location?: string
   qualificationStatus: string
   crmStatus: string
+  crmRecordId?: string
   lastIntent?: string
   lastMessageAt: string
   firstSeenAt: string
@@ -74,6 +75,42 @@ export interface ChannelIdentityRecord {
   conversationId: string
   firstSeenAt: string
   lastSeenAt: string
+}
+
+export interface ConversationMessageRecord {
+  direction: 'inbound' | 'outbound'
+  messageId: string
+  text?: string
+  messageType: string
+  timestamp: string
+  metadata: {
+    channel: ChannelIdentityRecord['channel']
+    sourceId: string
+    conversationId: string
+    customerId: string
+    channelIdentityId: string
+  }
+}
+
+export interface InterestRecord {
+  id: string
+  customerId: string
+  kind: string
+  value: string
+  capturedAt: string
+}
+
+export interface LeadCRMInfo {
+  status: 'pending' | 'synced' | 'failed'
+  recordId?: string
+}
+
+export interface LeadDetailResponse {
+  customer: CustomerRecord
+  identities: ChannelIdentityRecord[]
+  interests: InterestRecord[]
+  transcript: ConversationMessageRecord[]
+  crm: LeadCRMInfo
 }
 
 export interface LeadsResponse {

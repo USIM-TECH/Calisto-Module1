@@ -1,6 +1,7 @@
 import { CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, Mail, MessageCircle, RefreshCw, Search, UserRoundCheck, UsersRound, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { getLeads } from '../api/client'
 import Button from '../components/Button'
 import PageContainer from '../components/PageContainer'
@@ -266,7 +267,6 @@ function LeadsTable({
             {customers.map((customer) => {
               const identities = identitiesByCustomer.get(customer.id) ?? []
               const whatsappLink = buildWhatsappLink(customer.phone)
-              const reviewUrl = `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000'}/reports/leads-dashboard/${customer.id}`
 
               return (
                 <tr key={customer.id} className="transition hover:bg-calisto-surface-muted">
@@ -317,12 +317,12 @@ function LeadsTable({
                     </div>
                   </td>
                   <td className="px-7 py-4 text-right">
-                    <a
+                    <Link
                       className="inline-flex h-10 items-center justify-center rounded-xl border border-orange-100 bg-calisto-surface px-4 text-sm font-semibold text-calisto-accent transition hover:bg-orange-50"
-                      href={reviewUrl}
+                      to={`/leads/${customer.id}`}
                     >
                       Review Lead
-                    </a>
+                    </Link>
                   </td>
                 </tr>
               )

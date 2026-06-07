@@ -5,6 +5,7 @@ import LeadsPage from './pages/LeadsPage'
 import ProductsPage from './pages/ProductsPage'
 import KnowledgePage from './pages/KnowledgePage'
 import NotFoundPage from './pages/NotFoundPage'
+import LeadDetailPage from './pages/LeadDetailPage'
 
 const navItems = [
   { label: 'Leads', to: '/leads', icon: UsersRound },
@@ -74,6 +75,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/leads" replace />} />
           <Route path="/webchat" element={<WebchatPage />} />
           <Route path="/leads" element={<LeadsPage />} />
+          <Route path="/leads/:customerId" element={<LeadDetailPage />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/knowledge" element={<KnowledgePage />} />
           <Route path="*" element={<NotFoundPage />} />

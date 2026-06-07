@@ -1,9 +1,8 @@
 import express, { type Express } from 'express'
 import { createWebhookRouter } from '../core/webhook/index.js'
-import type { ChannelIdentityRecord, RuntimeStore } from '../leads/index.js'
+import type { ChannelIdentityRecord, ConversationRecord, RuntimeStore } from '../leads/index.js'
 import {
   findConversationByCustomerId,
-  findCustomerById,
   renderLeadDetailHtml,
   renderLeadsDashboardHtml,
 } from '../frontend/leads-dashboard.js'
@@ -30,6 +29,46 @@ async function listIdentitiesForCustomer(
 ): Promise<ChannelIdentityRecord[]> {
   const all = await store.listIdentities()
   return all.filter((identity) => identity.customerId === customerId)
+}
+
+async function loadLeadDetailPayload(
+  runtimeStore: RuntimeStore,
+  customerId: string,
+): Promise<{
+  customer: NonNullable<Awaited<ReturnType<RuntimeStore['getCustomer']>>>
+  identities: ChannelIdentityRecord[]
+  interests: Awaited<ReturnType<RuntimeStore['listInterestsByCustomer']>>
+  conversation?: ConversationRecord
+  transcript: NonNullable<ConversationRecord['messages']>
+  crm: {
+    status: 'pending' | 'synced' | 'failed'
+    recordId?: string
+  }
+}> {
+  const customer = await runtimeStore.getCustomer(customerId)
+  if (!customer) {
+    throw new Error('Customer not found')
+  }
+
+  const [conversations, identities, interests] = await Promise.all([
+    runtimeStore.listConversations(),
+    listIdentitiesForCustomer(runtimeStore, customer.id),
+    runtimeStore.listInterestsByCustomer(customer.id),
+  ])
+
+  const conversation = findConversationByCustomerId(conversations, customer.id)
+
+  return {
+    customer,
+    identities,
+    interests,
+    conversation,
+    transcript: conversation?.messages ?? [],
+    crm: {
+      status: customer.crmStatus,
+      recordId: customer.crmRecordId,
+    },
+  }
 }
 import {
   renderCustomerWebchatHtml,
@@ -234,6 +273,19 @@ export function createApp(dependencies: AppDependencies): Express {
     }
   })
 
+  app.get('/reports/leads/:customerId', async (req, res, next) => {
+    try {
+      const payload = await loadLeadDetailPayload(runtimeStore, req.params.customerId)
+      res.json(payload)
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Customer not found') {
+        res.status(404).json({ error: 'Customer not found' })
+        return
+      }
+      next(error)
+    }
+  })
+
   if (productStore) {
     registerProductRoutes({
       app,
@@ -259,21 +311,13 @@ export function createApp(dependencies: AppDependencies): Express {
 
   app.get('/reports/leads-dashboard/:customerId', async (req, res, next) => {
     try {
-      const customers = await orchestrator.listCustomers()
-      const customer = findCustomerById(customers, req.params.customerId)
-
-      if (!customer) {
-        res.status(404).type('html').send('<h1>Customer not found</h1>')
-        return
-      }
-
-      const [conversations, identities, interests] = await Promise.all([
-        orchestrator.listConversations(),
-        listIdentitiesForCustomer(runtimeStore, customer.id),
-        orchestrator.listInterestsByCustomer(customer.id),
-      ])
-      const conversation = findConversationByCustomerId(conversations, customer.id)
-      res.type('html').send(renderLeadDetailHtml({ customer, identities, conversation, interests }))
+      const payload = await loadLeadDetailPayload(runtimeStore, req.params.customerId)
+      res.type('html').send(renderLeadDetailHtml({
+        customer: payload.customer,
+        identities: payload.identities,
+        conversation: payload.conversation,
+        interests: payload.interests,
+      }))
     } catch (error) {
       next(error)
     }

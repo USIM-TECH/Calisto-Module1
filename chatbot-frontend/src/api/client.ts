@@ -2,6 +2,7 @@ import type {
   KnowledgeDocumentDetail,
   KnowledgeDocumentsResponse,
   KnowledgeSummaryResponse,
+  LeadDetailResponse,
   LeadsResponse,
   ProductImportMode,
   ProductImportResult,
@@ -72,6 +73,10 @@ export function postWebchatMessage(payload: WebchatRequest): Promise<WebchatResp
 
 export function getLeads(): Promise<LeadsResponse> {
   return request<LeadsResponse>('/reports/leads')
+}
+
+export function getLeadDetail(customerId: string): Promise<LeadDetailResponse> {
+  return request<LeadDetailResponse>(`/reports/leads/${encodeURIComponent(customerId)}`)
 }
 
 export function getProducts(query?: string): Promise<ProductListResult> {
