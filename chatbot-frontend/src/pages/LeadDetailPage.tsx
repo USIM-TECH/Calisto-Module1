@@ -59,16 +59,16 @@ function renderTranscriptMessage(message: ConversationMessageRecord) {
   const isOutbound = message.direction === 'outbound'
   const wrapperClass = isOutbound ? 'items-end' : 'items-start'
   const bubbleClass = isOutbound
-    ? 'rounded-tr-md bg-blue-600 text-white'
-    : 'rounded-tl-md bg-slate-200 text-calisto-ink'
+    ? 'rounded-tr-md bg-calisto-accent text-calisto-surface shadow-[0_8px_18px_rgba(234,88,12,0.18)]'
+    : 'rounded-tl-md border border-calisto-line bg-calisto-surface text-calisto-ink shadow-sm'
   const label = isOutbound ? 'Outbound (AI Assistant)' : 'Inbound'
 
   return (
-    <div key={message.messageId} className={`flex flex-col gap-1 ${wrapperClass}`}>
-      <div className={`max-w-[85%] whitespace-pre-wrap rounded-[18px] px-4 py-3 text-sm leading-6 shadow-sm ${bubbleClass}`}>
+    <div key={message.messageId} className={`flex flex-col gap-1.5 ${wrapperClass}`}>
+      <div className={`max-w-[82%] whitespace-pre-wrap rounded-[20px] px-4 py-3 text-sm font-medium leading-6 ${bubbleClass}`}>
         {message.text ?? `[${message.messageType}]`}
       </div>
-      <div className="px-1 text-[11px] font-semibold text-calisto-soft">
+      <div className="px-1 text-[11px] font-semibold leading-none text-calisto-muted">
         {label} - {formatDate(message.timestamp)}
       </div>
     </div>
@@ -187,27 +187,27 @@ export default function LeadDetailPage() {
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,1fr)]">
-        <div className="grid gap-6">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(420px,1fr)] 2xl:grid-cols-[minmax(0,1.15fr)_minmax(480px,1fr)]">
+        <div className="grid gap-5">
           <section className="overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
-            <div className="flex items-center justify-between gap-4 border-b border-calisto-line px-6 py-5">
+            <div className="flex items-center justify-between gap-4 border-b border-calisto-line bg-calisto-surface px-5 py-4">
               <h3 className="text-base font-extrabold text-calisto-ink">Customer Overview</h3>
               <a href="#" className="text-sm font-semibold text-calisto-accent">Edit Info</a>
             </div>
 
-            <div className="grid gap-x-7 gap-y-6 p-6 sm:grid-cols-2">
+            <div className="grid gap-x-5 gap-y-4 p-5 sm:grid-cols-2">
               <div>
-                <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Customer ID</div>
-                <div className="break-words text-sm font-semibold text-calisto-body">{customer.id}</div>
+                <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Customer ID</div>
+                <div className="break-words font-mono text-[0.82rem] font-semibold text-calisto-body">{customer.id}</div>
               </div>
 
               <div>
-                <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Channels</div>
+                <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Channels</div>
                 <div className="flex flex-wrap gap-2">
                   {identities.length > 0 ? identities.map((identity) => (
                     <span
                       key={identity.id}
-                      className="inline-flex max-w-full items-center gap-2 rounded-full bg-calisto-table py-1 pl-1 pr-3 text-xs font-semibold text-calisto-body"
+                      className="inline-flex max-w-full items-center gap-2 rounded-full border border-calisto-line bg-calisto-table py-1 pl-1 pr-3 text-xs font-bold text-calisto-body"
                       title={`${channelLabel(identity.channel)} ${identity.sourceId}`}
                     >
                       <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-[10px] font-extrabold uppercase text-cyan-700">
@@ -220,29 +220,29 @@ export default function LeadDetailPage() {
               </div>
 
               <div>
-                <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Latest Interest</div>
+                <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Latest Interest</div>
                 <div className={`break-words text-sm font-semibold ${customer.preferredService ? 'text-calisto-body' : 'italic text-calisto-soft'}`}>
                   {customer.preferredService ?? 'Not captured'}
                 </div>
               </div>
               <div>
-                <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">First Seen</div>
+                <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">First Seen</div>
                 <div className="break-words text-sm font-semibold text-calisto-body">{formatDate(customer.firstSeenAt)}</div>
               </div>
               <div>
-                <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Location</div>
+                <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Location</div>
                 <div className={`break-words text-sm font-semibold ${customer.location ? 'text-calisto-body' : 'italic text-calisto-soft'}`}>
                   {customer.location ?? 'Not provided'}
                 </div>
               </div>
               <div>
-                <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Email</div>
+                <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Email</div>
                 <div className={`break-words text-sm font-semibold ${customer.email ? 'text-calisto-body' : 'italic text-calisto-soft'}`}>
                   {customer.email ?? 'Not provided'}
                 </div>
               </div>
               <div className="sm:col-span-2">
-                <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Phone</div>
+                <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Phone</div>
                 <div className={`break-words text-sm font-semibold ${customer.phone ? 'text-calisto-body' : 'italic text-calisto-soft'}`}>
                   {customer.phone ?? 'Not provided'}
                 </div>
@@ -251,29 +251,29 @@ export default function LeadDetailPage() {
           </section>
 
           <section className="overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
-            <div className="flex items-center justify-between gap-4 border-b border-calisto-line px-6 py-5">
+            <div className="flex items-center justify-between gap-4 border-b border-calisto-line bg-calisto-surface px-5 py-4">
               <h3 className="text-base font-extrabold text-calisto-ink">Captured Interests</h3>
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">
                 {data.interests.length} entries
               </span>
             </div>
 
-            <div className="p-6">
+            <div className="p-5">
               {data.interests.length === 0 ? (
                 <div className="text-sm italic text-calisto-soft">No interests captured yet.</div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3.5">
                   {Array.from(interestsByKind.entries()).map(([kind, items]) => (
                     <div key={kind}>
                       <div className="mb-2 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">{kind.replace(/_/g, ' ')}</div>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         {items.map((item) => (
                           <span
                             key={item.id}
-                            className="inline-flex items-center rounded-full bg-cyan-50 px-3 py-1.5 text-xs font-bold text-cyan-700"
+                            className="inline-flex max-w-full items-center rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-extrabold text-orange-700 shadow-sm"
                             title={formatDate(item.capturedAt)}
                           >
-                            {item.value}
+                            <span className="truncate">{item.value}</span>
                           </span>
                         ))}
                       </div>
@@ -285,32 +285,34 @@ export default function LeadDetailPage() {
           </section>
 
           <section className="overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
-            <div className="flex items-center justify-between gap-4 border-b border-calisto-line px-6 py-5">
+            <div className="flex items-center justify-between gap-4 border-b border-calisto-line bg-calisto-surface px-5 py-4">
               <h3 className="text-base font-extrabold text-calisto-ink">CRM Integration</h3>
             </div>
 
-            <div className="p-6">
-              <div className="grid gap-x-7 gap-y-6 sm:grid-cols-2">
+            <div className="p-5">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">CRM Status</div>
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wider ${statusTone(crm.status)}`}>
-                    {crm.status}
-                  </span>
+                  <div className="rounded-xl border border-calisto-line-subtle bg-calisto-table/70 px-3 py-2.5">
+                    <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">CRM Status</div>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wider ${statusTone(crm.status)}`}>
+                      {crm.status}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">CRM Record</div>
+                <div className="rounded-xl border border-calisto-line-subtle bg-calisto-table/70 px-3 py-2.5">
+                  <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">CRM Record</div>
                   <div className={`break-words text-sm font-semibold ${crm.recordId ? 'text-calisto-body' : 'italic text-calisto-soft'}`}>
                     {crm.recordId ?? 'No match found'}
                   </div>
                 </div>
-                <div>
-                  <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Last Intent</div>
+                <div className="rounded-xl border border-calisto-line-subtle bg-calisto-table/70 px-3 py-2.5">
+                  <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Last Intent</div>
                   <div className={`break-words text-sm font-semibold ${customer.lastIntent ? 'text-calisto-body' : 'italic text-calisto-soft'}`}>
                     {customer.lastIntent ?? 'Not captured'}
                   </div>
                 </div>
-                <div>
-                  <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Last Activity</div>
+                <div className="rounded-xl border border-calisto-line-subtle bg-calisto-table/70 px-3 py-2.5">
+                  <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Last Activity</div>
                   <div className="break-words text-sm font-semibold text-calisto-body">{formatDate(customer.lastMessageAt)}</div>
                 </div>
               </div>
@@ -332,9 +334,9 @@ export default function LeadDetailPage() {
         </div>
 
         <aside>
-          <section className="flex min-h-[640px] overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard xl:sticky xl:top-6">
+          <section className="flex min-h-[760px] overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard xl:sticky xl:top-6 xl:h-[calc(100vh-170px)]">
             <div className="flex min-h-0 w-full flex-col">
-              <div className="flex items-center justify-between gap-4 border-b border-calisto-line px-6 py-5">
+              <div className="flex items-center justify-between gap-4 border-b border-calisto-line bg-calisto-surface px-5 py-4">
                 <h3 className="text-base font-extrabold text-calisto-ink">Recent Transcript</h3>
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">
                   {transcript.length} messages
@@ -344,7 +346,7 @@ export default function LeadDetailPage() {
               {transcript.length === 0 ? (
                 <div className="flex-1 bg-calisto-table p-6 text-sm italic text-calisto-soft">No transcript available yet.</div>
               ) : (
-                <div className="flex max-h-[640px] flex-1 flex-col gap-4 overflow-y-auto bg-calisto-table p-6">
+                <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto bg-calisto-table/90 p-5">
                   {transcript.map((message) => renderTranscriptMessage(message))}
                 </div>
               )}
