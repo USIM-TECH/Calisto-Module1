@@ -89,7 +89,7 @@ This repo includes a safe helper script that reads `TELEGRAM_BOT_TOKEN` and `TEL
 
 ```bash
 cd chatbot-integrations
-npm run telegram:webhook -- https://<something>.ngrok-free.dev
+npm run telegram:webhook -- https://unstrange-brooklynn-exhaustively.ngrok-free.dev
 ```
 
 Expected output (example):
@@ -128,7 +128,7 @@ npm run telegram:webhook -- https://<something>.ngrok-free.dev
 - Confirm public reachability:
 
 ```bash
-curl -s https://<something>.ngrok-free.dev/health | python3 -m json.tool
+curl -s https://unstrange-brooklynn-exhaustively.ngrok-free.dev/health | python3 -m json.tool
 ```
 
 ### Port 3000 already in use

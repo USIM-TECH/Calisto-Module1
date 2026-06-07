@@ -243,7 +243,16 @@ export function renderWebchatPlaygroundHtml(): string {
           button.type = 'button';
           button.className = 'choice-button';
           button.textContent = option.label;
-          button.addEventListener('click', () => sendMessage(option.value, option.label));
+          button.addEventListener('click', (e) => {
+            // Disable all choice buttons in this group to prevent double-clicks
+            const allChoiceButtons = choices.querySelectorAll('.choice-button');
+            allChoiceButtons.forEach(btn => {
+              btn.disabled = true;
+              btn.style.opacity = '0.5';
+              btn.style.cursor = 'not-allowed';
+            });
+            sendMessage(option.value, option.label);
+          });
           choices.appendChild(button);
         });
 
@@ -296,7 +305,13 @@ export function renderWebchatPlaygroundHtml(): string {
               button.type = 'button';
               button.className = 'card-action';
               button.textContent = action.title;
-              button.addEventListener('click', () => sendMessage(action.value, action.title));
+              button.addEventListener('click', (e) => {
+                // Disable this specific button to prevent double-clicks
+                button.disabled = true;
+                button.style.opacity = '0.5';
+                button.style.cursor = 'not-allowed';
+                sendMessage(action.value, action.title);
+              });
               actions.appendChild(button);
             }
           });
@@ -807,7 +822,16 @@ export function renderCustomerWebchatHtml(): string {
           button.type = 'button';
           button.className = 'choice';
           button.textContent = option.label;
-          button.addEventListener('click', () => sendMessage(option.value, option.label));
+          button.addEventListener('click', (e) => {
+            // Disable all choice buttons in this bubble to prevent double-clicks
+            const allChoiceButtons = choices.querySelectorAll('.choice');
+            allChoiceButtons.forEach(btn => {
+              btn.disabled = true;
+              btn.style.opacity = '0.5';
+              btn.style.cursor = 'not-allowed';
+            });
+            sendMessage(option.value, option.label);
+          });
           choices.appendChild(button);
         });
 
@@ -857,7 +881,13 @@ export function renderCustomerWebchatHtml(): string {
               button.type = 'button';
               button.className = 'chat-card-action';
               button.textContent = action.title;
-              button.addEventListener('click', () => sendMessage(action.value, action.title));
+              button.addEventListener('click', (e) => {
+                // Disable this specific button to prevent double-clicks
+                button.disabled = true;
+                button.style.opacity = '0.5';
+                button.style.cursor = 'not-allowed';
+                sendMessage(action.value, action.title);
+              });
               actions.appendChild(button);
             }
           });
