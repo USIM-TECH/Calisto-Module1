@@ -383,12 +383,16 @@ responses:
           payload: /support_actions
 
   utter_warranty_policy_menu:
-    - text: "Would you like to file a claim?"
-      buttons:
-        - title: File Warranty Claim
-          payload: /warranty_support
-        - title: Back
-          payload: /support_and_policies
+    - custom:
+        type: "card"
+        title: "warranty policy differes for each product from brand to brand, please visit our stores for warranty support."
+        actions:
+          - title: "Store Locations"
+            type: "url"
+            value: "https://calisto.co/stores"
+          - title: "Back"
+            type: "postback"
+            value: "/support_and_policies"
 
   utter_return_policy_menu:
     - text: "What would you like to do next?"

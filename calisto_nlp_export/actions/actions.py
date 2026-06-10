@@ -1736,11 +1736,21 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
         or product.get("fallback_url")
         or product.get("fallbackUrl")
     )
-    image_url = (
-        _resolve_card_image_url(raw_image)
-        or _resolve_card_image_url(fallback_image)
-        or build_placeholder_image(f"{brand} {name}", theme)
-    )
+    
+    # Use placeholder images for WhatsApp (external URLs fail), Unsplash for others
+    # Check if this is WhatsApp by looking at the message metadata
+    is_whatsapp = product.get("_channel") == "whatsapp"
+    
+    if is_whatsapp:
+        # WhatsApp: always use placeholder images (dummyimage.com works reliably)
+        image_url = build_placeholder_image(f"{brand} {name}", theme)
+    else:
+        # Other platforms: try Unsplash first, fallback to placeholder
+        image_url = (
+            _resolve_card_image_url(raw_image)
+            or _resolve_card_image_url(fallback_image)
+            or build_placeholder_image(f"{brand} {name}", theme)
+        )
 
     actions = []
     actions.append({
@@ -2784,7 +2794,11 @@ def search_products_engine(
             continue
         if any(not row_matches(row, col, values) for col, values in required_validation.items() if col in row.index):
             continue
-        emit_product_card(dispatcher, row.to_dict(), str(ranking_type) if ranking_type else "", lang)
+        # Add channel information to the product dict for platform-aware image selection
+        product_dict = row.to_dict()
+        metadata = latest_metadata(tracker)
+        product_dict["_channel"] = str(metadata.get("channel") or "").lower()
+        emit_product_card(dispatcher, product_dict, str(ranking_type) if ranking_type else "", lang)
         emitted_count += 1
 
     if emitted_count == 0:
@@ -2939,8 +2953,8 @@ class ActionDocumentSearch(Action):
         query_lower = raw_query.lower()
 
         keyword_groups = {
-            "refund": {"refund", "return", "exchange", "policy", "size", "fit"},
-            "warranty": {"warranty", "cover", "broken", "damage"},
+            "refund": {"refund", "return", "exchange", "size", "fit"},
+            "warranty": {"warranty", "cover", "broken", "damage", "policy"},
             "booking": {"book", "appointment", "eye test", "online"},
             "after_sales": {"adjustment", "after-sales", "after sales", "fitting", "support"},
             "stores": {"store", "location", "branch", "outlet"},
@@ -3001,12 +3015,7 @@ class ActionDocumentSearch(Action):
             )
         else:
             answer = best_result.get("text", "").strip()
-            
-            # Simple clean up of answer
-            if " A:" in answer:
-                answer = answer.split(" A:", 1)[1].strip()
-            if " Q:" in answer:
-                answer = answer.split(" Q:", 1)[0].strip()
+            answer = clean_faq_answer(answer, requested_group)
 
             words = answer.split()
             if len(words) > 150:
@@ -3017,7 +3026,11 @@ class ActionDocumentSearch(Action):
                 best_result.get("source", "unknown"),
                 float(best_score),
             )
-            dispatcher.utter_message(text=f"📄 {answer}")
+            # For warranty and refund, the dedicated menu utterance below
+            # already contains the full policy text, so skip the 📄 KB echo
+            # to avoid sending the answer twice.
+            if requested_group not in {"warranty", "refund"}:
+                dispatcher.utter_message(text=f"📄 {answer}")
 
         # Provide contextual follow up instead of escalating automatically
         if requested_group == "warranty":

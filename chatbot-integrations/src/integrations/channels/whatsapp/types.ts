@@ -3,7 +3,7 @@ import { z } from 'zod'
 
 const WhatsAppContactSchema = z.object({
   wa_id: z.string(),
-  profile: z.object({ name: z.string() }),
+  profile: z.object({ name: z.string() }).optional(),
 })
 
 const WhatsAppBaseMessageSchema = z.object({

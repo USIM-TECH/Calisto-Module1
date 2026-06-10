@@ -190,13 +190,29 @@ export function renderWebchatPlaygroundHtml(): string {
         messageCountLabel.textContent = count + ' Message' + (count === 1 ? '' : 's');
       }
 
+      function linkifyText(raw) {
+        var s = String(raw || '');
+        var urlRe = new RegExp('(https?://[^\\s<>"]+)', 'g');
+        var parts = s.split(urlRe);
+        var result = '';
+        for (var i = 0; i < parts.length; i++) {
+          if (urlRe.test(parts[i])) {
+            var u = parts[i].replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            result += '<a href="' + u + '" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;">' + u + '</a>';
+          } else {
+            result += parts[i].replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>');
+          }
+        }
+        return result;
+      }
+
       function appendBubble(text, direction) {
         const wrapper = document.createElement('div');
         wrapper.className = 'bubble-wrap ' + direction;
 
         const bubble = document.createElement('div');
         bubble.className = 'bubble ' + direction;
-        bubble.textContent = text;
+        bubble.innerHTML = linkifyText(String(text || ''));
 
         const meta = document.createElement('span');
         meta.className = 'bubble-meta';
@@ -382,7 +398,7 @@ export function renderWebchatPlaygroundHtml(): string {
       });
 
       messageInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' && !event.shiftKey) {
+        if ((event.key === 'Enter' || event.keyCode === 13) && !event.shiftKey) {
           event.preventDefault();
           sendMessage(messageInput.value);
         }
@@ -771,13 +787,29 @@ export function renderCustomerWebchatHtml(): string {
       const sendButton = document.getElementById('sendButton');
       const statusLabel = document.getElementById('statusLabel');
 
+      function linkifyText(raw) {
+        var s = String(raw || '');
+        var urlRe = new RegExp('(https?://[^\\s<>"]+)', 'g');
+        var parts = s.split(urlRe);
+        var result = '';
+        for (var i = 0; i < parts.length; i++) {
+          if (urlRe.test(parts[i])) {
+            var u = parts[i].replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            result += '<a href="' + u + '" target="_blank" rel="noopener noreferrer" style="color:#d97706;text-decoration:underline;">' + u + '</a>';
+          } else {
+            result += parts[i].replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>');
+          }
+        }
+        return result;
+      }
+
       function appendBubble(text, role) {
         const wrapper = document.createElement('div');
         wrapper.className = 'bubble-wrap ' + role;
 
         const bubble = document.createElement('div');
         bubble.className = 'bubble ' + role;
-        bubble.textContent = text;
+        bubble.innerHTML = linkifyText(String(text || ''));
 
         const meta = document.createElement('span');
         meta.className = 'meta';
@@ -943,7 +975,7 @@ export function renderCustomerWebchatHtml(): string {
 
       sendButton.addEventListener('click', () => sendMessage(messageInput.value));
       messageInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' && !event.shiftKey) {
+        if ((event.key === 'Enter' || event.keyCode === 13) && !event.shiftKey) {
           event.preventDefault();
           sendMessage(messageInput.value);
         }
