@@ -223,6 +223,18 @@ rules:
       - action: action_set_language
       - action: action_filter_products
 
+  - rule: Refine product search by brand
+    steps:
+      - intent: refine_by_brand
+      - action: action_set_language
+      - action: action_ask_brand
+
+  - rule: Refine product search by budget
+    steps:
+      - intent: refine_by_budget
+      - action: action_set_language
+      - action: action_ask_budget_range
+
   - rule: Recommend products by use case
     steps:
       - intent: product_recommendation
@@ -357,6 +369,30 @@ rules:
       - active_loop: lead_capture_form
     steps:
       - intent: ask_a_question
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for support actions
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: support_actions
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for warranty policy
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: warranty_policy_inquiry
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for return policy
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: return_policy_inquiry
       - action: action_set_language
       - action: action_handle_lead_capture_interruption
 
