@@ -1,0 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-calisto-canvas: 246 244 241;          /* #f6f4f1, app background */
+    --color-calisto-surface: 255 255 255;         /* #ffffff, cards and panels */
+    --color-calisto-surface-muted: 248 250 252;   /* #f8fafc, quiet panel fill */
+    --color-calisto-sidebar: 63 79 79;            /* #3f4f4f, sidebar background */
+    --color-calisto-sidebar-active: 86 101 101;   /* #566565, active sidebar item */
+    --color-calisto-accent: 216 95 13;            /* #d85f0d, primary action orange */
+    --color-calisto-ink: 48 49 51;                /* #303133, primary text */
+    --color-calisto-body: 71 85 105;              /* #475569, secondary text */
+    --color-calisto-muted: 100 116 139;           /* #64748b, muted text */
+    --color-calisto-soft: 148 163 184;            /* #94a3b8, placeholders and helper text */
+    --color-calisto-line: 226 232 240;            /* #e2e8f0, standard borders */
+    --color-calisto-line-subtle: 241 245 249;     /* #f1f5f9, subtle borders */
+    --color-calisto-table: 241 245 249;           /* #f1f5f9, table headers and input fills */
+    --color-calisto-focus: 255 237 213;           /* #ffedd5, orange focus ring */
+  }
+
+  html {
+    @apply bg-calisto-canvas;
+  }
+
+  body {
+    @apply bg-calisto-canvas font-sans text-calisto-ink antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  a {
+    @apply text-inherit no-underline;
+  }
+}
+

@@ -14,23 +14,23 @@ export const PRODUCT_CSV_REQUIRED_COLUMNS = [
 
 export const PRODUCT_CSV_COLUMNS = [
   ...PRODUCT_CSV_REQUIRED_COLUMNS,
-  'description',
-  'frame_material',
-  'frame_shape',
-  'frame_color',
   'gender',
-  'uv_protection',
-  'polarized',
-  'lens_color',
-  'frame_style',
+  'description',
+  'stock_status',
+  'rating',
+  'material',
+  'shape',
+  'color',
+  'style',
   'lens_type',
+  'lens_color',
   'lens_feature',
   'lens_duration',
+  'uv_protection',
+  'polarized',
   'multifocal',
   'store_location',
   'city',
-  'stock_status',
-  'rating',
   'bestseller',
   'new_arrival',
   'image_url',
@@ -54,6 +54,7 @@ export interface ProductImportInvalidRow {
 
 export interface ProductImportResult {
   ok: boolean
+  
   total: number
   inserted: number
   updated: number
@@ -116,6 +117,14 @@ function blankToNull(value: string | undefined): string | null {
   if (value === undefined || value === null) return null
   const t = value.trim()
   return t === '' ? null : t
+}
+
+function firstPresent(row: Record<string, string>, ...keys: string[]): string | null {
+  for (const key of keys) {
+    const value = blankToNull(row[key])
+    if (value !== null) return value
+  }
+  return null
 }
 
 function parseBoolField(value: string | undefined, field: string): { ok: true; value: boolean } | { ok: false; reason: string } {
@@ -286,14 +295,14 @@ export function validateCsvRow(row: Record<string, string>, line: number): RowVa
       brand: blankToNull(row.brand)!,
       priceMyr: price.value,
       description: blankToNull(row.description),
-      frameMaterial: blankToNull(row.frame_material),
-      frameShape: blankToNull(row.frame_shape),
-      frameColor: blankToNull(row.frame_color),
+      frameMaterial: firstPresent(row, 'material', 'frame_material'),
+      frameShape: firstPresent(row, 'shape', 'frame_shape'),
+      frameColor: firstPresent(row, 'color', 'frame_color'),
       gender: blankToNull(row.gender),
       uvProtection: blankToNull(row.uv_protection),
       polarized: blankToNull(row.polarized),
       lensColor: blankToNull(row.lens_color),
-      frameStyle: blankToNull(row.frame_style),
+      frameStyle: firstPresent(row, 'style', 'frame_style'),
       lensType: blankToNull(row.lens_type),
       lensFeature: blankToNull(row.lens_feature),
       lensDuration: blankToNull(row.lens_duration),
@@ -407,23 +416,23 @@ export function productCsvTemplate(): string {
     'Designer Frames',
     'Calisto',
     '299.00',
+    'Unisex',
     'Sample product description',
+    'in_stock',
+    '4.5',
     'acetate',
     'round',
     'black',
-    'unisex',
+    'classic',
+    'single_vision',
+    'clear',
+    'blue_light',
+    '',
     'yes',
     'no',
-    '',
-    'round',
-    '',
-    '',
-    '',
-    '',
+    'no',
     'Calisto HQ',
     'Kuala Lumpur',
-    'in_stock',
-    '4.5',
     'no',
     'yes',
     '',

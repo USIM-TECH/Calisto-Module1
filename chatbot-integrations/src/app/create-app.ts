@@ -1,9 +1,8 @@
 import express, { type Express } from 'express'
 import { createWebhookRouter } from '../core/webhook/index.js'
-import type { ChannelIdentityRecord, RuntimeStore } from '../leads/index.js'
+import type { ChannelIdentityRecord, ConversationRecord, RuntimeStore } from '../leads/index.js'
 import {
   findConversationByCustomerId,
-  findCustomerById,
   renderLeadDetailHtml,
   renderLeadsDashboardHtml,
 } from '../frontend/leads-dashboard.js'
@@ -31,6 +30,46 @@ async function listIdentitiesForCustomer(
   const all = await store.listIdentities()
   return all.filter((identity) => identity.customerId === customerId)
 }
+
+async function loadLeadDetailPayload(
+  runtimeStore: RuntimeStore,
+  customerId: string,
+): Promise<{
+  customer: NonNullable<Awaited<ReturnType<RuntimeStore['getCustomer']>>>
+  identities: ChannelIdentityRecord[]
+  interests: Awaited<ReturnType<RuntimeStore['listInterestsByCustomer']>>
+  conversation?: ConversationRecord
+  transcript: NonNullable<ConversationRecord['messages']>
+  crm: {
+    status: 'pending' | 'synced' | 'failed'
+    recordId?: string
+  }
+}> {
+  const customer = await runtimeStore.getCustomer(customerId)
+  if (!customer) {
+    throw new Error('Customer not found')
+  }
+
+  const [conversations, identities, interests] = await Promise.all([
+    runtimeStore.listConversations(),
+    listIdentitiesForCustomer(runtimeStore, customer.id),
+    runtimeStore.listInterestsByCustomer(customer.id),
+  ])
+
+  const conversation = findConversationByCustomerId(conversations, customer.id)
+
+  return {
+    customer,
+    identities,
+    interests,
+    conversation,
+    transcript: conversation?.messages ?? [],
+    crm: {
+      status: customer.crmStatus,
+      recordId: customer.crmRecordId,
+    },
+  }
+}
 import {
   renderCustomerWebchatHtml,
   renderWebchatPlaygroundHtml,
@@ -39,6 +78,34 @@ import { registerKnowledgeRoutes } from '../knowledge/routes.js'
 import { registerProductRoutes } from '../products/routes.js'
 import type { AppDependencies } from './dependencies.js'
 import { createWebsiteRateLimiter } from './website-rate-limiter.js'
+
+function applyCorsHeaders(
+  req: express.Request,
+  res: express.Response,
+  allowedOrigins: string[],
+): boolean {
+  const origin = typeof req.headers.origin === 'string' ? req.headers.origin : undefined
+  const allowAllOrigins = allowedOrigins.length === 0
+
+  if (allowAllOrigins && origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+  } else if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0] ?? '*')
+  } else if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+  }
+
+  res.setHeader('Vary', 'Origin')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST, PUT, PATCH, DELETE')
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).end()
+    return true
+  }
+
+  return false
+}
 
 export function createApp(dependencies: AppDependencies): Express {
   const {
@@ -71,30 +138,15 @@ export function createApp(dependencies: AppDependencies): Express {
   }))
   app.use(express.urlencoded({ extended: true }))
 
+  app.use(['/webchat', '/reports', '/admin', '/products', '/knowledge'], (req, res, next) => {
+    const handled = applyCorsHeaders(req, res, config.website.allowedOrigins)
+    if (handled) return
+    next()
+  })
+
   const router = express.Router()
   createWebhookRouter(router, { whatsapp, instagram, messenger, telegram, x, logger, runtimeStore })
   app.use(router)
-
-  app.use('/webchat', (_req, res, next) => {
-    const origin = typeof _req.headers.origin === 'string' ? _req.headers.origin : undefined
-    const allowedOrigins = config.website.allowedOrigins
-    const allowAllOrigins = allowedOrigins.length === 0
-    if (allowAllOrigins && origin) {
-      res.setHeader('Access-Control-Allow-Origin', origin)
-    } else if (!origin) {
-      res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0] ?? '*')
-    } else if (allowedOrigins.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin)
-    }
-    res.setHeader('Vary', 'Origin')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST')
-    if (_req.method === 'OPTIONS') {
-      res.status(204).end()
-      return
-    }
-    next()
-  })
 
   app.get('/webchat/test', (_req, res) => {
     res.type('html').send(renderWebchatPlaygroundHtml())
@@ -184,12 +236,14 @@ export function createApp(dependencies: AppDependencies): Express {
 
   app.get('/reports/leads', async (_req, res, next) => {
     try {
-      const [customers, summary] = await Promise.all([
+      const [customers, summary, identities] = await Promise.all([
         orchestrator.listCustomers(),
         orchestrator.getSummary(),
+        runtimeStore.listIdentities(),
       ])
       res.json({
         customers,
+        identities,
         summary,
         services: {
           hubspot: Boolean(hubspot),
@@ -219,6 +273,19 @@ export function createApp(dependencies: AppDependencies): Express {
     }
   })
 
+  app.get('/reports/leads/:customerId', async (req, res, next) => {
+    try {
+      const payload = await loadLeadDetailPayload(runtimeStore, req.params.customerId)
+      res.json(payload)
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Customer not found') {
+        res.status(404).json({ error: 'Customer not found' })
+        return
+      }
+      next(error)
+    }
+  })
+
   if (productStore) {
     registerProductRoutes({
       app,
@@ -244,21 +311,13 @@ export function createApp(dependencies: AppDependencies): Express {
 
   app.get('/reports/leads-dashboard/:customerId', async (req, res, next) => {
     try {
-      const customers = await orchestrator.listCustomers()
-      const customer = findCustomerById(customers, req.params.customerId)
-
-      if (!customer) {
-        res.status(404).type('html').send('<h1>Customer not found</h1>')
-        return
-      }
-
-      const [conversations, identities, interests] = await Promise.all([
-        orchestrator.listConversations(),
-        listIdentitiesForCustomer(runtimeStore, customer.id),
-        orchestrator.listInterestsByCustomer(customer.id),
-      ])
-      const conversation = findConversationByCustomerId(conversations, customer.id)
-      res.type('html').send(renderLeadDetailHtml({ customer, identities, conversation, interests }))
+      const payload = await loadLeadDetailPayload(runtimeStore, req.params.customerId)
+      res.type('html').send(renderLeadDetailHtml({
+        customer: payload.customer,
+        identities: payload.identities,
+        conversation: payload.conversation,
+        interests: payload.interests,
+      }))
     } catch (error) {
       next(error)
     }
