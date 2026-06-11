@@ -1,5 +1,8 @@
 import axios from 'axios'
 import { z } from 'zod'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   type InstagramRecipientId,
 } from './types.js'
@@ -8,6 +11,38 @@ import type { Logger } from '../../../core/utils/index.js'
 import { normalizeInstagramMessagingItem } from './incoming.js'
 import { sendInstagramMessage } from './outgoing.js'
 import { handleInstagramWebhook } from './webhook.js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+/**
+ * Persist the refreshed token to a sidecar JSON file.
+ * We deliberately do NOT write to .env here because tsx watch monitors .env
+ * and would restart the server on every write, creating a refresh loop.
+ * The cache file is loaded by the token bootstrap helper below.
+ */
+const TOKEN_CACHE_PATH = path.resolve(__dirname, '..', '..', '..', '..', '.instagram-token-cache.json')
+
+function saveTokenCache(token: string, expiresAt: number): void {
+  try {
+    fs.writeFileSync(TOKEN_CACHE_PATH, JSON.stringify({ token, expiresAt }), 'utf8')
+  } catch {
+    // Non-fatal — the in-memory token is already updated
+  }
+}
+
+/** Load a previously cached token if it has not expired yet. */
+export function loadCachedInstagramToken(): { token: string; expiresAt: number } | null {
+  try {
+    const raw = fs.readFileSync(TOKEN_CACHE_PATH, 'utf8')
+    const data = JSON.parse(raw) as { token: string; expiresAt: number }
+    if (typeof data.token === 'string' && typeof data.expiresAt === 'number' && data.expiresAt > Date.now()) {
+      return data
+    }
+  } catch {
+    // Cache absent or corrupt — fall back to env token
+  }
+  return null
+}
 
 export interface InstagramConfig {
   accessToken: string
@@ -18,17 +53,67 @@ export interface InstagramConfig {
   apiVersion?: string
 }
 
+/**
+ * Refresh interval: 20 days.
+ * Must stay below JavaScript's MAX_INT32 (~24.8 days = 2,147,483,647 ms).
+ * setInterval with a value above that threshold overflows to ~0 and fires immediately.
+ */
+const TOKEN_REFRESH_INTERVAL_MS = 20 * 24 * 60 * 60 * 1000 // 1,728,000,000 ms — safely within int32
+
 export class InstagramChannel {
   private _config: InstagramConfig
   private _logger: Logger
   private _instagramApiUrl: string
   private _onMessage?: (message: IncomingMessage) => Promise<void>
+  private _tokenRefreshTimer?: ReturnType<typeof setTimeout>
 
   constructor(config: InstagramConfig, logger: Logger) {
     this._config = config
     this._logger = logger
     const version = config.apiVersion ?? 'v21.0'
+    // iG-prefixed tokens are Instagram Graph API tokens — they only work
+    // with graph.instagram.com, not graph.facebook.com.
     this._instagramApiUrl = `https://graph.instagram.com/${version}`
+    this._startTokenAutoRefresh()
+  }
+
+  /**
+   * Schedule a one-shot refresh using recursive setTimeout.
+   * Using setInterval with 30 days (2,592,000,000 ms) overflows JS's internal
+   * int32 timer and fires immediately — hence the loop. Recursive setTimeout
+   * re-arms after each successful or failed attempt and has no int32 limit.
+   */
+  private _startTokenAutoRefresh(): void {
+    const schedule = () => {
+      this._tokenRefreshTimer = setTimeout(async () => {
+        try {
+          this._logger.info('[Instagram] Proactively refreshing access token…')
+          const { accessToken, expirationTime } = await this.refreshAccessToken()
+          this._config.accessToken = accessToken
+          saveTokenCache(accessToken, expirationTime)
+          const expiryDate = new Date(expirationTime).toISOString()
+          this._logger.info(`[Instagram] Access token refreshed — new expiry: ${expiryDate}`)
+        } catch (err: any) {
+          this._logger.error(`[Instagram] Failed to auto-refresh access token: ${err?.message ?? err}`)
+        } finally {
+          // Re-arm regardless of success/failure
+          schedule()
+        }
+      }, TOKEN_REFRESH_INTERVAL_MS)
+
+      // Don't keep the Node.js event loop alive solely for this timer
+      this._tokenRefreshTimer.unref()
+    }
+
+    schedule()
+  }
+
+  /** Stop the background token refresh (useful in tests or on shutdown). */
+  public stopTokenAutoRefresh(): void {
+    if (this._tokenRefreshTimer) {
+      clearTimeout(this._tokenRefreshTimer)
+      this._tokenRefreshTimer = undefined
+    }
   }
 
 
@@ -63,11 +148,9 @@ export class InstagramChannel {
 
 
   public async replyToComment(commentId: string, text: string): Promise<string> {
-    const fields = new URLSearchParams({ message: text })
+    const fields = new URLSearchParams({ message: text, access_token: this._config.accessToken })
     const url = `${this._instagramApiUrl}/${commentId}/replies?${fields.toString()}`
-    const response = await axios.post<{ id: string }>(url, {}, {
-      headers: { Authorization: `Bearer ${this._config.accessToken}` },
-    })
+    const response = await axios.post<{ id: string }>(url, {})
     const { id } = z.object({ id: z.string() }).parse(response.data)
     return id
   }
@@ -114,11 +197,14 @@ export class InstagramChannel {
   }
 
   public async refreshAccessToken(): Promise<{ accessToken: string; expirationTime: number }> {
+    const version = this._config.apiVersion ?? 'v21.0'
+    // ig_refresh_token must be called on graph.instagram.com, NOT graph.facebook.com
+    const refreshUrl = `https://graph.instagram.com/${version}/refresh_access_token`
     const query = new URLSearchParams({
       grant_type: 'ig_refresh_token',
       access_token: this._config.accessToken,
     })
-    const response = await axios.get(`${this._instagramApiUrl}/refresh_access_token?${query.toString()}`)
+    const response = await axios.get(`${refreshUrl}?${query.toString()}`)
     const { access_token, expires_in } = z.object({ access_token: z.string(), expires_in: z.number() }).parse(response.data)
     return { accessToken: access_token, expirationTime: Date.now() + expires_in * 1000 }
   }
@@ -136,7 +222,10 @@ export class InstagramChannel {
 
 
   private async _sendMessage(recipient: InstagramRecipientId, message: any): Promise<{ recipient_id: string; message_id: string }> {
-    const url = `${this._instagramApiUrl}/${this._config.instagramId}/messages`
+    // iG tokens (Instagram API through Instagram Login) are passed as an
+    // access_token query param, NOT as Authorization: Bearer.
+    // With graph.instagram.com + iG token, /me resolves to the Business account.
+    const url = `${this._instagramApiUrl}/me/messages?access_token=${this._config.accessToken}`
     const payload = {
       recipient,
       messaging_type: 'RESPONSE',
@@ -147,9 +236,7 @@ export class InstagramChannel {
 
     let response
     try {
-      response = await axios.post(url, payload, {
-        headers: { Authorization: `Bearer ${this._config.accessToken}` },
-      })
+      response = await axios.post(url, payload)
     } catch (error: any) {
       const errorBody = error?.response?.data
       const errorStatus = error?.response?.status
