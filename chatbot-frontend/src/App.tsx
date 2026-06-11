@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { BookOpen, Boxes, LogOut, MessageSquareText, UsersRound } from 'lucide-react'
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
 import WebchatPage from './pages/WebchatPage'
@@ -6,6 +7,7 @@ import ProductsPage from './pages/ProductsPage'
 import KnowledgePage from './pages/KnowledgePage'
 import NotFoundPage from './pages/NotFoundPage'
 import LeadDetailPage from './pages/LeadDetailPage'
+import calistoLogo from '../calisto.svg'
 
 const navItems = [
   { label: 'Leads', to: '/leads', icon: UsersRound },
@@ -15,11 +17,13 @@ const navItems = [
 ]
 
 export default function App() {
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+
   return (
     <div className="min-h-screen bg-calisto-canvas text-calisto-ink">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col bg-calisto-sidebar px-4 py-8 text-calisto-surface lg:flex">
         <div className="mb-12 px-5">
-          <div className="font-serif text-2xl tracking-[0.22em] text-calisto-surface">CALISTO</div>
+          <img className="h-8 w-auto brightness-0 invert" src={calistoLogo} alt="Calisto" />
         </div>
 
         <nav className="flex flex-1 flex-col gap-2">
@@ -42,7 +46,8 @@ export default function App() {
 
         <button
           type="button"
-          className="mt-8 flex h-11 items-center gap-3 rounded-xl px-4 text-sm font-semibold text-calisto-surface transition hover:bg-calisto-surface/10"
+          className="mt-8 flex h-11 items-center justify-center gap-3 rounded-xl px-4 text-sm font-semibold text-calisto-surface transition hover:bg-calisto-surface/10"
+          onClick={() => setShowLogoutConfirm(true)}
         >
           <LogOut className="h-5 w-5" strokeWidth={1.8} />
           Log out
@@ -50,7 +55,7 @@ export default function App() {
       </aside>
 
       <header className="sticky top-0 z-30 border-b border-calisto-surface/15 bg-calisto-sidebar px-4 py-3 text-calisto-surface lg:hidden">
-        <div className="mb-3 font-serif text-lg tracking-[0.22em]">CALISTO</div>
+        <img className="mb-3 h-6 w-auto brightness-0 invert" src={calistoLogo} alt="Calisto" />
         <nav className="grid grid-cols-4 gap-2">
           {navItems.map(({ icon: Icon, label, to }) => (
             <NavLink
@@ -81,7 +86,40 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
+
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-calisto-ink/50 px-4 py-8">
+          <div
+            aria-labelledby="logoutConfirmTitle"
+            aria-modal="true"
+            className="w-full max-w-md overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface text-calisto-ink shadow-dashboard"
+            role="dialog"
+          >
+            <div className="border-b border-calisto-line px-6 py-5">
+              <h2 id="logoutConfirmTitle" className="text-lg font-bold text-calisto-ink">Log out?</h2>
+              <p className="mt-2 text-sm leading-6 text-calisto-body">
+                Are you sure you want to log out of Calisto?
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-end gap-3 px-6 py-5">
+              <button
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-calisto-line bg-calisto-surface px-4 text-sm font-semibold text-calisto-ink transition hover:bg-calisto-surface-muted"
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-calisto-accent bg-calisto-accent px-4 text-sm font-semibold text-calisto-surface shadow-sm transition hover:bg-orange-700"
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+              >
+                Log out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
-
