@@ -115,7 +115,7 @@ function customerInitials(customer: CustomerRecord) {
 function StatsCard({ icon: Icon, label, trend, trendTone = 'positive', value }: StatsCardProps) {
   const trendClass = trendTone === 'positive'
     ? 'bg-emerald-100 text-emerald-700'
-    : 'bg-orange-100 text-orange-700'
+    : 'bg-calisto-accent/10 text-calisto-accent'
 
   return (
     <article className="rounded-2xl border border-calisto-line-subtle bg-calisto-surface p-6 shadow-dashboard">
@@ -192,7 +192,7 @@ function SearchFilters({
         <label className="relative flex min-w-0 flex-1 items-center">
           <Search className="pointer-events-none absolute left-3 h-4 w-4 text-calisto-soft" />
           <input
-            className="h-11 w-full rounded-lg border border-transparent bg-calisto-table pl-10 pr-4 text-sm text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-orange-200 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
+            className="h-11 w-full rounded-lg border border-transparent bg-calisto-table pl-10 pr-4 text-sm text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/30 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Search customers..."
             type="search"
@@ -202,7 +202,7 @@ function SearchFilters({
 
         <div className="flex flex-wrap gap-3">
           <select
-            className="h-11 rounded-xl border border-calisto-line bg-calisto-surface px-3 text-sm font-medium text-calisto-body outline-none focus:border-orange-300 focus:ring-4 focus:ring-calisto-focus"
+            className="h-11 rounded-xl border border-calisto-line bg-calisto-surface px-3 text-sm font-medium text-calisto-body outline-none focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus"
             onChange={(event) => onChannelChange(event.target.value)}
             value={channel}
           >
@@ -213,7 +213,7 @@ function SearchFilters({
           </select>
 
           <select
-            className="h-11 rounded-xl border border-calisto-line bg-calisto-surface px-3 text-sm font-medium text-calisto-body outline-none focus:border-orange-300 focus:ring-4 focus:ring-calisto-focus"
+            className="h-11 rounded-xl border border-calisto-line bg-calisto-surface px-3 text-sm font-medium text-calisto-body outline-none focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus"
             onChange={(event) => onStatusChange(event.target.value)}
             value={status}
           >
@@ -330,7 +330,7 @@ function LeadsTable({
                   </td>
                   <td className="px-7 py-4 text-right">
                     <Link
-                      className="inline-flex h-10 items-center justify-center rounded-xl border border-orange-100 bg-calisto-surface px-4 text-sm font-semibold text-calisto-accent transition hover:bg-orange-50"
+                      className="inline-flex h-10 items-center justify-center rounded-xl border border-calisto-accent/20 bg-calisto-surface px-4 text-sm font-semibold text-calisto-accent transition hover:bg-calisto-accent/10"
                       to={`/leads/${customer.id}`}
                     >
                       Review Lead
@@ -539,3 +539,4 @@ export default function LeadsPage() {
     </PageContainer>
   )
 }
+

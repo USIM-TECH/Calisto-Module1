@@ -67,7 +67,7 @@ function renderTranscriptMessage(message: ConversationMessageRecord) {
   const isOutbound = message.direction === 'outbound'
   const wrapperClass = isOutbound ? 'items-end' : 'items-start'
   const bubbleClass = isOutbound
-    ? 'rounded-tr-md bg-calisto-accent text-calisto-surface shadow-[0_8px_18px_rgba(234,88,12,0.18)]'
+    ? 'rounded-tr-md bg-calisto-accent text-calisto-surface shadow-[0_8px_18px_rgba(211,98,25,0.18)]'
     : 'rounded-tl-md border border-calisto-line bg-calisto-surface text-calisto-ink shadow-sm'
   const label = isOutbound ? 'Outbound (AI Assistant)' : 'Inbound'
 
@@ -278,7 +278,7 @@ export default function LeadDetailPage() {
                         {items.map((item) => (
                           <span
                             key={item.id}
-                            className="inline-flex max-w-full items-center rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-extrabold text-orange-700 shadow-sm"
+                            className="inline-flex max-w-full items-center rounded-full border border-calisto-accent/30 bg-calisto-accent/10 px-3 py-1.5 text-xs font-extrabold text-calisto-accent shadow-sm"
                             title={formatDate(item.capturedAt)}
                           >
                             <span className="truncate">{item.value}</span>
@@ -361,7 +361,7 @@ export default function LeadDetailPage() {
 
               <div className="border-t border-calisto-line bg-calisto-surface p-4">
                 <input
-                  className="h-12 w-full rounded-xl border border-calisto-line bg-calisto-table px-3.5 text-sm text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-orange-300 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
+                  className="h-12 w-full rounded-xl border border-calisto-line bg-calisto-table px-3.5 text-sm text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
                   placeholder="Internal note or reply..."
                   type="text"
                 />
@@ -373,3 +373,4 @@ export default function LeadDetailPage() {
     </PageContainer>
   )
 }
+

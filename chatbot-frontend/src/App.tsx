@@ -110,7 +110,7 @@ export default function App() {
                 Cancel
               </button>
               <button
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-calisto-accent bg-calisto-accent px-4 text-sm font-semibold text-calisto-surface shadow-sm transition hover:bg-orange-700"
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-calisto-accent bg-calisto-accent px-4 text-sm font-semibold text-calisto-surface shadow-sm transition hover:bg-calisto-accent/90"
                 type="button"
                 onClick={() => setShowLogoutConfirm(false)}
               >
@@ -123,3 +123,4 @@ export default function App() {
     </div>
   )
 }
+
