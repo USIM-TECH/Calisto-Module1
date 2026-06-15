@@ -294,7 +294,7 @@ export default function ProductsPage() {
             <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
               <input
                 id="searchInput"
-                className="h-11 min-w-0 rounded-xl border border-calisto-line bg-calisto-surface px-3 text-sm font-medium text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-orange-300 focus:ring-4 focus:ring-calisto-focus lg:w-72"
+                className="h-11 min-w-0 rounded-xl border border-calisto-line bg-calisto-surface px-3 text-sm font-medium text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus lg:w-72"
                 type="search"
                 placeholder="Search id, name, brand..."
                 value={search}
@@ -302,7 +302,7 @@ export default function ProductsPage() {
               />
               <select
                 id="typeFilter"
-                className="h-11 rounded-xl border border-calisto-line bg-calisto-surface px-3 text-sm font-medium text-calisto-body outline-none focus:border-orange-300 focus:ring-4 focus:ring-calisto-focus"
+                className="h-11 rounded-xl border border-calisto-line bg-calisto-surface px-3 text-sm font-medium text-calisto-body outline-none focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus"
                 value={typeFilter}
                 onChange={(event) => setTypeFilter(event.target.value)}
               >
@@ -313,7 +313,7 @@ export default function ProductsPage() {
               </select>
               <select
                 id="brandFilter"
-                className="h-11 rounded-xl border border-calisto-line bg-calisto-surface px-3 text-sm font-medium text-calisto-body outline-none focus:border-orange-300 focus:ring-4 focus:ring-calisto-focus"
+                className="h-11 rounded-xl border border-calisto-line bg-calisto-surface px-3 text-sm font-medium text-calisto-body outline-none focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus"
                 value={brandFilter}
                 onChange={(event) => setBrandFilter(event.target.value)}
               >
@@ -471,3 +471,4 @@ export default function ProductsPage() {
     </PageContainer>
   )
 }
+

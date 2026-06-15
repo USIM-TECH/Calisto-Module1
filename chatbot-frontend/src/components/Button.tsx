@@ -8,9 +8,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<ButtonVariant, string> = {
-  primary: 'border-calisto-accent bg-calisto-accent text-calisto-surface shadow-sm hover:bg-orange-700',
+  primary: 'border-calisto-accent bg-calisto-accent text-calisto-surface shadow-sm hover:bg-calisto-accent/90',
   secondary: 'border-calisto-line bg-calisto-surface text-calisto-ink hover:bg-calisto-surface-muted',
-  ghost: 'border-transparent bg-transparent text-calisto-accent hover:bg-orange-50',
+  ghost: 'border-transparent bg-transparent text-calisto-accent hover:bg-calisto-accent/10',
 }
 
 export default function Button({
@@ -36,4 +36,5 @@ export default function Button({
     </button>
   )
 }
+
 

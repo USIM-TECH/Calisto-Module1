@@ -13,7 +13,7 @@ const requiredColumns = [
 ]
 
 const labelClass = 'mb-2 block text-[0.68rem] font-bold uppercase tracking-wider text-calisto-ink'
-const fileInputClass = 'block h-11 w-full rounded-xl border border-calisto-line bg-calisto-table px-3 py-1.5 text-sm font-medium text-calisto-body outline-none transition file:mr-3 file:h-8 file:rounded-lg file:border-0 file:bg-calisto-surface file:px-3 file:text-xs file:font-semibold file:text-calisto-ink hover:file:bg-calisto-surface-muted focus:border-orange-300 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus'
+const fileInputClass = 'block h-11 w-full rounded-xl border border-calisto-line bg-calisto-table px-3 py-1.5 text-sm font-medium text-calisto-body outline-none transition file:mr-3 file:h-8 file:rounded-lg file:border-0 file:bg-calisto-surface file:px-3 file:text-xs file:font-semibold file:text-calisto-ink hover:file:bg-calisto-surface-muted focus:border-calisto-accent/50 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus'
 const radioClass = 'h-4 w-4 border-calisto-line text-calisto-accent focus:ring-2 focus:ring-calisto-focus'
 
 interface ImportCsvModalProps {
@@ -203,3 +203,4 @@ export default function ImportCsvModal({
     </div>
   )
 }
+

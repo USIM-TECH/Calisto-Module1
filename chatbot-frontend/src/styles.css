@@ -9,9 +9,9 @@
     --color-calisto-canvas: 246 244 241;          /* #f6f4f1, app background */
     --color-calisto-surface: 255 255 255;         /* #ffffff, cards and panels */
     --color-calisto-surface-muted: 248 250 252;   /* #f8fafc, quiet panel fill */
-    --color-calisto-sidebar: 63 79 79;            /* #3f4f4f, sidebar background */
+    --color-calisto-sidebar: 62 78 80;            /* #3e4e50, sidebar background */
     --color-calisto-sidebar-active: 86 101 101;   /* #566565, active sidebar item */
-    --color-calisto-accent: 216 95 13;            /* #d85f0d, primary action orange */
+    --color-calisto-accent: 211 98 25;            /* #d36219, primary action orange */
     --color-calisto-ink: 48 49 51;                /* #303133, primary text */
     --color-calisto-body: 71 85 105;              /* #475569, secondary text */
     --color-calisto-muted: 100 116 139;           /* #64748b, muted text */
@@ -35,4 +35,3 @@
     @apply text-inherit no-underline;
   }
 }
-

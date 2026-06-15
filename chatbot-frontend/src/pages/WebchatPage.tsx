@@ -121,7 +121,7 @@ export default function WebchatPage() {
                 <label className="mb-2 block text-[0.68rem] font-extrabold uppercase tracking-wider text-calisto-soft" htmlFor="senderIdInput">Sender ID</label>
                 <input
                   id="senderIdInput"
-                  className="h-12 w-full rounded-xl border border-calisto-line bg-calisto-table px-4 text-sm text-calisto-body outline-none transition focus:border-orange-300 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
+                  className="h-12 w-full rounded-xl border border-calisto-line bg-calisto-table px-4 text-sm text-calisto-body outline-none transition focus:border-calisto-accent/50 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
                   type="text"
                   value={senderId}
                   onChange={(event) => setSenderId(event.target.value)}
@@ -139,7 +139,7 @@ export default function WebchatPage() {
                 <label className="mb-2 block text-[0.68rem] font-extrabold uppercase tracking-wider text-calisto-soft" htmlFor="messageInput">Request Composer</label>
                 <textarea
                   id="messageInput"
-                  className="min-h-28 w-full resize-y rounded-xl border border-calisto-line bg-calisto-surface-muted p-4 text-sm leading-6 text-calisto-ink outline-none transition placeholder:text-calisto-soft focus:border-orange-300 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
+                  className="min-h-28 w-full resize-y rounded-xl border border-calisto-line bg-calisto-surface-muted p-4 text-sm leading-6 text-calisto-ink outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
                   placeholder="Type a message like: hi"
                   value={message}
                   onChange={(event) => setMessage(event.target.value)}
@@ -234,4 +234,5 @@ export default function WebchatPage() {
     </PageContainer>
   )
 }
+
 
