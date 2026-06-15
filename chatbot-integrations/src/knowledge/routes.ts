@@ -1,7 +1,6 @@
 import express, { type Express, type Request } from 'express'
 import multer from 'multer'
 import type { Logger } from '../core/utils/index.js'
-import { renderKnowledgeAdminHtml } from '../frontend/knowledge-dashboard.js'
 import {
   chunksFromFile,
   chunksFromPlainText,
@@ -85,15 +84,6 @@ export function registerKnowledgeRoutes({ app, store, logger }: RegisterArgs): v
       res.json(chunks)
     } catch (error: any) {
       logger.error(`/knowledge/chunks error: ${error.message}`)
-      next(error)
-    }
-  })
-
-  app.get('/admin/knowledge', async (_req, res, next) => {
-    try {
-      const documents = await store.listDocuments()
-      res.type('html').send(renderKnowledgeAdminHtml({ documents }))
-    } catch (error) {
       next(error)
     }
   })

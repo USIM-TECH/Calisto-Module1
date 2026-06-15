@@ -5,7 +5,6 @@ import { fileURLToPath } from 'url'
 import express, { type Express, type Request } from 'express'
 import multer from 'multer'
 import type { Logger } from '../core/utils/index.js'
-import { renderProductsAdminHtml } from '../frontend/products-dashboard.js'
 import { ProductSearchService } from './service/product-search.js'
 import {
   formatImportErrorResponse,
@@ -259,19 +258,6 @@ export function registerProductRoutes({ app, store, logger, publicBaseUrl }: Reg
     } catch (error: any) {
       logger.error(`/products/search error: ${error.message}`)
       res.status(400).json({ error: error.message })
-    }
-  })
-
-  app.get('/admin/products', async (_req, res, next) => {
-    try {
-      const [items, productTypes, brands] = await Promise.all([
-        store.listAll(),
-        store.distinctProductTypes(),
-        store.distinctBrands(),
-      ])
-      res.type('html').send(renderProductsAdminHtml({ items, productTypes, brands }))
-    } catch (error) {
-      next(error)
     }
   })
 

@@ -115,5 +115,5 @@ If `HUBSPOT_ACCESS_TOKEN` is configured, customers whose `qualificationStatus` b
 - [src/leads/storage/helpers.ts](src/leads/storage/helpers.ts) — phone/email normalisation used as merge keys
 - [src/leads/types/records.ts](src/leads/types/records.ts)
 - [prisma/schema.prisma](prisma/schema.prisma)
-- [src/frontend/leads-dashboard.ts](src/frontend/leads-dashboard.ts)
+- [../chatbot-frontend/src/pages/LeadsPage.tsx](../chatbot-frontend/src/pages/LeadsPage.tsx) — React leads UI (consumes `/reports/leads` + `/reports/leads/:id`)
 - [calisto_nlp_export/actions/actions.py](../calisto_nlp_export/actions/actions.py) — `ActionPrefillLeadCapture` consumes the metadata

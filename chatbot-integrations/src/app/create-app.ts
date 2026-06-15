@@ -1,26 +1,15 @@
 import express, { type Express } from 'express'
 import { createWebhookRouter } from '../core/webhook/index.js'
 import type { ChannelIdentityRecord, ConversationRecord, RuntimeStore } from '../leads/index.js'
-import {
-  findConversationByCustomerId,
-  renderLeadDetailHtml,
-  renderLeadsDashboardHtml,
-} from '../frontend/leads-dashboard.js'
 
-async function groupIdentitiesByCustomer(
-  store: RuntimeStore,
-  customerIds: string[],
-): Promise<Map<string, ChannelIdentityRecord[]>> {
-  const wanted = new Set(customerIds)
-  const all = await store.listIdentities()
-  const grouped = new Map<string, ChannelIdentityRecord[]>()
-  for (const identity of all) {
-    if (!wanted.has(identity.customerId)) continue
-    const list = grouped.get(identity.customerId) ?? []
-    list.push(identity)
-    grouped.set(identity.customerId, list)
-  }
-  return grouped
+function findConversationByCustomerId(
+  conversations: ConversationRecord[],
+  customerId: string,
+): ConversationRecord | undefined {
+  return conversations
+    .slice()
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .find((entry) => entry.customerId === customerId)
 }
 
 async function listIdentitiesForCustomer(
@@ -70,10 +59,6 @@ async function loadLeadDetailPayload(
     },
   }
 }
-import {
-  renderCustomerWebchatHtml,
-  renderWebchatPlaygroundHtml,
-} from '../frontend/webchat-playground.js'
 import { registerKnowledgeRoutes } from '../knowledge/routes.js'
 import { registerProductRoutes } from '../products/routes.js'
 import type { AppDependencies } from './dependencies.js'
@@ -149,14 +134,6 @@ export function createApp(dependencies: AppDependencies): Express {
   createWebhookRouter(router, { whatsapp, instagram, messenger, telegram, x, logger, runtimeStore })
   app.use(router)
 
-  app.get('/webchat/test', (_req, res) => {
-    res.type('html').send(renderWebchatPlaygroundHtml())
-  })
-
-  app.get('/webchat', (_req, res) => {
-    res.type('html').send(renderCustomerWebchatHtml())
-  })
-
   app.post('/webchat/message', async (req, res) => {
     try {
       const authHeader = typeof req.headers.authorization === 'string' ? req.headers.authorization : undefined
@@ -205,8 +182,6 @@ export function createApp(dependencies: AppDependencies): Express {
         telegram: telegram ? '/webhooks/telegram' : null,
         x: x ? '/webhooks/x' : null,
         website: '/webchat/message',
-        websiteCustomerChat: '/webchat',
-        websitePlayground: '/webchat/test',
       },
     })
   })
@@ -255,25 +230,6 @@ export function createApp(dependencies: AppDependencies): Express {
     }
   })
 
-  app.get('/reports/leads-dashboard', async (_req, res, next) => {
-    try {
-      const [customers, conversations, summary] = await Promise.all([
-        orchestrator.listCustomers(),
-        orchestrator.listConversations(),
-        orchestrator.getSummary(),
-      ])
-      const identitiesByCustomer = await groupIdentitiesByCustomer(runtimeStore, customers.map((c) => c.id))
-      res.type('html').send(renderLeadsDashboardHtml({
-        customers,
-        identitiesByCustomer,
-        conversations,
-        summary,
-      }))
-    } catch (error) {
-      next(error)
-    }
-  })
-
   app.get('/reports/leads/:customerId', async (req, res, next) => {
     try {
       const payload = await loadLeadDetailPayload(runtimeStore, req.params.customerId)
@@ -309,20 +265,6 @@ export function createApp(dependencies: AppDependencies): Express {
       res.status(503).type('html').send('<h1>Knowledge store unavailable</h1><p>Set <code>STORAGE_BACKEND=postgres</code> and restart.</p>')
     })
   }
-
-  app.get('/reports/leads-dashboard/:customerId', async (req, res, next) => {
-    try {
-      const payload = await loadLeadDetailPayload(runtimeStore, req.params.customerId)
-      res.type('html').send(renderLeadDetailHtml({
-        customer: payload.customer,
-        identities: payload.identities,
-        conversation: payload.conversation,
-        interests: payload.interests,
-      }))
-    } catch (error) {
-      next(error)
-    }
-  })
 
   // ── POST /leads ───────────────────────────────────────────────────────────
   // Called by Rasa's ActionSubmitLeadCapture after the lead capture form
