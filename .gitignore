@@ -54,3 +54,9 @@ calisto_nlp_export/rasa_train_output.txt
 
 # Models
 calisto_nlp_export/models/*.tar.gz
+
+# Databases
+*.db
+*.db-journal
+*.sqlite*
+

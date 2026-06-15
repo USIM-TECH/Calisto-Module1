@@ -20,4 +20,5 @@ exec rasa run \
   --cors "*" \
   --endpoints endpoints.docker.yml \
   --credentials credentials.yml \
-  --port 5015
+  --port 5015 \
+  --num-threads 4
