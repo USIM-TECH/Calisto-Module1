@@ -3,9 +3,11 @@ import type {
   ChannelIdentityRecord,
   ConversationMessageRecord,
   ConversationRecord,
+  CurrentInterestRecord,
   CustomerRecord,
   InterestKind,
   InterestRecord,
+  SupportCaseRecord,
   WebhookEventRecord,
 } from '../types/records.js'
 
@@ -75,6 +77,17 @@ export interface RuntimeStore {
    * the customer.
    */
   appendInterest(customerId: string, kind: InterestKind | string, value: string): Promise<InterestRecord | undefined>
+
+  /**
+   * Upserts the current interest, ensuring only the latest value is kept per (customerId, kind).
+   */
+  appendCurrentInterest(customerId: string, kind: InterestKind | string, value: string): Promise<CurrentInterestRecord | undefined>
+
+  createSupportCase(customerId: string, caseType: string, status?: string, id?: string): Promise<SupportCaseRecord>
+  
+  getSupportCase(supportCaseId: string): Promise<SupportCaseRecord | undefined>
+  
+  updateSupportCaseStatus(supportCaseId: string, status: string): Promise<SupportCaseRecord | undefined>
 
   appendConversationMessage(
     customerId: string,

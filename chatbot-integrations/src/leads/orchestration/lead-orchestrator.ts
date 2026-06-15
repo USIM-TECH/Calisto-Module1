@@ -4,6 +4,7 @@ import type { NLPClient, NLPRequestMetadata, Logger } from '../../core/utils/ind
 import type { HubSpotClient } from '../../integrations/crm/hubspot/index.js'
 import type { MessageDeduplicator } from './message-deduplicator.js'
 import { mapNlpResponseToOutgoingMessages } from './rasa-outgoing.js'
+import { normalizeBrand } from './normalization.js'
 import type { ChannelIdentityRecord, CustomerRecord, InterestKind } from '../types/records.js'
 import type {
   CustomerSnapshot,
@@ -57,6 +58,15 @@ const SUPPORTED_INTEREST_KINDS: Array<keyof TrackerInterestSamples> = [
   'preferredService',
 ]
 
+const SUPPORT_CASE_TYPES = new Set([
+  'Return Request',
+  'Refund Request',
+  'Exchange Request',
+  'Warranty Support',
+  'Repair Support',
+  'Order Tracking/Support',
+])
+
 const INTEREST_KIND_MAP: Record<keyof TrackerInterestSamples, InterestKind> = {
   productType: 'product_type',
   brand: 'brand',
@@ -84,16 +94,41 @@ function deriveTrackerLeadFields(tracker?: { slots: Record<string, unknown> }): 
   }
 }
 
-function deriveTrackerInterestSamples(tracker?: { slots: Record<string, unknown> }): TrackerInterestSamples {
+function deriveTrackerInterestSamples(tracker?: { slots: Record<string, unknown>; latestMessageText?: string }): TrackerInterestSamples & { supportCaseType?: string, supportCaseId?: string, supportCaseStatus?: string } {
   const slots = tracker?.slots ?? {}
+  const rawService = normalizeText(slots.preferred_service)
+  const isSupportCase = rawService && SUPPORT_CASE_TYPES.has(rawService)
+  
+  const extractedSupportCaseType = normalizeText(slots.support_case_type)
+  const finalSupportCaseType = extractedSupportCaseType || (isSupportCase ? rawService : undefined)
+
+  let detectedBrand = normalizeText(slots.brand_name ?? slots.brand)
+  if (!detectedBrand && tracker?.latestMessageText) {
+    const text = tracker.latestMessageText.toLowerCase()
+    if (text.includes('rayban') || text.includes('ray ban') || text.includes('ray-ban')) {
+      detectedBrand = 'Ray-Ban'
+    } else if (text.includes('gucci')) {
+      detectedBrand = 'Gucci'
+    } else if (text.includes('prada')) {
+      detectedBrand = 'Prada'
+    } else if (text.includes('oakley')) {
+      detectedBrand = 'Oakley'
+    } else if (text.includes('bausch')) {
+      detectedBrand = 'Bausch & Lomb'
+    }
+  }
+
   return {
     productType: normalizeText(slots.product_type),
-    brand: normalizeText(slots.brand_name ?? slots.brand),
+    brand: normalizeBrand(detectedBrand),
     lensType: normalizeText(slots.lens_type),
     useCase: normalizeText(slots.use_case),
     budget: normalizeText(slots.preferred_budget ?? slots.budget),
     urgency: normalizeText(slots.purchase_timeline ?? slots.urgency),
-    preferredService: normalizeText(slots.preferred_service),
+    preferredService: isSupportCase ? undefined : rawService,
+    supportCaseType: finalSupportCaseType,
+    supportCaseId: normalizeText(slots.support_case_id),
+    supportCaseStatus: normalizeText(slots.support_case_status),
   }
 }
 
@@ -101,12 +136,23 @@ function deriveQualificationStatus(
   fields: TrackerLeadFields,
   rawStatus: string | undefined,
   fallback: CustomerRecord['qualificationStatus'],
+  supportCaseType?: string
 ): CustomerRecord['qualificationStatus'] {
   if (rawStatus === 'qualified') return 'qualified'
   if (rawStatus === 'unqualified') return 'unqualified'
-  if (fields.leadName || fields.email || fields.phone || fields.preferredService || fields.location) {
+  
+  if (supportCaseType || (fields.preferredService && SUPPORT_CASE_TYPES.has(fields.preferredService))) {
+    return fallback
+  }
+  
+  if (fields.leadName || fields.email || fields.phone || fields.location) {
     return 'needs_review'
   }
+  
+  if (fields.preferredService) {
+    return 'needs_review'
+  }
+  
   return fallback
 }
 
@@ -337,7 +383,7 @@ export class LeadOrchestrator {
     if (trackerFields.preferredService && trackerFields.preferredService !== customer.preferredService) {
       postSnapshot.preferredService = trackerFields.preferredService
     }
-    const newStatus = deriveQualificationStatus(trackerFields, rawStatus, customer.qualificationStatus)
+    const newStatus = deriveQualificationStatus(trackerFields, rawStatus, customer.qualificationStatus, trackerInterests.supportCaseType)
     if (newStatus !== customer.qualificationStatus) postSnapshot.qualificationStatus = newStatus
     if (nlpResponse.tracker?.latestIntent && nlpResponse.tracker.latestIntent !== customer.lastIntent) {
       postSnapshot.lastIntent = nlpResponse.tracker.latestIntent
@@ -362,9 +408,28 @@ export class LeadOrchestrator {
     }
 
     for (const kind of SUPPORTED_INTEREST_KINDS) {
-      const value = trackerInterests[kind]
+      const value = trackerInterests[kind as keyof TrackerInterestSamples]
       if (!value) continue
-      await this._runtimeStore.appendInterest(workingCustomerId, INTEREST_KIND_MAP[kind], value)
+      await this._runtimeStore.appendInterest(workingCustomerId, INTEREST_KIND_MAP[kind as keyof TrackerInterestSamples], value)
+      await this._runtimeStore.appendCurrentInterest(workingCustomerId, INTEREST_KIND_MAP[kind as keyof TrackerInterestSamples], value)
+    }
+
+    if (trackerInterests.supportCaseType) {
+      if (trackerInterests.supportCaseId) {
+        const existingCase = await this._runtimeStore.getSupportCase(trackerInterests.supportCaseId)
+        if (!existingCase) {
+          await this._runtimeStore.createSupportCase(
+            workingCustomerId,
+            trackerInterests.supportCaseType,
+            trackerInterests.supportCaseStatus || 'pending',
+            trackerInterests.supportCaseId
+          )
+        } else if (trackerInterests.supportCaseStatus && existingCase.status !== trackerInterests.supportCaseStatus) {
+           await this._runtimeStore.updateSupportCaseStatus(trackerInterests.supportCaseId, trackerInterests.supportCaseStatus)
+        }
+      } else {
+        await this._runtimeStore.createSupportCase(workingCustomerId, trackerInterests.supportCaseType, trackerInterests.supportCaseStatus || 'pending')
+      }
     }
 
     const outgoingMessages = decorateWhatsappMessages(

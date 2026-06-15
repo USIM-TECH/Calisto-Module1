@@ -48,6 +48,24 @@ export interface InterestRecord {
   capturedAt: string
 }
 
+export interface CurrentInterestRecord {
+  id: string
+  customerId: string
+  kind: InterestKind | string
+  value: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SupportCaseRecord {
+  id: string
+  customerId: string
+  caseType: string
+  status: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface ConversationMessageRecord {
   direction: 'inbound' | 'outbound'
   messageId: string
@@ -95,6 +113,8 @@ export interface RuntimeDataShape {
   customers: CustomerRecord[]
   identities: ChannelIdentityRecord[]
   interests: InterestRecord[]
+  currentInterests: CurrentInterestRecord[]
+  supportCases: SupportCaseRecord[]
   conversations: ConversationRecord[]
   webhookEvents: WebhookEventRecord[]
   deduplication: DeduplicationRecord[]

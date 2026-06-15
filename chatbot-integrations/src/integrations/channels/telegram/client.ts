@@ -58,10 +58,20 @@ export class TelegramChannel {
     })
   }
 
-  public async answerCallbackQuery(callbackQueryId: string, text?: string): Promise<void> {
+  public async editMessageReplyMarkup(chatId: string, messageId: string, replyMarkup?: any): Promise<void> {
+    await axios.post(`${this._baseUrl}/editMessageReplyMarkup`, {
+      chat_id: chatId,
+      message_id: messageId,
+      reply_markup: replyMarkup
+    })
+  }
+
+  public async answerCallbackQuery(callbackQueryId: string, text?: string, showAlert: boolean = false): Promise<void> {
     await axios.post(`${this._baseUrl}/answerCallbackQuery`, {
       callback_query_id: callbackQueryId,
       text,
+      show_alert: showAlert,
+      cache_time: 0  // Don't cache the response
     })
   }
 
@@ -77,9 +87,14 @@ export class TelegramChannel {
   }
 
   private async _processUpdate(update: TelegramUpdate): Promise<void> {
+    this._logger.debug(`[Telegram] Processing update: ${JSON.stringify(update, null, 2)}`)
+    
     if (update.callback_query?.id) {
       try {
-        await this.answerCallbackQuery(update.callback_query.id)
+        this._logger.debug(`[Telegram] Answering callback query: ${update.callback_query.id}`)
+        // Show brief confirmation and disable button
+        await this.answerCallbackQuery(update.callback_query.id, '✓')
+        this._logger.debug(`[Telegram] Callback query answered successfully`)
       } catch (error: any) {
         this._logger.warn(`Failed to answer Telegram callback query ${update.callback_query.id}: ${error.message}`)
       }

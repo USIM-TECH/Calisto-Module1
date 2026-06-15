@@ -56,6 +56,13 @@ export interface ProductSearchQuery {
   frameColor?: string
   frameShape?: string
   frameMaterial?: string
+  uvProtection?: string
+  polarized?: string
+  lensColor?: string
+  lensType?: string
+  lensFeature?: string
+  lensDuration?: string
+  multifocal?: string | boolean
   useCase?: string
   budgetMin?: number
   budgetMax?: number

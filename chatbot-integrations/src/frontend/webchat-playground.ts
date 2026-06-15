@@ -190,13 +190,29 @@ export function renderWebchatPlaygroundHtml(): string {
         messageCountLabel.textContent = count + ' Message' + (count === 1 ? '' : 's');
       }
 
+      function linkifyText(raw) {
+        var s = String(raw || '');
+        var urlRe = new RegExp('(https?://[^\\s<>"]+)', 'g');
+        var parts = s.split(urlRe);
+        var result = '';
+        for (var i = 0; i < parts.length; i++) {
+          if (urlRe.test(parts[i])) {
+            var u = parts[i].replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            result += '<a href="' + u + '" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;">' + u + '</a>';
+          } else {
+            result += parts[i].replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>');
+          }
+        }
+        return result;
+      }
+
       function appendBubble(text, direction) {
         const wrapper = document.createElement('div');
         wrapper.className = 'bubble-wrap ' + direction;
 
         const bubble = document.createElement('div');
         bubble.className = 'bubble ' + direction;
-        bubble.textContent = text;
+        bubble.innerHTML = linkifyText(String(text || ''));
 
         const meta = document.createElement('span');
         meta.className = 'bubble-meta';
@@ -243,7 +259,16 @@ export function renderWebchatPlaygroundHtml(): string {
           button.type = 'button';
           button.className = 'choice-button';
           button.textContent = option.label;
-          button.addEventListener('click', () => sendMessage(option.value, option.label));
+          button.addEventListener('click', (e) => {
+            // Disable all choice buttons in this group to prevent double-clicks
+            const allChoiceButtons = choices.querySelectorAll('.choice-button');
+            allChoiceButtons.forEach(btn => {
+              btn.disabled = true;
+              btn.style.opacity = '0.5';
+              btn.style.cursor = 'not-allowed';
+            });
+            sendMessage(option.value, option.label);
+          });
           choices.appendChild(button);
         });
 
@@ -296,7 +321,13 @@ export function renderWebchatPlaygroundHtml(): string {
               button.type = 'button';
               button.className = 'card-action';
               button.textContent = action.title;
-              button.addEventListener('click', () => sendMessage(action.value, action.title));
+              button.addEventListener('click', (e) => {
+                // Disable this specific button to prevent double-clicks
+                button.disabled = true;
+                button.style.opacity = '0.5';
+                button.style.cursor = 'not-allowed';
+                sendMessage(action.value, action.title);
+              });
               actions.appendChild(button);
             }
           });
@@ -367,7 +398,7 @@ export function renderWebchatPlaygroundHtml(): string {
       });
 
       messageInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' && !event.shiftKey) {
+        if ((event.key === 'Enter' || event.keyCode === 13) && !event.shiftKey) {
           event.preventDefault();
           sendMessage(messageInput.value);
         }
@@ -746,11 +777,31 @@ export function renderCustomerWebchatHtml(): string {
       </section>
     </div>
     <script>
-      const senderId = 'website-user-demo';
+      let senderId = localStorage.getItem('calisto_webchat_senderId');
+      if (!senderId) {
+        senderId = 'website-' + Math.random().toString(36).substring(2, 10);
+        localStorage.setItem('calisto_webchat_senderId', senderId);
+      }
       const messagesEl = document.getElementById('messages');
       const messageInput = document.getElementById('messageInput');
       const sendButton = document.getElementById('sendButton');
       const statusLabel = document.getElementById('statusLabel');
+
+      function linkifyText(raw) {
+        var s = String(raw || '');
+        var urlRe = new RegExp('(https?://[^\\s<>"]+)', 'g');
+        var parts = s.split(urlRe);
+        var result = '';
+        for (var i = 0; i < parts.length; i++) {
+          if (urlRe.test(parts[i])) {
+            var u = parts[i].replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            result += '<a href="' + u + '" target="_blank" rel="noopener noreferrer" style="color:#d97706;text-decoration:underline;">' + u + '</a>';
+          } else {
+            result += parts[i].replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>');
+          }
+        }
+        return result;
+      }
 
       function appendBubble(text, role) {
         const wrapper = document.createElement('div');
@@ -758,7 +809,7 @@ export function renderCustomerWebchatHtml(): string {
 
         const bubble = document.createElement('div');
         bubble.className = 'bubble ' + role;
-        bubble.textContent = text;
+        bubble.innerHTML = linkifyText(String(text || ''));
 
         const meta = document.createElement('span');
         meta.className = 'meta';
@@ -803,7 +854,16 @@ export function renderCustomerWebchatHtml(): string {
           button.type = 'button';
           button.className = 'choice';
           button.textContent = option.label;
-          button.addEventListener('click', () => sendMessage(option.value, option.label));
+          button.addEventListener('click', (e) => {
+            // Disable all choice buttons in this bubble to prevent double-clicks
+            const allChoiceButtons = choices.querySelectorAll('.choice');
+            allChoiceButtons.forEach(btn => {
+              btn.disabled = true;
+              btn.style.opacity = '0.5';
+              btn.style.cursor = 'not-allowed';
+            });
+            sendMessage(option.value, option.label);
+          });
           choices.appendChild(button);
         });
 
@@ -853,7 +913,13 @@ export function renderCustomerWebchatHtml(): string {
               button.type = 'button';
               button.className = 'chat-card-action';
               button.textContent = action.title;
-              button.addEventListener('click', () => sendMessage(action.value, action.title));
+              button.addEventListener('click', (e) => {
+                // Disable this specific button to prevent double-clicks
+                button.disabled = true;
+                button.style.opacity = '0.5';
+                button.style.cursor = 'not-allowed';
+                sendMessage(action.value, action.title);
+              });
               actions.appendChild(button);
             }
           });
@@ -909,7 +975,7 @@ export function renderCustomerWebchatHtml(): string {
 
       sendButton.addEventListener('click', () => sendMessage(messageInput.value));
       messageInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' && !event.shiftKey) {
+        if ((event.key === 'Enter' || event.keyCode === 13) && !event.shiftKey) {
           event.preventDefault();
           sendMessage(messageInput.value);
         }

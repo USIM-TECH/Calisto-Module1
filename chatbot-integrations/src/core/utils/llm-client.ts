@@ -94,6 +94,12 @@ export const VALID_ENTITIES = [
   'brand',
   'price_range',
   'lens_type',
+  'lens_feature',
+  'lens_color',
+  'lens_duration',
+  'uv_protection',
+  'polarized',
+  'multifocal',
   'city',
   'use_case',
   'urgency',
@@ -126,9 +132,9 @@ Intents (pick exactly one):
 - find_a_store: wants to find a store/branch/outlet.
 - store_hours: asks opening hours / when a store is open.
 - choose_city: names a Malaysian city for store lookup (Kuala Lumpur, Nilai, Penang, JB, Ipoh, etc.).
-- search_product: free-form product search with one or more filters (shape, color, material, price).
+- search_product: free-form product search with one or more filters (shape, color, material, price, lens filters).
 - search_product_by_attribute: searches by a single visual attribute (only shape, only color, only material).
-- product_recommendation: asks what's best for a use-case (driving, office, sport, fashion).
+- product_recommendation: asks what's best for a use-case or lens need (driving, office, sport, fashion, screen use).
 - inform_budget: user states their budget as free text (e.g. "around RM200", "below 300").
 - capture_lead: asks to be contacted / consult / talk to someone / leave my details.
 - share_name: user volunteers their name when not inside a form.
@@ -162,6 +168,12 @@ Entities (optional — include only when clearly stated by the user):
     These are *prescription-lens technologies fitted into spectacle frames*.
     NEVER put "Contact Lenses" here. Only the four values above are valid.
     If unsure between lens_type and product_type, prefer product_type.
+- lens_feature: "Blue Light Filter" | "Photochromic"
+- lens_color: lens tint or color if the user names one (e.g. "brown", "grey", "clear")
+- lens_duration: lens wearing duration if explicitly stated (e.g. "daily", "monthly")
+- uv_protection: "yes" when the user asks for UV blocking / sun protection.
+- polarized: "yes" when the user asks for glare reduction / polarized lenses.
+- multifocal: "yes" when the user asks for multifocal lenses.
 - city: Malaysian city name in title case (e.g. "Kuala Lumpur", "Nilai", "Penang")
 - use_case: free text like "driving", "office", "sport", "fashion"
 - urgency: "today" | "this week" | "next week" | free text
@@ -186,7 +198,13 @@ Examples (these are authoritative — imitate them):
 - "i want to look into contact lenses" -> {"intent":"select_product_type","entities":{"product_type":"Contact Lenses"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
 - "looking for designer frames" -> {"intent":"select_product_type","entities":{"product_type":"Designer Frames"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
 - "any sun glasses?" -> {"intent":"select_product_type","entities":{"product_type":"Luxury Sunglasses"},"confidence":0.9,"language":"en","is_interruption":false,"is_refusal":false}
-- "need progressive lens" -> {"intent":"ask_lens_type","entities":{"lens_type":"Progressive"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
+- "need progressive lens" -> {"intent":"search_product","entities":{"lens_type":"Progressive"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
+- "what is a progressive lens" -> {"intent":"ask_lens_type","entities":{"lens_type":"Progressive"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
+- "i need blue light glasses" -> {"intent":"search_product","entities":{"lens_feature":"Blue Light Filter"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
+- "i need polarized sunglasses with uv protection" -> {"intent":"search_product","entities":{"product_type":"Luxury Sunglasses","polarized":"yes","uv_protection":"yes"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
+- "i need progressive lenses with blue light protection" -> {"intent":"search_product","entities":{"lens_type":"Progressive","lens_feature":"Blue Light Filter"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
+- "i need multifocal glasses with uv protection" -> {"intent":"search_product","entities":{"multifocal":"yes","uv_protection":"yes"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
+- "i need bifocal glasses" -> {"intent":"search_product","entities":{"lens_type":"Bifocal"},"confidence":0.95,"language":"en","is_interruption":false,"is_refusal":false}
 - "recommend something for driving" -> {"intent":"product_recommendation","entities":{"use_case":"driving"},"confidence":0.9,"language":"en","is_interruption":false,"is_refusal":false}
 - "how much?" -> {"intent":"ask_pricing","entities":{},"confidence":0.8,"language":"en","is_interruption":false,"is_refusal":false}
 - "my budget is around rm200" -> {"intent":"inform_budget","entities":{"budget":"RM200"},"confidence":0.9,"language":"en","is_interruption":false,"is_refusal":false}
@@ -342,6 +360,25 @@ const ENTITY_ALIASES: Record<string, Record<string, string>> = {
     photochromic: 'Photochromic Lenses',
     'photochromic lens': 'Photochromic Lenses',
     'photochromic lenses': 'Photochromic Lenses',
+  },
+  lens_feature: {
+    'blue light': 'Blue Light Filter',
+    'anti blue light': 'Blue Light Filter',
+    'screen protection': 'Blue Light Filter',
+    'computer work': 'Blue Light Filter',
+    'gaming glasses': 'Blue Light Filter',
+    'office glasses': 'Blue Light Filter',
+    photochromic: 'Photochromic',
+    'transition lenses': 'Photochromic',
+  },
+  uv_protection: {
+    yes: 'yes',
+  },
+  polarized: {
+    yes: 'yes',
+  },
+  multifocal: {
+    yes: 'yes',
   },
   product_type: {
     frame: 'Designer Frames',

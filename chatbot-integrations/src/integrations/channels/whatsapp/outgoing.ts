@@ -136,6 +136,7 @@ export async function sendWhatsAppMessage(
     }
     case 'choice': {
       if (message.options.length <= 3) {
+        // Use reply buttons for up to 3 options
         const buttons = message.options.map((opt) => new Button(opt.value, opt.label.substring(0, 20)))
         const buttonTuple = asNonEmptyTuple(buttons)
         if (!buttonTuple) {
@@ -144,16 +145,17 @@ export async function sendWhatsAppMessage(
         }
 
         const interactive = new Interactive(new ActionButtons(...buttonTuple), new Body(message.text))
-        logger.debug(`[WhatsApp] Sending button reply to ${recipientPhone} with ${buttons.length} option(s)`)
+        logger.debug(`[WhatsApp] Sending choice message with ${buttons.length} buttons to ${recipientPhone}`)
         const response = await client.sendMessage(config.phoneNumberId, recipientPhone, interactive)
         const messageId = extractMessageId(response)
-        logger.debug(`[WhatsApp] Button send response for ${recipientPhone}: ${JSON.stringify(response)}`)
+        logger.debug(`[WhatsApp] Choice send response for ${recipientPhone}: ${JSON.stringify(response)}`)
         if (!messageId) {
-          logger.warn(`[WhatsApp] Button send returned no message id for ${recipientPhone}`)
+          logger.warn(`[WhatsApp] Choice send returned no message id for ${recipientPhone}`)
         }
         return messageId
       }
 
+      // For more than 3 options, use list format
       const rows = message.options.map((opt) => new Row(opt.value, opt.label.substring(0, 24)))
       const rowTuple = asNonEmptyTuple(rows)
       if (!rowTuple) {
@@ -179,28 +181,7 @@ export async function sendWhatsAppMessage(
       const text = convertMarkdownToWhatsApp(formatCardAsText(message))
       const postbackActions = message.actions ? splitCardActions(message.actions).postbackActions : []
 
-      if (message.imageUrl && postbackActions.length) {
-        const buttons = postbackActions
-          .slice(0, 3)
-          .map((action) => new Button(action.value, action.title.substring(0, 20)))
-        const buttonTuple = asNonEmptyTuple(buttons)
-        if (buttonTuple) {
-          const interactive = new Interactive(
-            new ActionButtons(...buttonTuple),
-            new Body(text),
-            new Header(new Image(message.imageUrl, false))
-          )
-          logger.debug(`[WhatsApp] Sending rich card reply to ${recipientPhone} with image header and ${buttons.length} option(s)`)
-          const response = await client.sendMessage(config.phoneNumberId, recipientPhone, interactive)
-          lastId = extractMessageId(response)
-          logger.debug(`[WhatsApp] Rich card send response for ${recipientPhone}: ${JSON.stringify(response)}`)
-          if (!lastId) {
-            logger.warn(`[WhatsApp] Rich card send returned no message id for ${recipientPhone}`)
-          }
-          return lastId
-        }
-      }
-
+      // Send image first if available
       if (message.imageUrl) {
         logger.debug(`[WhatsApp] Sending card image reply to ${recipientPhone}`)
         const imageResponse = await client.sendMessage(
@@ -215,6 +196,7 @@ export async function sendWhatsAppMessage(
         }
         await sleep(PART_DELAY_MS)
       } else {
+        // Send text if no image
         const chunks = splitTextMessageIfNeeded(text)
         logger.debug(`[WhatsApp] Sending card reply to ${recipientPhone} in ${chunks.length} chunk(s)`)
         for (let i = 0; i < chunks.length; i++) {
@@ -228,21 +210,23 @@ export async function sendWhatsAppMessage(
         }
       }
 
+      // Send buttons as separate reply buttons message
       if (postbackActions.length) {
+        await sleep(PART_DELAY_MS)
         const buttons = postbackActions
           .slice(0, 3)
           .map((action) => new Button(action.value, action.title.substring(0, 20)))
         const buttonTuple = asNonEmptyTuple(buttons)
         if (buttonTuple) {
           const interactive = new Interactive(new ActionButtons(...buttonTuple), new Body('What would you like to do next?'))
-          logger.debug(`[WhatsApp] Sending card CTA reply to ${recipientPhone} with ${buttons.length} option(s)`)
+          logger.debug(`[WhatsApp] Sending card action buttons to ${recipientPhone} with ${buttons.length} option(s)`)
           const response = await client.sendMessage(config.phoneNumberId, recipientPhone, interactive)
           const messageId = extractMessageId(response)
-          logger.debug(`[WhatsApp] Card CTA send response for ${recipientPhone}: ${JSON.stringify(response)}`)
+          logger.debug(`[WhatsApp] Card action send response for ${recipientPhone}: ${JSON.stringify(response)}`)
           if (messageId) {
             lastId = messageId
           } else {
-            logger.warn(`[WhatsApp] Card CTA send returned no message id for ${recipientPhone}`)
+            logger.warn(`[WhatsApp] Card action send returned no message id for ${recipientPhone}`)
           }
         }
       }

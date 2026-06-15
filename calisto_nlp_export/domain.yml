@@ -51,6 +51,12 @@ entities:
   - brand
   - price_range
   - lens_type
+  - lens_feature
+  - lens_color
+  - lens_duration
+  - uv_protection
+  - polarized
+  - multifocal
   - city
   - use_case
   - urgency
@@ -63,6 +69,7 @@ entities:
   - budget_max
   - budget_bucket
   - gender
+  - category
   - lead_name
   - contact_number
   - email
@@ -95,12 +102,54 @@ slots:
     mappings:
       - type: from_entity
         entity: lens_type
+  lens_feature:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: lens_feature
+  lens_color:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: lens_color
+  lens_duration:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: lens_duration
+  uv_protection:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: uv_protection
+  polarized:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: polarized
+  multifocal:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: multifocal
   city:
     type: text
     influence_conversation: true
     mappings:
       - type: from_entity
         entity: city
+  category:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: category
   use_case:
     type: text
     influence_conversation: true
@@ -270,6 +319,21 @@ slots:
     influence_conversation: true
     mappings:
       - type: custom
+  support_case_type:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: custom
+  support_case_id:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: custom
+  support_case_status:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: custom
 
 forms:
   lead_capture_form:
@@ -319,12 +383,16 @@ responses:
           payload: /support_actions
 
   utter_warranty_policy_menu:
-    - text: "Would you like to file a claim?"
-      buttons:
-        - title: File Warranty Claim
-          payload: /warranty_support
-        - title: Back
-          payload: /support_and_policies
+    - custom:
+        type: "card"
+        title: "warranty policy differes for each product from brand to brand, please visit our stores for warranty support."
+        actions:
+          - title: "Store Locations"
+            type: "url"
+            value: "https://calisto.co/stores"
+          - title: "Back"
+            type: "postback"
+            value: "/support_and_policies"
 
   utter_return_policy_menu:
     - text: "What would you like to do next?"
@@ -499,11 +567,11 @@ responses:
       text: "Baik, mari kita lihat julat harga. Anda berminat untuk melihat harga kategori mana dahulu?"
       buttons:
         - title: Harga Bingkai
-          payload: '/select_pricing_category{"preferred_service":"Designer Frames"}'
+          payload: '/select_pricing_category{{"preferred_service":"Designer Frames"}}'
         - title: Harga Cermin Mata Hitam
-          payload: '/select_pricing_category{"preferred_service":"Luxury Sunglasses"}'
+          payload: '/select_pricing_category{{"preferred_service":"Luxury Sunglasses"}}'
         - title: Harga Kanta
-          payload: '/select_pricing_category{"preferred_service":"Lens Consultation"}'
+          payload: '/select_pricing_category{{"preferred_service":"Lens Consultation"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -511,11 +579,11 @@ responses:
       text: "Saya sedia membantu. Anda mahu saya semak harga untuk bingkai, cermin mata hitam, atau kanta?"
       buttons:
         - title: Harga Bingkai
-          payload: '/select_pricing_category{"preferred_service":"Designer Frames"}'
+          payload: '/select_pricing_category{{"preferred_service":"Designer Frames"}}'
         - title: Harga Cermin Mata Hitam
-          payload: '/select_pricing_category{"preferred_service":"Luxury Sunglasses"}'
+          payload: '/select_pricing_category{{"preferred_service":"Luxury Sunglasses"}}'
         - title: Harga Kanta
-          payload: '/select_pricing_category{"preferred_service":"Lens Consultation"}'
+          payload: '/select_pricing_category{{"preferred_service":"Lens Consultation"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -523,11 +591,11 @@ responses:
       text: "Boleh, mari kita semak pilihan harga yang ada. Mana satu yang anda mahu lihat dahulu?"
       buttons:
         - title: Harga Bingkai
-          payload: '/select_pricing_category{"preferred_service":"Designer Frames"}'
+          payload: '/select_pricing_category{{"preferred_service":"Designer Frames"}}'
         - title: Harga Cermin Mata Hitam
-          payload: '/select_pricing_category{"preferred_service":"Luxury Sunglasses"}'
+          payload: '/select_pricing_category{{"preferred_service":"Luxury Sunglasses"}}'
         - title: Harga Kanta
-          payload: '/select_pricing_category{"preferred_service":"Lens Consultation"}'
+          payload: '/select_pricing_category{{"preferred_service":"Lens Consultation"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -535,11 +603,11 @@ responses:
       text: "Saya akan bantu senaraikan harga. Anda mencari bingkai biasa, cermin mata hitam, atau kanta baharu?"
       buttons:
         - title: Harga Bingkai
-          payload: '/select_pricing_category{"preferred_service":"Designer Frames"}'
+          payload: '/select_pricing_category{{"preferred_service":"Designer Frames"}}'
         - title: Harga Cermin Mata Hitam
-          payload: '/select_pricing_category{"preferred_service":"Luxury Sunglasses"}'
+          payload: '/select_pricing_category{{"preferred_service":"Luxury Sunglasses"}}'
         - title: Harga Kanta
-          payload: '/select_pricing_category{"preferred_service":"Lens Consultation"}'
+          payload: '/select_pricing_category{{"preferred_service":"Lens Consultation"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -547,11 +615,11 @@ responses:
       text: "当然。您想先看哪一类的价格？镜框、太阳镜还是镜片？"
       buttons:
         - title: 镜框价格
-          payload: '/select_pricing_category{"preferred_service":"Designer Frames"}'
+          payload: '/select_pricing_category{{"preferred_service":"Designer Frames"}}'
         - title: 太阳镜价格
-          payload: '/select_pricing_category{"preferred_service":"Luxury Sunglasses"}'
+          payload: '/select_pricing_category{{"preferred_service":"Luxury Sunglasses"}}'
         - title: 镜片价格
-          payload: '/select_pricing_category{"preferred_service":"Lens Consultation"}'
+          payload: '/select_pricing_category{{"preferred_service":"Lens Consultation"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -559,11 +627,11 @@ responses:
       text: "没问题。您需要我先帮您查哪类产品的价格？"
       buttons:
         - title: 镜框价格
-          payload: '/select_pricing_category{"preferred_service":"Designer Frames"}'
+          payload: '/select_pricing_category{{"preferred_service":"Designer Frames"}}'
         - title: 太阳镜价格
-          payload: '/select_pricing_category{"preferred_service":"Luxury Sunglasses"}'
+          payload: '/select_pricing_category{{"preferred_service":"Luxury Sunglasses"}}'
         - title: 镜片价格
-          payload: '/select_pricing_category{"preferred_service":"Lens Consultation"}'
+          payload: '/select_pricing_category{{"preferred_service":"Lens Consultation"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -571,11 +639,11 @@ responses:
       text: "好的，我们可以看看不同类别的价格。您想先了解哪一种？"
       buttons:
         - title: 镜框价格
-          payload: '/select_pricing_category{"preferred_service":"Designer Frames"}'
+          payload: '/select_pricing_category{{"preferred_service":"Designer Frames"}}'
         - title: 太阳镜价格
-          payload: '/select_pricing_category{"preferred_service":"Luxury Sunglasses"}'
+          payload: '/select_pricing_category{{"preferred_service":"Luxury Sunglasses"}}'
         - title: 镜片价格
-          payload: '/select_pricing_category{"preferred_service":"Lens Consultation"}'
+          payload: '/select_pricing_category{{"preferred_service":"Lens Consultation"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -583,43 +651,43 @@ responses:
       text: "我来帮您查看价格。您是要找镜框、太阳镜，还是想了解镜片价格？"
       buttons:
         - title: 镜框价格
-          payload: '/select_pricing_category{"preferred_service":"Designer Frames"}'
+          payload: '/select_pricing_category{{"preferred_service":"Designer Frames"}}'
         - title: 太阳镜价格
-          payload: '/select_pricing_category{"preferred_service":"Luxury Sunglasses"}'
+          payload: '/select_pricing_category{{"preferred_service":"Luxury Sunglasses"}}'
         - title: 镜片价格
-          payload: '/select_pricing_category{"preferred_service":"Lens Consultation"}'
+          payload: '/select_pricing_category{{"preferred_service":"Lens Consultation"}}'
     - text: "Sure thing. What category would you like pricing for first?"
       buttons:
         - title: Frame Pricing
-          payload: '/select_pricing_category{"preferred_service":"Designer Frames"}'
+          payload: '/select_pricing_category{{"preferred_service":"Designer Frames"}}'
         - title: Sunglass Pricing
-          payload: '/select_pricing_category{"preferred_service":"Luxury Sunglasses"}'
+          payload: '/select_pricing_category{{"preferred_service":"Luxury Sunglasses"}}'
         - title: Lens Pricing
-          payload: '/select_pricing_category{"preferred_service":"Lens Consultation"}'
+          payload: '/select_pricing_category{{"preferred_service":"Lens Consultation"}}'
     - text: "I can help with that. Are you looking for frame, sunglass, or lens prices?"
       buttons:
         - title: Frame Pricing
-          payload: '/select_pricing_category{"preferred_service":"Designer Frames"}'
+          payload: '/select_pricing_category{{"preferred_service":"Designer Frames"}}'
         - title: Sunglass Pricing
-          payload: '/select_pricing_category{"preferred_service":"Luxury Sunglasses"}'
+          payload: '/select_pricing_category{{"preferred_service":"Luxury Sunglasses"}}'
         - title: Lens Pricing
-          payload: '/select_pricing_category{"preferred_service":"Lens Consultation"}'
+          payload: '/select_pricing_category{{"preferred_service":"Lens Consultation"}}'
     - text: "Absolutely. Let's check our pricing. Which category should we start with?"
       buttons:
         - title: Frame Pricing
-          payload: '/select_pricing_category{"preferred_service":"Designer Frames"}'
+          payload: '/select_pricing_category{{"preferred_service":"Designer Frames"}}'
         - title: Sunglass Pricing
-          payload: '/select_pricing_category{"preferred_service":"Luxury Sunglasses"}'
+          payload: '/select_pricing_category{{"preferred_service":"Luxury Sunglasses"}}'
         - title: Lens Pricing
-          payload: '/select_pricing_category{"preferred_service":"Lens Consultation"}'
+          payload: '/select_pricing_category{{"preferred_service":"Lens Consultation"}}'
     - text: "I'd be happy to share some prices. What are you looking to get today?"
       buttons:
         - title: Frame Pricing
-          payload: '/select_pricing_category{"preferred_service":"Designer Frames"}'
+          payload: '/select_pricing_category{{"preferred_service":"Designer Frames"}}'
         - title: Sunglass Pricing
-          payload: '/select_pricing_category{"preferred_service":"Luxury Sunglasses"}'
+          payload: '/select_pricing_category{{"preferred_service":"Luxury Sunglasses"}}'
         - title: Lens Pricing
-          payload: '/select_pricing_category{"preferred_service":"Lens Consultation"}'
+          payload: '/select_pricing_category{{"preferred_service":"Lens Consultation"}}'
 
   utter_ask_product_type:
     - condition:
@@ -629,11 +697,11 @@ responses:
       text: "Apa jenis bingkai yang anda cari?"
       buttons:
         - title: Bingkai Pereka
-          payload: '/select_product_type{"product_type":"Designer Frames"}'
+          payload: '/select_product_type{{"product_type":"Designer Frames"}}'
         - title: Cermin Mata Hitam
-          payload: '/select_product_type{"product_type":"Luxury Sunglasses"}'
+          payload: '/select_product_type{{"product_type":"Luxury Sunglasses"}}'
         - title: Kanta Sentuh
-          payload: '/select_product_type{"product_type":"Contact Lenses"}'
+          payload: '/select_product_type{{"product_type":"Contact Lenses"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -641,19 +709,19 @@ responses:
       text: "您在找哪种类型的眼镜？"
       buttons:
         - title: 设计师镜框
-          payload: '/select_product_type{"product_type":"Designer Frames"}'
+          payload: '/select_product_type{{"product_type":"Designer Frames"}}'
         - title: 太阳镜
-          payload: '/select_product_type{"product_type":"Luxury Sunglasses"}'
+          payload: '/select_product_type{{"product_type":"Luxury Sunglasses"}}'
         - title: 隐形眼镜
-          payload: '/select_product_type{"product_type":"Contact Lenses"}'
+          payload: '/select_product_type{{"product_type":"Contact Lenses"}}'
     - text: "What kind of frames are you looking for?"
       buttons:
         - title: Designer Frames
-          payload: '/select_product_type{"product_type":"Designer Frames"}'
+          payload: '/select_product_type{{"product_type":"Designer Frames"}}'
         - title: Luxury Sunglasses
-          payload: '/select_product_type{"product_type":"Luxury Sunglasses"}'
+          payload: '/select_product_type{{"product_type":"Luxury Sunglasses"}}'
         - title: Contact Lenses
-          payload: '/select_product_type{"product_type":"Contact Lenses"}'
+          payload: '/select_product_type{{"product_type":"Contact Lenses"}}'
 
   utter_ask_budget_range:
     - condition:
@@ -663,13 +731,13 @@ responses:
       text: "Berapakah bajet yang anda pertimbangkan?"
       buttons:
         - title: Bawah RM100
-          payload: '/select_budget{"price_range":"Under RM100"}'
+          payload: '/select_budget{{"price_range":"Under RM100"}}'
         - title: RM100 - RM250
-          payload: '/select_budget{"price_range":"RM100 - RM250"}'
+          payload: '/select_budget{{"price_range":"RM100 - RM250"}}'
         - title: RM250 - RM300
-          payload: '/select_budget{"price_range":"RM250 - RM300"}'
+          payload: '/select_budget{{"price_range":"RM250 - RM300"}}'
         - title: Atas RM300
-          payload: '/select_budget{"price_range":"Above RM300"}'
+          payload: '/select_budget{{"price_range":"Above RM300"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -677,23 +745,23 @@ responses:
       text: "您的预算范围大概是多少？"
       buttons:
         - title: 低于 RM100
-          payload: '/select_budget{"price_range":"Under RM100"}'
+          payload: '/select_budget{{"price_range":"Under RM100"}}'
         - title: RM100 - RM250
-          payload: '/select_budget{"price_range":"RM100 - RM250"}'
+          payload: '/select_budget{{"price_range":"RM100 - RM250"}}'
         - title: RM250 - RM300
-          payload: '/select_budget{"price_range":"RM250 - RM300"}'
+          payload: '/select_budget{{"price_range":"RM250 - RM300"}}'
         - title: 高于 RM300
-          payload: '/select_budget{"price_range":"Above RM300"}'
+          payload: '/select_budget{{"price_range":"Above RM300"}}'
     - text: "What budget range are you considering?"
       buttons:
         - title: Under RM100
-          payload: '/select_budget{"price_range":"Under RM100"}'
+          payload: '/select_budget{{"price_range":"Under RM100"}}'
         - title: RM100 - RM250
-          payload: '/select_budget{"price_range":"RM100 - RM250"}'
+          payload: '/select_budget{{"price_range":"RM100 - RM250"}}'
         - title: RM250 - RM300
-          payload: '/select_budget{"price_range":"RM250 - RM300"}'
+          payload: '/select_budget{{"price_range":"RM250 - RM300"}}'
         - title: Above RM300
-          payload: '/select_budget{"price_range":"Above RM300"}'
+          payload: '/select_budget{{"price_range":"Above RM300"}}'
 
   utter_ask_try_frames:
     - condition:
@@ -833,11 +901,11 @@ responses:
       text: "Penyelesaian kanta yang mana anda mahu bantuan?"
       buttons:
         - title: Single Vision
-          payload: '/ask_lens_type{"lens_type":"Single Vision Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Single Vision Lenses"}}'
         - title: Progressive
-          payload: '/ask_lens_type{"lens_type":"Progressive Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Progressive Lenses"}}'
         - title: Blue Light
-          payload: '/ask_lens_type{"lens_type":"Blue Light Protection"}'
+          payload: '/ask_lens_type{{"lens_type":"Blue Light Protection"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -845,11 +913,11 @@ responses:
       text: "Baik. Jenis penyelesaian kanta yang mana anda mahu saya terangkan dahulu?"
       buttons:
         - title: Single Vision
-          payload: '/ask_lens_type{"lens_type":"Single Vision Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Single Vision Lenses"}}'
         - title: Progressive
-          payload: '/ask_lens_type{"lens_type":"Progressive Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Progressive Lenses"}}'
         - title: Blue Light
-          payload: '/ask_lens_type{"lens_type":"Blue Light Protection"}'
+          payload: '/ask_lens_type{{"lens_type":"Blue Light Protection"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -857,11 +925,11 @@ responses:
       text: "Mari kita fokus pada kanta dahulu. Pilihan mana yang anda mahu saya jelaskan terlebih dahulu?"
       buttons:
         - title: Single Vision
-          payload: '/ask_lens_type{"lens_type":"Single Vision Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Single Vision Lenses"}}'
         - title: Progressive
-          payload: '/ask_lens_type{"lens_type":"Progressive Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Progressive Lenses"}}'
         - title: Blue Light
-          payload: '/ask_lens_type{"lens_type":"Blue Light Protection"}'
+          payload: '/ask_lens_type{{"lens_type":"Blue Light Protection"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -869,11 +937,11 @@ responses:
       text: "Baik, kita boleh mula dengan jenis kanta yang anda paling ingin fahami. Yang mana satu saya patut terangkan dahulu?"
       buttons:
         - title: Single Vision
-          payload: '/ask_lens_type{"lens_type":"Single Vision Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Single Vision Lenses"}}'
         - title: Progressive
-          payload: '/ask_lens_type{"lens_type":"Progressive Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Progressive Lenses"}}'
         - title: Blue Light
-          payload: '/ask_lens_type{"lens_type":"Blue Light Protection"}'
+          payload: '/ask_lens_type{{"lens_type":"Blue Light Protection"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -881,11 +949,11 @@ responses:
       text: "您想了解哪一种镜片方案？"
       buttons:
         - title: 单光镜片
-          payload: '/ask_lens_type{"lens_type":"Single Vision Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Single Vision Lenses"}}'
         - title: 渐进镜片
-          payload: '/ask_lens_type{"lens_type":"Progressive Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Progressive Lenses"}}'
         - title: 防蓝光
-          payload: '/ask_lens_type{"lens_type":"Blue Light Protection"}'
+          payload: '/ask_lens_type{{"lens_type":"Blue Light Protection"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -893,11 +961,11 @@ responses:
       text: "好的，您想先了解哪一种镜片方案？"
       buttons:
         - title: 单光镜片
-          payload: '/ask_lens_type{"lens_type":"Single Vision Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Single Vision Lenses"}}'
         - title: 渐进镜片
-          payload: '/ask_lens_type{"lens_type":"Progressive Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Progressive Lenses"}}'
         - title: 防蓝光
-          payload: '/ask_lens_type{"lens_type":"Blue Light Protection"}'
+          payload: '/ask_lens_type{{"lens_type":"Blue Light Protection"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -905,11 +973,11 @@ responses:
       text: "我们先从镜片方案开始。您希望我先介绍哪一种？"
       buttons:
         - title: 单光镜片
-          payload: '/ask_lens_type{"lens_type":"Single Vision Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Single Vision Lenses"}}'
         - title: 渐进镜片
-          payload: '/ask_lens_type{"lens_type":"Progressive Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Progressive Lenses"}}'
         - title: 防蓝光
-          payload: '/ask_lens_type{"lens_type":"Blue Light Protection"}'
+          payload: '/ask_lens_type{{"lens_type":"Blue Light Protection"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -917,43 +985,43 @@ responses:
       text: "好的，我们可以先讲您最关心的镜片类型。您想先了解哪一种？"
       buttons:
         - title: 单光镜片
-          payload: '/ask_lens_type{"lens_type":"Single Vision Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Single Vision Lenses"}}'
         - title: 渐进镜片
-          payload: '/ask_lens_type{"lens_type":"Progressive Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Progressive Lenses"}}'
         - title: 防蓝光
-          payload: '/ask_lens_type{"lens_type":"Blue Light Protection"}'
+          payload: '/ask_lens_type{{"lens_type":"Blue Light Protection"}}'
     - text: "Which lens solution would you like help with?"
       buttons:
         - title: Single Vision
-          payload: '/ask_lens_type{"lens_type":"Single Vision Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Single Vision Lenses"}}'
         - title: Progressive
-          payload: '/ask_lens_type{"lens_type":"Progressive Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Progressive Lenses"}}'
         - title: Blue Light
-          payload: '/ask_lens_type{"lens_type":"Blue Light Protection"}'
+          payload: '/ask_lens_type{{"lens_type":"Blue Light Protection"}}'
     - text: "Which lens option would you like to explore first?"
       buttons:
         - title: Single Vision
-          payload: '/ask_lens_type{"lens_type":"Single Vision Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Single Vision Lenses"}}'
         - title: Progressive
-          payload: '/ask_lens_type{"lens_type":"Progressive Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Progressive Lenses"}}'
         - title: Blue Light
-          payload: '/ask_lens_type{"lens_type":"Blue Light Protection"}'
+          payload: '/ask_lens_type{{"lens_type":"Blue Light Protection"}}'
     - text: "Let’s start with the lens options. Which one would you like me to explain first?"
       buttons:
         - title: Single Vision
-          payload: '/ask_lens_type{"lens_type":"Single Vision Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Single Vision Lenses"}}'
         - title: Progressive
-          payload: '/ask_lens_type{"lens_type":"Progressive Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Progressive Lenses"}}'
         - title: Blue Light
-          payload: '/ask_lens_type{"lens_type":"Blue Light Protection"}'
+          payload: '/ask_lens_type{{"lens_type":"Blue Light Protection"}}'
     - text: "We can begin with the lens type that matters most to you. Which one would you like me to explain first?"
       buttons:
         - title: Single Vision
-          payload: '/ask_lens_type{"lens_type":"Single Vision Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Single Vision Lenses"}}'
         - title: Progressive
-          payload: '/ask_lens_type{"lens_type":"Progressive Lenses"}'
+          payload: '/ask_lens_type{{"lens_type":"Progressive Lenses"}}'
         - title: Blue Light
-          payload: '/ask_lens_type{"lens_type":"Blue Light Protection"}'
+          payload: '/ask_lens_type{{"lens_type":"Blue Light Protection"}}'
 
   utter_ask_city:
     - condition:
@@ -1352,13 +1420,13 @@ responses:
       text: "Apakah yang paling anda minati hari ini?"
       buttons:
         - title: Cadangan Produk
-          payload: '/share_service_interest{"preferred_service":"Eyewear Recommendation"}'
+          payload: '/share_service_interest{{"preferred_service":"Eyewear Recommendation"}}'
         - title: Konsultasi Kanta
-          payload: '/share_service_interest{"preferred_service":"Lens Consultation"}'
+          payload: '/share_service_interest{{"preferred_service":"Lens Consultation"}}'
         - title: Lawatan Kedai
-          payload: '/share_service_interest{"preferred_service":"Store Visit"}'
+          payload: '/share_service_interest{{"preferred_service":"Store Visit"}}'
         - title: Sokongan Selepas Jualan
-          payload: '/share_service_interest{"preferred_service":"After-sales Support"}'
+          payload: '/share_service_interest{{"preferred_service":"After-sales Support"}}'
     - condition:
         - type: slot
           name: preferred_language
@@ -1366,56 +1434,35 @@ responses:
       text: "您今天主要想了解什么？"
       buttons:
         - title: 产品推荐
-          payload: '/share_service_interest{"preferred_service":"Eyewear Recommendation"}'
+          payload: '/share_service_interest{{"preferred_service":"Eyewear Recommendation"}}'
         - title: 镜片咨询
-          payload: '/share_service_interest{"preferred_service":"Lens Consultation"}'
+          payload: '/share_service_interest{{"preferred_service":"Lens Consultation"}}'
         - title: 到店服务
-          payload: '/share_service_interest{"preferred_service":"Store Visit"}'
+          payload: '/share_service_interest{{"preferred_service":"Store Visit"}}'
         - title: 售后支持
-          payload: '/share_service_interest{"preferred_service":"After-sales Support"}'
+          payload: '/share_service_interest{{"preferred_service":"After-sales Support"}}'
     - text: "What are you mainly interested in today?"
       buttons:
         - title: Eyewear Recommendation
-          payload: '/share_service_interest{"preferred_service":"Eyewear Recommendation"}'
+          payload: '/share_service_interest{{"preferred_service":"Eyewear Recommendation"}}'
         - title: Lens Consultation
-          payload: '/share_service_interest{"preferred_service":"Lens Consultation"}'
+          payload: '/share_service_interest{{"preferred_service":"Lens Consultation"}}'
         - title: Store Visit
-          payload: '/share_service_interest{"preferred_service":"Store Visit"}'
+          payload: '/share_service_interest{{"preferred_service":"Store Visit"}}'
         - title: After-sales Support
-          payload: '/share_service_interest{"preferred_service":"After-sales Support"}'
+          payload: '/share_service_interest{{"preferred_service":"After-sales Support"}}'
   utter_ask_purchase_timeline:
     - condition:
         - type: slot
           name: preferred_language
           value: ms
       text: "Anda merancang untuk membuat keputusan atau melawat kedai dalam tempoh bila?"
-      buttons:
-        - title: Minggu Ini
-          payload: '/share_timeline{"purchase_timeline":"This Week"}'
-        - title: Dalam 2 Minggu
-          payload: '/share_timeline{"purchase_timeline":"Within 2 Weeks"}'
-        - title: Sekadar Melihat
-          payload: '/share_timeline{"purchase_timeline":"Just Exploring"}'
     - condition:
         - type: slot
           name: preferred_language
           value: zh
       text: "您打算多久内做决定或到门店看看？"
-      buttons:
-        - title: 本周
-          payload: '/share_timeline{"purchase_timeline":"This Week"}'
-        - title: 两周内
-          payload: '/share_timeline{"purchase_timeline":"Within 2 Weeks"}'
-        - title: 先看看
-          payload: '/share_timeline{"purchase_timeline":"Just Exploring"}'
     - text: "How soon are you planning to make a decision or visit a store?"
-      buttons:
-        - title: This Week
-          payload: '/share_timeline{"purchase_timeline":"This Week"}'
-        - title: Within 2 Weeks
-          payload: '/share_timeline{"purchase_timeline":"Within 2 Weeks"}'
-        - title: Just Exploring
-          payload: '/share_timeline{"purchase_timeline":"Just Exploring"}'
 
   utter_lead_capture_complete:
     - condition:
@@ -1497,9 +1544,11 @@ actions:
   - action_smart_search
   - action_ask_city
   - action_ask_brand
+  - action_ask_purchase_timeline
   - action_handle_store_hours
   - action_show_pricing
   - action_filter_products
+  - action_ask_budget_range
   - action_explain_lens
   - action_find_store
   - action_recommend_products
@@ -1518,6 +1567,7 @@ actions:
   - action_handle_exchange_support
   - action_handle_warranty_support
   - action_handle_order_support
+  - action_handle_greet
   - action_book_appointment
 
 session_config:
