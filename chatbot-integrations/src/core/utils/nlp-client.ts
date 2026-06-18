@@ -440,6 +440,22 @@ export class NLPClient {
           route = 'opportunistic'
           this._logger.info(`[NLU] Deterministic opportunistic extraction -> ${rasaMessage}`)
         } else if (isInsideForm) {
+          // When the form is requesting a phone number, bare digit strings
+          // (e.g. "9876543210") can be misclassified by Rasa as `inform_budget`
+          // which is in the form's ignored_intents — causing the form to reject
+          // and return an empty response.  Intercept them here and send a
+          // properly structured intent payload so Rasa fills the slot correctly.
+          const requestedSlot = preTracker?.slots?.requested_slot
+          if (
+            requestedSlot === 'contact_number'
+            && /^\+?[\d\s\-\(\)]{8,20}$/.test(safeMessage)
+          ) {
+            const normalizedPhone = safeMessage.replace(/[^\d+]/g, '')
+            rasaMessage = `/share_phone{"contact_number": "${normalizedPhone}"}`
+            this._logger.debug(
+              `[NLU] Converted bare phone input to intent payload for form slot: ${rasaMessage}`,
+            )
+          }
           route = 'skip'
         } else {
           const parseResult = await this._parseWithRasa(safeMessage)
@@ -504,11 +520,29 @@ export class NLPClient {
       const rawReplies: Array<{ text?: string; image?: string; buttons?: any[]; custom?: Record<string, unknown> }> = response.data
 
       if (!Array.isArray(rawReplies) || rawReplies.length === 0) {
+        const postTracker = await this.getTracker(safeSender)
+
+        // An empty response during an active form is a known Rasa behaviour:
+        // the form accepted the slot value and is silently advancing to the
+        // next slot.  Returning the generic fallback here confuses the user
+        // with a spurious "sorry, something went wrong" message.
+        if (isInsideForm && postTracker?.activeLoop) {
+          this._logger.debug(
+            '[NLP] Rasa returned empty response during active form — suppressing fallback (slot transition)',
+          )
+          return {
+            text: '',
+            raw: [],
+            tracker: postTracker,
+            llm: llmResult ? this._serializeLlm(llmResult, rasaMessage) : undefined,
+          }
+        }
+
         this._logger.warn('[NLP] Rasa returned empty response')
         return {
           text: fallback,
           raw: [],
-          tracker: await this.getTracker(safeSender),
+          tracker: postTracker,
           llm: llmResult ? this._serializeLlm(llmResult, rasaMessage) : undefined,
         }
       }
