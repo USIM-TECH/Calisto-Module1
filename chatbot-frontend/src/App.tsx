@@ -7,12 +7,14 @@ import ProductsPage from './pages/ProductsPage'
 import KnowledgePage from './pages/KnowledgePage'
 import NotFoundPage from './pages/NotFoundPage'
 import LeadDetailPage from './pages/LeadDetailPage'
+import ChatbotPage from './pages/ChatbotPage'
 import calistoLogo from '../calisto.svg'
 
 const navItems = [
   { label: 'Leads', to: '/leads', icon: UsersRound },
   { label: 'Products', to: '/products', icon: Boxes },
   { label: 'Knowledge', to: '/knowledge', icon: BookOpen },
+  { label: 'Chatbot', to: '/chatbot', icon: MessageSquareText },
   { label: 'Webchat', to: '/webchat', icon: MessageSquareText },
 ]
 
@@ -56,7 +58,7 @@ export default function App() {
 
       <header className="sticky top-0 z-30 border-b border-calisto-surface/15 bg-calisto-sidebar px-4 py-3 text-calisto-surface lg:hidden">
         <img className="mb-3 h-6 w-auto brightness-0 invert" src={calistoLogo} alt="Calisto" />
-        <nav className="grid grid-cols-4 gap-2">
+        <nav className="grid grid-cols-5 gap-2">
           {navItems.map(({ icon: Icon, label, to }) => (
             <NavLink
               key={to}
@@ -79,6 +81,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/leads" replace />} />
           <Route path="/webchat" element={<WebchatPage />} />
+          <Route path="/chatbot" element={<ChatbotPage />} />
           <Route path="/leads" element={<LeadsPage />} />
           <Route path="/leads/:customerId" element={<LeadDetailPage />} />
           <Route path="/products" element={<ProductsPage />} />
