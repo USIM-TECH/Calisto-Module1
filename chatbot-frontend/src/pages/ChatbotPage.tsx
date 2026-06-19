@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Bot, Circle, Send } from 'lucide-react'
+import { Bot, Circle, RotateCcw, Send } from 'lucide-react'
 import { postWebchatMessage } from '../api/client'
 import Button from '../components/Button'
+import ChatMessageBubble from '../components/ChatMessageBubble'
 import PageContainer from '../components/PageContainer'
 import calistoLogo from '../../calisto.svg'
+import {
+  getOrCreateSenderId,
+  messagePreview,
+  persistSenderId,
+  resetSenderId,
+} from '../lib/chat'
 import type { OutgoingMessage, WebchatResponse } from '../types'
 
 interface ConsoleMessage {
@@ -25,14 +32,10 @@ function currentStamp() {
   return new Date().toLocaleString('en-MY')
 }
 
-function messageText(message: OutgoingMessage) {
-  if (message.type === 'text' || message.type === 'choice') return message.text
-  if (message.type === 'card') return message.title
-  return ''
-}
+const WEBCHAT_SCOPE = 'website-chatbot'
 
 export default function ChatbotPage() {
-  const [senderId] = useState('website-support-demo')
+  const [senderId, setSenderId] = useState(() => getOrCreateSenderId(WEBCHAT_SCOPE))
   const [message, setMessage] = useState('')
   const [status, setStatus] = useState<'Ready' | 'Sending' | 'Failed'>('Ready')
   const [messages, setMessages] = useState<ConsoleMessage[]>([
@@ -73,10 +76,17 @@ export default function ChatbotPage() {
 
     try {
       const response: WebchatResponse = await postWebchatMessage({ senderId, message: trimmed })
+      persistSenderId(response.senderId, WEBCHAT_SCOPE)
+      setSenderId(response.senderId)
+
+      const replies = response.messages.length
+        ? response.messages
+        : [{ type: 'text' as const, text: 'No reply from the assistant.' }]
+
       setMessages((current) => [
         ...current,
-        ...response.messages.map((reply, index) => ({
-          content: messageText(reply),
+        ...replies.map((reply, index) => ({
+          content: messagePreview(reply),
           direction: 'assistant' as const,
           id: `${Date.now()}-assistant-${index}`,
           payload: reply,
@@ -88,6 +98,21 @@ export default function ChatbotPage() {
       setStatus('Failed')
       setError(caught instanceof Error ? caught.message : 'Message failed.')
     }
+  }
+
+  function handleResetSession() {
+    const nextSenderId = resetSenderId(WEBCHAT_SCOPE)
+    setSenderId(nextSenderId)
+    setMessages([
+      {
+        content: 'Session reset. Send "hi" to start a new conversation.',
+        direction: 'assistant',
+        id: 'reset',
+        timestamp: currentStamp(),
+      },
+    ])
+    setError(null)
+    setStatus('Ready')
   }
 
   return (
@@ -117,8 +142,6 @@ export default function ChatbotPage() {
               </div>
             ))}
           </div>
-
-        
         </aside>
 
         <section className="flex min-h-[720px] flex-col overflow-hidden rounded-3xl border border-calisto-line bg-calisto-surface shadow-dashboard">
@@ -129,48 +152,35 @@ export default function ChatbotPage() {
                 <h2 className="text-xl font-extrabold text-calisto-ink">Website Support Chat</h2>
               </div>
               <p className="mt-1 text-sm font-medium text-calisto-muted">
-                Start with "hi" or choose a guided option when it appears.
+                Connected to <strong>POST /webchat/message</strong> on the integration API.
               </p>
             </div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-calisto-line bg-calisto-table px-4 py-2 text-sm font-extrabold text-calisto-body">
-              <Circle className="h-2.5 w-2.5 fill-calisto-accent text-calisto-accent" />
-              {status}
-            </span>
+            <div className="flex items-center gap-2">
+              <Button icon={<RotateCcw className="h-4 w-4" />} onClick={handleResetSession} variant="secondary">
+                Reset
+              </Button>
+              <span className="inline-flex items-center gap-2 rounded-full border border-calisto-line bg-calisto-table px-4 py-2 text-sm font-extrabold text-calisto-body">
+                <Circle className="h-2.5 w-2.5 fill-calisto-accent text-calisto-accent" />
+                {status}
+              </span>
+            </div>
           </header>
 
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6" ref={transcriptRef}>
               <div className="grid content-start gap-5">
                 {messages.map((entry) => (
-                  <div className={`flex flex-col gap-2 ${entry.direction === 'customer' ? 'items-end' : 'items-start'}`} key={entry.id}>
-                    <div
-                      className={[
-                        'max-w-[78%] whitespace-pre-wrap rounded-2xl px-5 py-4 text-sm font-medium leading-6 shadow-sm',
-                        entry.direction === 'customer'
-                          ? 'rounded-br-md bg-calisto-sidebar text-calisto-surface'
-                          : 'rounded-bl-md bg-calisto-table text-calisto-body',
-                      ].join(' ')}
-                    >
-                      {entry.content}
-                      {entry.payload?.type === 'choice' && (
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {entry.payload.options.map((option) => (
-                            <button
-                              className="rounded-full border border-calisto-line bg-calisto-surface px-3 py-2 text-xs font-bold text-calisto-ink transition hover:bg-calisto-surface-muted"
-                              key={option.value}
-                              onClick={() => sendMessage(option.value)}
-                              type="button"
-                            >
-                              {option.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <span className="text-xs font-semibold text-calisto-soft">
-                      {entry.direction === 'customer' ? 'Tester' : 'Calisto Assistant'} - {entry.timestamp}
-                    </span>
-                  </div>
+                  <ChatMessageBubble
+                    assistantLabel="Calisto Assistant"
+                    content={entry.content}
+                    customerLabel="You"
+                    direction={entry.direction}
+                    key={entry.id}
+                    onPostback={sendMessage}
+                    payload={entry.payload}
+                    timestamp={entry.timestamp}
+                    variant="chatbot"
+                  />
                 ))}
 
                 {isSending && (
@@ -231,9 +241,9 @@ export default function ChatbotPage() {
                 </Button>
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-calisto-muted">
-                <span>Your replies here go to <strong>/webchat/message</strong>.</span>
+                <span>Session: {senderId}</span>
+                <span>{messageCount} message{messageCount === 1 ? '' : 's'}</span>
               </div>
-             
             </div>
           </div>
         </section>

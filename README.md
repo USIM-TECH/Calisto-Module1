@@ -120,10 +120,14 @@ npm run dev
 
 Open **http://localhost:5173**
 
-Set the backend URL in `chatbot-frontend/.env`:
+Set the backend URL in `chatbot-frontend/.env`. For local dev, leave it empty so Vite proxies API calls to `http://localhost:3000`:
 
 ```env
-VITE_API_BASE_URL=http://localhost:3000
+# Recommended for npm run dev (uses Vite proxy)
+VITE_API_BASE_URL=
+
+# Or point directly at the backend (production / preview without proxy)
+# VITE_API_BASE_URL=http://localhost:3000
 ```
 
 **Stack:** React 18, TypeScript, Vite, Tailwind CSS, react-router-dom

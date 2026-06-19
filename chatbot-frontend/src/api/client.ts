@@ -11,7 +11,8 @@ import type {
   WebchatResponse,
 } from '../types'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000'
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+const WEBCHAT_AUTH_TOKEN = import.meta.env.VITE_WEBSITE_AUTH_TOKEN?.trim()
 
 function formatApiError(text: string, status: number): string {
   if (!text) return `Request failed: ${status}`
@@ -42,14 +43,16 @@ function formatApiError(text: string, status: number): string {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const isFormData = init?.body instanceof FormData
+  const headers: Record<string, string> = isFormData
+    ? { ...(init?.headers as Record<string, string> | undefined) }
+    : {
+        'Content-Type': 'application/json',
+        ...(init?.headers as Record<string, string> | undefined),
+      }
+
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
-    headers: isFormData
-      ? init?.headers
-      : {
-          'Content-Type': 'application/json',
-          ...(init?.headers ?? {}),
-        },
+    headers,
   })
 
   if (!res.ok) {
@@ -64,9 +67,23 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
+/** Prefix relative asset paths (e.g. /static/products/...) with the API base URL. */
+export function resolveAssetUrl(url?: string): string | undefined {
+  if (!url) return undefined
+  if (/^https?:\/\//i.test(url)) return url
+  if (!API_BASE_URL) return url
+  return `${API_BASE_URL}${url.startsWith('/') ? url : `/${url}`}`
+}
+
 export function postWebchatMessage(payload: WebchatRequest): Promise<WebchatResponse> {
+  const headers: Record<string, string> = {}
+  if (WEBCHAT_AUTH_TOKEN) {
+    headers.Authorization = `Bearer ${WEBCHAT_AUTH_TOKEN}`
+  }
+
   return request<WebchatResponse>('/webchat/message', {
     method: 'POST',
+    headers,
     body: JSON.stringify(payload),
   })
 }

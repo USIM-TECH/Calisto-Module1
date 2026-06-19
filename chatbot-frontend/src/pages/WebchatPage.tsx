@@ -2,17 +2,21 @@ import { Circle, Globe2, MessageSquareText, RotateCcw, Send, Sparkles, UserRound
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { postWebchatMessage } from '../api/client'
 import Button from '../components/Button'
+import ChatMessageBubble from '../components/ChatMessageBubble'
 import PageContainer from '../components/PageContainer'
 import Topbar from '../components/Topbar'
-import type { OutgoingMessage, WebchatResponse } from '../types'
+import { getOrCreateSenderId, messagePreview, persistSenderId, resetSenderId } from '../lib/chat'
+import type { WebchatResponse } from '../types'
 
 interface ChatBubble {
-  id: string
-  direction: 'inbound' | 'outbound'
   content: string
-  payload?: OutgoingMessage
+  direction: 'customer' | 'assistant'
+  id: string
+  payload?: WebchatResponse['messages'][number]
   timestamp: string
 }
+
+const WEBCHAT_SCOPE = 'website-admin'
 
 const metrics = [
   { icon: Globe2, label: 'Channel', trend: 'Website' },
@@ -20,8 +24,12 @@ const metrics = [
   { icon: Circle, label: 'Status', trend: 'Live' },
 ]
 
+function currentStamp() {
+  return new Date().toLocaleString('en-MY')
+}
+
 export default function WebchatPage() {
-  const [senderId, setSenderId] = useState('website-demo-user')
+  const [senderId, setSenderId] = useState(() => getOrCreateSenderId(WEBCHAT_SCOPE))
   const [message, setMessage] = useState('')
   const [status, setStatus] = useState('Ready')
   const [bubbles, setBubbles] = useState<ChatBubble[]>([])
@@ -38,42 +46,40 @@ export default function WebchatPage() {
   async function sendMessage(text: string) {
     if (!text.trim() || loading) return
     const trimmed = text.trim()
-    const now = new Date().toLocaleString('en-MY')
-    setBubbles((prev) => [...prev, { id: `${Date.now()}-user`, direction: 'inbound', content: trimmed, timestamp: now }])
+    setBubbles((prev) => [
+      ...prev,
+      { id: `${Date.now()}-user`, direction: 'customer', content: trimmed, timestamp: currentStamp() },
+    ])
     setMessage('')
     setLoading(true)
     setStatus('Sending')
 
     try {
       const response: WebchatResponse = await postWebchatMessage({ senderId, message: trimmed })
-      const botBubbles = response.messages.map((msg, index) => {
-        const stamp = new Date().toLocaleString('en-MY')
-        const content = msg.type === 'text'
-          ? msg.text
-          : msg.type === 'choice'
-            ? msg.text
-            : msg.type === 'card'
-              ? msg.title
-              : ''
-        return {
-          id: `${Date.now()}-bot-${index}`,
-          direction: 'outbound' as const,
-          content,
-          payload: msg,
-          timestamp: stamp,
-        }
-      })
+      persistSenderId(response.senderId, WEBCHAT_SCOPE)
+      setSenderId(response.senderId)
+
+      const botBubbles = response.messages.map((msg, index) => ({
+        id: `${Date.now()}-bot-${index}`,
+        direction: 'assistant' as const,
+        content: messagePreview(msg),
+        payload: msg,
+        timestamp: currentStamp(),
+      }))
       setBubbles((prev) => [...prev, ...botBubbles])
       setStatus('Ready')
-    } catch (error: any) {
-      setStatus(error.message || 'Failed')
+    } catch (error: unknown) {
+      setStatus(error instanceof Error ? error.message : 'Failed')
     } finally {
       setLoading(false)
     }
   }
 
-  function handleChoice(value: string) {
-    sendMessage(value)
+  function handleResetSession() {
+    const nextSenderId = resetSenderId(WEBCHAT_SCOPE)
+    setSenderId(nextSenderId)
+    setBubbles([])
+    setStatus('Ready')
   }
 
   const metricValues = [
@@ -88,7 +94,7 @@ export default function WebchatPage() {
         title="Website Chat Console"
         actions={(
           <>
-            <Button icon={<RotateCcw className="h-4 w-4" />} onClick={() => setBubbles([])}>Reset Session</Button>
+            <Button icon={<RotateCcw className="h-4 w-4" />} onClick={handleResetSession}>Reset Session</Button>
             <Button icon={<Sparkles className="h-4 w-4" />} variant="primary" disabled={loading} onClick={() => sendMessage(message)}>Live Test</Button>
           </>
         )}
@@ -124,7 +130,11 @@ export default function WebchatPage() {
                   className="h-12 w-full rounded-xl border border-calisto-line bg-calisto-table px-4 text-sm text-calisto-body outline-none transition focus:border-calisto-accent/50 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
                   type="text"
                   value={senderId}
-                  onChange={(event) => setSenderId(event.target.value)}
+                  onChange={(event) => {
+                    const next = event.target.value
+                    setSenderId(next)
+                    persistSenderId(next, WEBCHAT_SCOPE)
+                  }}
                 />
               </div>
               <div>
@@ -143,6 +153,12 @@ export default function WebchatPage() {
                   placeholder="Type a message like: hi"
                   value={message}
                   onChange={(event) => setMessage(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault()
+                      void sendMessage(message)
+                    }
+                  }}
                 />
                 <div className="mt-3 flex flex-wrap justify-end gap-3">
                   <Button id="clearChatButton" onClick={() => setBubbles([])}>Clear Chat</Button>
@@ -168,61 +184,28 @@ export default function WebchatPage() {
               </div>
             )}
             {bubbles.map((bubble) => (
-              <div key={bubble.id} className={`flex flex-col gap-1 ${bubble.direction === 'outbound' ? 'items-end' : 'items-start'}`}>
-                <div
-                  className={[
-                    'max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm',
-                    bubble.direction === 'outbound'
-                      ? 'rounded-tr-md bg-blue-600 text-calisto-surface'
-                      : 'rounded-tl-md bg-calisto-line text-calisto-ink',
-                  ].join(' ')}
-                >
-                  <div>{bubble.content}</div>
-                  {bubble.payload?.type === 'choice' && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {bubble.payload.options.map((option) => (
-                        <button key={option.value} className="rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-100" type="button" onClick={() => handleChoice(option.value)}>
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {bubble.payload?.type === 'card' && (
-                    <div className="mt-3 grid gap-2">
-                      <div className="overflow-hidden rounded-2xl border border-calisto-line bg-gradient-to-b from-calisto-surface to-calisto-surface-muted p-3 text-calisto-ink">
-                        {bubble.payload.imageUrl && (
-                          <img className="-mx-3 -mt-3 mb-3 max-h-56 w-[calc(100%+1.5rem)] object-cover" src={bubble.payload.imageUrl} alt={bubble.payload.title} />
-                        )}
-                        <div className="mb-1 text-sm font-extrabold">{bubble.payload.title}</div>
-                        {bubble.payload.subtitle && <div className="whitespace-pre-line text-xs leading-5 text-calisto-body">{bubble.payload.subtitle}</div>}
-                        {bubble.payload.actions && bubble.payload.actions.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {bubble.payload.actions.map((action) => (
-                              <button key={action.value} className="rounded-full border border-calisto-line bg-calisto-surface px-3 py-2 text-xs font-bold text-calisto-ink transition hover:bg-calisto-surface-muted" type="button" onClick={() => handleChoice(action.value)}>
-                                {action.title}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <span className="text-xs font-semibold text-calisto-soft">
-                  {bubble.direction === 'outbound' ? 'Outbound (AI Assistant)' : 'Inbound'} - {bubble.timestamp}
-                </span>
-              </div>
+              <ChatMessageBubble
+                assistantLabel="Outbound (AI Assistant)"
+                content={bubble.content}
+                customerLabel="Inbound"
+                direction={bubble.direction}
+                key={bubble.id}
+                onPostback={sendMessage}
+                payload={bubble.payload}
+                timestamp={bubble.timestamp}
+                variant="console"
+              />
             ))}
             {loading && (
               <div className="flex flex-col items-end gap-1">
                 <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-blue-600 px-4 py-3 text-calisto-surface shadow-sm">
                   <div className="inline-flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-calisto-surface/90"></span>
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-calisto-surface/90 [animation-delay:150ms]"></span>
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-calisto-surface/90 [animation-delay:300ms]"></span>
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-calisto-surface/90" />
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-calisto-surface/90 [animation-delay:150ms]" />
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-calisto-surface/90 [animation-delay:300ms]" />
                   </div>
                 </div>
-                <span className="text-xs font-semibold text-calisto-soft">Outbound (AI Assistant) - {new Date().toLocaleString('en-MY')}</span>
+                <span className="text-xs font-semibold text-calisto-soft">Outbound (AI Assistant) - {currentStamp()}</span>
               </div>
             )}
           </div>
@@ -234,5 +217,3 @@ export default function WebchatPage() {
     </PageContainer>
   )
 }
-
-
