@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { BookOpen, Boxes, LogOut, MessageSquareText, UsersRound } from 'lucide-react'
-import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
+import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import WebchatPage from './pages/WebchatPage'
 import LeadsPage from './pages/LeadsPage'
 import ProductsPage from './pages/ProductsPage'
@@ -14,12 +14,22 @@ const navItems = [
   { label: 'Leads', to: '/leads', icon: UsersRound },
   { label: 'Products', to: '/products', icon: Boxes },
   { label: 'Knowledge', to: '/knowledge', icon: BookOpen },
-  { label: 'Chatbot', to: '/chatbot', icon: MessageSquareText },
   { label: 'Webchat', to: '/webchat', icon: MessageSquareText },
 ]
 
 export default function App() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const location = useLocation()
+
+  if (location.pathname === '/chatbot') {
+    return (
+      <div className="min-h-screen bg-calisto-canvas text-calisto-ink">
+        <Routes>
+          <Route path="/chatbot" element={<ChatbotPage />} />
+        </Routes>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-calisto-canvas text-calisto-ink">
@@ -58,7 +68,7 @@ export default function App() {
 
       <header className="sticky top-0 z-30 border-b border-calisto-surface/15 bg-calisto-sidebar px-4 py-3 text-calisto-surface lg:hidden">
         <img className="mb-3 h-6 w-auto brightness-0 invert" src={calistoLogo} alt="Calisto" />
-        <nav className="grid grid-cols-5 gap-2">
+        <nav className="grid grid-cols-4 gap-2">
           {navItems.map(({ icon: Icon, label, to }) => (
             <NavLink
               key={to}
@@ -81,7 +91,6 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/leads" replace />} />
           <Route path="/webchat" element={<WebchatPage />} />
-          <Route path="/chatbot" element={<ChatbotPage />} />
           <Route path="/leads" element={<LeadsPage />} />
           <Route path="/leads/:customerId" element={<LeadDetailPage />} />
           <Route path="/products" element={<ProductsPage />} />

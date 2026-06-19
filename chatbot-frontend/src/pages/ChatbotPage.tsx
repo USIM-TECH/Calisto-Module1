@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Bot, Circle, RotateCcw, Send, Sparkles } from 'lucide-react'
+import { Bot, Circle, Send } from 'lucide-react'
 import { postWebchatMessage } from '../api/client'
 import Button from '../components/Button'
 import PageContainer from '../components/PageContainer'
@@ -32,7 +32,7 @@ function messageText(message: OutgoingMessage) {
 }
 
 export default function ChatbotPage() {
-  const [senderId, setSenderId] = useState('website-support-demo')
+  const [senderId] = useState('website-support-demo')
   const [message, setMessage] = useState('')
   const [status, setStatus] = useState<'Ready' | 'Sending' | 'Failed'>('Ready')
   const [messages, setMessages] = useState<ConsoleMessage[]>([
@@ -90,37 +90,15 @@ export default function ChatbotPage() {
     }
   }
 
-  function resetSession() {
-    setMessages([
-      {
-        content: 'Chat ready. Send "hi" to start a live bot conversation.',
-        direction: 'assistant',
-        id: 'welcome',
-        timestamp: currentStamp(),
-      },
-    ])
-    setMessage('')
-    setStatus('Ready')
-    setError(null)
-  }
-
   return (
     <PageContainer>
       <div className="grid min-h-[calc(100vh-4rem)] gap-6 xl:grid-cols-[minmax(300px,0.75fr)_minmax(0,1.45fr)]">
         <aside className="overflow-hidden rounded-3xl border border-calisto-line bg-calisto-surface p-7 shadow-dashboard">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-calisto-sidebar p-2">
-              <img className="h-full w-full object-contain brightness-0 invert" src={calistoLogo} alt="Calisto" />
-            </span>
-            <div>
-              <div className="text-lg font-extrabold text-calisto-ink">Calisto Eyewear</div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-calisto-muted">Internal chatbot console</div>
-            </div>
-          </div>
+          <img className="mx-auto h-10 w-auto brightness-0" src={calistoLogo} alt="Calisto" />
 
           <div className="mt-10">
             <h1 className="max-w-sm text-5xl font-extrabold leading-[1.03] tracking-normal text-calisto-ink">
-              Website support chatbot, ready for testing.
+              Your eyewear assistant, on the website.
             </h1>
             <p className="mt-5 max-w-md text-base font-medium leading-7 text-calisto-muted">
               Validate product discovery, store lookup, bookings, and lead capture flows before customers see them.
@@ -140,14 +118,7 @@ export default function ChatbotPage() {
             ))}
           </div>
 
-          <div className="mt-10 rounded-2xl border border-calisto-line-subtle bg-calisto-table p-4">
-            <div className="text-xs font-extrabold uppercase tracking-wider text-calisto-soft">Session ID</div>
-            <input
-              className="mt-3 h-11 w-full rounded-xl border border-calisto-line bg-calisto-surface px-3 text-sm font-semibold text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus"
-              onChange={(event) => setSenderId(event.target.value)}
-              value={senderId}
-            />
-          </div>
+        
         </aside>
 
         <section className="flex min-h-[720px] flex-col overflow-hidden rounded-3xl border border-calisto-line bg-calisto-surface shadow-dashboard">
@@ -261,12 +232,8 @@ export default function ChatbotPage() {
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-calisto-muted">
                 <span>Your replies here go to <strong>/webchat/message</strong>.</span>
-                <span>{messageCount} message{messageCount === 1 ? '' : 's'} in this session</span>
               </div>
-              <div className="mt-4 flex justify-end gap-3">
-                <Button icon={<RotateCcw className="h-4 w-4" />} onClick={resetSession}>Reset</Button>
-                <Button icon={<Sparkles className="h-4 w-4" />} onClick={() => setMessage('hi')}>Use hi</Button>
-              </div>
+             
             </div>
           </div>
         </section>
