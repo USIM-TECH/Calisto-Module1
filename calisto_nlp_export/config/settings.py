@@ -51,6 +51,8 @@ MANAGED_SLOTS = {
 FORM_INTERRUPTION_INTENTS = {
     "greet",
     "ask_faq",
+    "ask_a_question",
+    "support_and_policies",
     "ask_pricing",
     "select_pricing_category",
     "browse_eyewear",
@@ -67,6 +69,15 @@ FORM_INTERRUPTION_INTENTS = {
     "product_recommendation",
     "inform_budget",
     "email_support",
+    "after_sales_support",
+    "order_tracking",
+    "order_support",
+    "return_request",
+    "refund_request",
+    "exchange_request",
+    "warranty_support",
+    "repair_support",
+    "human_handoff",
 }
 
 # Mapping from intent to general flow name

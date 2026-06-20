@@ -33,6 +33,7 @@ class ActionPrefillLeadCapture(Action):
     ) -> List[Dict[Text, Any]]:
         metadata = latest_metadata(tracker)
         events: List[Dict[Text, Any]] = flow_entry_events(tracker, "lead_capture")
+        events.append(SlotSet("form_interrupted", None))
 
         slot_mappings = {
             "lead_name": metadata.get("senderName"),
@@ -77,6 +78,50 @@ class ActionHandleLeadCaptureInterruption(Action):
         raw_text = tracker.latest_message.get("text") or ""
         support_intent, override_reason, keyword_match = detect_support_intent(tracker)
 
+        # If the form misroutes a clean slot value here, capture it instead of
+        # treating the turn as an interruption. This keeps lead collection
+        # resilient when NLU confidence is low or the form policy loses the turn.
+        normalized_text = normalize_free_text(raw_text)
+        if requested_slot == "lead_name" and is_valid_name(normalize_name(normalized_text)):
+            return [
+                SlotSet("lead_name", normalize_name(normalized_text)),
+                SlotSet("form_interrupted", None),
+            ]
+        if requested_slot == "contact_number" and is_valid_phone(normalized_text):
+            return [
+                SlotSet("contact_number", normalize_phone(normalized_text)),
+                SlotSet("form_interrupted", None),
+            ]
+        if requested_slot == "email" and is_valid_email(normalized_text):
+            return [
+                SlotSet("email", normalize_email(normalized_text)),
+                SlotSet("form_interrupted", None),
+            ]
+        if requested_slot == "lead_location":
+            resolved_city = resolve_city(normalized_text)
+            if resolved_city:
+                return [
+                    SlotSet("lead_location", resolved_city),
+                    SlotSet("form_interrupted", None),
+                ]
+            if is_valid_location(normalized_text) and is_probable_location(normalized_text):
+                return [
+                    SlotSet("lead_location", normalized_text),
+                    SlotSet("form_interrupted", None),
+                ]
+        if requested_slot == "preferred_service" and is_valid_service(normalized_text):
+            return [
+                SlotSet("preferred_service", normalize_free_text(raw_text)),
+                SlotSet("form_interrupted", None),
+            ]
+        if requested_slot == "purchase_timeline":
+            normalized_timeline = normalize_timeline(normalized_text)
+            if normalized_timeline:
+                return [
+                    SlotSet("purchase_timeline", normalized_timeline),
+                    SlotSet("form_interrupted", None),
+                ]
+
         switch = detect_domain_switch(tracker, intent_name, raw_text, support_intent)
         should_interrupt = bool(
             switch["detected"]
@@ -102,11 +147,13 @@ class ActionHandleLeadCaptureInterruption(Action):
                 "cleared_slots": cleared_slots,
             })
             events.extend(reset_events)
+            events.append(SlotSet("form_interrupted", True))
         else:
             events.extend([
                 SlotSet("requested_slot", None),
                 ActiveLoop(None),
                 SlotSet("current_flow", resolve_interruption_flow(tracker, intent_name)),
+                SlotSet("form_interrupted", True),
             ])
 
         if support_intent:
@@ -118,6 +165,13 @@ class ActionHandleLeadCaptureInterruption(Action):
                 "final_route": "support_flow",
             })
             events.extend(route_support_flow(dispatcher, tracker, support_intent))
+            return events
+
+        if switch["detected"] and switch["new_domain"] == "shopping":
+            events.append(FollowupAction("action_reset_eyewear_slots"))
+            return events
+        if switch["detected"] and switch["new_domain"] == "lens":
+            events.extend(ActionExplainLens().run(dispatcher, tracker, domain))
             return events
 
         if intent_name == "browse_eyewear":
@@ -159,12 +213,6 @@ class ActionHandleLeadCaptureInterruption(Action):
         elif intent_name == "email_support":
             dispatcher.utter_message(response="utter_email_support")
         else:
-            if switch["detected"] and switch["new_domain"] == "shopping":
-                events.extend(ActionSmartSearch().run(dispatcher, tracker, domain))
-                return events
-            if switch["detected"] and switch["new_domain"] == "lens":
-                events.extend(ActionExplainLens().run(dispatcher, tracker, domain))
-                return events
             if requested_slot:
                 dispatcher.utter_message(response=f"utter_ask_{requested_slot}")
             return []
@@ -335,6 +383,3 @@ class ActionQualifyLead(Action):
             status = "needs_review"
 
         return [SlotSet("lead_status", status)]
-
-
-

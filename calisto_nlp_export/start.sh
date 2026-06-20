@@ -113,8 +113,7 @@ start_rasa_server() {
     --cors "*" \
     --endpoints endpoints.yml \
     --credentials credentials.yml \
-    --port 5005 \
-    --num-threads 4 &
+    --port 5005 &
   RASA_PID=$!
   echo "   Rasa server PID: $RASA_PID"
 }

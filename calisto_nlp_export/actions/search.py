@@ -2,6 +2,7 @@ import logging
 from typing import Any, Dict, List, Text, Optional
 import re
 import json
+import time
 import pandas as pd
 from functools import lru_cache
 from rasa_sdk import Action, Tracker
@@ -21,6 +22,45 @@ from search.filters import _lens_feature_match, _yes_no_match
 
 logger = logging.getLogger(__name__)
 
+_RECENT_SEARCH_SIGNATURES: Dict[str, float] = {}
+_RECENT_SEARCH_WINDOW_SECONDS = 1.5
+
+
+def _search_signature(tracker: Tracker, raw_text: str, intent_name: str) -> str:
+    sender_id = str(getattr(tracker, "sender_id", "") or "").strip()
+    normalized_text = normalize_search_text(raw_text)
+    # Keep this keyed to the turn content, not flow state, so a single user
+    # message cannot re-enter search if the interruption path flips flows.
+    return "|".join([sender_id, intent_name, normalized_text])
+
+
+def _is_recent_search(signature: str) -> bool:
+    now = time.monotonic()
+    expired = [key for key, ts in _RECENT_SEARCH_SIGNATURES.items() if now - ts > _RECENT_SEARCH_WINDOW_SECONDS]
+    for key in expired:
+        _RECENT_SEARCH_SIGNATURES.pop(key, None)
+
+    last_seen = _RECENT_SEARCH_SIGNATURES.get(signature)
+    if last_seen is None:
+        _RECENT_SEARCH_SIGNATURES[signature] = now
+        return False
+
+    if now - last_seen <= _RECENT_SEARCH_WINDOW_SECONDS:
+        return True
+
+    _RECENT_SEARCH_SIGNATURES[signature] = now
+    return False
+
+
+def _tracker_recent_search_signature(tracker: Tracker) -> tuple[str, float]:
+    signature = str(tracker.get_slot("last_product_search_signature") or "").strip()
+    ts_raw = tracker.get_slot("last_product_search_ts")
+    try:
+        ts = float(ts_raw) if ts_raw not in (None, "") else 0.0
+    except (TypeError, ValueError):
+        ts = 0.0
+    return signature, ts
+
 class ActionSmartSearch(Action):
     def name(self) -> Text:
         return "action_smart_search"
@@ -35,6 +75,22 @@ class ActionSmartSearch(Action):
         intent = get_latest_intent(tracker)
         intent_name = intent.get("name") if intent else ""
         support_intent, override_reason, keyword_match = detect_support_intent(tracker)
+
+        signature = _search_signature(tracker, raw_text, intent_name)
+        tracker_signature, tracker_ts = _tracker_recent_search_signature(tracker)
+        now = time.time()
+        if not support_intent and (
+            _is_recent_search(signature)
+            or (tracker_signature == signature and now - tracker_ts <= _RECENT_SEARCH_WINDOW_SECONDS)
+        ):
+            logger.info(
+                "Skipping duplicate product search for sender=%s flow=%s intent=%s query=%s",
+                str(getattr(tracker, "sender_id", "") or "")[:8],
+                str(tracker.get_slot("current_flow") or "").strip(),
+                intent_name,
+                raw_text,
+            )
+            return []
         
         if support_intent:
             switch = detect_domain_switch(tracker, intent_name, raw_text, support_intent)
@@ -66,6 +122,9 @@ class ActionSmartSearch(Action):
 
         search_events, success = search_products_engine(raw_text, tracker, lang, intent_name, dispatcher)
         events.extend(search_events)
+        if search_events:
+            events.append(SlotSet("last_product_search_signature", signature))
+            events.append(SlotSet("last_product_search_ts", f"{now:.6f}"))
         if not success:
             events.append(FollowupAction("action_listen"))
 
@@ -827,6 +886,7 @@ def search_products_engine(
             required_validation.pop(relaxed, None)
 
     emitted_count = 0
+    seen_cards: set[str] = set()
     for _, row in top_results.iterrows():
         p_price = pd.to_numeric(row.get("price_myr"), errors="coerce")
         if pd.isna(p_price):
@@ -839,6 +899,16 @@ def search_products_engine(
             continue
         # Add channel information to the product dict for platform-aware image selection
         product_dict = row.to_dict()
+        card_key = "|".join([
+            str(product_dict.get("product_id") or "").strip().lower(),
+            str(product_dict.get("brand") or "").strip().lower(),
+            str(product_dict.get("product_name") or "").strip().lower(),
+            str(product_dict.get("store_location") or "").strip().lower(),
+            str(product_dict.get("city") or "").strip().lower(),
+        ])
+        if card_key in seen_cards:
+            continue
+        seen_cards.add(card_key)
         metadata = latest_metadata(tracker)
         product_dict["_channel"] = str(metadata.get("channel") or "").lower()
         emit_product_card(dispatcher, product_dict, str(ranking_type) if ranking_type else "", lang)
@@ -902,5 +972,3 @@ def search_products_engine(
         events.append(SlotSet("price_range", None))
 
     return events, True
-
-

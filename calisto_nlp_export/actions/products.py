@@ -193,8 +193,8 @@ class ActionAskBrand(Action):
         is_free_text_query = not raw_text.startswith("/")
         print(f"DEBUG ActionAskBrand: raw_text='{raw_text}', is_free_text_query={is_free_text_query}")
         if is_free_text_query:
-            print("DEBUG ActionAskBrand: Returning FollowupAction('action_filter_products')")
-            return [FollowupAction("action_filter_products")]
+            print("DEBUG ActionAskBrand: Returning ActionSmartSearch() directly")
+            return ActionSmartSearch().run(dispatcher, tracker, domain)
 
         events = flow_entry_events(tracker, "browse_eyewear")
         lang = get_language(tracker)
@@ -241,7 +241,7 @@ class ActionAskBudgetRange(Action):
         
         # If user typed a free text query (not button click), filter immediately
         if is_free_text_query:
-            return [FollowupAction("action_filter_products")]
+            return ActionSmartSearch().run(dispatcher, tracker, domain)
 
         # For button clicks, just ask for budget and wait for user selection
         dispatcher.utter_message(response="utter_ask_budget_range")
@@ -299,8 +299,8 @@ class ActionResetEyewearSlots(Action):
         is_free_text_query = not raw_text.startswith("/")
         print(f"DEBUG ActionResetEyewearSlots: raw_text='{raw_text}', is_free_text_query={is_free_text_query}")
         if is_free_text_query:
-            print("DEBUG ActionResetEyewearSlots: Returning FollowupAction('action_filter_products')")
-            return [FollowupAction("action_filter_products")]
+            print("DEBUG ActionResetEyewearSlots: Returning ActionSmartSearch() directly")
+            return ActionSmartSearch().run(dispatcher, tracker, domain)
 
         intent = get_latest_intent(tracker)
         events: List[Dict[Text, Any]] = []
@@ -393,6 +393,4 @@ class ActionShowPricing(Action):
         text = "\n\n".join([pricing_info["headline"], *pricing_info["lines"], pricing_info["note"]])
         dispatcher.utter_message(text=text, buttons=pricing_info["buttons"])
         return events
-
-
 

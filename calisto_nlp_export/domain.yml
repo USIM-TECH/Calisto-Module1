@@ -319,6 +319,16 @@ slots:
     influence_conversation: true
     mappings:
       - type: custom
+  last_product_search_signature:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: custom
+  last_product_search_ts:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: custom
   support_case_type:
     type: text
     influence_conversation: false
@@ -334,10 +344,16 @@ slots:
     influence_conversation: false
     mappings:
       - type: custom
+  form_interrupted:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: custom
 
 forms:
   lead_capture_form:
     ignored_intents:
+      - greet
       - ask_faq
       - ask_pricing
       - select_pricing_category
@@ -352,12 +368,17 @@ forms:
       - choose_city
       - search_product
       - search_product_by_attribute
+      - support_and_policies
+      - ask_a_question
       - order_support
       - repair_support
       - warranty_support
       - exchange_request
       - refund_request
       - return_request
+      - after_sales_support
+      - order_tracking
+      - human_handoff
       - product_recommendation
       - inform_budget
     required_slots:

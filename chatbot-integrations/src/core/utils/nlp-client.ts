@@ -180,6 +180,50 @@ function hasShoppingSignal(text: string, hasBudget: boolean): boolean {
   return SHOPPING_SIGNAL_KEYWORDS.some((keyword) => normalized.includes(keyword))
 }
 
+function buildLeadFormPrompt(requestedSlot: string | undefined, preferredLanguage: string | undefined): string {
+  const lang = (preferredLanguage || '').toLowerCase()
+  switch (requestedSlot) {
+    case 'lead_name':
+      return lang === 'ms'
+        ? 'Boleh saya tahu nama anda dahulu?'
+        : lang === 'zh'
+          ? '可以先告诉我您的名字吗？'
+          : 'First, may I have your name?'
+    case 'contact_number':
+      return lang === 'ms'
+        ? 'Apakah nombor WhatsApp atau telefon terbaik untuk pasukan kami hubungi anda?'
+        : lang === 'zh'
+          ? '请问您的 WhatsApp 或联系电话是什么，方便团队联系您？'
+          : 'What is the best WhatsApp or phone number for our team to reach you on?'
+    case 'email':
+      return lang === 'ms'
+        ? 'Apakah alamat e-mel yang patut kami gunakan untuk sebut harga atau susulan?'
+        : lang === 'zh'
+          ? '请问我们应该使用哪个邮箱给您发送报价或后续联系？'
+          : 'What email address should we use for quotations or follow-up?'
+    case 'lead_location':
+      return lang === 'ms'
+        ? 'Anda berada di kawasan atau bandar mana supaya kami boleh arahkan anda ke pasukan atau kedai yang betul?'
+        : lang === 'zh'
+          ? '请问您所在的区域或城市是哪里？这样我们可以安排合适的团队或门店跟进您。'
+          : 'Which area or city are you located in, so we can route you to the right team or store?'
+    case 'preferred_service':
+      return lang === 'ms'
+        ? 'Apakah yang paling anda minati hari ini?'
+        : lang === 'zh'
+          ? '您今天主要想了解什么？'
+          : 'What are you mainly interested in today?'
+    case 'purchase_timeline':
+      return lang === 'ms'
+        ? 'Anda merancang untuk membuat keputusan atau melawat kedai dalam tempoh bila?'
+        : lang === 'zh'
+          ? '您打算多久内做决定或到门店看看？'
+          : 'When are you planning to decide or visit a store?'
+    default:
+      return ''
+  }
+}
+
 // Deterministic attribute maps — values must match CSV column values exactly (lowercase).
 const SHAPE_MAP: Record<string, string> = {
   'round': 'round', 'circular': 'round',
@@ -447,6 +491,16 @@ export class NLPClient {
           // properly structured intent payload so Rasa fills the slot correctly.
           const requestedSlot = preTracker?.slots?.requested_slot
           if (
+            requestedSlot === 'lead_name'
+            && isValidLeadName(safeMessage)
+          ) {
+            const normalizedName = safeMessage.replace(/\s+/g, ' ').trim()
+            rasaMessage = `/share_name{"lead_name":"${normalizedName.replace(/"/g, '\\"')}"}`
+            this._logger.debug(
+              `[NLU] Converted bare name input to intent payload for form slot: ${rasaMessage}`,
+            )
+          }
+          if (
             requestedSlot === 'contact_number'
             && /^\+?[\d\s\-\(\)]{8,20}$/.test(safeMessage)
           ) {
@@ -524,9 +578,24 @@ export class NLPClient {
 
         // An empty response during an active form is a known Rasa behaviour:
         // the form accepted the slot value and is silently advancing to the
-        // next slot.  Returning the generic fallback here confuses the user
-        // with a spurious "sorry, something went wrong" message.
+        // next slot.  If we know which slot is being requested, surface the
+        // next prompt instead of returning silence.
         if (isInsideForm && postTracker?.activeLoop) {
+          const requestedSlot = typeof postTracker.slots?.requested_slot === 'string'
+            ? postTracker.slots.requested_slot
+            : undefined
+          const prompt = buildLeadFormPrompt(requestedSlot, preferredLanguage)
+          if (prompt) {
+            this._logger.debug(
+              `[NLP] Rasa returned empty response during active form — synthesizing prompt for ${requestedSlot}`,
+            )
+            return {
+              text: prompt,
+              raw: [{ text: prompt }],
+              tracker: postTracker,
+              llm: llmResult ? this._serializeLlm(llmResult, rasaMessage) : undefined,
+            }
+          }
           this._logger.debug(
             '[NLP] Rasa returned empty response during active form — suppressing fallback (slot transition)',
           )
@@ -660,6 +729,31 @@ export class NLPClient {
       payload,
     }
   }
+}
+
+function isValidLeadName(value: string): boolean {
+  const normalized = String(value || '').trim()
+  if (!normalized) return false
+  if (normalized.length < 2 || normalized.length > 60) return false
+  if (/[@\d?!]/.test(normalized)) return false
+  const lowered = normalized.toLowerCase()
+  const disallowed = [
+    'hi',
+    'hello',
+    'hey',
+    'glasses',
+    'frames',
+    'sunglasses',
+    'lenses',
+    'price',
+    'pricing',
+    'store',
+    'appointment',
+  ]
+  if (disallowed.some((token) => lowered === token || lowered.includes(` ${token}`) || lowered.startsWith(`${token} `))) {
+    return false
+  }
+  return /^[A-Za-z][A-Za-z .'\-]{1,59}$/.test(normalized)
 }
 
 function truncateForLog(value: string): string {

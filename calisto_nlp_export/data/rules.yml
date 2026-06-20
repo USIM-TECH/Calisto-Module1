@@ -358,6 +358,78 @@ rules:
       - action: action_set_language
       - action: action_handle_lead_capture_interruption
 
+  - rule: Interrupt lead capture for return support
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: return_request
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for refund support
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: refund_request
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for exchange support
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: exchange_request
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for warranty support
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: warranty_support
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for repair support
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: repair_support
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for order support
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: order_support
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for after-sales support
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: after_sales_support
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for order tracking
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: order_tracking
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
+  - rule: Interrupt lead capture for human handoff
+    condition:
+      - active_loop: lead_capture_form
+    steps:
+      - intent: human_handoff
+      - action: action_set_language
+      - action: action_handle_lead_capture_interruption
+
   - rule: Support actions menu
     steps:
       - intent: support_actions

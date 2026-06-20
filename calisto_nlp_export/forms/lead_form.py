@@ -32,7 +32,7 @@ class ValidateLeadCaptureForm(FormValidationAction):
     def name(self) -> Text:
         return "validate_lead_capture_form"
 
-    def required_slots(self, tracker: Tracker) -> list:
+    async def required_slots(self, domain_slots, dispatcher, tracker, domain):
         """Return required slots based on flow type.
         
         For support flows, only require name and phone.
@@ -66,6 +66,7 @@ class ValidateLeadCaptureForm(FormValidationAction):
                 slot_name: None,
                 "requested_slot": None,
                 "current_flow": resolve_interruption_flow(tracker, intent["name"]),
+                "form_interrupted": True,
             }
 
         # Count how many times bot has asked for this slot (search full history)
