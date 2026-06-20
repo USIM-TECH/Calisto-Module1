@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
+import { Mail, MapPin, Paperclip, Pencil, Phone, Plus, Send, Smile, X } from 'lucide-react'
 import { getLeadDetail } from '../api/client'
-import Button from '../components/Button'
 import PageContainer from '../components/PageContainer'
-import Topbar from '../components/Topbar'
 import type { ConversationMessageRecord, LeadDetailResponse } from '../types'
 
 function formatDate(value: string) {
@@ -18,17 +17,39 @@ function formatDate(value: string) {
   })
 }
 
+function formatTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleTimeString('en-MY', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 function customerName(detail: LeadDetailResponse | null) {
   if (!detail) return 'Customer detail'
   const { customer, identities } = detail
   return customer.leadName ?? identities.find((identity) => identity.senderName)?.senderName ?? customer.email ?? customer.phone ?? 'Unknown'
 }
 
+function customerInitials(detail: LeadDetailResponse | null) {
+  return customerName(detail)
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || '?'
+}
+
 function statusTone(status: string) {
-  if (status === 'qualified' || status === 'synced') return 'bg-emerald-50 text-emerald-700'
-  if (status === 'failed' || status === 'unqualified') return 'bg-rose-50 text-rose-700'
-  if (status === 'needs_review') return 'bg-amber-50 text-amber-700'
+  if (status === 'qualified' || status === 'synced') return 'bg-calisto-accent/10 text-calisto-accent'
+  if (status === 'failed' || status === 'unqualified') return 'bg-calisto-table text-calisto-body'
+  if (status === 'needs_review') return 'bg-calisto-accent/10 text-calisto-accent'
   return 'bg-calisto-table text-calisto-body'
+}
+
+function statusLabel(status: string) {
+  return status.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
 function channelLabel(channel: string) {
@@ -43,18 +64,6 @@ function channelLabel(channel: string) {
   }
 }
 
-function channelDot(channel: string) {
-  switch (channel) {
-    case 'whatsapp': return 'wa'
-    case 'instagram': return 'ig'
-    case 'messenger': return 'ms'
-    case 'telegram': return 'tg'
-    case 'website': return 'web'
-    case 'x': return 'x'
-    default: return 'id'
-  }
-}
-
 function WhatsAppIcon({ className = 'h-4 w-4' }: { className?: string }) {
   return (
     <svg aria-hidden="true" className={className} fill="currentColor" viewBox="0 0 24 24">
@@ -63,21 +72,19 @@ function WhatsAppIcon({ className = 'h-4 w-4' }: { className?: string }) {
   )
 }
 
-function renderTranscriptMessage(message: ConversationMessageRecord) {
+function renderChatMessage(message: ConversationMessageRecord) {
   const isOutbound = message.direction === 'outbound'
-  const wrapperClass = isOutbound ? 'items-end' : 'items-start'
   const bubbleClass = isOutbound
-    ? 'rounded-tr-md bg-calisto-accent text-calisto-surface shadow-[0_8px_18px_rgba(211,98,25,0.18)]'
-    : 'rounded-tl-md border border-calisto-line bg-calisto-surface text-calisto-ink shadow-sm'
-  const label = isOutbound ? 'Outbound (AI Assistant)' : 'Inbound'
+    ? 'ml-auto rounded-br-md bg-calisto-surface text-calisto-ink shadow-sm'
+    : 'mr-auto rounded-bl-md bg-calisto-sidebar text-calisto-surface shadow-sm'
 
   return (
-    <div key={message.messageId} className={`flex flex-col gap-1.5 ${wrapperClass}`}>
-      <div className={`max-w-[82%] whitespace-pre-wrap rounded-[20px] px-4 py-3 text-sm font-medium leading-6 ${bubbleClass}`}>
+    <div key={message.messageId} className={`flex flex-col ${isOutbound ? 'items-end' : 'items-start'}`}>
+      <div className={`max-w-[78%] whitespace-pre-wrap rounded-xl px-4 py-3 text-[0.86rem] font-medium leading-6 ${bubbleClass}`}>
         {message.text ?? `[${message.messageType}]`}
       </div>
-      <div className="px-1 text-[11px] font-semibold leading-none text-calisto-muted">
-        {label} - {formatDate(message.timestamp)}
+      <div className="mt-1.5 px-1 text-[10px] font-semibold text-calisto-muted">
+        {formatTime(message.timestamp)}
       </div>
     </div>
   )
@@ -88,6 +95,16 @@ export default function LeadDetailPage() {
   const [data, setData] = useState<LeadDetailResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [extraTags, setExtraTags] = useState<string[]>([])
+  const [isAddingTag, setIsAddingTag] = useState(false)
+  const [newTag, setNewTag] = useState('')
+  const [isEditingLead, setIsEditingLead] = useState(false)
+  const [leadDraft, setLeadDraft] = useState({
+    email: '',
+    leadName: '',
+    location: '',
+    phone: '',
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -121,21 +138,34 @@ export default function LeadDetailPage() {
     }
   }, [customerId])
 
-  const interestsByKind = useMemo(() => {
-    const map = new Map<string, LeadDetailResponse['interests']>()
-    if (!data) return map
-    for (const interest of data.interests) {
-      const list = map.get(interest.kind) ?? []
-      list.push(interest)
-      map.set(interest.kind, list)
-    }
-    return map
+  useEffect(() => {
+    setExtraTags([])
+    setIsAddingTag(false)
+    setNewTag('')
+    setIsEditingLead(false)
+  }, [customerId])
+
+  const tags = useMemo(() => {
+    if (!data) return []
+    return Array.from(new Set([
+      data.customer.preferredService,
+      data.customer.lastIntent,
+      ...data.interests.map((interest) => interest.value),
+      ...extraTags,
+    ].filter(Boolean))).slice(0, 10)
+  }, [data, extraTags])
+
+  const notes = useMemo(() => {
+    if (!data) return []
+    return data.transcript
+      .filter((message) => message.text)
+      .slice(-3)
+      .reverse()
   }, [data])
 
   if (loading) {
     return (
       <PageContainer>
-        <Topbar title="Lead detail" />
         <div className="rounded-2xl border border-calisto-line-subtle bg-calisto-surface p-8 text-sm font-medium text-calisto-muted shadow-sm">
           Loading lead details...
         </div>
@@ -146,8 +176,7 @@ export default function LeadDetailPage() {
   if (loadError) {
     return (
       <PageContainer>
-        <Topbar title="Lead detail" />
-        <div className="rounded-2xl border border-rose-100 bg-calisto-surface p-5 text-sm font-medium text-rose-700 shadow-sm">
+        <div className="rounded-2xl border border-calisto-line-subtle bg-calisto-surface p-5 text-sm font-medium text-calisto-body shadow-sm">
           {loadError}
         </div>
       </PageContainer>
@@ -157,7 +186,6 @@ export default function LeadDetailPage() {
   if (!data) {
     return (
       <PageContainer>
-        <Topbar title="Lead detail" />
         <div className="rounded-2xl border border-calisto-line-subtle bg-calisto-surface p-8 text-sm font-medium text-calisto-muted shadow-sm">
           Customer not found.
         </div>
@@ -165,212 +193,304 @@ export default function LeadDetailPage() {
     )
   }
 
-  const { customer, identities, transcript, crm } = data
+  const { customer, identities, transcript } = data
+  const primaryIdentity = identities[0]
+  const titleChannel = primaryIdentity ? channelLabel(primaryIdentity.channel) : 'Lead'
+
+  function openLeadEdit() {
+    setLeadDraft({
+      email: customer.email ?? '',
+      leadName: customer.leadName ?? customerName(data),
+      location: customer.location ?? '',
+      phone: customer.phone ?? '',
+    })
+    setIsEditingLead(true)
+  }
+
+  function saveLeadEdit() {
+    setData((current) => {
+      if (!current) return current
+      return {
+        ...current,
+        customer: {
+          ...current.customer,
+          email: leadDraft.email.trim() || undefined,
+          leadName: leadDraft.leadName.trim() || undefined,
+          location: leadDraft.location.trim() || undefined,
+          phone: leadDraft.phone.trim() || undefined,
+        },
+      }
+    })
+    setIsEditingLead(false)
+  }
+
+  function saveTag() {
+    const value = newTag.trim()
+    if (!value) {
+      setIsAddingTag(false)
+      setNewTag('')
+      return
+    }
+
+    setExtraTags((current) => (
+      current.some((tag) => tag.toLowerCase() === value.toLowerCase()) ? current : [...current, value]
+    ))
+    setNewTag('')
+    setIsAddingTag(false)
+  }
 
   return (
     <PageContainer>
-      <Topbar
-        title="Lead detail"
-        actions={(
-          <>
-            <Link to="/leads" className="inline-flex items-center text-sm font-semibold text-calisto-muted">
-              Back to Leads
-            </Link>
-            <Button className="ml-3" variant="secondary">Share</Button>
-            <Button className="ml-2" variant="secondary">Notify</Button>
-          </>
-        )}
-      />
-
-      <section className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          <h2 className="m-0 text-3xl font-extrabold leading-none tracking-normal text-calisto-ink">{customerName(data)}</h2>
-          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wider ${statusTone(customer.qualificationStatus)}`}>
-            {customer.qualificationStatus}
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="primary">Push to CRM</Button>
-          <Button>Actions</Button>
-        </div>
-      </section>
-
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(420px,1fr)] 2xl:grid-cols-[minmax(0,1.15fr)_minmax(480px,1fr)]">
-        <div className="grid gap-5">
-          <section className="overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
-            <div className="flex items-center justify-between gap-4 border-b border-calisto-line bg-calisto-surface px-5 py-4">
-              <h3 className="text-base font-extrabold text-calisto-ink">Customer Overview</h3>
-              <a href="#" className="text-sm font-semibold text-calisto-accent">Edit Info</a>
-            </div>
-
-            <div className="grid gap-x-5 gap-y-4 p-5 sm:grid-cols-2">
-              <div>
-                <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Customer ID</div>
-                <div className="break-words font-mono text-[0.82rem] font-semibold text-calisto-body">{customer.id}</div>
-              </div>
-
-              <div>
-                <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Channels</div>
-                <div className="flex flex-wrap gap-2">
-                  {identities.length > 0 ? identities.map((identity) => (
-                    <span
-                      key={identity.id}
-                      className="inline-flex max-w-full items-center gap-2 rounded-full border border-calisto-line bg-calisto-table py-1 pl-1 pr-3 text-xs font-bold text-calisto-body"
-                      title={`${channelLabel(identity.channel)} ${identity.sourceId}`}
-                    >
-                      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-[10px] font-extrabold uppercase text-cyan-700">
-                        {identity.channel === 'whatsapp' ? <WhatsAppIcon className="h-3.5 w-3.5 text-emerald-700" /> : channelDot(identity.channel)}
-                      </span>
-                      <span className="truncate">{identity.username ? `@${identity.username}` : identity.sourceId}</span>
-                    </span>
-                  )) : <div className="text-sm italic text-calisto-soft">No channel identities</div>}
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Latest Interest</div>
-                <div className={`break-words text-sm font-semibold ${customer.preferredService ? 'text-calisto-body' : 'italic text-calisto-soft'}`}>
-                  {customer.preferredService ?? 'Not captured'}
-                </div>
-              </div>
-              <div>
-                <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">First Seen</div>
-                <div className="break-words text-sm font-semibold text-calisto-body">{formatDate(customer.firstSeenAt)}</div>
-              </div>
-              <div>
-                <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Location</div>
-                <div className={`break-words text-sm font-semibold ${customer.location ? 'text-calisto-body' : 'italic text-calisto-soft'}`}>
-                  {customer.location ?? 'Not provided'}
-                </div>
-              </div>
-              <div>
-                <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Email</div>
-                <div className={`break-words text-sm font-semibold ${customer.email ? 'text-calisto-body' : 'italic text-calisto-soft'}`}>
-                  {customer.email ?? 'Not provided'}
-                </div>
-              </div>
-              <div className="sm:col-span-2">
-                <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Phone</div>
-                <div className={`break-words text-sm font-semibold ${customer.phone ? 'text-calisto-body' : 'italic text-calisto-soft'}`}>
-                  {customer.phone ?? 'Not provided'}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
-            <div className="flex items-center justify-between gap-4 border-b border-calisto-line bg-calisto-surface px-5 py-4">
-              <h3 className="text-base font-extrabold text-calisto-ink">Captured Interests</h3>
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">
-                {data.interests.length} entries
+      <div className="grid h-auto min-h-0 gap-5 xl:h-[calc(100dvh-6rem)] xl:min-h-[620px] xl:overflow-hidden xl:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="grid min-h-0 auto-rows-max content-start gap-4 overflow-visible pb-4 pr-1 xl:h-full xl:max-h-full xl:overflow-y-auto xl:overscroll-contain xl:pb-8">
+          <section className="overflow-hidden rounded-2xl border border-calisto-line-subtle bg-calisto-surface shadow-sm">
+            <div className="flex items-start gap-4 border-b border-calisto-line-subtle px-5 py-5">
+              <span className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-calisto-accent text-sm font-extrabold text-calisto-surface">
+                {customerInitials(data)}
               </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-3">
+                  <h1 className="truncate text-xl font-semibold text-calisto-ink">{customerName(data)}</h1>
+                  <button
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-calisto-accent transition hover:bg-calisto-accent/10"
+                    onClick={openLeadEdit}
+                    title="Edit lead"
+                    type="button"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                </div>
+                <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wide ${statusTone(customer.qualificationStatus)}`}>
+                  {statusLabel(customer.qualificationStatus)}
+                </span>
+              </div>
             </div>
 
-            <div className="p-5">
-              {data.interests.length === 0 ? (
-                <div className="text-sm italic text-calisto-soft">No interests captured yet.</div>
-              ) : (
-                <div className="space-y-3.5">
-                  {Array.from(interestsByKind.entries()).map(([kind, items]) => (
-                    <div key={kind}>
-                      <div className="mb-2 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">{kind.replace(/_/g, ' ')}</div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {items.map((item) => (
-                          <span
-                            key={item.id}
-                            className="inline-flex max-w-full items-center rounded-full border border-calisto-accent/30 bg-calisto-accent/10 px-3 py-1.5 text-xs font-extrabold text-calisto-accent shadow-sm"
-                            title={formatDate(item.capturedAt)}
-                          >
-                            <span className="truncate">{item.value}</span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+            <div className="border-b border-calisto-line-subtle px-5 py-5">
+              <div className="mb-4 text-[11px] font-extrabold uppercase tracking-wider text-calisto-ink">Contact Info</div>
+              <div className="grid gap-3 text-sm font-medium text-calisto-body">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Mail className="h-4 w-4 shrink-0 text-calisto-accent" />
+                  <span className="truncate">{customer.email ?? 'Email not provided'}</span>
                 </div>
-              )}
-            </div>
-          </section>
-
-          <section className="overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
-            <div className="flex items-center justify-between gap-4 border-b border-calisto-line bg-calisto-surface px-5 py-4">
-              <h3 className="text-base font-extrabold text-calisto-ink">CRM Integration</h3>
-            </div>
-
-            <div className="p-5">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <div className="rounded-xl border border-calisto-line-subtle bg-calisto-table/70 px-3 py-2.5">
-                    <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">CRM Status</div>
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wider ${statusTone(crm.status)}`}>
-                      {crm.status}
-                    </span>
-                  </div>
+                <div className="flex min-w-0 items-center gap-3">
+                  <Phone className="h-4 w-4 shrink-0 text-calisto-accent" />
+                  <span className="truncate">{customer.phone ?? primaryIdentity?.sourceId ?? 'Phone not provided'}</span>
                 </div>
-                <div className="rounded-xl border border-calisto-line-subtle bg-calisto-table/70 px-3 py-2.5">
-                  <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">CRM Record</div>
-                  <div className={`break-words text-sm font-semibold ${crm.recordId ? 'text-calisto-body' : 'italic text-calisto-soft'}`}>
-                    {crm.recordId ?? 'No match found'}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-calisto-line-subtle bg-calisto-table/70 px-3 py-2.5">
-                  <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Last Intent</div>
-                  <div className={`break-words text-sm font-semibold ${customer.lastIntent ? 'text-calisto-body' : 'italic text-calisto-soft'}`}>
-                    {customer.lastIntent ?? 'Not captured'}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-calisto-line-subtle bg-calisto-table/70 px-3 py-2.5">
-                  <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">Last Activity</div>
-                  <div className="break-words text-sm font-semibold text-calisto-body">{formatDate(customer.lastMessageAt)}</div>
+                <div className="flex min-w-0 items-center gap-3">
+                  <MapPin className="h-4 w-4 shrink-0 text-calisto-accent" />
+                  <span className="truncate">{customer.location ?? 'Location not provided'}</span>
                 </div>
               </div>
+            </div>
 
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Button variant="primary">Push to CRM</Button>
-                <Button>Mark Invalid</Button>
-                {customer.email && (
-                  <a
-                    className="inline-flex h-10 items-center rounded-xl border border-calisto-line bg-calisto-surface px-4 text-sm font-semibold text-calisto-ink transition hover:bg-calisto-surface-muted"
-                    href={`mailto:${customer.email}`}
+            <div className="px-5 py-5">
+              <div className="mb-4 text-[11px] font-extrabold uppercase tracking-wider text-calisto-ink">Tags</div>
+              <div className="flex flex-wrap gap-2">
+                {tags.length > 0 ? tags.map((tag) => (
+                  <span
+                    className="inline-flex max-w-full items-center rounded-md border border-calisto-line bg-calisto-table px-2.5 py-1 text-[10px] font-extrabold text-calisto-body"
+                    key={tag}
                   >
-                    Send Email
-                  </a>
+                    <span className="truncate">{tag}</span>
+                  </span>
+                )) : (
+                  <span className="text-xs font-semibold text-calisto-soft">No tags captured</span>
+                )}
+                {isAddingTag ? (
+                  <form
+                    className="flex max-w-full items-center gap-1"
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      saveTag()
+                    }}
+                  >
+                    <input
+                      autoFocus
+                      className="h-7 w-28 rounded-md border border-calisto-line bg-calisto-surface px-2 text-[11px] font-semibold text-calisto-body outline-none placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:ring-2 focus:ring-calisto-focus"
+                      onChange={(event) => setNewTag(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape') {
+                          setIsAddingTag(false)
+                          setNewTag('')
+                        }
+                      }}
+                      placeholder="New tag"
+                      value={newTag}
+                    />
+                    <button className="inline-flex h-7 items-center rounded-md bg-calisto-sidebar px-2 text-[10px] font-extrabold text-calisto-surface transition hover:bg-calisto-sidebarActive" type="submit">
+                      Add
+                    </button>
+                  </form>
+                ) : (
+                  <button className="inline-flex items-center gap-1 rounded-md border border-calisto-line bg-calisto-surface px-2.5 py-1 text-[10px] font-extrabold text-calisto-body transition hover:bg-calisto-surface-muted" onClick={() => setIsAddingTag(true)} type="button">
+                    <Plus className="h-3 w-3" />
+                    Add Tag
+                  </button>
                 )}
               </div>
             </div>
           </section>
-        </div>
 
-        <aside>
-          <section className="flex min-h-[760px] overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard xl:sticky xl:top-6 xl:h-[calc(100vh-170px)]">
-            <div className="flex min-h-0 w-full flex-col">
-              <div className="flex items-center justify-between gap-4 border-b border-calisto-line bg-calisto-surface px-5 py-4">
-                <h3 className="text-base font-extrabold text-calisto-ink">Recent Transcript</h3>
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-calisto-soft">
-                  {transcript.length} messages
-                </span>
-              </div>
-
-              {transcript.length === 0 ? (
-                <div className="flex-1 bg-calisto-table p-6 text-sm italic text-calisto-soft">No transcript available yet.</div>
-              ) : (
-                <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto bg-calisto-table/90 p-5">
-                  {transcript.map((message) => renderTranscriptMessage(message))}
-                </div>
-              )}
-
-              <div className="border-t border-calisto-line bg-calisto-surface p-4">
-                <input
-                  className="h-12 w-full rounded-xl border border-calisto-line bg-calisto-table px-3.5 text-sm text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
-                  placeholder="Internal note or reply..."
-                  type="text"
-                />
+          <section className="overflow-hidden rounded-2xl border border-calisto-line-subtle bg-calisto-surface shadow-sm">
+            <div className="border-b border-calisto-line-subtle px-5 py-4 text-[11px] font-extrabold uppercase tracking-wider text-calisto-ink">
+              Quick Notes
+            </div>
+            <div className="px-5 py-4">
+              <textarea
+                className="min-h-32 w-full resize-none rounded-md border border-transparent bg-calisto-table p-3 text-sm font-medium leading-6 text-calisto-body outline-none placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
+                placeholder="Jot down your notes..."
+              />
+            </div>
+            <div className="border-t border-calisto-line-subtle px-5 py-4">
+              <div className="mb-3 text-[11px] font-extrabold uppercase tracking-wider text-calisto-ink">Notes</div>
+              <div className="grid gap-3">
+                {notes.length > 0 ? notes.map((message) => (
+                  <div className="rounded-lg border border-calisto-line-subtle bg-calisto-surface-muted px-3 py-2 text-[11px] font-medium leading-5 text-calisto-body" key={message.messageId}>
+                    {message.text}
+                  </div>
+                )) : (
+                  <div className="rounded-lg border border-dashed border-calisto-line bg-calisto-table px-3 py-3 text-xs font-medium text-calisto-muted">
+                    No notes yet.
+                  </div>
+                )}
               </div>
             </div>
           </section>
         </aside>
+
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-calisto-line-subtle bg-calisto-surface shadow-sm">
+          <div className="flex h-14 shrink-0 items-center justify-between border-b border-calisto-line-subtle px-5">
+            <div className="flex min-w-0 items-center gap-2">
+              {primaryIdentity?.channel === 'whatsapp' && <WhatsAppIcon className="h-4 w-4 shrink-0 text-calisto-accent" />}
+              <h2 className="truncate text-sm font-extrabold uppercase tracking-wider text-calisto-ink">
+                {titleChannel} Chat with {customerName(data).split(/\s+/)[0] ?? customerName(data)}
+              </h2>
+            </div>
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wide text-calisto-accent">
+              <span className="h-2 w-2 rounded-full bg-calisto-accent" />
+              Online
+            </span>
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-y-auto overscroll-contain bg-calisto-table/80 px-12 py-7">
+            {transcript.length > 0 && (
+              <div className="self-center rounded-full bg-calisto-surface px-3 py-1 text-[10px] font-bold text-calisto-soft shadow-sm">
+                {formatDate(transcript[0].timestamp)}
+              </div>
+            )}
+            {transcript.length === 0 ? (
+              <div className="flex min-h-80 items-center justify-center rounded-xl border border-dashed border-calisto-line bg-calisto-surface text-sm font-medium text-calisto-muted">
+                No transcript available yet.
+              </div>
+            ) : (
+              transcript.map((message) => renderChatMessage(message))
+            )}
+          </div>
+
+          <div className="shrink-0 border-t border-calisto-line-subtle bg-calisto-surface px-5 py-4">
+            <div className="flex items-center gap-3 rounded-xl bg-calisto-table px-3 py-2">
+              <button className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-calisto-body transition hover:bg-calisto-surface" type="button">
+                <Paperclip className="h-4 w-4" />
+              </button>
+              <button className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-calisto-body transition hover:bg-calisto-surface" type="button">
+                <Smile className="h-4 w-4" />
+              </button>
+              <input
+                className="h-9 min-w-0 flex-1 bg-transparent text-sm font-medium text-calisto-body outline-none placeholder:text-calisto-soft"
+                placeholder={`Type a message to ${customerName(data).split(/\s+/)[0] ?? 'this lead'}... Use / for templates.`}
+                type="text"
+              />
+              <button className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-calisto-sidebar text-calisto-surface transition hover:bg-calisto-sidebarActive" type="button">
+                <Send className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-2 flex items-center justify-between px-1 text-[10px] font-semibold text-calisto-muted">
+              <span>End-to-end encrypted channel</span>
+              <span>Press Enter to send</span>
+            </div>
+          </div>
+        </section>
       </div>
+
+      {isEditingLead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-calisto-ink/50 px-4 py-8">
+          <div
+            aria-labelledby="editLeadTitle"
+            aria-modal="true"
+            className="w-full max-w-md overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface text-calisto-ink shadow-dashboard"
+            role="dialog"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-calisto-line px-6 py-5">
+              <div>
+                <h2 id="editLeadTitle" className="text-lg font-bold text-calisto-ink">Edit lead</h2>
+                <p className="mt-1 text-sm text-calisto-body">Updates apply to this review view.</p>
+              </div>
+              <button
+                aria-label="Close edit lead"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-calisto-line bg-calisto-surface text-calisto-ink transition hover:bg-calisto-surface-muted"
+                onClick={() => setIsEditingLead(false)}
+                type="button"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid gap-4 px-6 py-5">
+              <label className="block">
+                <span className="mb-2 block text-[0.68rem] font-bold uppercase tracking-wider text-calisto-ink">Name</span>
+                <input
+                  className="h-11 w-full rounded-xl border border-calisto-line bg-calisto-table px-3 text-sm font-medium text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
+                  onChange={(event) => setLeadDraft((draft) => ({ ...draft, leadName: event.target.value }))}
+                  value={leadDraft.leadName}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-[0.68rem] font-bold uppercase tracking-wider text-calisto-ink">Email</span>
+                <input
+                  className="h-11 w-full rounded-xl border border-calisto-line bg-calisto-table px-3 text-sm font-medium text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
+                  onChange={(event) => setLeadDraft((draft) => ({ ...draft, email: event.target.value }))}
+                  type="email"
+                  value={leadDraft.email}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-[0.68rem] font-bold uppercase tracking-wider text-calisto-ink">Phone</span>
+                <input
+                  className="h-11 w-full rounded-xl border border-calisto-line bg-calisto-table px-3 text-sm font-medium text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
+                  onChange={(event) => setLeadDraft((draft) => ({ ...draft, phone: event.target.value }))}
+                  value={leadDraft.phone}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-[0.68rem] font-bold uppercase tracking-wider text-calisto-ink">Location</span>
+                <input
+                  className="h-11 w-full rounded-xl border border-calisto-line bg-calisto-table px-3 text-sm font-medium text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
+                  onChange={(event) => setLeadDraft((draft) => ({ ...draft, location: event.target.value }))}
+                  value={leadDraft.location}
+                />
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-calisto-line px-6 py-5">
+              <button
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-calisto-line bg-calisto-surface px-4 text-sm font-semibold text-calisto-ink transition hover:bg-calisto-surface-muted"
+                onClick={() => setIsEditingLead(false)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-calisto-accent bg-calisto-accent px-4 text-sm font-semibold text-calisto-surface shadow-sm transition hover:bg-calisto-accent/90"
+                onClick={saveLeadEdit}
+                type="button"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageContainer>
   )
 }
-

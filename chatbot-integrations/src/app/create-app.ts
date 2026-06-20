@@ -64,6 +64,7 @@ import { registerProductRoutes } from '../products/routes.js'
 import type { AppDependencies } from './dependencies.js'
 import { createWebsiteRateLimiter } from './website-rate-limiter.js'
 import { normaliseEmail, normalisePhone } from '../leads/storage/helpers.js'
+import { absolutizeOutgoingMessages } from '../core/utils/absolutize-outgoing-messages.js'
 
 function applyCorsHeaders(
   req: express.Request,
@@ -150,7 +151,11 @@ export function createApp(dependencies: AppDependencies): Express {
 
       const payload = website.parseRequest(req.body)
       const response = await website.handleChat(payload)
-      res.json(response)
+      const assetBaseUrl = config.publicBaseUrl ?? `${req.protocol}://${req.get('host')}`
+      res.json({
+        ...response,
+        messages: absolutizeOutgoingMessages(response.messages, assetBaseUrl),
+      })
     } catch (error: any) {
       logger.error(`Website chat route error: ${error.message}`)
       res.status(400).json({ error: error.message })

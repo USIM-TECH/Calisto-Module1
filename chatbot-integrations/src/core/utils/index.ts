@@ -8,6 +8,7 @@ export {
   extractFileExtension,
   parseMessageTimestampToDate,
 } from './helpers.js'
+export { absolutizeOutgoingMessages } from './absolutize-outgoing-messages.js'
 export { NLPClient, type NLPClientConfig, type NLPRequestMetadata, type NLPResponse } from './nlp-client.js'
 export {
   LlmIntentClassifier,

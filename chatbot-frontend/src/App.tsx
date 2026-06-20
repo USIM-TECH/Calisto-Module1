@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { BookOpen, Boxes, LogOut, MessageSquareText, UsersRound } from 'lucide-react'
-import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
+import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import WebchatPage from './pages/WebchatPage'
 import LeadsPage from './pages/LeadsPage'
 import ProductsPage from './pages/ProductsPage'
 import KnowledgePage from './pages/KnowledgePage'
 import NotFoundPage from './pages/NotFoundPage'
 import LeadDetailPage from './pages/LeadDetailPage'
+import ChatbotPage from './pages/ChatbotPage'
 import calistoLogo from '../calisto.svg'
 
 const navItems = [
@@ -18,6 +19,17 @@ const navItems = [
 
 export default function App() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const location = useLocation()
+
+  if (location.pathname === '/chatbot') {
+    return (
+      <div className="min-h-screen bg-calisto-canvas text-calisto-ink">
+        <Routes>
+          <Route path="/chatbot" element={<ChatbotPage />} />
+        </Routes>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-calisto-canvas text-calisto-ink">
