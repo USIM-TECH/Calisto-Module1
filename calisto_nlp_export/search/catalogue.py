@@ -18,9 +18,10 @@ def load_catalogue() -> pd.DataFrame:
             "BACKEND_API_BASE_URL is not set. Product catalogue is only available via the integration API (Postgres)."
         )
     remote_products: Any = gateway.list_products()
-    if isinstance(remote_products, list) and remote_products:
-        # Ensure we have a list of flat dictionaries before creating a DataFrame.
-        if all(isinstance(p, dict) for p in remote_products):
+    if isinstance(remote_products, list):
+        if len(remote_products) == 0:
+            df = pd.DataFrame(columns=["brand", "product_name", "product_type", "category", "frame_material", "frame_shape", "frame_color", "price_myr", "gender", "use_case", "uv_protection", "polarized", "lens_color", "lens_type", "lens_feature", "lens_duration", "multifocal"])
+        elif all(isinstance(p, dict) for p in remote_products):
             df = pd.DataFrame([normalize_product_record(p) for p in remote_products]).fillna("")
             if "price_myr" in df.columns:
                 df["price_myr"] = pd.to_numeric(df["price_myr"], errors="coerce")
