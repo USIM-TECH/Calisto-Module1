@@ -282,24 +282,15 @@ class ActionGreetOrSearch(Action):
 
         # If it's a free text query for products, show results directly
         if is_free_text_query and intent_name in {"search_product", "browse_eyewear", "select_product_type", "greet"}:
-            product_type = tracker.get_slot("product_type") or detect_category_from_text(raw_text)
+            detected_category = detect_category_from_text(raw_text)
 
             # If they just said "hi", don't force a product search, let the regular greeting happen
-            if not product_type and intent_name == "greet":
+            if not detected_category and intent_name == "greet":
                 pass
             # If they asked for a product (even without a specific intent matched), show it
-            elif product_type or intent_name in {"search_product", "browse_eyewear", "select_product_type"}:
-                slots_to_set = [
-                    SlotSet("product_type", product_type or "Frames"),
-                    SlotSet("brand", "all"),
-                    SlotSet("price_range", None),
-                    SlotSet("budget", None),
-                    SlotSet("budget_min", None),
-                    SlotSet("budget_max", None)
-                ]
-
-                logger.info("Free-text product query detected in ActionGreetOrSearch. Applying default filters.")
-                return slots_to_set + [FollowupAction("action_filter_products")]
+            elif detected_category or intent_name in {"search_product", "browse_eyewear", "select_product_type"} or extract_lens_requirements(raw_text):
+                logger.info("Free-text product query detected in ActionGreetOrSearch. Delegating to ActionSmartSearch.")
+                return ActionSmartSearch().run(dispatcher, tracker, domain)
 
         brand_lookup = build_brand_lookup(load_catalogue())
         if looks_like_product_query(raw_text, brand_lookup):
@@ -518,8 +509,8 @@ def search_products_engine(
         ordered = [
             col
             for col in [
-                "uv_protection", "polarized", "multifocal", "lens_type", "lens_feature", "lens_color", "lens_duration",
-                "product_type", "brand", "gender", "frame_shape", "frame_material", "frame_color", "use_case",
+                "product_type", "category", "brand", "lens_type", "lens_feature", "lens_color", "lens_duration",
+                "uv_protection", "polarized", "multifocal", "gender", "frame_shape", "frame_material", "frame_color", "use_case",
             ]
             if col in filters
         ]
@@ -555,6 +546,20 @@ def search_products_engine(
             elif col == "product_type":
                 allowed_product_types = {str(value).strip().lower() for value in values}
                 filtered_df = filtered_df[filtered_df["product_type"].astype(str).str.strip().str.lower().isin(allowed_product_types)]
+            elif col == "lens_type":
+                masks = []
+                for value in values:
+                    val_lower = str(value).lower()
+                    mask = filtered_df[col].astype(str).str.contains(re.escape(value), case=False, na=False)
+                    if "single vision" in val_lower:
+                        mask = mask & ~filtered_df[col].astype(str).str.contains("progressive|multifocal|bifocal", case=False, na=False)
+                        if "multifocal" in filtered_df.columns:
+                            mask = mask & ~filtered_df["multifocal"].astype(str).str.contains("yes|true|y|1", case=False, na=False)
+                    elif "progressive" in val_lower or "multifocal" in val_lower or "bifocal" in val_lower:
+                        mask = mask & ~filtered_df[col].astype(str).str.contains("single vision", case=False, na=False)
+                    masks.append(mask)
+                if masks:
+                    filtered_df = filtered_df[pd.concat(masks, axis=1).any(axis=1)]
             else:
                 masks = [filtered_df[col].astype(str).str.contains(re.escape(value), case=False, na=False) for value in values]
                 if masks:
@@ -696,6 +701,22 @@ def search_products_engine(
     if b_max is not None:
         filtered = filtered[filtered["price_myr"] <= b_max]
     filtered = apply_filters(filtered, style_filters)
+
+    has_lens_filters = any(key in LENS_FILTER_COLUMNS for key in extracted)
+    
+    # Prevent Lens Solutions from appearing as lens recommendations
+    if has_lens_filters or "lens" in normalized:
+        solution_mask = (
+            filtered["product_type"].astype(str).str.contains("solution", case=False, na=False) |
+            (filtered["category"].astype(str).str.contains("solution", case=False, na=False) if "category" in filtered.columns else False) |
+            filtered["product_name"].astype(str).str.contains("solution", case=False, na=False)
+        )
+        filtered = filtered[~solution_mask]
+
+    # Prevent Sunglasses from dominating generic "lens" queries (like "uv protection lens")
+    if "lens" in normalized and not any(token in normalized for token in ["sunglass", "glass", "frame", "shade", "cermin mata"]):
+        sunglass_mask = filtered["category"].astype(str).str.contains("sunglass", case=False, na=False)
+        filtered = filtered[~sunglass_mask]
 
     debug_logs = {
         "query": raw_text,

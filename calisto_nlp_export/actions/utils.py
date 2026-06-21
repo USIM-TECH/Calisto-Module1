@@ -772,6 +772,8 @@ def extract_lens_requirements(text: str) -> Dict[str, set]:
     def add(column: str, value: str) -> None:
         filters.setdefault(column, set()).add(value)
 
+    if re.search(r"\b(single vision|sv lenses?|normal lenses?)\b", normalized):
+        add("lens_type", "Single Vision")
     if re.search(r"\b(blue light|anti blue light|screen protection|computer work|screen time|gaming glasses|office glasses|digital screens?)\b", normalized):
         add("lens_feature", "Blue Light Filter")
     if re.search(r"\b(progressive|reading and distance|age related vision correction)\b", normalized):
@@ -780,7 +782,7 @@ def extract_lens_requirements(text: str) -> Dict[str, set]:
         add("lens_type", "Bifocal")
     if re.search(r"\b(multifocal)\b", normalized):
         add("multifocal", "yes")
-    if re.search(r"\b(polarized|polarised|glare reduction|driving sunglasses?)\b", normalized):
+    if re.search(r"\b(polarized|polarised|polarizing|polarising|glare reduction|driving sunglasses?)\b", normalized):
         add("polarized", "yes")
     if re.search(r"\b(uv protection|uv blocking|sun protection|sunlight|protect eyes from sunlight)\b", normalized) or "uvblocking" in compact:
         add("uv_protection", "yes")

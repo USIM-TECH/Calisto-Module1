@@ -154,6 +154,14 @@ class ActionFilterLenses(Action):
         price_range = tracker.get_slot("price_range")
 
         df = load_catalogue().copy()
+        
+        solution_mask = (
+            df["product_type"].astype(str).str.contains("solution", case=False, na=False) |
+            df["category"].astype(str).str.contains("solution", case=False, na=False) |
+            df["product_name"].astype(str).str.contains("solution", case=False, na=False)
+        )
+        df = df[~solution_mask]
+
         mask = (
             df["category"].astype(str).str.contains("Lens", case=False, na=False)
             | df["product_type"].astype(str).str.contains("Lens", case=False, na=False)
@@ -161,20 +169,34 @@ class ActionFilterLenses(Action):
         )
         if lens_type:
             needle = str(lens_type).lower().replace(" lenses", "").replace(" protection", "").strip()
-            mask = mask & (
-                df["lens_type"].astype(str).str.contains(needle, case=False, na=False)
-                | df["lens_feature"].astype(str).str.contains(needle, case=False, na=False)
-                | df["product_name"].astype(str).str.contains(needle, case=False, na=False)
-                | df["description"].astype(str).str.contains(needle, case=False, na=False)
-            )
+            if "single vision" in needle:
+                mask = mask & df["lens_type"].astype(str).str.contains("single vision", case=False, na=False)
+                mask = mask & ~df["lens_type"].astype(str).str.contains("progressive|multifocal|bifocal", case=False, na=False)
+                if "multifocal" in df.columns:
+                    mask = mask & ~df["multifocal"].astype(str).str.contains("yes|true|y|1", case=False, na=False)
+            elif "progressive" in needle or "multifocal" in needle or "bifocal" in needle:
+                mask = mask & df["lens_type"].astype(str).str.contains(needle, case=False, na=False)
+                mask = mask & ~df["lens_type"].astype(str).str.contains("single vision", case=False, na=False)
+            else:
+                mask = mask & (
+                    df["lens_type"].astype(str).str.contains(needle, case=False, na=False)
+                    | df["lens_feature"].astype(str).str.contains(needle, case=False, na=False)
+                    | df["product_name"].astype(str).str.contains(needle, case=False, na=False)
+                    | df["description"].astype(str).str.contains(needle, case=False, na=False)
+                )
         results = filter_by_budget(df[mask], price_range).head(5)
 
         if results.empty:
             dispatcher.utter_message(text=tr(lang, "We could not find any lenses matching your criteria.", "Kami tidak menemui kanta yang sepadan dengan kriteria anda.", "我们找不到符合您条件的镜片。"))
             return events
 
+        metadata = latest_metadata(tracker)
+        channel = str(metadata.get("channel") or "").lower()
+
         for _, row in results.iterrows():
-            emit_product_card(dispatcher, row.to_dict(), str(lens_type or "Lens Consultation"), lang)
+            product_dict = row.to_dict()
+            product_dict["_channel"] = channel
+            emit_product_card(dispatcher, product_dict, str(lens_type or "Lens Consultation"), lang)
         return events
 
 
