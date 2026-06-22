@@ -89,7 +89,27 @@ npm run db:migrate
 npm run dev
 ```
 
-Set `STORAGE_BACKEND=postgres` and `DATABASE_URL` in `.env`. Use `npm run db:studio` to browse the database. For JSON-only storage (no Postgres), set `STORAGE_BACKEND=file`. See [chatbot-integrations/LEADS.md](chatbot-integrations/LEADS.md) and [chatbot-integrations/prisma/README.md](chatbot-integrations/prisma/README.md).
+Set `STORAGE_BACKEND=postgres` and `DATABASE_URL` in `.env`. The database is **self-hosted PostgreSQL** — Prisma is only the ORM/migration tool, not the database server.
+
+**Local dev (Docker Postgres):**
+
+```bash
+docker compose -f docker-compose.postgres.yml up -d
+./scripts/setup-local-postgres.sh
+```
+
+`.env`:
+
+```env
+STORAGE_BACKEND=postgres
+DATABASE_URL=postgresql://calisto:calisto@localhost:5432/calisto_chatbot
+```
+
+Browse tables with `npm run db:studio`. See [chatbot-integrations/prisma/README.md](chatbot-integrations/prisma/README.md).
+
+**Migrating off Prisma Cloud:** if you still have cloud access, run `./scripts/migrate-cloud-to-local.sh` once (see script header). If the cloud plan is blocked, restore from a prior dump or re-seed with `npm run db:seed:products` / admin CSV import.
+
+For JSON-only storage (no Postgres), set `STORAGE_BACKEND=file`. See [chatbot-integrations/LEADS.md](chatbot-integrations/LEADS.md) and [chatbot-integrations/prisma/README.md](chatbot-integrations/prisma/README.md).
 
 Backend API endpoints (used by channels and the React frontend):
 - `http://localhost:3000/` — service info
@@ -179,7 +199,7 @@ Instagram callback URLs must be set in the Meta App Dashboard (Instagram → API
 Run these in separate terminals:
 
 ```bash
-# Terminal 1 — Postgres (if using local Docker Postgres)
+# Terminal 1 — PostgreSQL (local Docker)
 cd chatbot-integrations && docker compose -f docker-compose.postgres.yml up -d
 
 # Terminal 2 — Rasa + actions

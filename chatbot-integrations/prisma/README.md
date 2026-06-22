@@ -15,6 +15,23 @@
 
 Prisma is **not** your database server. There is no Prisma Cloud / `db.prisma.io` connection in this repo. The app only connects via `DATABASE_URL` to **local** Postgres.
 
+## Migrating from Prisma Cloud
+
+Prisma Cloud (`db.prisma.io`) is hosted PostgreSQL billed through Prisma. This project uses **Prisma ORM** against **your own PostgreSQL** — you are not tied to Prisma Cloud.
+
+1. Start local Postgres: `./scripts/setup-local-postgres.sh`
+2. If cloud access still works, copy data once:
+   ```bash
+   export CLOUD_DATABASE_URL='postgres://...@db.prisma.io:5432/postgres?sslmode=require'
+   ./scripts/migrate-cloud-to-local.sh
+   ```
+3. Point `.env` at local Postgres:
+   ```env
+   DATABASE_URL=postgresql://calisto:calisto@localhost:5432/calisto_chatbot
+   ```
+
+For production, set `DATABASE_URL` to your client's PostgreSQL server (RDS, Azure Database, on-prem, etc.) and run `npm run db:migrate`.
+
 ## Quick start
 
 From `chatbot-integrations/`:

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# One-time (or repeat) copy of app tables from a remote Postgres URL to local.
+# One-time (or repeat) copy of app tables from Prisma Cloud / remote Postgres to local.
+# Requires cloud access — if your Prisma Cloud plan is blocked, use a prior pg_dump backup instead.
 # Usage:
 #   export CLOUD_DATABASE_URL='postgres://USER:PASS@db.prisma.io:5432/postgres?sslmode=require'
 #   export LOCAL_DATABASE_URL='postgresql://calisto:calisto@localhost:5432/calisto_chatbot'
@@ -17,6 +18,8 @@ pg_dump "$CLOUD_DATABASE_URL" --data-only --no-owner --no-acl -Fc \
   -t '"Customer"' \
   -t '"ChannelIdentity"' \
   -t '"Interest"' \
+  -t '"CurrentInterest"' \
+  -t '"SupportCase"' \
   -t '"Conversation"' \
   -t '"ConversationMessage"' \
   -t '"WebhookEvent"' \
@@ -32,6 +35,8 @@ TRUNCATE TABLE
   "ConversationMessage",
   "Conversation",
   "ChannelIdentity",
+  "CurrentInterest",
+  "SupportCase",
   "Interest",
   "DedupeKey",
   "WebhookEvent",
@@ -51,6 +56,8 @@ SELECT 'Product' t, count(*) FROM \"Product\"
 UNION ALL SELECT 'KnowledgeChunk', count(*) FROM \"KnowledgeChunk\"
 UNION ALL SELECT 'KnowledgeDocument', count(*) FROM \"KnowledgeDocument\"
 UNION ALL SELECT 'Customer', count(*) FROM \"Customer\"
+UNION ALL SELECT 'CurrentInterest', count(*) FROM \"CurrentInterest\"
+UNION ALL SELECT 'SupportCase', count(*) FROM \"SupportCase\"
 UNION ALL SELECT 'ConversationMessage', count(*) FROM \"ConversationMessage\";
 "
 
