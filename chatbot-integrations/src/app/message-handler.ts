@@ -1,11 +1,13 @@
 import type { IncomingMessage, OutgoingMessage } from '../core/types.js'
 import type { Logger } from '../core/utils/index.js'
+import { invalidateLeadsCache, type CacheService } from '../cache/index.js'
 import type { LeadOrchestrator } from '../leads/index.js'
 
 interface CreateNlpMessageHandlerProps {
   channelName: 'WhatsApp' | 'Instagram' | 'Messenger' | 'X' | 'Telegram'
   logger: Logger
   orchestrator: LeadOrchestrator
+  cacheService: CacheService
   sendText: (recipientId: string, text: string) => Promise<unknown>
   sendMessage?: (recipientId: string, message: OutgoingMessage) => Promise<unknown>
   getRecipientId?: (message: IncomingMessage) => string
@@ -23,6 +25,7 @@ export function createNlpMessageHandler({
   channelName,
   logger,
   orchestrator,
+  cacheService,
   sendText,
   sendMessage,
   getRecipientId,
@@ -36,6 +39,8 @@ export function createNlpMessageHandler({
       if (!result) {
         return
       }
+
+      await invalidateLeadsCache(cacheService)
 
       logger.info(`[${channelName}] Reply generated for ${senderLabel}`)
       const outgoingMessages = result.outgoingMessages

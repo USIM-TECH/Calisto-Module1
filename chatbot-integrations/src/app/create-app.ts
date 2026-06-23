@@ -65,6 +65,7 @@ import type { AppDependencies } from './dependencies.js'
 import { createWebsiteRateLimiter } from './website-rate-limiter.js'
 import { normaliseEmail, normalisePhone } from '../leads/storage/helpers.js'
 import { absolutizeOutgoingMessages } from '../core/utils/absolutize-outgoing-messages.js'
+import { CACHE_KEYS, invalidateLeadsCache, isRedisConnected } from '../cache/index.js'
 
 function applyCorsHeaders(
   req: express.Request,
@@ -98,6 +99,7 @@ export function createApp(dependencies: AppDependencies): Express {
   const {
     config,
     logger,
+    cacheService,
     nlpClient,
     whatsapp,
     instagram,
@@ -116,6 +118,7 @@ export function createApp(dependencies: AppDependencies): Express {
   const websiteRateLimiter = createWebsiteRateLimiter(
     config.website.rateLimitMax,
     config.website.rateLimitWindowMs,
+    cacheService,
   )
 
   app.use(express.json({
@@ -144,13 +147,14 @@ export function createApp(dependencies: AppDependencies): Express {
       }
 
       const rateLimitKey = `${req.ip}:${req.body?.senderId ?? 'anonymous'}`
-      if (!websiteRateLimiter.allow(rateLimitKey)) {
+      if (!(await websiteRateLimiter.allow(rateLimitKey))) {
         res.status(429).json({ error: 'Rate limit exceeded' })
         return
       }
 
       const payload = website.parseRequest(req.body)
       const response = await website.handleChat(payload)
+      await invalidateLeadsCache(cacheService)
       const assetBaseUrl = config.publicBaseUrl ?? `${req.protocol}://${req.get('host')}`
       res.json({
         ...response,
@@ -193,8 +197,20 @@ export function createApp(dependencies: AppDependencies): Express {
 
   app.get('/health', async (_req, res) => {
     const nlpHealth = await nlpClient.healthCheck()
+    let redis: 'ok' | 'disabled' | 'error' = 'disabled'
+    if (cacheService.backend === 'redis') {
+      try {
+        redis = (await cacheService.ping()) ? 'ok' : 'error'
+      } catch {
+        redis = 'error'
+      }
+    } else if (isRedisConnected()) {
+      redis = 'ok'
+    }
     res.json({
       server: 'ok',
+      redis,
+      cacheBackend: cacheService.backend,
       nlp: nlpHealth,
       channels: {
         whatsapp: Boolean(whatsapp),
@@ -217,19 +233,33 @@ export function createApp(dependencies: AppDependencies): Express {
 
   app.get('/reports/leads', async (_req, res, next) => {
     try {
+      const cached = await cacheService.getJson<{
+        customers: Awaited<ReturnType<typeof orchestrator.listCustomers>>
+        identities: ChannelIdentityRecord[]
+        summary: Awaited<ReturnType<typeof orchestrator.getSummary>>
+        services: { hubspot: boolean }
+      }>(CACHE_KEYS.reportsLeads)
+
+      if (cached) {
+        res.json(cached)
+        return
+      }
+
       const [customers, summary, identities] = await Promise.all([
         orchestrator.listCustomers(),
         orchestrator.getSummary(),
         runtimeStore.listIdentities(),
       ])
-      res.json({
+      const payload = {
         customers,
         identities,
         summary,
         services: {
           hubspot: Boolean(hubspot),
         },
-      })
+      }
+      await cacheService.setJson(CACHE_KEYS.reportsLeads, payload, config.cache.leadsListTtlSec)
+      res.json(payload)
     } catch (error) {
       next(error)
     }
@@ -254,6 +284,7 @@ export function createApp(dependencies: AppDependencies): Express {
       store: productStore,
       logger,
       publicBaseUrl: config.publicBaseUrl,
+      cacheService,
     })
     logger.info('Product catalogue routes registered: /admin/products + /products/search')
   } else {
@@ -326,6 +357,7 @@ export function createApp(dependencies: AppDependencies): Express {
       }
 
       logger.info(`[POST /leads] Updated customer ${customer.id}: status=${qualificationStatus ?? 'unchanged'} service=${preferredService ?? 'unchanged'}`)
+      await invalidateLeadsCache(cacheService)
       res.json({ status: 'ok', customerId: customer.id })
     } catch (error) {
       next(error)

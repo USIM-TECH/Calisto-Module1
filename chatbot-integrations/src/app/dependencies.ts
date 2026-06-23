@@ -3,6 +3,8 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import type { AppConfig } from '../config/index.js'
 import { loadConfig } from '../config/index.js'
+import type { CacheService } from '../cache/index.js'
+import { createCacheService } from '../cache/index.js'
 import { ConsoleLogger, LlmIntentClassifier, NLPClient, type Logger } from '../core/utils/index.js'
 import { InstagramChannel } from '../integrations/channels/instagram/index.js'
 import { MessengerChannel } from '../integrations/channels/messenger/index.js'
@@ -29,6 +31,7 @@ const __dirname = path.dirname(__filename)
 export interface AppDependencies {
   config: AppConfig
   logger: Logger
+  cacheService: CacheService
   deduplicator: MessageDeduplicator
   runtimeStore: RuntimeStore
   productStore?: ProductStore
@@ -48,11 +51,13 @@ export function loadEnvironment(): void {
   dotenv.config({ path: path.resolve(__dirname, '..', '..', '.env') })
 }
 
-export function createDependencies(): AppDependencies {
+export async function createDependencies(): Promise<AppDependencies> {
   loadEnvironment()
 
   const logger: Logger = new ConsoleLogger()
   const config = loadConfig()
+  const cacheService = await createCacheService(config, logger)
+
   if (config.usedFileStorageFallback) {
     logger.warn(
       'STORAGE_BACKEND is postgres but DATABASE_URL is not set; falling back to file storage (runtime-store.json).',
@@ -63,9 +68,18 @@ export function createDependencies(): AppDependencies {
     dataDir: config.dataDir,
   })
   const productStore: ProductStore | undefined =
-    config.storageBackend === 'postgres' ? new PrismaProductStore(getPrismaClient()) : undefined
+    config.storageBackend === 'postgres'
+      ? new PrismaProductStore(getPrismaClient(), cacheService, config.cache.productCatalogueTtlSec)
+      : undefined
   const knowledgeChunkStore: KnowledgeChunkStore | undefined =
-    config.storageBackend === 'postgres' ? new PrismaKnowledgeChunkStore(getPrismaClient()) : undefined
+    config.storageBackend === 'postgres'
+      ? new PrismaKnowledgeChunkStore(
+          getPrismaClient(),
+          cacheService,
+          config.cache.knowledgeChunksTtlSec,
+          config.cache.knowledgeSummaryTtlSec,
+        )
+      : undefined
   if (!productStore) {
     logger.warn('Product catalogue store unavailable: STORAGE_BACKEND must be postgres for /admin/products and /products/search.')
   }
@@ -136,6 +150,7 @@ export function createDependencies(): AppDependencies {
       channelName: 'WhatsApp',
       logger,
       orchestrator,
+      cacheService,
       sendText: (recipientId, text) => whatsapp!.sendMessage(recipientId, { type: 'text', text }),
       sendMessage: (recipientId, message) => whatsapp!.sendMessage(recipientId, message),
     }))
@@ -143,11 +158,12 @@ export function createDependencies(): AppDependencies {
   }
 
   if (config.instagram) {
-    instagram = new InstagramChannel(config.instagram, logger)
+    instagram = new InstagramChannel(config.instagram, logger, cacheService)
     instagram.onMessage(createNlpMessageHandler({
       channelName: 'Instagram',
       logger,
       orchestrator,
+      cacheService,
       sendText: (recipientId, text) => instagram!.sendTextMessage(recipientId, text),
       sendMessage: (recipientId, message) => instagram!.sendMessage(recipientId, message),
     }))
@@ -160,6 +176,7 @@ export function createDependencies(): AppDependencies {
       channelName: 'Messenger',
       logger,
       orchestrator,
+      cacheService,
       sendText: (recipientId, text) => messenger!.sendText(recipientId, text),
       sendMessage: (recipientId, message) => messenger!.sendMessage(recipientId, message),
     }))
@@ -167,11 +184,12 @@ export function createDependencies(): AppDependencies {
   }
 
   if (config.telegram) {
-    telegram = new TelegramChannel(config.telegram, logger)
+    telegram = new TelegramChannel(config.telegram, logger, cacheService, config.cache.telegramAliasTtlSec)
     telegram.onMessage(createNlpMessageHandler({
       channelName: 'Telegram',
       logger,
       orchestrator,
+      cacheService,
       getRecipientId: (message) => message.conversationId,
       sendText: (recipientId, text) => telegram!.sendTextMessage(recipientId, text),
       sendMessage: (recipientId, message) => telegram!.sendMessage(recipientId, message),
@@ -185,6 +203,7 @@ export function createDependencies(): AppDependencies {
       channelName: 'X',
       logger,
       orchestrator,
+      cacheService,
       sendText: (recipientId, text) => x!.sendTextMessage(recipientId, text),
       sendMessage: (recipientId, message) => x!.sendMessage(recipientId, message),
     }))
@@ -194,6 +213,7 @@ export function createDependencies(): AppDependencies {
   return {
     config,
     logger,
+    cacheService,
     deduplicator,
     runtimeStore,
     productStore,

@@ -3,14 +3,13 @@ import { z } from 'zod'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import {
-  type InstagramRecipientId,
-} from './types.js'
+import { CACHE_KEYS, type CacheService } from '../../../cache/index.js'
 import type { IncomingMessage, OutgoingMessage, WebhookRequest, WebhookResponse } from '../../../core/types.js'
 import type { Logger } from '../../../core/utils/index.js'
 import { normalizeInstagramMessagingItem } from './incoming.js'
 import { sendInstagramMessage } from './outgoing.js'
 import { handleInstagramWebhook } from './webhook.js'
+import type { InstagramRecipientId } from './types.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -28,6 +27,27 @@ function saveTokenCache(token: string, expiresAt: number): void {
   } catch {
     // Non-fatal — the in-memory token is already updated
   }
+}
+
+async function saveTokenToCache(
+  cache: CacheService | undefined,
+  token: string,
+  expiresAt: number,
+): Promise<void> {
+  saveTokenCache(token, expiresAt)
+  if (!cache) return
+  const ttlSec = Math.max(60, Math.floor((expiresAt - Date.now()) / 1000) - 3600)
+  await cache.setJson(CACHE_KEYS.instagramToken, { token, expiresAt }, ttlSec)
+}
+
+async function loadTokenFromCache(cache: CacheService | undefined): Promise<{ token: string; expiresAt: number } | null> {
+  if (cache) {
+    const data = await cache.getJson<{ token: string; expiresAt: number }>(CACHE_KEYS.instagramToken)
+    if (data && typeof data.token === 'string' && typeof data.expiresAt === 'number' && data.expiresAt > Date.now()) {
+      return data
+    }
+  }
+  return loadCachedInstagramToken()
 }
 
 /** Load a previously cached token if it has not expired yet. */
@@ -64,17 +84,26 @@ export class InstagramChannel {
   private _config: InstagramConfig
   private _logger: Logger
   private _instagramApiUrl: string
+  private _cacheService?: CacheService
   private _onMessage?: (message: IncomingMessage) => Promise<void>
   private _tokenRefreshTimer?: ReturnType<typeof setTimeout>
 
-  constructor(config: InstagramConfig, logger: Logger) {
+  constructor(config: InstagramConfig, logger: Logger, cacheService?: CacheService) {
     this._config = config
     this._logger = logger
+    this._cacheService = cacheService
     const version = config.apiVersion ?? 'v21.0'
-    // iG-prefixed tokens are Instagram Graph API tokens — they only work
-    // with graph.instagram.com, not graph.facebook.com.
     this._instagramApiUrl = `https://graph.instagram.com/${version}`
+    void this._bootstrapAccessToken()
     this._startTokenAutoRefresh()
+  }
+
+  private async _bootstrapAccessToken(): Promise<void> {
+    const cached = await loadTokenFromCache(this._cacheService)
+    if (cached) {
+      this._config.accessToken = cached.token
+      this._logger.info('[Instagram] Loaded cached access token')
+    }
   }
 
   /**
@@ -90,7 +119,7 @@ export class InstagramChannel {
           this._logger.info('[Instagram] Proactively refreshing access token…')
           const { accessToken, expirationTime } = await this.refreshAccessToken()
           this._config.accessToken = accessToken
-          saveTokenCache(accessToken, expirationTime)
+          await saveTokenToCache(this._cacheService, accessToken, expirationTime)
           const expiryDate = new Date(expirationTime).toISOString()
           this._logger.info(`[Instagram] Access token refreshed — new expiry: ${expiryDate}`)
         } catch (err: any) {

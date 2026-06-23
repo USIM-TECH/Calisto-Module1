@@ -1,4 +1,6 @@
 import { Prisma, PrismaClient } from '@prisma/client'
+import { CACHE_KEYS, invalidateProductCache, type CacheService } from '../../cache/index.js'
+import { MemoryCacheService } from '../../cache/memory-cache.js'
 import type { ProductStore } from './product-store.interface.js'
 import type {
   ProductInput,
@@ -75,7 +77,11 @@ function toRecord(p: PrismaProduct): ProductRecord {
 }
 
 export class PrismaProductStore implements ProductStore {
-  constructor(private readonly _client: PrismaClient) {}
+  constructor(
+    private readonly _client: PrismaClient,
+    private readonly _cache: CacheService = new MemoryCacheService({ keyPrefix: 'calisto' }),
+    private readonly _catalogueTtlSec = 300,
+  ) {}
 
   async list(query: ProductListQuery = {}): Promise<ProductListResult> {
     const page = Math.max(1, query.page ?? 1)
@@ -121,10 +127,15 @@ export class PrismaProductStore implements ProductStore {
   }
 
   async listAll(): Promise<ProductRecord[]> {
+    const cached = await this._cache.getJson<ProductRecord[]>(CACHE_KEYS.productsCatalogue)
+    if (cached) return cached
+
     const items = await this._client.product.findMany({
       orderBy: [{ productType: 'asc' }, { brand: 'asc' }, { priceMyr: 'asc' }],
     })
-    return items.map((item) => toRecord(item as PrismaProduct))
+    const records = items.map((item) => toRecord(item as PrismaProduct))
+    await this._cache.setJson(CACHE_KEYS.productsCatalogue, records, this._catalogueTtlSec)
+    return records
   }
 
   async get(productId: string): Promise<ProductRecord | undefined> {
@@ -169,6 +180,7 @@ export class PrismaProductStore implements ProductStore {
         fallbackImageUrl: input.fallbackImageUrl ?? null,
       },
     })
+    await invalidateProductCache(this._cache)
     return toRecord(created as PrismaProduct)
   }
 
@@ -178,6 +190,7 @@ export class PrismaProductStore implements ProductStore {
         where: { productId },
         data: patch as Prisma.ProductUpdateInput,
       })
+      await invalidateProductCache(this._cache)
       return toRecord(updated as PrismaProduct)
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
@@ -190,6 +203,7 @@ export class PrismaProductStore implements ProductStore {
   async delete(productId: string): Promise<boolean> {
     try {
       await this._client.product.delete({ where: { productId } })
+      await invalidateProductCache(this._cache)
       return true
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
@@ -198,7 +212,6 @@ export class PrismaProductStore implements ProductStore {
       throw error
     }
   }
-
   async nextId(): Promise<string> {
     const all = await this._client.product.findMany({ select: { productId: true } })
     let max = 0

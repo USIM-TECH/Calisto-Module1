@@ -100,7 +100,15 @@ const envSchema = z
   TELEGRAM_SECRET_TOKEN: optionalString,
   TELEGRAM_API_BASE_URL: optionalString,
 
-  HUBSPOT_ACCESS_TOKEN: optionalString,
+    HUBSPOT_ACCESS_TOKEN: optionalString,
+
+    REDIS_URL: optionalString,
+    REDIS_KEY_PREFIX: z.string().default('calisto'),
+    CACHE_PRODUCT_CATALOGUE_TTL_SEC: z.coerce.number().int().positive().default(300),
+    CACHE_KNOWLEDGE_CHUNKS_TTL_SEC: z.coerce.number().int().positive().default(600),
+    CACHE_KNOWLEDGE_SUMMARY_TTL_SEC: z.coerce.number().int().positive().default(300),
+    CACHE_LEADS_LIST_TTL_SEC: z.coerce.number().int().positive().default(60),
+    CACHE_TELEGRAM_ALIAS_TTL_SEC: z.coerce.number().int().positive().default(86_400),
 
   })
 
@@ -136,6 +144,15 @@ export interface AppConfig {
   telegram?: TelegramConfig
   x?: XConfig
   hubspot?: HubSpotConfig
+  cache: {
+    redisUrl?: string
+    keyPrefix: string
+    productCatalogueTtlSec: number
+    knowledgeChunksTtlSec: number
+    knowledgeSummaryTtlSec: number
+    leadsListTtlSec: number
+    telegramAliasTtlSec: number
+  }
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -222,5 +239,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     hubspot: parsed.HUBSPOT_ACCESS_TOKEN
       ? { accessToken: parsed.HUBSPOT_ACCESS_TOKEN }
       : undefined,
+    cache: {
+      redisUrl: parsed.REDIS_URL,
+      keyPrefix: parsed.REDIS_KEY_PREFIX,
+      productCatalogueTtlSec: parsed.CACHE_PRODUCT_CATALOGUE_TTL_SEC,
+      knowledgeChunksTtlSec: parsed.CACHE_KNOWLEDGE_CHUNKS_TTL_SEC,
+      knowledgeSummaryTtlSec: parsed.CACHE_KNOWLEDGE_SUMMARY_TTL_SEC,
+      leadsListTtlSec: parsed.CACHE_LEADS_LIST_TTL_SEC,
+      telegramAliasTtlSec: parsed.CACHE_TELEGRAM_ALIAS_TTL_SEC,
+    },
   }
 }

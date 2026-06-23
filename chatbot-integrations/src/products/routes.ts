@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url'
 import express, { type Express, type Request } from 'express'
 import multer from 'multer'
 import type { Logger } from '../core/utils/index.js'
+import { invalidateProductCache, type CacheService } from '../cache/index.js'
 import { ProductSearchService } from './service/product-search.js'
 import {
   formatImportErrorResponse,
@@ -35,6 +36,7 @@ interface RegisterArgs {
   store: ProductStore
   logger: Logger
   publicBaseUrl?: string
+  cacheService?: CacheService
 }
 
 function extensionFor(mime: string): string {
@@ -242,7 +244,7 @@ function parseSearchBody(body: unknown): ProductSearchQuery {
   }
 }
 
-export function registerProductRoutes({ app, store, logger, publicBaseUrl }: RegisterArgs): void {
+export function registerProductRoutes({ app, store, logger, publicBaseUrl, cacheService }: RegisterArgs): void {
   const search = new ProductSearchService(store)
 
   app.use(STATIC_PREFIX, express.static(path.resolve(__dirname, '..', '..', 'public'), {
@@ -293,6 +295,9 @@ export function registerProductRoutes({ app, store, logger, publicBaseUrl }: Reg
       const mode = parseImportMode((req.body as Record<string, unknown>).mode)
       const csvText = file.buffer.toString('utf-8')
       const result = await importProductsFromCsv(store, csvText, mode)
+      if (cacheService && result.ok) {
+        await invalidateProductCache(cacheService)
+      }
       const status = result.ok ? 200 : 422
       res.status(status).json(result)
     } catch (error: any) {

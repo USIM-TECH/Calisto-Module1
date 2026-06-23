@@ -8,10 +8,10 @@ function displayName(from?: TelegramMessage['from']): string | undefined {
   return [from.first_name, from.last_name].filter(Boolean).join(' ') || from.username
 }
 
-export function normalizeTelegramUpdate(
+export async function normalizeTelegramUpdate(
   update: TelegramUpdate,
-  resolveCallbackData: (value: string) => string = (value) => value,
-): IncomingMessage | undefined {
+  resolveCallbackData: (value: string) => string | Promise<string> = (value) => value,
+): Promise<IncomingMessage | undefined> {
   const message = update.message ?? update.edited_message
   if (message) {
     const contactName = message.contact
@@ -53,13 +53,13 @@ export function normalizeTelegramUpdate(
   return undefined
 }
 
-function normalizeTelegramCallbackQuery(
+async function normalizeTelegramCallbackQuery(
   callback: TelegramCallbackQuery,
   rawPayload: TelegramUpdate,
-  resolveCallbackData: (value: string) => string,
-): IncomingMessage {
+  resolveCallbackData: (value: string) => string | Promise<string>,
+): Promise<IncomingMessage> {
   const rawData = callback.data ?? callback.id
-  const resolvedData = resolveCallbackData(rawData)
+  const resolvedData = await resolveCallbackData(rawData)
   return {
     channel: 'telegram',
     senderId: String(callback.from.id),

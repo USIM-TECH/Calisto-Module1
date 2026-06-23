@@ -17,12 +17,27 @@ services:
     networks:
       - calisto-net
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - calisto-net
+
   integration:
     build:
       context: ./chatbot-integrations
       dockerfile: Dockerfile
     environment:
       PORT: 3000
+      DATABASE_URL: postgresql://calisto:calisto@postgres:5432/calisto_chatbot
+      REDIS_URL: redis://redis:6379
+      STORAGE_BACKEND: postgres
       RASA_URL: http://rasa:5015
       RASA_TIMEOUT_MS: 5000
       DATA_DIR: /app/data/runtime
@@ -71,6 +86,8 @@ services:
       - ./chatbot-integrations/data/runtime:/app/data/runtime
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       rasa:
         condition: service_started
