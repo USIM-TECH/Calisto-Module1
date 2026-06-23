@@ -71,6 +71,7 @@ entities:
   - gender
   - category
   - lead_name
+  - price_modifier
   - contact_number
   - email
   - lead_location
@@ -216,6 +217,12 @@ slots:
     mappings:
       - type: from_entity
         entity: gender
+  price_modifier:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: price_modifier
   lead_name:
     type: text
     influence_conversation: false

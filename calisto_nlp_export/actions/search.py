@@ -627,7 +627,7 @@ def search_products_engine(
             current_b_max = parsed_budget["budget_max"]
 
     previous_filters: Dict[str, str] = {}
-    for slot in ["gender", "product_type", "brand", "frame_shape", "frame_material", "frame_color", "category", "use_case", "uv_protection", "polarized", "lens_color", "lens_type", "lens_feature", "lens_duration", "multifocal"]:
+    for slot in ["gender", "product_type", "brand", "frame_shape", "frame_material", "frame_color", "category", "use_case", "uv_protection", "polarized", "lens_color", "lens_type", "lens_feature", "lens_duration", "multifocal", "price_modifier"]:
         val = tracker.get_slot(slot)
         if slot == "brand" and is_show_all_brand(val):
             clear_brand_filter = True
@@ -776,6 +776,10 @@ def search_products_engine(
     brand_value = list(extracted["brand"])[0] if "brand" in extracted and extracted["brand"] else ""
     product_type_value = list(extracted["product_type"])[0] if "product_type" in extracted and extracted["product_type"] else ""
     use_case_value = list(extracted["use_case"])[0] if "use_case" in extracted and extracted["use_case"] else ""
+    frame_color_value = list(extracted["frame_color"])[0] if "frame_color" in extracted and extracted["frame_color"] else None
+    lens_type_value = list(extracted["lens_type"])[0] if "lens_type" in extracted and extracted["lens_type"] else None
+    frame_shape_value = list(extracted["frame_shape"])[0] if "frame_shape" in extracted and extracted["frame_shape"] else None
+    price_modifier_value = list(extracted["price_modifier"])[0] if "price_modifier" in extracted and extracted["price_modifier"] else None
 
     if filtered.empty and not allow_similar_requested:
         for col, values in extracted.items():
@@ -870,7 +874,16 @@ def search_products_engine(
 
     ranking_type = product_type_value or None
     ranking_brand = None if "brand" in relaxed_flags else (brand_value or None)
-    ranked = rank_products_safely(filtered, product_type=ranking_type, brand=ranking_brand, use_case=use_case_value or None)
+    ranked = rank_products_safely(
+        filtered,
+        product_type=ranking_type,
+        brand=ranking_brand,
+        use_case=use_case_value or None,
+        frame_color=frame_color_value,
+        lens_type=lens_type_value,
+        frame_shape=frame_shape_value,
+        price_modifier=price_modifier_value,
+    )
     top_results = ranked.head(5)
 
     if not extracted and b_min is None and b_max is None:

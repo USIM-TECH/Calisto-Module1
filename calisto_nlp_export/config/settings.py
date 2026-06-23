@@ -44,6 +44,7 @@ MANAGED_SLOTS = {
     "budget_max",
     "budget_bucket",
     "gender",
+    "price_modifier",
     *PERSISTENT_SLOTS,
 }
 
@@ -123,6 +124,7 @@ FLOW_ALLOWED_SLOTS = {
         "budget_max",
         "budget_bucket",
         "gender",
+        "price_modifier",
     },
     "lens_consultation": {"lens_type", "lens_feature", "uv_protection", "polarized", "lens_color", "lens_duration", "multifocal", "price_range"},
     "store_lookup": {"city"},
@@ -146,6 +148,7 @@ FLOW_ALLOWED_SLOTS = {
         "budget_bucket",
         "use_case",
         "gender",
+        "price_modifier",
     },
     "product_recommendation": {"product_type", "brand", "budget", "use_case", "urgency", "gender", "uv_protection", "polarized", "lens_color", "lens_type", "lens_feature", "lens_duration", "multifocal"},
     "lead_capture": set(PERSISTENT_SLOTS),

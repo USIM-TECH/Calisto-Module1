@@ -5,6 +5,9 @@ import {
   LlmIntentClassifier,
   type LlmClassification,
 } from './llm-client.js'
+import { QueryExpander } from '../context/query-expander.js'
+import { SessionMemoryManager } from '../context/session-memory.js'
+import type { CacheService } from '../../cache/cache-service.js'
 
 
 export interface NLPClientConfig {
@@ -284,6 +287,7 @@ const BRAND_ALIAS_MAP: Record<string, string> = {
   'tom ford': 'Tom Ford',
   'tomford': 'Tom Ford',
   'versace': 'Versace',
+  'raymond': 'Raymond',
 }
 
 function extractFromMap(text: string, map: Record<string, string>): string | null {
@@ -398,15 +402,22 @@ export class NLPClient {
   private _config: NLPClientConfig
   private _logger: Logger
   private _llm?: LlmIntentClassifier
+  private _queryExpander?: QueryExpander
 
   constructor(
     config: NLPClientConfig,
     logger: Logger,
     llm?: LlmIntentClassifier,
+    cacheService?: CacheService,
   ) {
     this._config = config
     this._logger = logger
     this._llm = llm
+    
+    if (cacheService) {
+      const sessionMemory = new SessionMemoryManager(cacheService)
+      this._queryExpander = new QueryExpander(sessionMemory, logger)
+    }
   }
 
   public get llmEnabled(): boolean {
@@ -440,7 +451,7 @@ export class NLPClient {
     const nluFloor = this._config.nluConfidenceFloor ?? DEFAULT_NLU_FLOOR
     const llmFloor = this._config.llmConfidenceFloor ?? DEFAULT_LLM_FLOOR
 
-    const safeMessage = String(message).slice(0, 1000).trim()
+    let safeMessage = String(message).slice(0, 1000).trim()
     const senderNamespace = this._config.isolateTrackersByChannel && metadata?.channel
       ? `${metadata.channel}:${userId}`
       : userId
@@ -448,6 +459,17 @@ export class NLPClient {
 
     if (!safeMessage) {
       return { text: fallback, raw: [] }
+    }
+
+    // Context-Aware Query Expansion Layer
+    if (this._queryExpander && !safeMessage.startsWith('/')) {
+      const expansion = await this._queryExpander.expand(safeSender, safeMessage)
+      if (expansion.expanded && expansion.expanded_query) {
+        this._logger.info(
+          `[Context] Query expansion applied: "${safeMessage}" → "${expansion.expanded_query}"`,
+        )
+        safeMessage = expansion.expanded_query
+      }
     }
 
     const preTracker = await this.getTracker(safeSender)
@@ -634,6 +656,25 @@ export class NLPClient {
         llm_used: Boolean(llmResult),
         latency_ms: Date.now() - startedAt,
       }))
+
+      // Update session context from extracted entities
+      if (this._queryExpander && postTracker?.slots) {
+        const entities: Record<string, string> = {}
+        const slots = postTracker.slots
+        
+        if (typeof slots.brand === 'string') entities.brand = slots.brand
+        if (typeof slots.product_type === 'string') entities.product_type = slots.product_type
+        if (typeof slots.frame_color === 'string') entities.frame_color = slots.frame_color
+        if (typeof slots.frame_material === 'string') entities.frame_material = slots.frame_material
+        if (typeof slots.frame_shape === 'string') entities.frame_shape = slots.frame_shape
+        if (typeof slots.gender === 'string') entities.gender = slots.gender
+        if (typeof slots.budget_min === 'number') entities.budget_min = String(slots.budget_min)
+        if (typeof slots.budget_max === 'number') entities.budget_max = String(slots.budget_max)
+        
+        if (Object.keys(entities).length > 0) {
+          await this._queryExpander.updateFromEntities(safeSender, entities, safeMessage)
+        }
+      }
 
       return {
         text: combinedText || fallback,
