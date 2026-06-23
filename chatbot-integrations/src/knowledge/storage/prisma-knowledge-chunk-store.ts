@@ -1,5 +1,7 @@
 import crypto from 'crypto'
 import { Prisma, PrismaClient } from '@prisma/client'
+import { CACHE_KEYS, invalidateKnowledgeCache, type CacheService } from '../../cache/index.js'
+import { MemoryCacheService } from '../../cache/memory-cache.js'
 import type { KnowledgeChunkStore } from './knowledge-chunk-store.interface.js'
 import type { KnowledgeChunkRecord, KnowledgeChunkWire, KnowledgeDocumentSummary } from '../types.js'
 
@@ -28,7 +30,16 @@ export function chunkHash(source: string, text: string): string {
 }
 
 export class PrismaKnowledgeChunkStore implements KnowledgeChunkStore {
-  constructor(private readonly _client: PrismaClient) {}
+  constructor(
+    private readonly _client: PrismaClient,
+    private readonly _cache: CacheService = new MemoryCacheService({ keyPrefix: 'calisto' }),
+    private readonly _chunksTtlSec = 600,
+    private readonly _summaryTtlSec = 300,
+  ) {}
+
+  private async _invalidate(): Promise<void> {
+    await invalidateKnowledgeCache(this._cache)
+  }
 
   async documentExists(source: string): Promise<boolean> {
     const doc = await this._client.knowledgeDocument.findUnique({
@@ -39,15 +50,20 @@ export class PrismaKnowledgeChunkStore implements KnowledgeChunkStore {
   }
 
   async listDocuments(): Promise<KnowledgeDocumentSummary[]> {
+    const cached = await this._cache.getJson<KnowledgeDocumentSummary[]>(CACHE_KEYS.knowledgeDocuments)
+    if (cached) return cached
+
     const docs = await this._client.knowledgeDocument.findMany({
       orderBy: { source: 'asc' },
       include: { _count: { select: { chunks: true } } },
     })
-    return docs.map((d) => ({
+    const records = docs.map((d) => ({
       source: d.source,
       chunkCount: d._count.chunks,
       updatedAt: d.updatedAt.toISOString(),
     }))
+    await this._cache.setJson(CACHE_KEYS.knowledgeDocuments, records, this._summaryTtlSec)
+    return records
   }
 
   async getChunksBySource(source: string): Promise<KnowledgeChunkRecord[]> {
@@ -62,7 +78,7 @@ export class PrismaKnowledgeChunkStore implements KnowledgeChunkStore {
     source: string,
     chunks: Array<{ chunkHash: string; text: string }>,
   ): Promise<number> {
-    return this._client.$transaction(async (tx) => {
+    const count = await this._client.$transaction(async (tx) => {
       const doc = await tx.knowledgeDocument.upsert({
         where: { source },
         create: { source },
@@ -92,11 +108,14 @@ export class PrismaKnowledgeChunkStore implements KnowledgeChunkStore {
 
       return chunks.length
     })
+    await this._invalidate()
+    return count
   }
 
   async deleteDocument(source: string): Promise<boolean> {
     try {
       await this._client.knowledgeDocument.delete({ where: { source } })
+      await this._invalidate()
       return true
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
@@ -122,20 +141,30 @@ export class PrismaKnowledgeChunkStore implements KnowledgeChunkStore {
   }
 
   async listForRasa(): Promise<KnowledgeChunkWire[]> {
+    const cached = await this._cache.getJson<KnowledgeChunkWire[]>(CACHE_KEYS.knowledgeChunks)
+    if (cached) return cached
+
     const rows = await this._client.knowledgeChunk.findMany({
       select: { source: true, text: true },
       orderBy: [{ source: 'asc' }, { id: 'asc' }],
     })
-    return rows.map((r) => ({ source: r.source, text: r.text }))
+    const records = rows.map((r) => ({ source: r.source, text: r.text }))
+    await this._cache.setJson(CACHE_KEYS.knowledgeChunks, records, this._chunksTtlSec)
+    return records
   }
 
   async countBySource(): Promise<Array<{ source: string; count: number }>> {
+    const cached = await this._cache.getJson<Array<{ source: string; count: number }>>(CACHE_KEYS.knowledgeSummary)
+    if (cached) return cached
+
     const grouped = await this._client.knowledgeChunk.groupBy({
       by: ['source'],
       _count: { _all: true },
       orderBy: { source: 'asc' },
     })
-    return grouped.map((g) => ({ source: g.source, count: g._count._all }))
+    const records = grouped.map((g) => ({ source: g.source, count: g._count._all }))
+    await this._cache.setJson(CACHE_KEYS.knowledgeSummary, records, this._summaryTtlSec)
+    return records
   }
 
   async listPaged(
@@ -159,6 +188,7 @@ export class PrismaKnowledgeChunkStore implements KnowledgeChunkStore {
   async deleteById(id: string): Promise<boolean> {
     try {
       await this._client.knowledgeChunk.delete({ where: { id } })
+      await this._invalidate()
       return true
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {

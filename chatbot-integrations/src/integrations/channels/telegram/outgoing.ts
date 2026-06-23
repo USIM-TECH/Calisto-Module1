@@ -1,10 +1,10 @@
 import type { OutgoingMessage } from '../../../core/types.js'
-import type { TelegramCallbackAliasStore } from './callback-alias.js'
+import type { CallbackAliasStore } from './callback-alias.js'
 
 const TELEGRAM_CALLBACK_LIMIT_BYTES = 64
 
-function telegramCallbackData(payload: string, aliasStore?: TelegramCallbackAliasStore): string {
-  const value = aliasStore ? aliasStore.alias(payload) : payload
+async function telegramCallbackData(payload: string, aliasStore?: CallbackAliasStore): Promise<string> {
+  const value = aliasStore ? await aliasStore.alias(payload) : payload
   if (Buffer.byteLength(value, 'utf8') > TELEGRAM_CALLBACK_LIMIT_BYTES) {
     throw new Error(`Telegram callback_data exceeds ${TELEGRAM_CALLBACK_LIMIT_BYTES} bytes after aliasing`)
   }
@@ -37,23 +37,24 @@ export interface TelegramSendPayload {
   payload: Record<string, unknown>
 }
 
-function buildTelegramInlineKeyboard(
+async function buildTelegramInlineKeyboard(
   actions: NonNullable<Extract<OutgoingMessage, { type: 'card' }>['actions']>,
-  aliasStore?: TelegramCallbackAliasStore,
+  aliasStore?: CallbackAliasStore,
 ) {
-  return actions.map((action) => {
+  const rows = await Promise.all(actions.map(async (action) => {
     if (action.type === 'url') {
       return [{ text: action.title, url: action.value }]
     }
-    return [{ text: action.title, callback_data: telegramCallbackData(action.value, aliasStore) }]
-  })
+    return [{ text: action.title, callback_data: await telegramCallbackData(action.value, aliasStore) }]
+  }))
+  return rows
 }
 
-export function buildTelegramSendPayload(
+export async function buildTelegramSendPayload(
   chatId: string,
   message: OutgoingMessage,
-  aliasStore?: TelegramCallbackAliasStore,
-): TelegramSendPayload | undefined {
+  aliasStore?: CallbackAliasStore,
+): Promise<TelegramSendPayload | undefined> {
   switch (message.type) {
     case 'text':
       return {
@@ -76,20 +77,22 @@ export function buildTelegramSendPayload(
               },
             },
       }
-    case 'choice':
+    case 'choice': {
+      const options = await Promise.all(message.options.map(async (option) => ([{
+        text: option.label,
+        callback_data: await telegramCallbackData(option.value, aliasStore),
+      }])))
       return {
         method: 'sendMessage',
         payload: {
           chat_id: chatId,
           text: message.text,
           reply_markup: {
-            inline_keyboard: message.options.map((option) => ([{
-              text: option.label,
-              callback_data: telegramCallbackData(option.value, aliasStore),
-            }])),
+            inline_keyboard: options,
           },
         },
       }
+    }
     case 'location':
       return {
         method: 'sendMessage',
@@ -98,8 +101,11 @@ export function buildTelegramSendPayload(
           text: `https://www.google.com/maps/search/?api=1&query=${message.latitude},${message.longitude}`,
         },
       }
-    case 'card':
+    case 'card': {
       const formatted = formatCardText(message)
+      const inlineKeyboard = message.actions?.length
+        ? await buildTelegramInlineKeyboard(message.actions, aliasStore)
+        : undefined
       if (message.imageUrl) {
         return {
           method: 'sendPhoto',
@@ -108,10 +114,10 @@ export function buildTelegramSendPayload(
             photo: message.imageUrl,
             caption: formatted.text,
             ...(formatted.parseMode ? { parse_mode: formatted.parseMode } : {}),
-            ...(message.actions?.length
+            ...(inlineKeyboard
               ? {
                   reply_markup: {
-                    inline_keyboard: buildTelegramInlineKeyboard(message.actions, aliasStore),
+                    inline_keyboard: inlineKeyboard,
                   },
                 }
               : {}),
@@ -124,15 +130,16 @@ export function buildTelegramSendPayload(
           chat_id: chatId,
           text: formatted.text,
           ...(formatted.parseMode ? { parse_mode: formatted.parseMode } : {}),
-          ...(message.actions?.length
+          ...(inlineKeyboard
             ? {
                 reply_markup: {
-                  inline_keyboard: buildTelegramInlineKeyboard(message.actions, aliasStore),
+                  inline_keyboard: inlineKeyboard,
                 },
               }
             : {}),
         },
       }
+    }
     default:
       return undefined
   }

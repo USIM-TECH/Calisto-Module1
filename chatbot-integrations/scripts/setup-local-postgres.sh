@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bootstrap local PostgreSQL for chatbot-integrations (Prisma ORM, not Prisma Cloud).
+# Bootstrap local PostgreSQL + Redis for chatbot-integrations.
 #
 # Usage (from chatbot-integrations/):
 #   ./scripts/setup-local-postgres.sh
@@ -13,13 +13,22 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 LOCAL_DATABASE_URL="${LOCAL_DATABASE_URL:-postgresql://calisto:calisto@localhost:5432/calisto_chatbot}"
+LOCAL_REDIS_URL="${LOCAL_REDIS_URL:-redis://localhost:6379}"
 
-echo "Starting local PostgreSQL..."
+echo "Starting local PostgreSQL and Redis..."
 docker compose -f docker-compose.postgres.yml up -d
 
 echo "Waiting for Postgres..."
 for _ in $(seq 1 30); do
   if pg_isready -h localhost -p 5432 -U calisto -d calisto_chatbot >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+echo "Waiting for Redis..."
+for _ in $(seq 1 30); do
+  if redis-cli -h localhost -p 6379 ping >/dev/null 2>&1; then
     break
   fi
   sleep 1
@@ -51,11 +60,13 @@ if [[ "${1:-}" == "--import-cloud" ]]; then
 fi
 
 echo ""
-echo "Local Postgres is ready."
+echo "Local Postgres and Redis are ready."
 echo "Set in .env:"
 echo "  STORAGE_BACKEND=postgres"
 echo "  DATABASE_URL=$LOCAL_DATABASE_URL"
+echo "  REDIS_URL=$LOCAL_REDIS_URL"
 echo ""
+echo "See CACHING.md for cache keys and TTLs."
 echo "Row counts:"
 psql "$LOCAL_DATABASE_URL" -c "
 SELECT 'Product' t, count(*) FROM \"Product\"

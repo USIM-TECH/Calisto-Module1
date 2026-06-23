@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, Mail, RefreshCw, Search, UserRoundCheck, UsersRound, X } from 'lucide-react'
+import { CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, Mail, Search, UserRoundCheck, UsersRound, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -6,6 +6,7 @@ import { getLeads } from '../api/client'
 import Button from '../components/Button'
 import PageContainer from '../components/PageContainer'
 import Topbar from '../components/Topbar'
+import { downloadLeadsCsv } from '../lib/export-leads-csv'
 import type { ChannelIdentityRecord, CustomerRecord, LeadsResponse } from '../types'
 
 type ChannelName = ChannelIdentityRecord['channel']
@@ -455,15 +456,24 @@ export default function LeadsPage() {
     setStatusFilter('')
   }
 
+  function handleExport() {
+    if (!data) return
+    downloadLeadsCsv(data.customers, identitiesByCustomer)
+  }
+
   return (
     <PageContainer>
       <Topbar
         title="Lead Operations Dashboard"
         actions={(
-          <>
-            <Button icon={<RefreshCw className="h-4 w-4" />} variant="secondary">Sync Data</Button>
-            <Button icon={<Download className="h-4 w-4" />} variant="primary">Export</Button>
-          </>
+          <Button
+            disabled={!data || data.customers.length === 0}
+            icon={<Download className="h-4 w-4" />}
+            onClick={handleExport}
+            variant="primary"
+          >
+            Export
+          </Button>
         )}
       />
 

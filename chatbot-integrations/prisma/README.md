@@ -32,6 +32,8 @@ Prisma Cloud (`db.prisma.io`) is hosted PostgreSQL billed through Prisma. This p
 
 For production, set `DATABASE_URL` to your client's PostgreSQL server (RDS, Azure Database, on-prem, etc.) and run `npm run db:migrate`.
 
+Optional Redis caching (products, knowledge, leads, Telegram aliases): see [CACHING.md](../CACHING.md).
+
 ## Quick start
 
 From `chatbot-integrations/`:
@@ -48,6 +50,7 @@ npm run dev
 ```env
 STORAGE_BACKEND=postgres
 DATABASE_URL=postgresql://calisto:calisto@localhost:5432/calisto_chatbot
+REDIS_URL=redis://localhost:6379
 ```
 
 ## Scripts

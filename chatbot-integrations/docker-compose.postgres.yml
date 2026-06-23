@@ -1,4 +1,4 @@
-# Local PostgreSQL for chatbot-integrations (Prisma ORM + Prisma Studio).
+# Local PostgreSQL + Redis for chatbot-integrations (Prisma ORM + optional Redis cache).
 # Start: docker compose -f docker-compose.postgres.yml up -d
 # Stop:  docker compose -f docker-compose.postgres.yml down
 
@@ -16,6 +16,17 @@ services:
       - calisto-postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U calisto -d calisto_chatbot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: calisto-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5

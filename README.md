@@ -103,11 +103,11 @@ docker compose -f docker-compose.postgres.yml up -d
 ```env
 STORAGE_BACKEND=postgres
 DATABASE_URL=postgresql://calisto:calisto@localhost:5432/calisto_chatbot
+REDIS_URL=redis://localhost:6379
 ```
 
-Browse tables with `npm run db:studio`. See [chatbot-integrations/prisma/README.md](chatbot-integrations/prisma/README.md).
+Browse tables with `npm run db:studio`. Caching is documented in [chatbot-integrations/CACHING.md](chatbot-integrations/CACHING.md). Database setup: [chatbot-integrations/prisma/README.md](chatbot-integrations/prisma/README.md).
 
-**Migrating off Prisma Cloud:** if you still have cloud access, run `./scripts/migrate-cloud-to-local.sh` once (see script header). If the cloud plan is blocked, restore from a prior dump or re-seed with `npm run db:seed:products` / admin CSV import.
 
 For JSON-only storage (no Postgres), set `STORAGE_BACKEND=file`. See [chatbot-integrations/LEADS.md](chatbot-integrations/LEADS.md) and [chatbot-integrations/prisma/README.md](chatbot-integrations/prisma/README.md).
 
@@ -199,7 +199,7 @@ Instagram callback URLs must be set in the Meta App Dashboard (Instagram → API
 Run these in separate terminals:
 
 ```bash
-# Terminal 1 — PostgreSQL (local Docker)
+# Terminal 1 — PostgreSQL + Redis (local Docker)
 cd chatbot-integrations && docker compose -f docker-compose.postgres.yml up -d
 
 # Terminal 2 — Rasa + actions
