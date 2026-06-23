@@ -8,6 +8,11 @@ User message (WhatsApp / Instagram / Messenger / Telegram / X / Webchat)
         ▼
 chatbot-integrations (Node/TS API, :3000)
         │
+        ├── 0. Context Expansion (Redis session memory)  [resolves "that", "this", "it"]
+        │      • Simple references (that, this, it) → expands using session context
+        │      • Product modifications (blue ones, cheaper ones) → adds to context
+        │      • Accessories (lenses for that) → expands with product context
+        │
         ├── 1. Rasa /model/parse  (primary classifier)
         │      • intent.name != nlu_fallback AND confidence ≥ 0.40
         │        → forward raw text to /webhooks/rest/webhook
@@ -35,6 +40,10 @@ The LLM layer lives in `chatbot-integrations/src/core/utils/llm-client.ts` and
 is toggled with `LLM_LAYER_ENABLED=true|false` in `chatbot-integrations/.env`.
 Thresholds: `RASA_NLU_CONFIDENCE_FLOOR` (default `0.4`, matches Rasa's
 `FallbackClassifier`) and `LLM_CONFIDENCE_FLOOR` (default `0.35`).
+
+The Context Expansion layer lives in `chatbot-integrations/src/core/context/` and
+automatically activates when Redis is enabled. It resolves contextual references
+("that", "this", "it") without LLM invocation. See [CONTEXT_EXPANSION.md](chatbot-integrations/CONTEXT_EXPANSION.md).
 
 ## Repository layout
 

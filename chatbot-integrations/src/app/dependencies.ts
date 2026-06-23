@@ -118,6 +118,7 @@ export async function createDependencies(): Promise<AppDependencies> {
     },
     logger,
     llmClassifier,
+    cacheService,
   )
 
   logger.info(`NLP client configured for ${config.rasaUrl}`)
