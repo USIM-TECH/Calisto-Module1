@@ -437,7 +437,7 @@ def load_catalogue() -> pd.DataFrame:
     else:
         raise RuntimeError(
             "Remote product catalogue unavailable. "
-            "Set BACKEND_API_BASE_URL to the integration API and ensure it is using STORAGE_BACKEND=postgres."
+            "Set BACKEND_API_BASE_URL to the integration API and ensure it is using STORAGE_BACKEND=mysql."
         )
 
     # Normalize common string fields early so downstream filtering is stable.
@@ -494,7 +494,7 @@ def load_kb_metadata() -> List[Dict[str, Any]]:
     if remote is None:
         raise RuntimeError(
             "Knowledge base unavailable from integration API. "
-            "Ensure chatbot-integrations is running with STORAGE_BACKEND=postgres."
+            "Ensure chatbot-integrations is running with STORAGE_BACKEND=mysql."
         )
     if not isinstance(remote, list):
         raise RuntimeError("Knowledge base API returned an unexpected response shape.")

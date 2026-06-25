@@ -89,21 +89,21 @@ export class PrismaProductStore implements ProductStore {
 
     const where: Prisma.ProductWhereInput = {}
     if (query.productType) {
-      where.productType = { contains: query.productType, mode: 'insensitive' }
+      where.productType = { contains: query.productType }
     }
     if (query.brand) {
-      where.brand = { equals: query.brand, mode: 'insensitive' }
+      where.brand = { equals: query.brand }
     }
     if (query.q) {
       const term = query.q.trim()
       if (term.length > 0) {
         where.OR = [
-          { productId: { contains: term, mode: 'insensitive' } },
-          { productName: { contains: term, mode: 'insensitive' } },
-          { brand: { contains: term, mode: 'insensitive' } },
-          { productType: { contains: term, mode: 'insensitive' } },
-          { category: { contains: term, mode: 'insensitive' } },
-          { description: { contains: term, mode: 'insensitive' } },
+          { productId: { contains: term } },
+          { productName: { contains: term } },
+          { brand: { contains: term } },
+          { productType: { contains: term } },
+          { category: { contains: term } },
+          { description: { contains: term } },
         ]
       }
     }

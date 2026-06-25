@@ -1,36 +1,41 @@
-# Database: local PostgreSQL + Prisma tooling
+# Database: local MySQL + Prisma tooling
 
 ## What stores your data
 
-**PostgreSQL on your machine** (Docker or native install). All leads, products, knowledge, and related tables live there.
+**MySQL on your machine** (Docker or native install). All leads, products, knowledge, and related tables live there.
 
 ## What Prisma is in this project (and what it is not)
 
 | Piece | Role |
 |-------|------|
-| **PostgreSQL** | The actual database — where rows are stored |
-| **Prisma ORM** (`@prisma/client`) | TypeScript layer that reads/writes Postgres (used by the app) |
-| **Prisma Migrate** | Applies `prisma/migrations/*.sql` to your local Postgres |
-| **Prisma Studio** (`npm run db:studio`) | Browser UI to view/edit local Postgres tables |
+| **MySQL** | The actual database — where rows are stored |
+| **Prisma ORM** (`@prisma/client`) | TypeScript layer that reads/writes MySQL (used by the app) |
+| **Prisma Migrate** | Applies `prisma/migrations/*.sql` to your local MySQL |
+| **Prisma Studio** (`npm run db:studio`) | Browser UI to view/edit local MySQL tables |
 
-Prisma is **not** your database server. There is no Prisma Cloud / `db.prisma.io` connection in this repo. The app only connects via `DATABASE_URL` to **local** Postgres.
+Prisma is **not** your database server. The app only connects via `DATABASE_URL` to **your** MySQL instance.
 
-## Migrating from Prisma Cloud
+## Migrating from PostgreSQL
 
-Prisma Cloud (`db.prisma.io`) is hosted PostgreSQL billed through Prisma. This project uses **Prisma ORM** against **your own PostgreSQL** — you are not tied to Prisma Cloud.
+If you still have data in a local Postgres database (Docker volume `calisto-postgres-data`):
 
-1. Start local Postgres: `./scripts/setup-local-postgres.sh`
-2. If cloud access still works, copy data once:
-   ```bash
-   export CLOUD_DATABASE_URL='postgres://...@db.prisma.io:5432/postgres?sslmode=require'
-   ./scripts/migrate-cloud-to-local.sh
-   ```
-3. Point `.env` at local Postgres:
-   ```env
-   DATABASE_URL=postgresql://calisto:calisto@localhost:5432/calisto_chatbot
-   ```
+```bash
+./scripts/setup-local-mysql.sh --import-postgres
+```
 
-For production, set `DATABASE_URL` to your client's PostgreSQL server (RDS, Azure Database, on-prem, etc.) and run `npm run db:migrate`.
+This starts a temporary Postgres container, copies all rows into MySQL, then stops Postgres again.
+
+Or manually:
+
+```bash
+docker compose -f docker-compose.postgres-import.yml up -d
+export POSTGRES_DATABASE_URL='postgresql://calisto:calisto@127.0.0.1:5432/calisto_chatbot'
+export LOCAL_DATABASE_URL='mysql://calisto:calisto@localhost:3306/calisto_chatbot'
+./scripts/migrate-postgres-to-mysql.sh
+docker compose -f docker-compose.postgres-import.yml down
+```
+
+For production, set `DATABASE_URL` to your client's MySQL server (RDS, Azure Database, on-prem, etc.) and run `npm run db:migrate`.
 
 Optional Redis caching (products, knowledge, leads, Telegram aliases): see [CACHING.md](../CACHING.md).
 
@@ -39,8 +44,7 @@ Optional Redis caching (products, knowledge, leads, Telegram aliases): see [CACH
 From `chatbot-integrations/`:
 
 ```bash
-docker compose -f docker-compose.postgres.yml up -d
-npm run db:migrate:dev
+./scripts/setup-local-mysql.sh
 npm run db:studio    # http://localhost:5555
 npm run dev
 ```
@@ -48,10 +52,12 @@ npm run dev
 `.env`:
 
 ```env
-STORAGE_BACKEND=postgres
-DATABASE_URL=postgresql://calisto:calisto@localhost:5432/calisto_chatbot
+STORAGE_BACKEND=mysql
+DATABASE_URL=mysql://calisto:calisto@localhost:3306/calisto_chatbot
 REDIS_URL=redis://localhost:6379
 ```
+
+Legacy `STORAGE_BACKEND=postgres` is still accepted and mapped to `mysql`.
 
 ## Scripts
 

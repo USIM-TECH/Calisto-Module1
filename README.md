@@ -89,27 +89,27 @@ npm run db:migrate
 npm run dev
 ```
 
-Set `STORAGE_BACKEND=postgres` and `DATABASE_URL` in `.env`. The database is **self-hosted PostgreSQL** — Prisma is only the ORM/migration tool, not the database server.
+Set `STORAGE_BACKEND=mysql` and `DATABASE_URL` in `.env`. The database is **self-hosted MySQL** — Prisma is only the ORM/migration tool, not the database server.
 
-**Local dev (Docker Postgres):**
+**Local dev (Docker MySQL):**
 
 ```bash
-docker compose -f docker-compose.postgres.yml up -d
-./scripts/setup-local-postgres.sh
+docker compose -f docker-compose.mysql.yml up -d
+./scripts/setup-local-mysql.sh
 ```
 
 `.env`:
 
 ```env
-STORAGE_BACKEND=postgres
-DATABASE_URL=postgresql://calisto:calisto@localhost:5432/calisto_chatbot
+STORAGE_BACKEND=mysql
+DATABASE_URL=mysql://calisto:calisto@localhost:3306/calisto_chatbot
 REDIS_URL=redis://localhost:6379
 ```
 
 Browse tables with `npm run db:studio`. Caching is documented in [chatbot-integrations/CACHING.md](chatbot-integrations/CACHING.md). Database setup: [chatbot-integrations/prisma/README.md](chatbot-integrations/prisma/README.md).
 
 
-For JSON-only storage (no Postgres), set `STORAGE_BACKEND=file`. See [chatbot-integrations/LEADS.md](chatbot-integrations/LEADS.md) and [chatbot-integrations/prisma/README.md](chatbot-integrations/prisma/README.md).
+For JSON-only storage (no MySQL), set `STORAGE_BACKEND=file`. See [chatbot-integrations/LEADS.md](chatbot-integrations/LEADS.md) and [chatbot-integrations/prisma/README.md](chatbot-integrations/prisma/README.md).
 
 Backend API endpoints (used by channels and the React frontend):
 - `http://localhost:3000/` — service info
@@ -199,8 +199,8 @@ Instagram callback URLs must be set in the Meta App Dashboard (Instagram → API
 Run these in separate terminals:
 
 ```bash
-# Terminal 1 — PostgreSQL + Redis (local Docker)
-cd chatbot-integrations && docker compose -f docker-compose.postgres.yml up -d
+# Terminal 1 — MySQL + Redis (local Docker)
+cd chatbot-integrations && docker compose -f docker-compose.mysql.yml up -d
 
 # Terminal 2 — Rasa + actions
 cd calisto_nlp_export && docker compose up -d

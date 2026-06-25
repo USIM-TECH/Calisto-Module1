@@ -17,7 +17,10 @@ const optionalString = z.preprocess((value) => {
 
 const responseStyleSchema = z.enum(['casual', 'professional', 'warm', 'concierge']).default('casual')
 
-const storageBackendSchema = z.enum(['file', 'postgres']).default('postgres')
+const storageBackendSchema = z.preprocess(
+  (value) => (value === 'postgres' ? 'mysql' : value),
+  z.enum(['file', 'mysql']).default('mysql'),
+)
 
 const envSchema = z
   .object({
@@ -117,8 +120,8 @@ export interface AppConfig {
   rasaUrl: string
   isolateTrackersByChannel: boolean
   dataDir: string
-  storageBackend: 'file' | 'postgres'
-  /** Set when postgres was requested but `DATABASE_URL` was missing; effective backend is file. */
+  storageBackend: 'file' | 'mysql'
+  /** Set when mysql was requested but `DATABASE_URL` was missing; effective backend is file. */
   usedFileStorageFallback: boolean
   publicBaseUrl?: string
   dedupTtlMs: number
@@ -158,9 +161,9 @@ export interface AppConfig {
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = envSchema.parse(env)
 
-  const requestedPostgres = parsed.STORAGE_BACKEND === 'postgres'
-  const postgresMissingUrl = requestedPostgres && !parsed.DATABASE_URL
-  const storageBackend = postgresMissingUrl ? 'file' : parsed.STORAGE_BACKEND
+  const requestedMysql = parsed.STORAGE_BACKEND === 'mysql'
+  const mysqlMissingUrl = requestedMysql && !parsed.DATABASE_URL
+  const storageBackend = mysqlMissingUrl ? 'file' : parsed.STORAGE_BACKEND
 
   return {
     port: parsed.PORT,
@@ -168,7 +171,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     isolateTrackersByChannel: parsed.RASA_TRACKER_INCLUDE_CHANNEL,
     dataDir: parsed.DATA_DIR ?? 'data/runtime',
     storageBackend,
-    usedFileStorageFallback: postgresMissingUrl,
+    usedFileStorageFallback: mysqlMissingUrl,
     publicBaseUrl: parsed.PUBLIC_BASE_URL,
     dedupTtlMs: parsed.DEDUP_TTL_MS,
     responseStyle: parsed.RESPONSE_STYLE,

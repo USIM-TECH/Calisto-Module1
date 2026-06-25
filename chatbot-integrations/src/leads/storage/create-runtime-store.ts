@@ -3,7 +3,7 @@ import type { RuntimeStore } from './runtime-store.interface.js'
 import { FileRuntimeStore } from './file-runtime-store.js'
 import { PrismaRuntimeStore } from './prisma-runtime-store.js'
 
-export type StorageBackend = 'file' | 'postgres'
+export type StorageBackend = 'file' | 'mysql'
 
 export interface CreateRuntimeStoreOptions {
   backend: StorageBackend
@@ -11,7 +11,7 @@ export interface CreateRuntimeStoreOptions {
 }
 
 export function createRuntimeStore(options: CreateRuntimeStoreOptions): RuntimeStore {
-  if (options.backend === 'postgres') {
+  if (options.backend === 'mysql') {
     return new PrismaRuntimeStore(getPrismaClient())
   }
   return new FileRuntimeStore(options.dataDir)

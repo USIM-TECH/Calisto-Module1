@@ -5,7 +5,7 @@ Optional Redis-backed caching for `chatbot-integrations`. When `REDIS_URL` is un
 ## Quick start
 
 ```bash
-docker compose -f docker-compose.postgres.yml up -d
+docker compose -f docker-compose.mysql.yml up -d
 # .env
 REDIS_URL=redis://localhost:6379
 npm run dev
@@ -55,5 +55,5 @@ Full Redis keys are prefixed: `{REDIS_KEY_PREFIX}:{key}`.
 ## Troubleshooting
 
 - **`redis: disabled`** — `REDIS_URL` not set; in-memory fallback active.
-- **`redis: error`** — Redis unreachable; restart container: `docker compose -f docker-compose.postgres.yml up -d redis`
+- **`redis: error`** — Redis unreachable; restart container: `docker compose -f docker-compose.mysql.yml up -d redis`
 - **Stale product/knowledge data** — wait for TTL or restart the integration service after admin writes (writes invalidate cache immediately when Redis/memory backend is shared).

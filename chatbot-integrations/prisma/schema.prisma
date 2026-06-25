@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -161,7 +161,7 @@ model ConversationMessage {
   conversationId String
   direction      MessageDirection
   messageId      String
-  text           String?
+  text           String?          @db.Text
   messageType    String
   timestamp      DateTime
   metadata       Json
@@ -204,7 +204,7 @@ model Product {
   productType      String
   brand            String
   priceMyr         Float
-  description      String?
+  description      String?  @db.Text
   frameMaterial    String?
   frameShape       String?
   frameColor       String?
