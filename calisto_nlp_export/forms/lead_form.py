@@ -33,19 +33,7 @@ class ValidateLeadCaptureForm(FormValidationAction):
         return "validate_lead_capture_form"
 
     async def required_slots(self, domain_slots, dispatcher, tracker, domain):
-        """Return required slots based on flow type.
-        
-        For support flows, only require name and phone.
-        For other flows, require all fields.
-        """
-        current_flow = str(tracker.get_slot("current_flow") or "").strip()
-        support_case_type = str(tracker.get_slot("support_case_type") or "").strip()
-        
-        # If this is a support flow, only require critical contact info
-        if current_flow == "support_flow" or support_case_type:
-            return ["lead_name", "contact_number"]
-        
-        # For appointment/consultation flows, require all fields
+        """Return all required slots for lead capture."""
         return ["lead_name", "contact_number", "email", "lead_location", "preferred_service", "purchase_timeline"]
 
     def _reject_slot(

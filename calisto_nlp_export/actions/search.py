@@ -120,7 +120,7 @@ class ActionSmartSearch(Action):
         events.extend(apply_domain_switch_reset(tracker, intent_name, raw_text, support_intent))
         events.extend(flow_entry_events(tracker, "product_search"))
 
-        search_events, success = search_products_engine(raw_text, tracker, lang, intent_name, dispatcher)
+        search_events, success = search_products_engine(raw_text, tracker, lang, intent_name, dispatcher, domain)
         events.extend(search_events)
         if search_events:
             events.append(SlotSet("last_product_search_signature", signature))
@@ -450,9 +450,16 @@ def search_products_engine(
     tracker: Tracker, 
     lang: str, 
     intent_name: str,
-    dispatcher: CollectingDispatcher
+    dispatcher: CollectingDispatcher,
+    domain: Optional[Dict[Text, Any]] = None
 ) -> tuple[List[Dict[str, Any]], bool]:
     events: List[Dict[Text, Any]] = []
+    supported_slots = set(domain.get("slots", {}).keys()) if isinstance(domain, dict) else set()
+
+    def emit_slot(slot_name: str, value: Any) -> None:
+        if not supported_slots or slot_name in supported_slots:
+            events.append(SlotSet(slot_name, value))
+
     normalized = normalize_search_text(raw_text)
     df = load_catalogue().copy()
     registry = build_dynamic_attribute_registry()
@@ -657,7 +664,7 @@ def search_products_engine(
     else:
         extracted = current_filters
         for slot in MANAGED_SLOTS:
-            events.append(SlotSet(slot, None))
+            emit_slot(slot, None)
 
     try:
         b_min = float(b_min) if b_min is not None else None
@@ -784,21 +791,21 @@ def search_products_engine(
     if filtered.empty and not allow_similar_requested:
         for col, values in extracted.items():
             if col in MANAGED_SLOTS and values:
-                events.append(SlotSet(col, list(values)[0]))
+                emit_slot(col, list(values)[0])
         if clear_brand_filter:
-            events.append(SlotSet("brand", None))
+            emit_slot("brand", None)
         if b_min is not None:
-            events.append(SlotSet("budget_min", b_min))
+            emit_slot("budget_min", b_min)
         elif current_budget_provided:
-            events.append(SlotSet("budget_min", None))
+            emit_slot("budget_min", None)
         if b_max is not None:
-            events.append(SlotSet("budget_max", b_max))
+            emit_slot("budget_max", b_max)
         elif current_budget_provided:
-            events.append(SlotSet("budget_max", None))
+            emit_slot("budget_max", None)
         if current_price_range is not None:
-            events.append(SlotSet("price_range", current_price_range))
+            emit_slot("price_range", current_price_range)
         elif current_budget_provided:
-            events.append(SlotSet("price_range", None))
+            emit_slot("price_range", None)
 
         if has_lens_filters:
             dispatcher.utter_message(
@@ -950,19 +957,19 @@ def search_products_engine(
 
     if emitted_count == 0:
         if clear_brand_filter:
-            events.append(SlotSet("brand", None))
+            emit_slot("brand", None)
         if b_min is not None:
-            events.append(SlotSet("budget_min", b_min))
+            emit_slot("budget_min", b_min)
         elif current_budget_provided:
-            events.append(SlotSet("budget_min", None))
+            emit_slot("budget_min", None)
         if b_max is not None:
-            events.append(SlotSet("budget_max", b_max))
+            emit_slot("budget_max", b_max)
         elif current_budget_provided:
-            events.append(SlotSet("budget_max", None))
+            emit_slot("budget_max", None)
         if current_price_range is not None:
-            events.append(SlotSet("price_range", current_price_range))
+            emit_slot("price_range", current_price_range)
         elif current_budget_provided:
-            events.append(SlotSet("price_range", None))
+            emit_slot("price_range", None)
         if has_lens_filters and not allow_similar_requested:
             dispatcher.utter_message(
                 text=tr(
@@ -989,20 +996,20 @@ def search_products_engine(
 
     for col, values in extracted.items():
         if col in MANAGED_SLOTS:
-            events.append(SlotSet(col, list(values)[0]))
+            emit_slot(col, list(values)[0])
     if clear_brand_filter:
-        events.append(SlotSet("brand", None))
+        emit_slot("brand", None)
     if b_min is not None:
-        events.append(SlotSet("budget_min", b_min))
+        emit_slot("budget_min", b_min)
     elif current_budget_provided:
-        events.append(SlotSet("budget_min", None))
+        emit_slot("budget_min", None)
     if b_max is not None:
-        events.append(SlotSet("budget_max", b_max))
+        emit_slot("budget_max", b_max)
     elif current_budget_provided:
-        events.append(SlotSet("budget_max", None))
+        emit_slot("budget_max", None)
     if current_price_range is not None:
-        events.append(SlotSet("price_range", current_price_range))
+        emit_slot("price_range", current_price_range)
     elif current_budget_provided:
-        events.append(SlotSet("price_range", None))
+        emit_slot("price_range", None)
 
     return events, True

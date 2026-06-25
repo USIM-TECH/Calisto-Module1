@@ -45,6 +45,9 @@ nlu:
       - product availability
       - is this in stock
       - do you have this in store
+      - do you have this item
+      - is this available
+      - is that in stock
 
   - intent: greet
     examples: |
@@ -191,6 +194,17 @@ nlu:
 
   - intent: search_product
     examples: |
+      - do you have gucci contact lens
+      - do you have rayban sunglasses
+      - do you have prada frames
+      - do you have oakley glasses
+      - do you have gucci frames
+      - do you have gucci sunglasses
+      - do you have dior contact lenses
+      - do you have tom ford glasses
+      - do you have contact lenses
+      - do you have sunglasses from gucci
+      - do you have frames from rayban
       - gucci glasses under 700
       - black sunglasses below rm500
       - metal frames for office use
@@ -1610,7 +1624,7 @@ nlu:
       - can I exchange my sunglasses?
       - what are your store policies?
       - shipping times and costs?
-      - do you have a warranty?
+      - is there a warranty?
       - how to claim a refund
 
       - FAQ

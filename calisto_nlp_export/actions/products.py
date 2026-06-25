@@ -113,7 +113,7 @@ class ActionRecommendProducts(Action):
         events.extend(flow_entry_events(tracker, "product_recommendation"))
         lang = get_language(tracker)
         
-        search_events, success = search_products_engine(raw_text, tracker, lang, intent["name"], dispatcher)
+        search_events, success = search_products_engine(raw_text, tracker, lang, intent["name"], dispatcher, domain)
         events.extend(search_events)
         
         return events
@@ -415,4 +415,3 @@ class ActionShowPricing(Action):
         text = "\n\n".join([pricing_info["headline"], *pricing_info["lines"], pricing_info["note"]])
         dispatcher.utter_message(text=text, buttons=pricing_info["buttons"])
         return events
-
