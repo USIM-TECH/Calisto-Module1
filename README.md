@@ -205,6 +205,8 @@ Instagram callback URLs must be set in the Meta App Dashboard (Instagram → API
 
 ## Typical dev workflow
 
+### Option A: Fully Docker-based (recommended for production-like setup)
+
 Run these in separate terminals:
 
 ```bash
@@ -223,5 +225,47 @@ cd chatbot-frontend && npm run dev
 # Terminal 5 — tunnel (when testing channel webhooks)
 cloudflared tunnel --url http://localhost:3000
 ```
+
+Then open **http://localhost:5173** for the admin UI.
+
+### Option B: Hybrid local setup (databases in Docker, services local)
+
+Use this if you're developing Rasa models locally or prefer local Python debugging:
+
+```bash
+# Terminal 1 — Start PostgreSQL + Redis in Docker
+cd Calisto-Module1
+docker compose -f docker-compose.services.yml up -d
+
+# Terminal 2 — Train and run Rasa locally
+cd calisto_nlp_export
+source .venv/bin/activate  # Activate Python virtual environment
+rasa train                  # Train model (first time or after changes)
+rasa run --enable-api --cors "*" --port 5005
+
+# Terminal 3 — Run Rasa action server locally
+cd calisto_nlp_export
+source .venv/bin/activate
+rasa run actions --port 5055
+
+# Terminal 4 — Backend API
+cd chatbot-integrations
+npm run dev
+
+# Terminal 5 — React admin UI
+cd chatbot-frontend
+npm run dev
+
+# Terminal 6 — Tunnel (when testing channel webhooks)
+cloudflared tunnel --url http://localhost:3000
+```
+
+**Local Rasa setup requirements:**
+- Python virtual environment at `calisto_nlp_export/.venv`
+- Rasa 3.6.21 and dependencies installed
+- Redis Python client (4.6.0) installed
+- Trained model in `calisto_nlp_export/models/`
+
+**Note:** Redis tracker store is available but currently disabled in `endpoints.yml` due to a Rasa 3.6 local compatibility issue. It works fine in Docker mode.
 
 Then open **http://localhost:5173** for the admin UI.
