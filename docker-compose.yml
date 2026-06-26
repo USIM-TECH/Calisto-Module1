@@ -1,19 +1,24 @@
 services:
-  postgres:
-    image: postgres:16-alpine
+  mysql:
+    image: mysql:8.4
     environment:
-      POSTGRES_USER: calisto
-      POSTGRES_PASSWORD: calisto
-      POSTGRES_DB: calisto_chatbot
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: calisto_chatbot
+      MYSQL_USER: calisto
+      MYSQL_PASSWORD: calisto
     ports:
-      - "5432:5432"
+      - "3306:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U calisto -d calisto_chatbot"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "calisto", "-pcalisto"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 20s
     networks:
       - calisto-net
 
@@ -35,9 +40,9 @@ services:
       dockerfile: Dockerfile
     environment:
       PORT: 3000
-      DATABASE_URL: postgresql://calisto:calisto@postgres:5432/calisto_chatbot
+      DATABASE_URL: mysql://calisto:calisto@mysql:3306/calisto_chatbot
       REDIS_URL: redis://redis:6379
-      STORAGE_BACKEND: postgres
+      STORAGE_BACKEND: mysql
       RASA_URL: http://rasa:5015
       RASA_TIMEOUT_MS: 5000
       DATA_DIR: /app/data/runtime
@@ -85,7 +90,7 @@ services:
     volumes:
       - ./chatbot-integrations/data/runtime:/app/data/runtime
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -145,7 +150,7 @@ services:
 
 volumes:
   ollama-data:
-  postgres-data:
+  mysql-data:
 
 networks:
   calisto-net:

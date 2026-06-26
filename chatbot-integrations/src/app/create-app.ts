@@ -289,7 +289,7 @@ export function createApp(dependencies: AppDependencies): Express {
     logger.info('Product catalogue routes registered: /admin/products + /products/search')
   } else {
     app.get('/admin/products', (_req, res) => {
-      res.status(503).type('html').send('<h1>Product catalogue unavailable</h1><p>Set <code>STORAGE_BACKEND=postgres</code> and restart.</p>')
+      res.status(503).type('html').send('<h1>Product catalogue unavailable</h1><p>Set <code>STORAGE_BACKEND=mysql</code> and restart.</p>')
     })
   }
 
@@ -298,7 +298,7 @@ export function createApp(dependencies: AppDependencies): Express {
     logger.info('Knowledge routes registered: /admin/knowledge + /knowledge/chunks')
   } else {
     app.get('/admin/knowledge', (_req, res) => {
-      res.status(503).type('html').send('<h1>Knowledge store unavailable</h1><p>Set <code>STORAGE_BACKEND=postgres</code> and restart.</p>')
+      res.status(503).type('html').send('<h1>Knowledge store unavailable</h1><p>Set <code>STORAGE_BACKEND=mysql</code> and restart.</p>')
     })
   }
 

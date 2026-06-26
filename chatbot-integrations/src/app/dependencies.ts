@@ -60,7 +60,7 @@ export async function createDependencies(): Promise<AppDependencies> {
 
   if (config.usedFileStorageFallback) {
     logger.warn(
-      'STORAGE_BACKEND is postgres but DATABASE_URL is not set; falling back to file storage (runtime-store.json).',
+      'STORAGE_BACKEND is mysql but DATABASE_URL is not set; falling back to file storage (runtime-store.json).',
     )
   }
   const runtimeStore = createRuntimeStore({
@@ -68,11 +68,11 @@ export async function createDependencies(): Promise<AppDependencies> {
     dataDir: config.dataDir,
   })
   const productStore: ProductStore | undefined =
-    config.storageBackend === 'postgres'
+    config.storageBackend === 'mysql'
       ? new PrismaProductStore(getPrismaClient(), cacheService, config.cache.productCatalogueTtlSec)
       : undefined
   const knowledgeChunkStore: KnowledgeChunkStore | undefined =
-    config.storageBackend === 'postgres'
+    config.storageBackend === 'mysql'
       ? new PrismaKnowledgeChunkStore(
           getPrismaClient(),
           cacheService,
@@ -81,10 +81,10 @@ export async function createDependencies(): Promise<AppDependencies> {
         )
       : undefined
   if (!productStore) {
-    logger.warn('Product catalogue store unavailable: STORAGE_BACKEND must be postgres for /admin/products and /products/search.')
+    logger.warn('Product catalogue store unavailable: STORAGE_BACKEND must be mysql for /admin/products and /products/search.')
   }
   if (!knowledgeChunkStore) {
-    logger.warn('Knowledge chunk store unavailable: STORAGE_BACKEND must be postgres for /admin/knowledge and /knowledge/chunks.')
+    logger.warn('Knowledge chunk store unavailable: STORAGE_BACKEND must be mysql for /admin/knowledge and /knowledge/chunks.')
   }
   const deduplicator = createMessageDeduplicator(runtimeStore, config.dedupTtlMs)
 

@@ -1,0 +1,40 @@
+# Local MySQL + Redis for chatbot-integrations (Prisma ORM + optional Redis cache).
+# Start: docker compose -f docker-compose.mysql.yml up -d
+# Stop:  docker compose -f docker-compose.mysql.yml down
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: calisto-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: calisto_chatbot
+      MYSQL_USER: calisto
+      MYSQL_PASSWORD: calisto
+    ports:
+      - "3306:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - calisto-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "calisto", "-pcalisto"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    container_name: calisto-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  calisto-mysql-data:

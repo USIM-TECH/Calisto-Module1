@@ -34,7 +34,7 @@ calisto_nlp_export/
 └── calisto_rasa_client.js   ← Node.js integration example
 ```
 
-Product catalogue and knowledge chunks are loaded at runtime from **chatbot-integrations** (Postgres via `BACKEND_API_BASE_URL`). Manage them in the admin UI at `/admin/products` and `/admin/knowledge`. Set `STORAGE_BACKEND=postgres` and `DATABASE_URL` in `chatbot-integrations/.env`.
+Product catalogue and knowledge chunks are loaded at runtime from **chatbot-integrations** (MySQL via `BACKEND_API_BASE_URL`). Manage them in the admin UI at `/admin/products` and `/admin/knowledge`. Set `STORAGE_BACKEND=mysql` and `DATABASE_URL` in `chatbot-integrations/.env`.
 
 ## Multilingual Support
 
