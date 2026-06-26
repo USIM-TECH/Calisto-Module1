@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Any, Dict, List, Text, Optional
 import re
@@ -152,7 +153,7 @@ class ActionHandleStoreHours(Action):
                 ),
                 buttons=[
                     {"title": tr(lang, "Show Stores", "Lihat Kedai", "查看门店"), "payload": f'/choose_city{{"city":"{city}"}}'},
-                    {"title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "payload": "/book_appointment"},
+                    {"title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "payload": '/book_appointment{"service":"Store Visit"}'},
                 ],
             )
             return events
@@ -161,7 +162,7 @@ class ActionHandleStoreHours(Action):
             text=tr(lang, f"Most Calisto stores typically follow mall operating hours, usually around {DEFAULT_STORE_HOURS}. If you tell me the city or mall, I can point you to the right location.", f"Kebanyakan kedai Calisto biasanya mengikut waktu operasi pusat beli-belah, sekitar {DEFAULT_STORE_HOURS}. Jika anda beritahu bandar atau pusat beli-belah, saya boleh tunjuk lokasi yang sesuai.", f"大多数 Calisto 门店通常跟随商场营业时间，一般为 {DEFAULT_STORE_HOURS}。如果您告诉我城市或商场，我可以为您找到对应门店。"),
             buttons=[
                 {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-                {"title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "payload": "/book_appointment"},
+                {"title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "payload": '/book_appointment{"service":"Store Visit"}'},
             ],
         )
         return events
@@ -174,50 +175,151 @@ class ActionBookAppointment(Action):
 
     def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         lang = get_language(tracker)
-        
-        # Try to fetch booking instructions
-        try:
-            faq_entries = load_kb_metadata()
-            best_result = None
-            for entry in faq_entries:
-                text = str(entry.get("text") or "").strip().lower()
-                if "book an eye test online" in text or "booking" in text:
-                    best_result = entry
-                    break
-                    
-            if best_result:
-                answer = best_result.get("text", "").strip()
-                if " A:" in answer:
-                    answer = answer.split(" A:", 1)[1].strip()
-                if " Q:" in answer:
-                    answer = answer.split(" Q:", 1)[0].strip()
-                dispatcher.utter_message(text=f"📄 {answer}")
-            else:
-                dispatcher.utter_message(
-                    text=tr(
-                        lang,
-                        "You can easily book an appointment through our website or by visiting a store.",
-                        "Anda boleh menempah janji temu melalui laman web kami atau di kedai fizikal.",
-                        "您可以通过我们的网站或前往门店轻松预约。"
-                    )
-                )
-        except Exception as e:
-            logger.error(f"Failed to fetch booking policy: {e}")
-            dispatcher.utter_message(text="You can book an appointment directly on our website.")
-            
-        # Instead of triggering a lead form, give them options
+        booking_url = BOOKING_URL or "https://client.calisto.co/home"
+        events: List[Dict[Text, Any]] = []
+
+        # ── Read context from the button payload ──────────────────────────────
+        # Buttons can pass: /book_appointment{"service":"Eye Examination","brand":"RayBan","product_type":"Luxury Sunglasses"}
+        raw_text = tracker.latest_message.get("text") or ""
+        payload_data: Dict[str, Any] = {}
+        if raw_text.startswith("/book_appointment{"):
+            try:
+                payload_data = json.loads(raw_text[len("/book_appointment"):])
+            except Exception:
+                payload_data = {}
+
+        service = (
+            str(payload_data.get("service") or "").strip()
+            or str(tracker.get_slot("preferred_service") or "").strip()
+            or "Eye Examination"
+        )
+        brand = str(payload_data.get("brand") or tracker.get_slot("brand") or "").strip()
+        product_type = str(payload_data.get("product_type") or tracker.get_slot("product_type") or "").strip()
+
+        # Build an enriched preferred_service string for the lead
+        interest_parts = [p for p in [brand, product_type] if p]
+        enriched_service = f"{service} — {', '.join(interest_parts)}" if interest_parts else service
+        events.append(SlotSet("preferred_service", enriched_service))
+
+        # ── Card title changes by service context ─────────────────────────────
+        is_store_visit = "store visit" in service.lower() or "visit" in service.lower()
+        card_title = tr(
+            lang,
+            "Book a Store Visit" if is_store_visit else "Book Eye Examination",
+            "Tempah Lawatan ke Kedai" if is_store_visit else "Tempah Pemeriksaan Mata",
+            "预约到店" if is_store_visit else "预约眼部检查",
+        )
+        card_subtitle_base = (
+            tr(
+                lang,
+                "Visit one of our stores at a time that suits you.",
+                "Lawati mana-mana kedai kami pada masa yang sesuai.",
+                "在方便的时间前往我们的门店。",
+            )
+            if is_store_visit
+            else tr(
+                lang,
+                "Use our online booking portal to schedule your appointment at a convenient time.",
+                "Gunakan portal tempahan dalam talian kami untuk menjadualkan temujanji anda pada masa yang sesuai.",
+                "使用我们的在线预约门户，在方便的时间安排您的预约。",
+            )
+        )
+        # Append brand/product context to subtitle when available
+        if interest_parts:
+            interest_label = tr(
+                lang,
+                f"Interested in: {', '.join(interest_parts)}",
+                f"Berminat: {', '.join(interest_parts)}",
+                f"目标产品：{', '.join(interest_parts)}",
+            )
+            card_subtitle = f"{card_subtitle_base}\n{interest_label}"
+        else:
+            card_subtitle = card_subtitle_base
+
+        # ── Intro text ────────────────────────────────────────────────────────
         dispatcher.utter_message(
             text=tr(
                 lang,
-                "What would you like to do next?",
-                "Apakah langkah seterusnya yang anda mahu ambil?",
-                "您想接下来怎么继续？"
+                "You can conveniently book an eye examination online through our booking portal."
+                if not is_store_visit
+                else "You can find your nearest Calisto store and plan your visit below.",
+                "Anda boleh menempah pemeriksaan mata secara dalam talian melalui portal tempahan kami."
+                if not is_store_visit
+                else "Anda boleh cari kedai Calisto terdekat dan rancang lawatan anda di bawah.",
+                "您可以通过我们的在线预约门户预约眼部检查。"
+                if not is_store_visit
+                else "您可以查找最近的 Calisto 门店并在下方规划您的到店时间。",
+            )
+        )
+
+        # ── Booking card ──────────────────────────────────────────────────────
+        dispatcher.utter_message(
+            json_message={
+                "type": "card",
+                "title": card_title,
+                "subtitle": card_subtitle,
+                "actions": [
+                    {
+                        "type": "url",
+                        "title": tr(lang, "Open Booking Portal", "Buka Portal Tempahan", "打开预约门户"),
+                        "value": booking_url,
+                    },
+                    {
+                        "type": "postback",
+                        "title": tr(lang, "Find Nearest Store", "Cari Kedai Terdekat", "查找最近门店"),
+                        "value": "/find_a_store",
+                    },
+                    {
+                        "type": "postback",
+                        "title": tr(lang, "Back to Support", "Kembali ke Sokongan", "返回支持"),
+                        "value": "/support_and_policies",
+                    },
+                ],
+            }
+        )
+        return events
+
+
+class ActionHandleAvailability(Action):
+    """Handles product availability questions by entering the product search pipeline.
+
+    Instead of returning a static message, this action prompts the user to
+    specify what they are looking for and offers category quick-picks that feed
+    directly into the existing ``ActionSmartSearch`` / ``search_products_engine``
+    pipeline — returning real stock and real products from the catalogue.
+    """
+
+    def name(self) -> Text:
+        return "action_handle_availability"
+
+    def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
+
+        dispatcher.utter_message(
+            text=tr(
+                lang,
+                "What product are you looking for? I can check availability across our collections.",
+                "Produk apa yang anda cari? Saya boleh semak ketersediaan merentas koleksi kami.",
+                "您在找什么产品？我可以在我们的全系列中查询库存。",
             ),
             buttons=[
-                {"title": "Find Nearest Store", "payload": "/find_a_store"},
-                {"title": "Ask a Question", "payload": "/ask_a_question"},
-                {"title": "Support & Policies", "payload": "/support_and_policies"}
-            ]
+                {
+                    "title": tr(lang, "Sunglasses", "Cermin Mata Hitam", "太阳镜"),
+                    "payload": '/browse_eyewear{"product_type":"Luxury Sunglasses"}',
+                },
+                {
+                    "title": tr(lang, "Frames", "Bingkai", "镜框"),
+                    "payload": '/browse_eyewear{"product_type":"Designer Frames"}',
+                },
+                {
+                    "title": tr(lang, "Contact Lenses", "Kanta Sentuh", "隐形眼镜"),
+                    "payload": '/browse_eyewear{"product_type":"Contact Lenses"}',
+                },
+                {
+                    "title": tr(lang, "Progressive Lenses", "Kanta Progresif", "渐进片"),
+                    "payload": '/search_product{"lens_type":"Progressive"}',
+                },
+            ],
         )
         return []
 

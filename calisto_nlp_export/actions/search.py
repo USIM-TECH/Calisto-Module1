@@ -179,6 +179,7 @@ class ActionDocumentSearch(Action):
             "booking": {"book", "appointment", "eye test", "online"},
             "after_sales": {"adjustment", "after-sales", "after sales", "fitting", "support"},
             "stores": {"store", "location", "branch", "outlet"},
+            "company": {"about calisto", "what is calisto", "who is calisto", "tell me about", "calisto brand", "company"},
         }
 
         requested_group: Optional[str] = None
@@ -239,8 +240,8 @@ class ActionDocumentSearch(Action):
             answer = clean_faq_answer(answer, requested_group)
 
             words = answer.split()
-            if len(words) > 150:
-                answer = " ".join(words[:150]) + " ..."
+            if len(words) > 100:
+                answer = " ".join(words[:100]) + " ..."
 
             logger.info(
                 "Matched knowledge-base source '%s' with score %.3f",

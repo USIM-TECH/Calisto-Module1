@@ -238,6 +238,29 @@ class ActionSubmitLeadCapture(Action):
             logger.info("Form was interrupted - skipping lead submission")
             return [SlotSet("form_interrupted", None)]  # Clear the flag
         
+        # tracker.latest_message at submission time is the user's last form
+        # field value (e.g. purchase_timeline answer).  NLU classifies plain
+        # text like that as nlu_fallback, which is not a useful signal.
+        # Walk back through the event log to find the last real intent
+        # (the one that triggered this support/booking flow).
+        _raw_intent = tracker.latest_message.get("intent", {}).get("name") or ""
+        _SKIP_INTENTS = {
+            "nlu_fallback", "out_of_scope", "", "inform",
+            "share_name", "share_phone", "share_email",
+            "share_location", "share_service_interest", "share_timeline"
+        }
+        if _raw_intent not in _SKIP_INTENTS:
+            _resolved_intent = _raw_intent
+        else:
+            _resolved_intent = ""
+            for _ev in reversed(tracker.events):
+                if _ev.get("event") != "user":
+                    continue
+                _ev_intent = _ev.get("parse_data", {}).get("intent", {}).get("name") or ""
+                if _ev_intent and _ev_intent not in _SKIP_INTENTS:
+                    _resolved_intent = _ev_intent
+                    break
+
         payload = {
             "name": tracker.get_slot("lead_name"),
             "phone": tracker.get_slot("contact_number"),
@@ -249,7 +272,7 @@ class ActionSubmitLeadCapture(Action):
             "use_case": tracker.get_slot("use_case"),
             "urgency": tracker.get_slot("urgency"),
             "lead_status": tracker.get_slot("lead_status"),
-            "latest_intent": tracker.latest_message.get("intent", {}).get("name"),
+            "latest_intent": _resolved_intent,
         }
 
         response = gateway.submit_lead(payload)

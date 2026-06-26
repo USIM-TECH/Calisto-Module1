@@ -413,9 +413,9 @@ responses:
   utter_warranty_policy_menu:
     - custom:
         type: "card"
-        title: "warranty policy differes for each product from brand to brand, please visit our stores for warranty support."
+        title: "Warranty coverage varies by brand and product. Please visit one of our stores for personalised warranty support."
         actions:
-          - title: "Store Locations"
+          - title: "Find Store"
             type: "url"
             value: "https://calisto.co/stores"
           - title: "Back"
@@ -441,8 +441,6 @@ responses:
           payload: /email_support
         - title: Visit Store
           payload: /find_a_store
-        - title: Ask Another Question
-          payload: /ask_a_question
 
   utter_ask_a_question_menu:
     - text: "What would you like help with?"
@@ -453,8 +451,6 @@ responses:
           payload: /lens_vision_solutions
         - title: Warranty & Returns
           payload: /support_and_policies
-        - title: Store Information
-          payload: /find_a_store
         - title: Other Questions
           payload: /ask_faq
   utter_greet:
@@ -1597,6 +1593,7 @@ actions:
   - action_handle_order_support
   - action_handle_greet
   - action_book_appointment
+  - action_handle_availability
 
 session_config:
   session_expiration_time: 60

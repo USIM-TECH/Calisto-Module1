@@ -5,7 +5,7 @@ BACKEND_API_BASE_URL = os.getenv("BACKEND_API_BASE_URL", "").rstrip("/")
 BACKEND_API_KEY = os.getenv("BACKEND_API_KEY", "")
 
 # App defaults
-BOOKING_URL = os.getenv("BOOKING_URL", "").strip()
+BOOKING_URL = os.getenv("BOOKING_URL", "https://client.calisto.co/home").strip()
 DEFAULT_STORE_HOURS = os.getenv("DEFAULT_STORE_HOURS", "10:00 AM to 10:00 PM daily").strip()
 INTENT_CONFIDENCE_THRESHOLD = 0.7
 

@@ -452,4 +452,4 @@ rules:
     steps:
       - intent: ask_availability
       - action: action_set_language
-      - action: action_document_search
+      - action: action_handle_availability

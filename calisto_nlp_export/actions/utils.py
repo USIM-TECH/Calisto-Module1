@@ -576,61 +576,10 @@ def route_support_flow(
     }
     preferred_service = service_map.get(intent_name, "After-sales Support")
 
-    # Output relevant policy context if applicable
-    keyword_map = {
-        "return_request": "refund",
-        "refund_request": "refund",
-        "warranty_support": "warranty",
-        "repair_support": "warranty"
-    }
-    search_group = keyword_map.get(intent_name)
-    
-    if search_group:
-        try:
-            faq_entries = load_kb_metadata()
-            best_result = None
-            best_score = 0
-
-            for entry in faq_entries:
-                text = str(entry.get("text") or "").strip().lower()
-                score = 0
-
-                if search_group == "refund":
-                    # Prioritize exact match for return policy question
-                    if "what is your refund or return policy" in text:
-                        score = 100
-                    elif "refund or return policy" in text:
-                        score = 50
-                    elif "14-day return" in text or "return and refund" in text:
-                        score = 40
-                    elif "refund" in text and "exchange" in text:
-                        score = 30
-                    # Penalize if it's about stores/locations
-                    if "store locator" in text or "stores located" in text or "physical outlets" in text:
-                        score = 0
-
-                elif search_group == "warranty":
-                    if "warranty" in text:
-                        score = 50
-
-                if score > best_score:
-                    best_score = score
-                    best_result = entry
-
-            if best_result and best_score > 0:
-                answer = best_result.get("text", "").strip()
-                if " A:" in answer:
-                    answer = answer.split(" A:", 1)[1].strip()
-                if " Q:" in answer:
-                    answer = answer.split(" Q:", 1)[0].strip()
-                dispatcher.utter_message(text=tr(
-                    lang,
-                    f"📄 {answer}",
-                    f"📄 {answer}",
-                    f"📄 {answer}",
-                ))
-        except Exception as e:
-            logger.error(f"Failed to fetch policy before escalation: {e}")
+    # Policy context is now shown by the individual action handlers in support.py
+    # (e.g. ActionHandleWarrantySupport, ActionHandleRefundSupport) BEFORE calling
+    # route_support_flow.  Keeping KB lookups here mixed operational routing with
+    # informational retrieval — that separation is now enforced at the action layer.
 
     # For support action intents (return_request, exchange_request, etc.) we ALWAYS
     # follow the policy display with lead capture so the support team can follow up.
@@ -888,6 +837,20 @@ def lead_buttons(lang: str, preferred_service: Optional[str] = None) -> List[Dic
     ]
 
 
+def support_nav_buttons(lang: str) -> List[Dict[str, str]]:
+    """Standardised 3-button navigation tail appended to every support response.
+
+    Keeps navigation consistent across all support flows so the user always
+    has the same exit paths regardless of which support action handled their
+    request.
+    """
+    return [
+        {"title": tr(lang, "Back to Support", "Kembali ke Sokongan", "返回支持"), "payload": "/support_and_policies"},
+        {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
+        {"title": tr(lang, "Ask a Question", "Tanya Soalan", "提问"), "payload": "/ask_a_question"},
+    ]
+
+
 def lens_recommendation_note(product: Dict[str, Any], lang: str = "en") -> str:
     lens_feature = str(product.get("lens_feature") or "").strip().lower()
     lens_type = str(product.get("lens_type") or "").strip().lower()
@@ -1066,14 +1029,19 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
             or build_placeholder_image(f"{brand} {name}", theme)
         )
 
-    actions = []
-    actions.append({
-        "type": "url",
-        "title": tr(lang, "Open Product Link", "Buka Pautan Produk", "打开产品链接"),
-        "value": "https://www.lenskart.com/vincent-chase-vc-s11748-c8-sunglasses.html",
-    })
+    # Build a context-aware Book Visit payload so ActionBookAppointment can
+    # enrich the lead with the brand and product type the user was viewing.
+    _book_parts = ['"service":"Store Visit"']
+    if brand:
+        _safe_brand = str(brand).replace('"', '\\"')
+        _book_parts.append(f'"brand":"{_safe_brand}"')
+    if product_type:
+        _safe_pt = str(product_type).replace('"', '\\"')
+        _book_parts.append(f'"product_type":"{_safe_pt}"')
+    _book_payload = '/book_appointment{' + ', '.join(_book_parts) + '}'
 
-    actions.append({"type": "postback", "title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "value": "/book_appointment"})
+    actions = []
+    actions.append({"type": "postback", "title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "value": _book_payload})
     actions.append({
         "type": "postback",
         "title": tr(lang, "Ask a Question", "Tanya Soalan", "提问"),
@@ -1133,7 +1101,7 @@ def emit_store_card(dispatcher: CollectingDispatcher, store_location: str, city:
                 {
                     "type": "postback",
                     "title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"),
-                    "value": '/capture_lead{"preferred_service":"Store Visit"}',
+                    "value": '/book_appointment{"service":"Store Visit"}',
                 },
             ],
         }
