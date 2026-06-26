@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional, List
 logger = logging.getLogger(__name__)
 
 class ServiceGateway:
-    """HTTP adapter to the chatbot-integrations API (Postgres-backed catalogue & knowledge)."""
+    """HTTP adapter to the chatbot-integrations API (MySQL-backed catalogue & knowledge)."""
 
     def __init__(self) -> None:
         self.base_url = os.getenv("BACKEND_API_BASE_URL", "").rstrip("/")

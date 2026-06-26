@@ -15,7 +15,7 @@ def load_catalogue() -> pd.DataFrame:
     """Load product catalogue from the remote DB-backed integration API."""
     if not gateway.enabled():
         raise RuntimeError(
-            "BACKEND_API_BASE_URL is not set. Product catalogue is only available via the integration API (Postgres)."
+            "BACKEND_API_BASE_URL is not set. Product catalogue is only available via the integration API (MySQL)."
         )
     remote_products: Any = gateway.list_products()
     if isinstance(remote_products, list):
@@ -30,7 +30,7 @@ def load_catalogue() -> pd.DataFrame:
     else:
         raise RuntimeError(
             "Remote product catalogue unavailable. "
-            "Set BACKEND_API_BASE_URL to the integration API and ensure it is using STORAGE_BACKEND=postgres."
+            "Set BACKEND_API_BASE_URL to the integration API and ensure it is using STORAGE_BACKEND=mysql."
         )
 
     # Normalize common string fields early so downstream filtering is stable.

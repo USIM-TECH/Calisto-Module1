@@ -106,13 +106,13 @@ def load_kb_metadata() -> List[Dict[str, Any]]:
     """Load knowledge chunks for FAQ routing from the remote DB via integration service."""
     if not gateway.enabled():
         raise RuntimeError(
-            "BACKEND_API_BASE_URL is not set. Knowledge base is only available via the integration API (Postgres)."
+            "BACKEND_API_BASE_URL is not set. Knowledge base is only available via the integration API (MySQL)."
         )
     remote: Any = gateway.get_json("/knowledge/chunks")
     if remote is None:
         raise RuntimeError(
             "Knowledge base unavailable from integration API. "
-            "Ensure chatbot-integrations is running with STORAGE_BACKEND=postgres."
+            "Ensure chatbot-integrations is running with STORAGE_BACKEND=mysql."
         )
     if not isinstance(remote, list):
         raise RuntimeError("Knowledge base API returned an unexpected response shape.")
