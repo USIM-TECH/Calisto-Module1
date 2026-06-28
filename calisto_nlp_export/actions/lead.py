@@ -85,41 +85,59 @@ class ActionHandleLeadCaptureInterruption(Action):
         if requested_slot == "lead_name" and is_valid_name(normalize_name(normalized_text)):
             return [
                 SlotSet("lead_name", normalize_name(normalized_text)),
+                SlotSet("requested_slot", None),
                 SlotSet("form_interrupted", None),
+                FollowupAction("lead_capture_form"),
             ]
         if requested_slot == "contact_number" and is_valid_phone(normalized_text):
             return [
                 SlotSet("contact_number", normalize_phone(normalized_text)),
+                SlotSet("requested_slot", None),
                 SlotSet("form_interrupted", None),
+                FollowupAction("lead_capture_form"),
             ]
         if requested_slot == "email" and is_valid_email(normalized_text):
             return [
                 SlotSet("email", normalize_email(normalized_text)),
+                SlotSet("requested_slot", None),
                 SlotSet("form_interrupted", None),
+                FollowupAction("lead_capture_form"),
             ]
         if requested_slot == "lead_location":
+            logger.info(f"[INTERRUPTION] lead_location slot, testing: {normalized_text}")
             resolved_city = resolve_city(normalized_text)
+            logger.info(f"[INTERRUPTION] resolve_city returned: {resolved_city}")
             if resolved_city:
+                logger.info(f"[INTERRUPTION] Capturing resolved city: {resolved_city}")
                 return [
                     SlotSet("lead_location", resolved_city),
+                    SlotSet("requested_slot", None),
                     SlotSet("form_interrupted", None),
+                    FollowupAction("lead_capture_form"),
                 ]
             if is_valid_location(normalized_text) and is_probable_location(normalized_text):
+                logger.info(f"[INTERRUPTION] Capturing valid location: {normalized_text}")
                 return [
                     SlotSet("lead_location", normalized_text),
+                    SlotSet("requested_slot", None),
                     SlotSet("form_interrupted", None),
+                    FollowupAction("lead_capture_form"),
                 ]
         if requested_slot == "preferred_service" and is_valid_service(normalized_text):
             return [
                 SlotSet("preferred_service", normalize_free_text(raw_text)),
+                SlotSet("requested_slot", None),
                 SlotSet("form_interrupted", None),
+                FollowupAction("lead_capture_form"),
             ]
         if requested_slot == "purchase_timeline":
             normalized_timeline = normalize_timeline(normalized_text)
             if normalized_timeline:
                 return [
                     SlotSet("purchase_timeline", normalized_timeline),
+                    SlotSet("requested_slot", None),
                     SlotSet("form_interrupted", None),
+                    FollowupAction("lead_capture_form"),
                 ]
 
         switch = detect_domain_switch(tracker, intent_name, raw_text, support_intent)
@@ -244,11 +262,15 @@ class ActionSubmitLeadCapture(Action):
         # Walk back through the event log to find the last real intent
         # (the one that triggered this support/booking flow).
         _raw_intent = tracker.latest_message.get("intent", {}).get("name") or ""
+        
+        # CRITICAL: Filter out ALL internal/form intents before storing as tag
         _SKIP_INTENTS = {
-            "nlu_fallback", "out_of_scope", "", "inform",
+            "nlu_fallback", "out_of_scope", "session_start", "restart", 
+            "back", "affirm", "deny", "stop", "", "inform",
             "share_name", "share_phone", "share_email",
             "share_location", "share_service_interest", "share_timeline"
         }
+        
         if _raw_intent not in _SKIP_INTENTS:
             _resolved_intent = _raw_intent
         else:
@@ -260,6 +282,8 @@ class ActionSubmitLeadCapture(Action):
                 if _ev_intent and _ev_intent not in _SKIP_INTENTS:
                     _resolved_intent = _ev_intent
                     break
+        
+        logger.info(f"[LEAD_SUBMIT] raw_intent={_raw_intent}, resolved_intent={_resolved_intent}")
 
         payload = {
             "name": tracker.get_slot("lead_name"),

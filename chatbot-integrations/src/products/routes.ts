@@ -39,6 +39,8 @@ interface RegisterArgs {
   cacheService?: CacheService
 }
 
+export { registerStoreRoutes } from './routes/store-routes.js'
+
 function extensionFor(mime: string): string {
   if (mime === 'image/png') return '.png'
   if (mime === 'image/webp') return '.webp'

@@ -746,14 +746,35 @@ from search.engine import rank_products_safely
 
 
 def unique_cities(df: pd.DataFrame) -> List[str]:
+    if "city" not in df.columns:
+        return []
     cities = [str(city).strip() for city in df["city"].tolist() if str(city).strip()]
     return sorted(set(cities), key=str.lower)
 
 
 def search_store_rows(df: pd.DataFrame, city: str) -> pd.DataFrame:
+    if "city" not in df.columns:
+        return pd.DataFrame(columns=["store_location", "city"])
+    columns = [col for col in ["store_location", "city", "address", "phone", "state", "image_url", "imageUrl", "mapUrl", "map_url"] if col in df.columns]
     return df[df["city"].astype(str).str.contains(city, case=False, na=False)][
-        ["store_location", "city"]
+        columns or ["city"]
     ].drop_duplicates()
+
+
+def list_store_cities() -> List[str]:
+    response = gateway.get_json("/stores/cities")
+    if isinstance(response, dict):
+        cities = response.get("cities")
+        if isinstance(cities, list):
+            return sorted({str(city).strip() for city in cities if str(city).strip()}, key=str.lower)
+    return []
+
+
+def search_store_records(city: str, limit: int = 5) -> List[Dict[str, Any]]:
+    stores = gateway.search_stores(city)
+    if not isinstance(stores, list):
+        return []
+    return stores[: max(1, limit)]
 
 
 def build_maps_url(*parts: Any) -> str:
@@ -1082,21 +1103,41 @@ def _resolve_card_image_url(raw: Any) -> Optional[str]:
     return f"{base}{suffix}"
 
 
-def emit_store_card(dispatcher: CollectingDispatcher, store_location: str, city: str, lang: str = "en") -> None:
+def emit_store_card(
+    dispatcher: CollectingDispatcher,
+    store_location: str,
+    city: str,
+    lang: str = "en",
+    address: str = "",
+    phone: str = "",
+    image_url: Optional[str] = None,
+    map_url: Optional[str] = None,
+    channel: str = "",
+) -> None:
+    is_whatsapp = str(channel or "").lower() == "whatsapp"
+    resolved_image_url = (
+        build_placeholder_image(f"{store_location or 'Calisto Store'} {city}", "store")
+        if is_whatsapp
+        else (_resolve_card_image_url(image_url) or build_placeholder_image(f"{store_location or 'Calisto Store'} {city}", "store"))
+    )
+    static_map_url = map_url or "https://maps.google.com/?q=Calisto%20Eyewear"
+    subtitle_lines = [
+        tr(lang, f"City: {city}", f"Bandar: {city}", f"城市：{city}") if city else "",
+        tr(lang, f"Address: {address}", f"Alamat: {address}", f"地址：{address}") if address else "",
+        tr(lang, f"Phone: {phone}", f"Telefon: {phone}", f"电话：{phone}") if phone else "",
+        tr(lang, "Get directions or continue to book a visit.", "Dapatkan arah atau teruskan untuk tempah lawatan.", "获取路线或继续预约到店。"),
+    ]
     dispatcher.utter_message(
         json_message={
             "type": "card",
             "title": store_location or "Calisto Store",
-            "subtitle": "\n".join([
-                tr(lang, f"City: {city}", f"Bandar: {city}", f"城市：{city}") if city else "",
-                tr(lang, "Get directions or continue to book a visit.", "Dapatkan arah atau teruskan untuk tempah lawatan.", "获取路线或继续预约到店。"),
-            ]).strip(),
-            "imageUrl": build_placeholder_image(f"{store_location or 'Calisto Store'} {city}", "store"),
+            "subtitle": "\n".join(line for line in subtitle_lines if line).strip(),
+            "imageUrl": resolved_image_url,
             "actions": [
                 {
                     "type": "url",
-                    "title": tr(lang, "Map", "Peta", "地图"),
-                    "value": build_maps_url(store_location, city, "Calisto Eyewear"),
+                    "title": tr(lang, "Open Map", "Buka Peta", "打开地图"),
+                    "value": static_map_url,
                 },
                 {
                     "type": "postback",
@@ -1245,5 +1286,4 @@ def tr(lang: str, en: str, ms: str, zh: str) -> str:
     if lang == "zh":
         return zh
     return en
-
 

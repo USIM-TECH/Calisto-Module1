@@ -60,7 +60,7 @@ async function loadLeadDetailPayload(
   }
 }
 import { registerKnowledgeRoutes } from '../knowledge/routes.js'
-import { registerProductRoutes } from '../products/routes.js'
+import { registerProductRoutes, registerStoreRoutes } from '../products/routes.js'
 import type { AppDependencies } from './dependencies.js'
 import { createWebsiteRateLimiter } from './website-rate-limiter.js'
 import { normaliseEmail, normalisePhone } from '../leads/storage/helpers.js'
@@ -111,6 +111,7 @@ export function createApp(dependencies: AppDependencies): Express {
     orchestrator,
     runtimeStore,
     productStore,
+    storeStore,
     knowledgeChunkStore,
   } = dependencies
 
@@ -299,6 +300,15 @@ export function createApp(dependencies: AppDependencies): Express {
   } else {
     app.get('/admin/knowledge', (_req, res) => {
       res.status(503).type('html').send('<h1>Knowledge store unavailable</h1><p>Set <code>STORAGE_BACKEND=mysql</code> and restart.</p>')
+    })
+  }
+
+  if (storeStore) {
+    registerStoreRoutes({ app, store: storeStore, logger })
+    logger.info('Store routes registered: /stores + /admin/stores')
+  } else {
+    app.get('/stores', (_req, res) => {
+      res.status(503).type('html').send('<h1>Store service unavailable</h1><p>Set <code>STORAGE_BACKEND=mysql</code> and restart.</p>')
     })
   }
 

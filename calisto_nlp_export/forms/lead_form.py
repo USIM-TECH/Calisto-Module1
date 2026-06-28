@@ -152,11 +152,19 @@ class ValidateLeadCaptureForm(FormValidationAction):
     ) -> Dict[Text, Any]:
         lang = get_language(tracker)
         value = normalize_free_text(slot_value)
+        logger.info(f"[FORM] validate_lead_location: raw={slot_value}, normalized={value}")
+        
         resolved_city = resolve_city(value)
+        logger.info(f"[FORM] resolve_city returned: {resolved_city}")
+        
         if resolved_city:
+            logger.info(f"[FORM] Validation SUCCESS: setting lead_location={resolved_city}")
             return {"lead_location": resolved_city}
 
+        logger.info(f"[FORM] City not resolved, checking validity: is_valid={is_valid_location(value)}, is_probable={is_probable_location(value)}")
+        
         if not is_valid_location(value) or not is_probable_location(value):
+            logger.info(f"[FORM] Validation FAILED: rejecting slot")
             return self._reject_slot(
                 "lead_location",
                 dispatcher,
@@ -166,6 +174,8 @@ class ValidateLeadCaptureForm(FormValidationAction):
                     "Sila kongsi bandar atau kawasan anda supaya kami boleh arahkan pertanyaan anda dengan betul.",
                     "请提供您所在的城市或区域，以便我们正确安排您的咨询。"),
             )
+        
+        logger.info(f"[FORM] Validation SUCCESS: accepting as-is, lead_location={value}")
         return {"lead_location": value}
 
     async def validate_preferred_service(

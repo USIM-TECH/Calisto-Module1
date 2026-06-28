@@ -67,6 +67,25 @@ const SUPPORT_CASE_TYPES = new Set([
   'Order Tracking/Support',
 ])
 
+// Internal Rasa intents that should never become CRM tags
+const INTERNAL_INTENTS = new Set([
+  'nlu_fallback',
+  'out_of_scope',
+  'session_start',
+  'restart',
+  'back',
+  'affirm',
+  'deny',
+  'stop',
+  'inform',
+  'share_name',
+  'share_phone',
+  'share_email',
+  'share_location',
+  'share_service_interest',
+  'share_timeline',
+])
+
 const INTEREST_KIND_MAP: Record<keyof TrackerInterestSamples, InterestKind> = {
   productType: 'product_type',
   brand: 'brand',
@@ -385,7 +404,19 @@ export class LeadOrchestrator {
     }
     const newStatus = deriveQualificationStatus(trackerFields, rawStatus, customer.qualificationStatus, trackerInterests.supportCaseType)
     if (newStatus !== customer.qualificationStatus) postSnapshot.qualificationStatus = newStatus
-    if (nlpResponse.tracker?.latestIntent && nlpResponse.tracker.latestIntent !== customer.lastIntent) {
+    
+    // Only update intent if:
+    // 1. It's not an internal intent (nlu_fallback, share_*, etc.)
+    // 2. Intent hasn't been set yet (capture initial intent only)
+    // 3. Intent has actually changed
+    const isInternalIntent = INTERNAL_INTENTS.has(nlpResponse.tracker?.latestIntent || '')
+    
+    if (
+      nlpResponse.tracker?.latestIntent &&
+      !isInternalIntent &&
+      !customer.lastIntent &&
+      nlpResponse.tracker.latestIntent !== customer.lastIntent
+    ) {
       postSnapshot.lastIntent = nlpResponse.tracker.latestIntent
     }
 

@@ -12,9 +12,11 @@ def normalize_city_key(value: Any) -> str:
 
 @lru_cache(maxsize=1)
 def city_key_registry() -> Dict[str, str]:
-    from actions.actions import unique_cities
+    from actions.actions import list_store_cities, unique_cities
     from search.catalogue import load_catalogue
-    cities = unique_cities(load_catalogue())
+    cities = list_store_cities()
+    if not cities:
+        cities = unique_cities(load_catalogue())
     registry: Dict[str, str] = {}
     for city in cities:
         key = normalize_city_key(city)

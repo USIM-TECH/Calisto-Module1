@@ -18,6 +18,32 @@ from search.engine import rank_products_safely
 
 logger = logging.getLogger(__name__)
 
+
+def _store_value(store: Any, *keys: str) -> str:
+    for key in keys:
+        if isinstance(store, dict):
+            value = store.get(key)
+        else:
+            value = store.get(key) if hasattr(store, "get") else None
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return ""
+
+
+def _emit_store_cards(dispatcher: CollectingDispatcher, stores: List[Any], city: str, lang: str, channel: str) -> None:
+    for store in stores[:5]:
+        emit_store_card(
+            dispatcher,
+            _store_value(store, "name", "store_location") or "Calisto Store",
+            _store_value(store, "city") or city,
+            lang,
+            address=_store_value(store, "address"),
+            phone=_store_value(store, "phone"),
+            image_url=_store_value(store, "imageUrl", "image_url"),
+            map_url=_store_value(store, "mapUrl", "map_url"),
+            channel=channel,
+        )
+
 class ActionAskCity(Action):
     def name(self) -> Text:
         return "action_ask_city"
@@ -34,6 +60,8 @@ class ActionAskCity(Action):
         events.extend(apply_domain_switch_reset(tracker, intent["name"], raw_text, ""))
         events.extend(flow_entry_events(tracker, "store_lookup"))
         lang = get_language(tracker)
+        metadata = latest_metadata(tracker)
+        channel = str(metadata.get("channel") or "").lower()
         # Check latest entities first (message-level), then slots
         entities = latest_entity_values(tracker)
         city_candidate = (
@@ -48,29 +76,26 @@ class ActionAskCity(Action):
         resolved_city = resolve_city(city_candidate)
         if resolved_city:
             city = resolved_city
-            stores = search_store_rows(load_catalogue(), city)
-            if stores.empty:
+            store_records = search_store_records(city, limit=5)
+            if not store_records:
+                stores = search_store_rows(load_catalogue(), city)
+                store_records = [row.to_dict() for _, row in stores.head(5).iterrows()]
+            if not store_records:
                 dispatcher.utter_message(text=tr(lang, f"I could not find any Calisto stores in {titleize(city)}.", f"Saya tidak menemui mana-mana kedai Calisto di {titleize(city)}.", f"我暂时找不到 {titleize(city)} 的 Calisto 门店。"))
                 events.append(SlotSet("city", city))
                 return events
 
-            for _, row in stores.head(6).iterrows():
-                emit_store_card(
-                    dispatcher,
-                    str(row.get("store_location", "Calisto Store")),
-                    str(row.get("city", city)),
-                    lang,
-                )
+            _emit_store_cards(dispatcher, store_records, city, lang, channel)
             events.append(SlotSet("city", city))
             return events
 
         if tracker.get_slot("city") is not None:
             events.append(SlotSet("city", None))
 
-        cities = unique_cities(load_catalogue())
+        cities = list_store_cities() or unique_cities(load_catalogue())
         buttons = [
             {"title": city.title(), "payload": f'/choose_city{{"city":"{city}"}}'}
-            for city in cities[:10]
+            for city in cities
         ]
         dispatcher.utter_message(text=tr(lang, "Which city are you looking for?", "Bandar mana yang anda cari?", "您想查哪个城市？"), buttons=buttons or None)
         return events
@@ -93,6 +118,8 @@ class ActionFindStore(Action):
         events.extend(apply_domain_switch_reset(tracker, intent["name"], raw_text, ""))
         events.extend(flow_entry_events(tracker, "store_lookup"))
         lang = get_language(tracker)
+        metadata = latest_metadata(tracker)
+        channel = str(metadata.get("channel") or "").lower()
         city_candidate = tracker.get_slot("city") or tracker.get_slot("lead_location")
         city = resolve_city(city_candidate)
         if not city:
@@ -101,18 +128,15 @@ class ActionFindStore(Action):
                 events.append(SlotSet("city", None))
             return events
 
-        stores = search_store_rows(load_catalogue(), str(city))
-        if stores.empty:
+        store_records = search_store_records(str(city), limit=5)
+        if not store_records:
+            stores = search_store_rows(load_catalogue(), str(city))
+            store_records = [row.to_dict() for _, row in stores.head(5).iterrows()]
+        if not store_records:
             dispatcher.utter_message(text=tr(lang, f"I could not find any Calisto stores in {titleize(city)}.", f"Saya tidak menemui mana-mana kedai Calisto di {titleize(city)}.", f"我暂时找不到 {titleize(city)} 的 Calisto 门店。"))
             return events
 
-        for _, row in stores.head(6).iterrows():
-            emit_store_card(
-                dispatcher,
-                str(row.get('store_location', 'Calisto Store')),
-                str(row.get('city', city)),
-                lang,
-            )
+        _emit_store_cards(dispatcher, store_records, str(city), lang, channel)
         return events
 
 
@@ -322,4 +346,3 @@ class ActionHandleAvailability(Action):
             ],
         )
         return []
-
