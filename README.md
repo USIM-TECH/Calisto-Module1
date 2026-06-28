@@ -192,6 +192,8 @@ cd chatbot-integrations
 ./scripts/set-meta-webhooks.sh
 ```
 
+This also syncs `PUBLIC_BASE_URL` from the live tunnel (writing it to `.env` and recreating the Rasa action server) so product-card images are fetchable by WhatsApp/Telegram/Messenger. Without a public URL, those channels fall back to a generated placeholder image.
+
 Instagram callback URLs must be set in the Meta App Dashboard (Instagram → API setup → Webhooks).
 
 ## Typical dev workflow

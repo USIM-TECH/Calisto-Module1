@@ -1736,21 +1736,16 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
         or product.get("fallback_url")
         or product.get("fallbackUrl")
     )
-    
-    # Use placeholder images for WhatsApp (external URLs fail), Unsplash for others
-    # Check if this is WhatsApp by looking at the message metadata
-    is_whatsapp = product.get("_channel") == "whatsapp"
-    
-    if is_whatsapp:
-        # WhatsApp: always use placeholder images (dummyimage.com works reliably)
-        image_url = build_placeholder_image(f"{brand} {name}", theme)
-    else:
-        # Other platforms: try Unsplash first, fallback to placeholder
-        image_url = (
-            _resolve_card_image_url(raw_image)
-            or _resolve_card_image_url(fallback_image)
-            or build_placeholder_image(f"{brand} {name}", theme)
-        )
+
+    # All channels (WhatsApp included) use the real product image, then the
+    # configured fallback image, then a generated placeholder as a last resort.
+    # Relative paths are absolutised via PUBLIC_BASE_URL so channels that fetch
+    # images from the public internet (WhatsApp/Telegram/Messenger) can load them.
+    image_url = (
+        _resolve_card_image_url(raw_image)
+        or _resolve_card_image_url(fallback_image)
+        or build_placeholder_image(f"{brand} {name}", theme)
+    )
 
     actions = []
     actions.append({

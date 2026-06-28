@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Re-point Meta webhook callbacks to the CURRENT Cloudflare quick-tunnel URL.
+# Re-point Meta webhook callbacks to the CURRENT Cloudflare quick-tunnel URL,
+# and sync PUBLIC_BASE_URL so product-card images load on every channel.
 #   WhatsApp  : per-number override_callback_uri  (API-settable)  -> automated
 #   Messenger : object=page /subscriptions        (API-settable)  -> automated
 #   Instagram : DASHBOARD ONLY (Meta forbids setting it via API)  -> printed only
+#   Images    : writes PUBLIC_BASE_URL to .env + recreates the Rasa action server
 #
 # Why this exists: a Cloudflare quick tunnel gets a NEW random hostname every
 # time `cloudflared` restarts. Each restart silently breaks every Meta webhook
@@ -55,6 +57,50 @@ BASE_URL="$(detect_tunnel_url "${1:-}")" || {
 }
 BASE_URL="${BASE_URL%/}"   # strip trailing slash
 echo ">>> Using tunnel base URL: $BASE_URL"
+echo
+
+# ---- Sync PUBLIC_BASE_URL so product-card images are publicly reachable -----
+# WhatsApp/Telegram/Messenger fetch card images over the internet, so the Rasa
+# action server must build image URLs from the live tunnel host, not localhost.
+sync_public_base_url() {
+  local url="$1"
+
+  # 1) Persist into chatbot-integrations/.env (used by the Node backend on next start).
+  python3 - "$ENV_FILE" "$url" <<'PY'
+import sys, re
+env_file, url = sys.argv[1], sys.argv[2]
+try:
+    lines = open(env_file).read().splitlines()
+except FileNotFoundError:
+    lines = []
+out, done = [], False
+for ln in lines:
+    if not done and re.match(r'^\s*#?\s*PUBLIC_BASE_URL=', ln):
+        out.append(f'PUBLIC_BASE_URL={url}')
+        done = True
+    else:
+        out.append(ln)
+if not done:
+    out.append(f'PUBLIC_BASE_URL={url}')
+open(env_file, 'w').write('\n'.join(out) + '\n')
+print(f'    Updated PUBLIC_BASE_URL in {env_file}')
+PY
+
+  # 2) Recreate the Rasa action server with the live URL (effective immediately).
+  local rasa_dir="$SCRIPT_DIR/../../calisto_nlp_export"
+  if [[ -f "$rasa_dir/docker-compose.yml" ]] && command -v docker >/dev/null 2>&1; then
+    echo "    Recreating Rasa action server with PUBLIC_BASE_URL=$url ..."
+    ( cd "$rasa_dir" && PUBLIC_BASE_URL="$url" docker compose up -d action-server ) \
+      && echo "    Action server updated." \
+      || echo "    WARNING: could not recreate action server (start it manually: PUBLIC_BASE_URL=$url docker compose up -d action-server)"
+  else
+    echo "    NOTE: Rasa action server not recreated (docker or compose file unavailable)."
+    echo "          Run manually: cd calisto_nlp_export && PUBLIC_BASE_URL=$url docker compose up -d action-server"
+  fi
+}
+
+echo "==================== IMAGE BASE URL ===================="
+sync_public_base_url "$BASE_URL"
 echo
 
 # ---- Credentials from .env -------------------------------------------------

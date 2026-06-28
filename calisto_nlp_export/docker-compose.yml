@@ -54,10 +54,12 @@ services:
       # Host machine URL for chatbot-integrations (must match PORT in chatbot-integrations/.env).
       BACKEND_API_BASE_URL: "http://host.docker.internal:3000"
       # Base URL for absolutising /static/... product images in emit_product_card.
-      # Do not use ${VAR:-http://...} here: defaults with ":" break Compose interpolation.
-      # Override for a public tunnel, e.g.:
-      #   PUBLIC_BASE_URL=https://your-subdomain.trycloudflare.com docker compose up -d
-      PUBLIC_BASE_URL: "http://host.docker.internal:3000"
+      # Defaults to the host integration service; override with a PUBLIC tunnel URL
+      # so channels that fetch images from the internet (WhatsApp/Telegram/Messenger)
+      # can load them. chatbot-integrations/scripts/set-meta-webhooks.sh syncs this
+      # automatically from the live Cloudflare tunnel:
+      #   PUBLIC_BASE_URL=https://your-subdomain.trycloudflare.com docker compose up -d action-server
+      PUBLIC_BASE_URL: "${PUBLIC_BASE_URL:-http://host.docker.internal:3000}"
 
 networks:
   calisto-net:
