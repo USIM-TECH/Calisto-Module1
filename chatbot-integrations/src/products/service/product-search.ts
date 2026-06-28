@@ -213,10 +213,19 @@ export class ProductSearchService {
       if (query.polarized && !yesNoMatches(p.polarized, query.polarized)) return false
       if (query.multifocal !== undefined && !yesNoMatches(p.multifocal, query.multifocal)) return false
       if (query.lensColor && !ciIncludes(p.lensColor, query.lensColor)) return false
-      if (query.lensType && !ciIncludes(p.lensType, query.lensType)) return false
+      if (query.lensType) {
+        const ltStr = query.lensType.trim().toLowerCase()
+        const pLensType = (p.lensType || '').toLowerCase()
+        if (ltStr.includes('single vision')) {
+          if (/progressive|multifocal|bifocal/i.test(pLensType)) return false
+        } else if (/progressive|multifocal|bifocal/i.test(ltStr)) {
+          if (/single vision/i.test(pLensType)) return false
+        }
+        if (!ciIncludes(p.lensType, query.lensType)) return false
+      }
       if (query.lensFeature && !lensFeatureMatches(p.lensFeature, query.lensFeature)) return false
       if (query.lensDuration && !ciIncludes(p.lensDuration, query.lensDuration)) return false
-      if (query.productType && !ciEquals(p.productType, query.productType)) return false
+      if (query.productType && !ciIncludes(p.productType, query.productType) && !ciIncludes(query.productType, p.productType)) return false
       if (query.brand && !wantsAllBrands && !ciEquals(p.brand, query.brand)) return false
       if (query.frameColor && !ciEquals(p.frameColor, query.frameColor)) return false
       if (query.frameShape && !ciEquals(p.frameShape, query.frameShape)) return false

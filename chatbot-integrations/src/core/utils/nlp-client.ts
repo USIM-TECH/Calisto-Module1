@@ -166,7 +166,7 @@ function parseBudget(text: string): { budget_min?: number; budget_max?: number; 
     result.budget_max = val + 50
   } else if ((match = normalized.match(/\b(\d+(?:\.\d+)?)\b/))) {
     const val = parseFloat(match[1])
-    if (val >= 50) result.budget_max = val
+    result.budget_max = val
   }
 
   return Object.keys(result).length > 0 ? result : null

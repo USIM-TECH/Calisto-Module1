@@ -414,7 +414,11 @@ def extract_dynamic_attributes(text: str, registry: Dict[str, tuple[str, str]]) 
 def is_refinement_query(query: str) -> bool:
     if not query:
         return False
-    refinement_words = {"only", "instead", "same", "similar", "also", "show more", "narrower", "cheaper", "expensive", "another", "these", "those"}
+    # Use exact phrases for multi-word terms
+    if re.search(r"\bshow more\b", query.lower()):
+        return True
+    # Single word refinement triggers
+    refinement_words = {"only", "instead", "same", "similar", "also", "narrower", "cheaper", "expensive", "another"}
     query_lower = query.lower()
     for word in refinement_words:
         if re.search(rf"\b{re.escape(word)}\b", query_lower):
@@ -558,14 +562,23 @@ def search_products_engine(
                 masks = []
                 for value in values:
                     val_lower = str(value).lower()
+                    # Start with basic substring match
                     mask = filtered_df[col].astype(str).str.contains(re.escape(value), case=False, na=False)
+                    
                     if "single vision" in val_lower:
+                        # For single vision: ONLY keep products that have "single vision" in lens_type
+                        # AND exclude any product with multifocal markers
+                        mask = filtered_df[col].astype(str).str.contains("single vision", case=False, na=False)
                         mask = mask & ~filtered_df[col].astype(str).str.contains("progressive|multifocal|bifocal", case=False, na=False)
+                        # Also exclude if multifocal column says yes
                         if "multifocal" in filtered_df.columns:
                             mask = mask & ~filtered_df["multifocal"].astype(str).str.contains("yes|true|y|1", case=False, na=False)
                     elif "progressive" in val_lower or "multifocal" in val_lower or "bifocal" in val_lower:
+                        # For multifocal/progressive/bifocal: exclude single vision
                         mask = mask & ~filtered_df[col].astype(str).str.contains("single vision", case=False, na=False)
+                    
                     masks.append(mask)
+                
                 if masks:
                     filtered_df = filtered_df[pd.concat(masks, axis=1).any(axis=1)]
             else:
@@ -647,10 +660,33 @@ def search_products_engine(
 
     is_refinement = intent_name in {"select_budget", "select_brand"} or is_refinement_query(normalized) or allow_similar_requested
 
+    # Detect product type change - reset filters when switching between major categories
+    prev_product_type = previous_filters.get("product_type", "").lower()
+    new_product_type = list(current_filters.get("product_type", set()))[0].lower() if "product_type" in current_filters and current_filters["product_type"] else ""
+    
+    major_category_switch = False
+    if prev_product_type and new_product_type and prev_product_type != new_product_type:
+        # Detect major category switches (Sunglasses <-> Frames, Sunglasses <-> Contact, Frames <-> Contact)
+        category_groups = [
+            {"sunglasses", "luxury sunglasses"},
+            {"frames", "designer frames", "spectacles", "glasses"},
+            {"contact lenses", "contacts"}
+        ]
+        prev_group = None
+        new_group = None
+        for group in category_groups:
+            if any(cat in prev_product_type for cat in group):
+                prev_group = group
+            if any(cat in new_product_type for cat in group):
+                new_group = group
+        if prev_group and new_group and prev_group != new_group:
+            major_category_switch = True
+            logger.info(f"[SEARCH] Major category switch detected: {prev_product_type} -> {new_product_type}, resetting filters")
+
     extracted: Dict[str, set] = {}
     b_min, b_max = current_b_min, current_b_max
 
-    if is_refinement:
+    if is_refinement and not major_category_switch:
         for k, v in previous_filters.items():
             extracted[k] = {v}
         if not current_budget_provided:
