@@ -60,7 +60,7 @@ export default function KnowledgePage() {
       })
       .catch((err) => {
         setDocsLoading(false)
-        setError(err instanceof Error ? err.message : 'Failed to load knowledge documents.')
+        setError(err instanceof Error ? err.message : 'Failed to load documents.')
       })
   }
 
@@ -198,7 +198,7 @@ export default function KnowledgePage() {
   return (
     <PageContainer>
       <Topbar
-        title="Knowledge base"
+        title="Documents"
         actions={(
           <>
             <span className="text-sm font-semibold text-calisto-muted">

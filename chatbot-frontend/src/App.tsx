@@ -13,7 +13,7 @@ import calistoLogo from '../calisto.svg'
 const navItems = [
   { label: 'Leads', to: '/leads', icon: UsersRound },
   { label: 'Products', to: '/products', icon: Boxes },
-  { label: 'Knowledge', to: '/knowledge', icon: BookOpen },
+  { label: 'Documents', to: '/knowledge', icon: BookOpen },
   { label: 'Webchat', to: '/webchat', icon: MessageSquareText },
 ]
 
