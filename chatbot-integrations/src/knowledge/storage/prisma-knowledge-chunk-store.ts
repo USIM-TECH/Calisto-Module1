@@ -59,6 +59,7 @@ export class PrismaKnowledgeChunkStore implements KnowledgeChunkStore {
     })
     const records = docs.map((d) => ({
       source: d.source,
+      title: d.title,
       chunkCount: d._count.chunks,
       updatedAt: d.updatedAt.toISOString(),
     }))
@@ -77,12 +78,13 @@ export class PrismaKnowledgeChunkStore implements KnowledgeChunkStore {
   async replaceDocument(
     source: string,
     chunks: Array<{ chunkHash: string; text: string }>,
+    title?: string,
   ): Promise<number> {
     const count = await this._client.$transaction(async (tx) => {
       const doc = await tx.knowledgeDocument.upsert({
         where: { source },
-        create: { source },
-        update: {},
+        create: { source, title },
+        update: title !== undefined ? { title } : {},
       })
 
       await tx.knowledgeChunk.deleteMany({ where: { documentId: doc.id } })

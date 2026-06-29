@@ -194,6 +194,7 @@ export interface KnowledgeChunkRecord {
 
 export interface KnowledgeDocumentSummary {
   source: string
+  title?: string | null
   chunkCount: number
   updatedAt: string
 }

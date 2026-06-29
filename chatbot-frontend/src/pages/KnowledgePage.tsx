@@ -49,6 +49,8 @@ export default function KnowledgePage() {
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingSource, setDeletingSource] = useState<string | null>(null)
+  const [addTitle, setAddTitle] = useState('')
+  const [editTitle, setEditTitle] = useState('')
 
   function loadDocuments() {
     return getKnowledgeDocuments()
@@ -69,7 +71,10 @@ export default function KnowledgePage() {
   const filteredDocuments = useMemo(() => {
     const term = filter.trim().toLowerCase()
     if (!term) return documents
-    return documents.filter((document) => document.source.toLowerCase().includes(term))
+    return documents.filter((document) => 
+      document.source.toLowerCase().includes(term) ||
+      (document.title && document.title.toLowerCase().includes(term))
+    )
   }, [documents, filter])
 
   const totalChunks = documents.reduce((sum, document) => sum + document.chunkCount, 0)
@@ -79,6 +84,7 @@ export default function KnowledgePage() {
     setAddSource('')
     setAddText('')
     setAddFile(null)
+    setAddTitle('')
     setAddErrors({})
   }
 
@@ -97,6 +103,7 @@ export default function KnowledgePage() {
         file: addFile,
         source: addSource,
         text: addText,
+        title: addTitle,
       })
       await loadDocuments()
       setSuccessMessage(`Added ${result.source}.`)
@@ -125,6 +132,8 @@ export default function KnowledgePage() {
   }
 
   async function openEdit(source: string) {
+    const doc = documents.find((d) => d.source === source)
+    setEditTitle(doc?.title ?? '')
     setEditingSource(source)
     setEditText('__loading__')
     setEditFile(null)
@@ -145,7 +154,7 @@ export default function KnowledgePage() {
     setError(null)
     setSuccessMessage(null)
     try {
-      await updateKnowledgeDocument(editingSource, { file: editFile, text: editText })
+      await updateKnowledgeDocument(editingSource, { file: editFile, text: editText, title: editTitle })
       await loadDocuments()
       setSuccessMessage(`Updated ${editingSource}.`)
       setEditingSource(null)
@@ -254,7 +263,7 @@ export default function KnowledgePage() {
             </colgroup>
             <thead>
               <tr className="bg-calisto-table/90 text-xs font-bold uppercase tracking-wider text-calisto-ink">
-                <th className="px-7 py-5">Source file</th>
+                <th className="px-7 py-5">Document Title</th>
                 <th className="px-7 py-5">Chunks</th>
                 <th className="px-7 py-5">Updated</th>
                 <th className="px-7 py-5 text-right">Actions</th>
@@ -266,7 +275,12 @@ export default function KnowledgePage() {
               )}
               {filteredDocuments.map((document) => (
                 <tr key={document.source} className="transition hover:bg-calisto-surface-muted">
-                  <td className="break-all px-7 py-4 font-mono text-[0.86rem]">{document.source}</td>
+                  <td className="px-7 py-4 font-semibold text-calisto-ink">
+                    {document.title || document.source}
+                    {document.title && (
+                      <span className="block font-mono text-[0.7rem] font-medium text-calisto-muted mt-0.5">{document.source}</span>
+                    )}
+                  </td>
                   <td className="px-7 py-4 text-calisto-body">{document.chunkCount}</td>
                   <td className="px-7 py-4 text-calisto-body">{formatDate(document.updatedAt)}</td>
                   <td className="px-7 py-4 text-right">
@@ -342,6 +356,20 @@ export default function KnowledgePage() {
                     value={editingSource}
                   />
                   <p className="mt-2 text-xs font-semibold text-calisto-muted">Basename only (no folders)</p>
+                </div>
+
+                <div className="mt-5">
+                  <label className={labelClass} htmlFor="knowledgeTitle">
+                    Title of the Document
+                  </label>
+                  <input
+                    id="knowledgeTitle"
+                    className={inputClass}
+                    type="text"
+                    placeholder="Enter a descriptive title for this document"
+                    value={editTitle}
+                    onChange={(event) => setEditTitle(event.target.value)}
+                  />
                 </div>
 
                 <div className="mt-5">
@@ -432,6 +460,18 @@ export default function KnowledgePage() {
                   />
                   {addErrors.source && <p className={errorClass}>{addErrors.source}</p>}
                   <p className="mt-2 text-xs font-semibold text-calisto-muted">Basename only (no folders)</p>
+                </div>
+
+                <div className="mt-5">
+                  <label className={labelClass} htmlFor="addKnowledgeTitle">Title of the Document</label>
+                  <input
+                    id="addKnowledgeTitle"
+                    className={inputClass}
+                    onChange={(event) => setAddTitle(event.target.value)}
+                    placeholder="e.g. FAQ / Customer Support, Company Profile"
+                    type="text"
+                    value={addTitle}
+                  />
                 </div>
 
                 <div className="mt-5">

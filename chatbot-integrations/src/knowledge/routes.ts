@@ -145,7 +145,8 @@ export function registerKnowledgeRoutes({ app, store, logger }: RegisterArgs): v
           res.status(409).json({ error: `Document already exists: ${source}` })
           return
         }
-        const n = await store.replaceDocument(source, buildChunkPayload(source, chunks))
+        const title = pickString(req.body.title)
+        const n = await store.replaceDocument(source, buildChunkPayload(source, chunks), title)
         res.status(201).json({ source, chunkCount: n })
       } catch (error: any) {
         logger.error(`POST /admin/knowledge/api/documents: ${error.message}`)
@@ -162,6 +163,7 @@ export function registerKnowledgeRoutes({ app, store, logger }: RegisterArgs): v
         const paramSource = sourceFromParams(req.params.source)
         const file = (req as Request & { file?: Express.Multer.File }).file
         const bodyText = pickString((req.body as Record<string, unknown>).text)
+        const title = pickString((req.body as Record<string, unknown>).title)
 
         let chunks: Array<{ text: string }>
         if (file) {
@@ -178,7 +180,7 @@ export function registerKnowledgeRoutes({ app, store, logger }: RegisterArgs): v
           return
         }
 
-        const n = await store.replaceDocument(paramSource, buildChunkPayload(paramSource, chunks))
+        const n = await store.replaceDocument(paramSource, buildChunkPayload(paramSource, chunks), title)
         res.json({ source: paramSource, chunkCount: n })
       } catch (error: any) {
         if (error.message?.includes('Invalid source')) {
