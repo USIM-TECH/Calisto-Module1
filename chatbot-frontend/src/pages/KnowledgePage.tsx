@@ -345,20 +345,6 @@ export default function KnowledgePage() {
 
               <div className="max-h-[75vh] overflow-y-auto px-6 py-5">
                 <div>
-                  <label className={labelClass} htmlFor="knowledgeSource">
-                    Source filename *
-                  </label>
-                  <input
-                    id="knowledgeSource"
-                    className={inputClass}
-                    readOnly
-                    type="text"
-                    value={editingSource}
-                  />
-                  <p className="mt-2 text-xs font-semibold text-calisto-muted">Basename only (no folders)</p>
-                </div>
-
-                <div className="mt-5">
                   <label className={labelClass} htmlFor="knowledgeTitle">
                     Title of the Document
                   </label>
@@ -370,6 +356,20 @@ export default function KnowledgePage() {
                     value={editTitle}
                     onChange={(event) => setEditTitle(event.target.value)}
                   />
+                </div>
+
+                <div className="mt-5">
+                  <label className={labelClass} htmlFor="knowledgeSource">
+                    Source filename *
+                  </label>
+                  <input
+                    id="knowledgeSource"
+                    className={inputClass}
+                    readOnly
+                    type="text"
+                    value={editingSource}
+                  />
+                  <p className="mt-2 text-xs font-semibold text-calisto-muted">Basename only (no folders)</p>
                 </div>
 
                 <div className="mt-5">
@@ -446,6 +446,18 @@ export default function KnowledgePage() {
 
               <div className="max-h-[75vh] overflow-y-auto px-6 py-5">
                 <div>
+                  <label className={labelClass} htmlFor="addKnowledgeTitle">Title of the Document</label>
+                  <input
+                    id="addKnowledgeTitle"
+                    className={inputClass}
+                    onChange={(event) => setAddTitle(event.target.value)}
+                    placeholder="e.g. FAQ / Customer Support, Company Profile"
+                    type="text"
+                    value={addTitle}
+                  />
+                </div>
+
+                <div className="mt-5">
                   <label className={labelClass} htmlFor="addKnowledgeSource">Source filename *</label>
                   <input
                     id="addKnowledgeSource"
@@ -460,18 +472,6 @@ export default function KnowledgePage() {
                   />
                   {addErrors.source && <p className={errorClass}>{addErrors.source}</p>}
                   <p className="mt-2 text-xs font-semibold text-calisto-muted">Basename only (no folders)</p>
-                </div>
-
-                <div className="mt-5">
-                  <label className={labelClass} htmlFor="addKnowledgeTitle">Title of the Document</label>
-                  <input
-                    id="addKnowledgeTitle"
-                    className={inputClass}
-                    onChange={(event) => setAddTitle(event.target.value)}
-                    placeholder="e.g. FAQ / Customer Support, Company Profile"
-                    type="text"
-                    value={addTitle}
-                  />
                 </div>
 
                 <div className="mt-5">
