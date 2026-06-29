@@ -1,0 +1,10 @@
+{
+  "customers": [],
+  "identities": [],
+  "interests": [],
+  "currentInterests": [],
+  "supportCases": [],
+  "conversations": [],
+  "webhookEvents": [],
+  "deduplication": []
+}
