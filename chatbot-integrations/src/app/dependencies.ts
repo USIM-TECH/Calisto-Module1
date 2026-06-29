@@ -22,7 +22,7 @@ import {
 } from '../leads/index.js'
 import { getPrismaClient } from '../db/prisma.js'
 import { PrismaKnowledgeChunkStore, type KnowledgeChunkStore } from '../knowledge/index.js'
-import { PrismaProductStore, type ProductStore } from '../products/index.js'
+import { PrismaProductStore, PrismaStoreStore, type ProductStore, type StoreStore } from '../products/index.js'
 import { createNlpMessageHandler } from './message-handler.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -35,6 +35,7 @@ export interface AppDependencies {
   deduplicator: MessageDeduplicator
   runtimeStore: RuntimeStore
   productStore?: ProductStore
+  storeStore?: StoreStore
   knowledgeChunkStore?: KnowledgeChunkStore
   orchestrator: LeadOrchestrator
   nlpClient: NLPClient
@@ -71,6 +72,10 @@ export async function createDependencies(): Promise<AppDependencies> {
     config.storageBackend === 'mysql'
       ? new PrismaProductStore(getPrismaClient(), cacheService, config.cache.productCatalogueTtlSec)
       : undefined
+  const storeStore: StoreStore | undefined =
+    config.storageBackend === 'mysql'
+      ? new PrismaStoreStore(getPrismaClient())
+      : undefined
   const knowledgeChunkStore: KnowledgeChunkStore | undefined =
     config.storageBackend === 'mysql'
       ? new PrismaKnowledgeChunkStore(
@@ -82,6 +87,9 @@ export async function createDependencies(): Promise<AppDependencies> {
       : undefined
   if (!productStore) {
     logger.warn('Product catalogue store unavailable: STORAGE_BACKEND must be mysql for /admin/products and /products/search.')
+  }
+  if (!storeStore) {
+    logger.warn('Store store unavailable: STORAGE_BACKEND must be mysql for /stores and /admin/stores.')
   }
   if (!knowledgeChunkStore) {
     logger.warn('Knowledge chunk store unavailable: STORAGE_BACKEND must be mysql for /admin/knowledge and /knowledge/chunks.')
@@ -118,6 +126,7 @@ export async function createDependencies(): Promise<AppDependencies> {
     },
     logger,
     llmClassifier,
+    cacheService,
   )
 
   logger.info(`NLP client configured for ${config.rasaUrl}`)
@@ -217,6 +226,7 @@ export async function createDependencies(): Promise<AppDependencies> {
     deduplicator,
     runtimeStore,
     productStore,
+    storeStore,
     knowledgeChunkStore,
     orchestrator,
     nlpClient,

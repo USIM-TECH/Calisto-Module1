@@ -5,6 +5,9 @@ import {
   LlmIntentClassifier,
   type LlmClassification,
 } from './llm-client.js'
+import { QueryExpander } from '../context/query-expander.js'
+import { SessionMemoryManager } from '../context/session-memory.js'
+import type { CacheService } from '../../cache/cache-service.js'
 
 
 export interface NLPClientConfig {
@@ -163,7 +166,7 @@ function parseBudget(text: string): { budget_min?: number; budget_max?: number; 
     result.budget_max = val + 50
   } else if ((match = normalized.match(/\b(\d+(?:\.\d+)?)\b/))) {
     const val = parseFloat(match[1])
-    if (val >= 50) result.budget_max = val
+    result.budget_max = val
   }
 
   return Object.keys(result).length > 0 ? result : null
@@ -178,6 +181,50 @@ function hasShoppingSignal(text: string, hasBudget: boolean): boolean {
   if (hasBudget) return true
   const normalized = text.toLowerCase().replace(/\s+/g, ' ').trim()
   return SHOPPING_SIGNAL_KEYWORDS.some((keyword) => normalized.includes(keyword))
+}
+
+function buildLeadFormPrompt(requestedSlot: string | undefined, preferredLanguage: string | undefined): string {
+  const lang = (preferredLanguage || '').toLowerCase()
+  switch (requestedSlot) {
+    case 'lead_name':
+      return lang === 'ms'
+        ? 'Boleh saya tahu nama anda dahulu?'
+        : lang === 'zh'
+          ? '可以先告诉我您的名字吗？'
+          : 'First, may I have your name?'
+    case 'contact_number':
+      return lang === 'ms'
+        ? 'Apakah nombor WhatsApp atau telefon terbaik untuk pasukan kami hubungi anda?'
+        : lang === 'zh'
+          ? '请问您的 WhatsApp 或联系电话是什么，方便团队联系您？'
+          : 'What is the best WhatsApp or phone number for our team to reach you on?'
+    case 'email':
+      return lang === 'ms'
+        ? 'Apakah alamat e-mel yang patut kami gunakan untuk sebut harga atau susulan?'
+        : lang === 'zh'
+          ? '请问我们应该使用哪个邮箱给您发送报价或后续联系？'
+          : 'What email address should we use for quotations or follow-up?'
+    case 'lead_location':
+      return lang === 'ms'
+        ? 'Anda berada di kawasan atau bandar mana supaya kami boleh arahkan anda ke pasukan atau kedai yang betul?'
+        : lang === 'zh'
+          ? '请问您所在的区域或城市是哪里？这样我们可以安排合适的团队或门店跟进您。'
+          : 'Which area or city are you located in, so we can route you to the right team or store?'
+    case 'preferred_service':
+      return lang === 'ms'
+        ? 'Apakah yang paling anda minati hari ini?'
+        : lang === 'zh'
+          ? '您今天主要想了解什么？'
+          : 'What are you mainly interested in today?'
+    case 'purchase_timeline':
+      return lang === 'ms'
+        ? 'Anda merancang untuk membuat keputusan atau melawat kedai dalam tempoh bila?'
+        : lang === 'zh'
+          ? '您打算多久内做决定或到门店看看？'
+          : 'When are you planning to decide or visit a store?'
+    default:
+      return ''
+  }
 }
 
 // Deterministic attribute maps — values must match CSV column values exactly (lowercase).
@@ -240,6 +287,7 @@ const BRAND_ALIAS_MAP: Record<string, string> = {
   'tom ford': 'Tom Ford',
   'tomford': 'Tom Ford',
   'versace': 'Versace',
+  'raymond': 'Raymond',
 }
 
 function extractFromMap(text: string, map: Record<string, string>): string | null {
@@ -354,15 +402,22 @@ export class NLPClient {
   private _config: NLPClientConfig
   private _logger: Logger
   private _llm?: LlmIntentClassifier
+  private _queryExpander?: QueryExpander
 
   constructor(
     config: NLPClientConfig,
     logger: Logger,
     llm?: LlmIntentClassifier,
+    cacheService?: CacheService,
   ) {
     this._config = config
     this._logger = logger
     this._llm = llm
+    
+    if (cacheService) {
+      const sessionMemory = new SessionMemoryManager(cacheService)
+      this._queryExpander = new QueryExpander(sessionMemory, logger)
+    }
   }
 
   public get llmEnabled(): boolean {
@@ -396,7 +451,7 @@ export class NLPClient {
     const nluFloor = this._config.nluConfidenceFloor ?? DEFAULT_NLU_FLOOR
     const llmFloor = this._config.llmConfidenceFloor ?? DEFAULT_LLM_FLOOR
 
-    const safeMessage = String(message).slice(0, 1000).trim()
+    let safeMessage = String(message).slice(0, 1000).trim()
     const senderNamespace = this._config.isolateTrackersByChannel && metadata?.channel
       ? `${metadata.channel}:${userId}`
       : userId
@@ -404,6 +459,17 @@ export class NLPClient {
 
     if (!safeMessage) {
       return { text: fallback, raw: [] }
+    }
+
+    // Context-Aware Query Expansion Layer
+    if (this._queryExpander && !safeMessage.startsWith('/')) {
+      const expansion = await this._queryExpander.expand(safeSender, safeMessage)
+      if (expansion.expanded && expansion.expanded_query) {
+        this._logger.info(
+          `[Context] Query expansion applied: "${safeMessage}" → "${expansion.expanded_query}"`,
+        )
+        safeMessage = expansion.expanded_query
+      }
     }
 
     const preTracker = await this.getTracker(safeSender)
@@ -440,6 +506,32 @@ export class NLPClient {
           route = 'opportunistic'
           this._logger.info(`[NLU] Deterministic opportunistic extraction -> ${rasaMessage}`)
         } else if (isInsideForm) {
+          // When the form is requesting a phone number, bare digit strings
+          // (e.g. "9876543210") can be misclassified by Rasa as `inform_budget`
+          // which is in the form's ignored_intents — causing the form to reject
+          // and return an empty response.  Intercept them here and send a
+          // properly structured intent payload so Rasa fills the slot correctly.
+          const requestedSlot = preTracker?.slots?.requested_slot
+          if (
+            requestedSlot === 'lead_name'
+            && isValidLeadName(safeMessage)
+          ) {
+            const normalizedName = safeMessage.replace(/\s+/g, ' ').trim()
+            rasaMessage = `/share_name{"lead_name":"${normalizedName.replace(/"/g, '\\"')}"}`
+            this._logger.debug(
+              `[NLU] Converted bare name input to intent payload for form slot: ${rasaMessage}`,
+            )
+          }
+          if (
+            requestedSlot === 'contact_number'
+            && /^\+?[\d\s\-\(\)]{8,20}$/.test(safeMessage)
+          ) {
+            const normalizedPhone = safeMessage.replace(/[^\d+]/g, '')
+            rasaMessage = `/share_phone{"contact_number": "${normalizedPhone}"}`
+            this._logger.debug(
+              `[NLU] Converted bare phone input to intent payload for form slot: ${rasaMessage}`,
+            )
+          }
           route = 'skip'
         } else {
           const parseResult = await this._parseWithRasa(safeMessage)
@@ -504,11 +596,44 @@ export class NLPClient {
       const rawReplies: Array<{ text?: string; image?: string; buttons?: any[]; custom?: Record<string, unknown> }> = response.data
 
       if (!Array.isArray(rawReplies) || rawReplies.length === 0) {
+        const postTracker = await this.getTracker(safeSender)
+
+        // An empty response during an active form is a known Rasa behaviour:
+        // the form accepted the slot value and is silently advancing to the
+        // next slot.  If we know which slot is being requested, surface the
+        // next prompt instead of returning silence.
+        if (isInsideForm && postTracker?.activeLoop) {
+          const requestedSlot = typeof postTracker.slots?.requested_slot === 'string'
+            ? postTracker.slots.requested_slot
+            : undefined
+          const prompt = buildLeadFormPrompt(requestedSlot, preferredLanguage)
+          if (prompt) {
+            this._logger.debug(
+              `[NLP] Rasa returned empty response during active form — synthesizing prompt for ${requestedSlot}`,
+            )
+            return {
+              text: prompt,
+              raw: [{ text: prompt }],
+              tracker: postTracker,
+              llm: llmResult ? this._serializeLlm(llmResult, rasaMessage) : undefined,
+            }
+          }
+          this._logger.debug(
+            '[NLP] Rasa returned empty response during active form — suppressing fallback (slot transition)',
+          )
+          return {
+            text: '',
+            raw: [],
+            tracker: postTracker,
+            llm: llmResult ? this._serializeLlm(llmResult, rasaMessage) : undefined,
+          }
+        }
+
         this._logger.warn('[NLP] Rasa returned empty response')
         return {
           text: fallback,
           raw: [],
-          tracker: await this.getTracker(safeSender),
+          tracker: postTracker,
           llm: llmResult ? this._serializeLlm(llmResult, rasaMessage) : undefined,
         }
       }
@@ -531,6 +656,25 @@ export class NLPClient {
         llm_used: Boolean(llmResult),
         latency_ms: Date.now() - startedAt,
       }))
+
+      // Update session context from extracted entities
+      if (this._queryExpander && postTracker?.slots) {
+        const entities: Record<string, string> = {}
+        const slots = postTracker.slots
+        
+        if (typeof slots.brand === 'string') entities.brand = slots.brand
+        if (typeof slots.product_type === 'string') entities.product_type = slots.product_type
+        if (typeof slots.frame_color === 'string') entities.frame_color = slots.frame_color
+        if (typeof slots.frame_material === 'string') entities.frame_material = slots.frame_material
+        if (typeof slots.frame_shape === 'string') entities.frame_shape = slots.frame_shape
+        if (typeof slots.gender === 'string') entities.gender = slots.gender
+        if (typeof slots.budget_min === 'number') entities.budget_min = String(slots.budget_min)
+        if (typeof slots.budget_max === 'number') entities.budget_max = String(slots.budget_max)
+        
+        if (Object.keys(entities).length > 0) {
+          await this._queryExpander.updateFromEntities(safeSender, entities, safeMessage)
+        }
+      }
 
       return {
         text: combinedText || fallback,
@@ -626,6 +770,31 @@ export class NLPClient {
       payload,
     }
   }
+}
+
+function isValidLeadName(value: string): boolean {
+  const normalized = String(value || '').trim()
+  if (!normalized) return false
+  if (normalized.length < 2 || normalized.length > 60) return false
+  if (/[@\d?!]/.test(normalized)) return false
+  const lowered = normalized.toLowerCase()
+  const disallowed = [
+    'hi',
+    'hello',
+    'hey',
+    'glasses',
+    'frames',
+    'sunglasses',
+    'lenses',
+    'price',
+    'pricing',
+    'store',
+    'appointment',
+  ]
+  if (disallowed.some((token) => lowered === token || lowered.includes(` ${token}`) || lowered.startsWith(`${token} `))) {
+    return false
+  }
+  return /^[A-Za-z][A-Za-z .'\-]{1,59}$/.test(normalized)
 }
 
 function truncateForLog(value: string): string {

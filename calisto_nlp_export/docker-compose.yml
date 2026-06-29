@@ -16,7 +16,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    entrypoint: ["rasa"]
+    entrypoint: [ "rasa" ]
     command:
       - run
       - --enable-api

@@ -67,6 +67,26 @@ const SUPPORT_CASE_TYPES = new Set([
   'Order Tracking/Support',
 ])
 
+// Internal Rasa intents that should never become CRM tags
+const INTERNAL_INTENTS = new Set([
+  'nlu_fallback',
+  'out_of_scope',
+  'session_start',
+  'restart',
+  'back',
+  'affirm',
+  'deny',
+  'stop',
+  'inform',
+  'choose_city',
+  'share_name',
+  'share_phone',
+  'share_email',
+  'share_location',
+  'share_service_interest',
+  'share_timeline',
+])
+
 const INTEREST_KIND_MAP: Record<keyof TrackerInterestSamples, InterestKind> = {
   productType: 'product_type',
   brand: 'brand',
@@ -385,8 +405,31 @@ export class LeadOrchestrator {
     }
     const newStatus = deriveQualificationStatus(trackerFields, rawStatus, customer.qualificationStatus, trackerInterests.supportCaseType)
     if (newStatus !== customer.qualificationStatus) postSnapshot.qualificationStatus = newStatus
-    if (nlpResponse.tracker?.latestIntent && nlpResponse.tracker.latestIntent !== customer.lastIntent) {
-      postSnapshot.lastIntent = nlpResponse.tracker.latestIntent
+    
+    // Update intent when user starts a new meaningful topic:
+    // 1. It's not an internal intent (nlu_fallback, share_*, choose_city, etc.)
+    // 2. Either no intent set yet OR previous was internal OR new is a different meaningful intent
+    // This allows: return_request -> browse_eyewear (topic change)
+    // But prevents: return_request -> choose_city (form answer) from overwriting
+    const isInternalIntent = INTERNAL_INTENTS.has(nlpResponse.tracker?.latestIntent || '')
+    
+    if (nlpResponse.tracker?.latestIntent && !isInternalIntent) {
+      const currentIntent = nlpResponse.tracker.latestIntent
+      const previousIntent = customer.lastIntent
+      const wasPreviousInternal = previousIntent ? INTERNAL_INTENTS.has(previousIntent) : false
+      
+      // If no previous intent, capture it
+      if (!previousIntent) {
+        postSnapshot.lastIntent = currentIntent
+      }
+      // If previous was internal (like choose_city during form), allow new meaningful intent
+      else if (wasPreviousInternal) {
+        postSnapshot.lastIntent = currentIntent
+      }
+      // If previous was meaningful and new is different (topic change), allow update
+      else if (currentIntent !== previousIntent) {
+        postSnapshot.lastIntent = currentIntent
+      }
     }
 
     if (Object.keys(postSnapshot).length) {

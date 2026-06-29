@@ -20,6 +20,12 @@ COPY endpoints.docker.yml .
 COPY credentials.yml .
 COPY data/ ./data/
 COPY actions/ ./actions/
+COPY forms/ ./forms/
+COPY search/ ./search/
+COPY config/ ./config/
+COPY nlp/ ./nlp/
+COPY gateway/ ./gateway/
+COPY cache/ ./cache/
 
 # Switch back to non-root user
 USER 1001

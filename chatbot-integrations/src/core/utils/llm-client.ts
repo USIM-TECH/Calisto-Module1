@@ -79,6 +79,12 @@ export const VALID_INTENTS = [
   'reschedule_appointment',
   'after_sales_support',
   'order_tracking',
+  'order_support',
+  'return_request',
+  'refund_request',
+  'exchange_request',
+  'repair_support',
+  'warranty_support',
   'warranty_claim',
   'human_handoff',
   'affirm',
@@ -137,21 +143,29 @@ Intents (pick exactly one):
 - product_recommendation: asks what's best for a use-case or lens need (driving, office, sport, fashion, screen use).
 - inform_budget: user states their budget as free text (e.g. "around RM200", "below 300").
 - capture_lead: asks to be contacted / consult / talk to someone / leave my details.
-- share_name: user volunteers their name when not inside a form.
-- share_phone: user volunteers their phone number when not inside a form.
-- share_email: user volunteers their email address when not inside a form.
-- share_location: user volunteers their city when not inside a form.
+- share_name: user volunteers their name when OUTSIDE a form context.
+- share_phone: user volunteers their phone number when OUTSIDE a form context.
+- share_email: user volunteers their email address when OUTSIDE a form context.
+- share_location: user volunteers their city when OUTSIDE a form context.
 - share_service_interest: user states which service they're interested in (eye test, fitting, consult).
 - share_timeline: user states when they plan to buy/visit (this week, next month).
 - book_appointment: explicitly wants to book an eye test, fitting, or store visit.
 - reschedule_appointment: wants to move/cancel an existing appointment.
 - after_sales_support: frame broken, lens scratched, needs repair / after-sales help.
 - order_tracking: asks about an order / tracking / delivery status / ORD id.
-- warranty_claim: mentions warranty, guarantee, claim, replace under warranty.
+- order_support: general order issues, modifications, cancellations.
+- return_request: wants to return glasses/product back to store.
+- refund_request: wants money back / refund for order.
+- exchange_request: wants to swap/exchange product for different size/model.
+- repair_support: frame broken, arm loose, needs fixing.
+- warranty_support: mentions warranty, guarantee, claim, replace under warranty.
+- warranty_claim: same as warranty_support.
 - human_handoff: asks for a human / agent / live person / real staff.
 - affirm: yes/ok/sure/correct/betul/是的.
 - deny: no/nope/cancel/tidak/不要.
 - nlu_fallback: message is empty, nonsense, or does not map to any intent above.
+
+CRITICAL: When active_loop='lead_capture_form', treat simple names (like "John", "Aswanth", "Sarah") as nlu_fallback or share_name, NOT as support requests! Only classify as support if there are clear support keywords (return, exchange, refund, broken, repair, warranty).
 `.trim()
 
 const ENTITY_GUIDE = `

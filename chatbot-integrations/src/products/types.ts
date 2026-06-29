@@ -67,6 +67,7 @@ export interface ProductSearchQuery {
   budgetMin?: number
   budgetMax?: number
   budgetBucket?: 'low' | 'mid' | 'premium' | string
+  priceModifier?: string
   limit?: number
 }
 

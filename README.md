@@ -8,6 +8,11 @@ User message (WhatsApp / Instagram / Messenger / Telegram / X / Webchat)
         ▼
 chatbot-integrations (Node/TS API, :3000)
         │
+        ├── 0. Context Expansion (Redis session memory)  [resolves "that", "this", "it"]
+        │      • Simple references (that, this, it) → expands using session context
+        │      • Product modifications (blue ones, cheaper ones) → adds to context
+        │      • Accessories (lenses for that) → expands with product context
+        │
         ├── 1. Rasa /model/parse  (primary classifier)
         │      • intent.name != nlu_fallback AND confidence ≥ 0.40
         │        → forward raw text to /webhooks/rest/webhook
@@ -35,6 +40,10 @@ The LLM layer lives in `chatbot-integrations/src/core/utils/llm-client.ts` and
 is toggled with `LLM_LAYER_ENABLED=true|false` in `chatbot-integrations/.env`.
 Thresholds: `RASA_NLU_CONFIDENCE_FLOOR` (default `0.4`, matches Rasa's
 `FallbackClassifier`) and `LLM_CONFIDENCE_FLOOR` (default `0.35`).
+
+The Context Expansion layer lives in `chatbot-integrations/src/core/context/` and
+automatically activates when Redis is enabled. It resolves contextual references
+("that", "this", "it") without LLM invocation. See [CONTEXT_EXPANSION.md](chatbot-integrations/CONTEXT_EXPANSION.md).
 
 ## Repository layout
 
@@ -198,6 +207,8 @@ Instagram callback URLs must be set in the Meta App Dashboard (Instagram → API
 
 ## Typical dev workflow
 
+### Option A: Fully Docker-based (recommended for production-like setup)
+
 Run these in separate terminals:
 
 ```bash
@@ -218,3 +229,447 @@ cloudflared tunnel --url http://localhost:3000
 ```
 
 Then open **http://localhost:5173** for the admin UI.
+
+### Option B: Hybrid local setup (databases in Docker, services local)
+
+Use this if you're developing Rasa models locally or prefer local Python debugging:
+
+```bash
+# Terminal 1 — Start PostgreSQL + Redis in Docker
+cd Calisto-Module1
+docker compose -f docker-compose.services.yml up -d
+
+# Terminal 2 — Train and run Rasa locally
+cd calisto_nlp_export
+source .venv/bin/activate  # Activate Python virtual environment
+rasa train                  # Train model (first time or after changes)
+rasa run --enable-api --cors "*" --port 5005
+
+# Terminal 3 — Run Rasa action server locally
+cd calisto_nlp_export
+source .venv/bin/activate
+rasa run actions --port 5055
+
+# Terminal 4 — Backend API
+cd chatbot-integrations
+npm run dev
+
+# Terminal 5 — React admin UI
+cd chatbot-frontend
+npm run dev
+
+# Terminal 6 — Tunnel (when testing channel webhooks)
+cloudflared tunnel --url http://localhost:3000
+```
+
+**Local Rasa setup requirements:**
+- Python virtual environment at `calisto_nlp_export/.venv`
+- Rasa 3.6.21 and dependencies installed
+- Redis Python client (4.6.0) installed
+- Trained model in `calisto_nlp_export/models/`
+
+**Note:** Redis tracker store is available but currently disabled in `endpoints.yml` due to a Rasa 3.6 local compatibility issue. It works fine in Docker mode.
+
+Then open **http://localhost:5173** for the admin UI.
+
+## Detailed Terminal Commands
+
+### Option A: Docker-based Setup (Step-by-step)
+
+#### First-time setup:
+
+```bash
+# 1. Start databases (PostgreSQL + Redis)
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
+docker compose -f docker-compose.postgres.yml up -d
+
+# 2. Setup database schema
+./scripts/setup-local-postgres.sh
+
+# 3. Build and train Rasa
+cd ../calisto_nlp_export
+docker compose down
+rm -f models/*.tar.gz
+docker compose build --no-cache rasa
+mkdir -p models
+docker compose run --rm rasa train
+
+# 4. Start Rasa services
+docker compose up -d
+
+# 5. Setup backend dependencies
+cd ../chatbot-integrations
+npm install
+cp .env.example .env
+# Edit .env file with your settings
+npm run db:migrate
+
+# 6. Setup frontend dependencies
+cd ../chatbot-frontend
+npm install
+cp .env.example .env
+```
+
+#### Daily startup (after first-time setup):
+
+**Terminal 1 - Databases:**
+```bash
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
+docker compose -f docker-compose.postgres.yml up
+# Or run detached: docker compose -f docker-compose.postgres.yml up -d
+```
+
+**Terminal 2 - Rasa (NLU + Actions):**
+```bash
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
+docker compose up
+# Or run detached: docker compose up -d
+```
+
+**Terminal 3 - Backend API:**
+```bash
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
+npm run dev
+```
+
+**Terminal 4 - Frontend:**
+```bash
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-frontend
+npm run dev
+```
+
+**Terminal 5 - Cloudflare Tunnel (optional, for webhooks):**
+```bash
+cloudflared tunnel --url http://localhost:3000
+```
+
+#### Useful Docker commands:
+
+```bash
+# Check running containers
+docker ps
+
+# View logs
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
+docker compose logs -f rasa
+docker compose logs -f actions
+
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
+docker compose -f docker-compose.postgres.yml logs -f postgres
+docker compose -f docker-compose.postgres.yml logs -f redis
+
+# Stop services
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
+docker compose down
+
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
+docker compose -f docker-compose.postgres.yml down
+
+# Restart services
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
+docker compose restart rasa
+docker compose restart actions
+
+# Rebuild after code changes
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
+docker compose down
+docker compose build --no-cache
+docker compose run --rm rasa train  # If model changed
+docker compose up -d
+```
+
+---
+
+### Option B: Hybrid Local Setup (Step-by-step)
+
+#### First-time setup:
+
+```bash
+# 1. Create Python virtual environment
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
+python3 -m venv .venv
+source .venv/bin/activate
+
+# 2. Install Rasa and dependencies
+pip install --upgrade pip
+pip install rasa==3.6.21
+pip install redis==4.6.0
+pip install -r requirements.txt
+
+# 3. Start databases (PostgreSQL + Redis)
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1
+docker compose -f docker-compose.services.yml up -d
+
+# 4. Setup database schema
+cd chatbot-integrations
+./scripts/setup-local-postgres.sh
+
+# 5. Train Rasa model
+cd ../calisto_nlp_export
+source .venv/bin/activate
+rasa train
+
+# 6. Setup backend dependencies
+cd ../chatbot-integrations
+npm install
+cp .env.example .env
+# Edit .env file with:
+# DATABASE_URL=postgresql://calisto:calisto@localhost:5432/calisto_chatbot
+# REDIS_URL=redis://localhost:6379
+# RASA_URL=http://localhost:5005
+npm run db:migrate
+
+# 7. Setup frontend dependencies
+cd ../chatbot-frontend
+npm install
+cp .env.example .env
+# Leave VITE_API_BASE_URL empty for local dev
+```
+
+#### Daily startup (after first-time setup):
+
+**Terminal 1 - Databases:**
+```bash
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1
+docker compose -f docker-compose.services.yml up
+# Or run detached: docker compose -f docker-compose.services.yml up -d
+
+# Verify services are running:
+docker ps
+# Should show postgres and redis containers
+```
+
+**Terminal 2 - Rasa NLU Server:**
+```bash
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
+source .venv/bin/activate
+rasa run --enable-api --cors "*" --port 5005
+
+# You should see:
+# Rasa server is up and running on http://localhost:5005
+```
+
+**Terminal 3 - Rasa Action Server:**
+```bash
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
+source .venv/bin/activate
+rasa run actions --port 5055
+
+# You should see:
+# Action endpoint is up and running on http://localhost:5055
+```
+
+**Terminal 4 - Backend API:**
+```bash
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
+npm run dev
+
+# You should see:
+# Server running on http://localhost:3000
+```
+
+**Terminal 5 - Frontend:**
+```bash
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-frontend
+npm run dev
+
+# You should see:
+# Local: http://localhost:5173/
+```
+
+**Terminal 6 - Cloudflare Tunnel (optional, for webhooks):**
+```bash
+cloudflared tunnel --url http://localhost:3000
+
+# Copy the generated URL (e.g., https://xxx.trycloudflare.com)
+# Update webhook URLs if needed:
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
+./scripts/set-meta-webhooks.sh
+```
+
+#### When you make changes:
+
+**After changing Rasa training data (NLU, stories, rules, domain):**
+```bash
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
+source .venv/bin/activate
+rasa train
+# Then restart Terminal 2 (Rasa server) - Ctrl+C and run again
+```
+
+**After changing Rasa actions (Python code):**
+```bash
+# Just restart Terminal 3 (Action server) - Ctrl+C and run again
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
+source .venv/bin/activate
+rasa run actions --port 5055
+```
+
+**After changing backend code:**
+```bash
+# Hot reload is automatic with npm run dev
+# If needed, restart Terminal 4 - Ctrl+C and run again
+```
+
+**After changing frontend code:**
+```bash
+# Hot reload is automatic with npm run dev
+# If needed, restart Terminal 5 - Ctrl+C and run again
+```
+
+#### Useful local commands:
+
+```bash
+# Check if ports are in use
+lsof -i :5005  # Rasa server
+lsof -i :5055  # Rasa actions
+lsof -i :3000  # Backend API
+lsof -i :5173  # Frontend
+lsof -i :5432  # PostgreSQL
+lsof -i :6379  # Redis
+
+# Kill process on port (if needed)
+kill -9 $(lsof -t -i:5005)
+
+# Check database connection
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
+psql postgresql://calisto:calisto@localhost:5432/calisto_chatbot
+
+# Check Redis connection
+redis-cli -h localhost -p 6379 ping
+# Should return: PONG
+
+# View Redis data
+redis-cli -h localhost -p 6379
+> KEYS *
+> GET <key>
+> exit
+
+# View database with Prisma Studio
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
+npm run db:studio
+# Opens http://localhost:5555
+
+# Test Rasa endpoint
+curl http://localhost:5005/
+
+# Test backend health
+curl http://localhost:3000/health
+
+# View backend logs in real-time
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
+npm run dev | grep ERROR  # Filter errors only
+
+# Shutdown databases
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1
+docker compose -f docker-compose.services.yml down
+
+# Shutdown and remove volumes (clean slate)
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1
+docker compose -f docker-compose.services.yml down -v
+```
+
+#### Troubleshooting:
+
+**Rasa won't start:**
+```bash
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
+source .venv/bin/activate
+# Check if model exists
+ls -la models/
+# If no model, train one:
+rasa train
+```
+
+**Database connection errors:**
+```bash
+# Check if PostgreSQL is running
+docker ps | grep postgres
+
+# If not running, start it:
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1
+docker compose -f docker-compose.services.yml up -d postgres
+
+# Check connection:
+psql postgresql://calisto:calisto@localhost:5432/calisto_chatbot -c "SELECT 1;"
+```
+
+**Redis connection errors:**
+```bash
+# Check if Redis is running
+docker ps | grep redis
+
+# If not running, start it:
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1
+docker compose -f docker-compose.services.yml up -d redis
+
+# Check connection:
+redis-cli -h localhost -p 6379 ping
+```
+
+**Port already in use:**
+```bash
+# Find what's using the port
+lsof -i :5005
+
+# Kill the process
+kill -9 <PID>
+
+# Or kill all Rasa processes
+pkill -f rasa
+```
+
+**Frontend not loading:**
+```bash
+# Clear npm cache and reinstall
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-frontend
+rm -rf node_modules package-lock.json
+npm install
+npm run dev
+```
+
+**Backend not connecting to Rasa:**
+```bash
+# Check RASA_URL in .env
+cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
+cat .env | grep RASA_URL
+# Should be: RASA_URL=http://localhost:5005
+
+# Test Rasa endpoint
+curl http://localhost:5005/
+```
+
+---
+
+### Access URLs
+
+Once all services are running:
+
+- **Frontend (Admin UI)**: http://localhost:5173
+  - Leads: http://localhost:5173/leads
+  - Products: http://localhost:5173/products
+  - Knowledge: http://localhost:5173/knowledge
+  - Webchat Playground: http://localhost:5173/webchat
+  - Customer Chat Widget: http://localhost:5173/chatbot
+
+- **Backend API**: http://localhost:3000
+  - Health: http://localhost:3000/health
+  - Leads API: http://localhost:3000/reports/leads
+  - Products API: http://localhost:3000/admin/products/api/products
+  - Webchat: http://localhost:3000/webchat/message
+
+- **Rasa Server**: http://localhost:5005
+  - Status: http://localhost:5005/status
+  - Version: http://localhost:5005/version
+
+- **Rasa Actions**: http://localhost:5055
+  - Health: http://localhost:5055/health
+
+- **Prisma Studio** (Database UI): http://localhost:5555
+  - Run: `cd chatbot-integrations && npm run db:studio`
+
+- **PostgreSQL**: localhost:5432
+  - Connect: `psql postgresql://calisto:calisto@localhost:5432/calisto_chatbot`
+
+- **Redis**: localhost:6379
+  - Connect: `redis-cli -h localhost -p 6379`

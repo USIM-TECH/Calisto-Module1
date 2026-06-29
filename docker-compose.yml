@@ -139,6 +139,10 @@ services:
     profiles: ["llm"]
     ports:
       - "11434:11434"
+    environment:
+      OLLAMA_NUM_PARALLEL: 2       # process 2 LLM requests simultaneously
+      OLLAMA_MAX_QUEUE: 4          # queue up to 4 more before rejecting
+      OLLAMA_KEEP_ALIVE: "10m"     # keep model loaded in RAM between requests
     volumes:
       - ollama-data:/root/.ollama
     networks:

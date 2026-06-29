@@ -233,6 +233,25 @@ model Product {
   @@index([priceMyr])
 }
 
+/// Store locator catalogue. Seeded from calisto_stores.csv and exposed to
+/// Rasa via /stores, /stores/cities, and /stores/search.
+model Store {
+  id               String   @id @default(cuid())
+  name             String
+  address          String?
+  phone            String?
+  state            String?
+  city             String
+  imageUrl         String?
+  fallbackImageUrl String?
+  mapUrl           String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([city])
+  @@index([state])
+}
+
 model KnowledgeDocument {
   id        String   @id @default(cuid())
   source    String   @unique
