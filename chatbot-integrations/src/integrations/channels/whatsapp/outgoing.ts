@@ -46,6 +46,32 @@ function extractMessageId(response: any): string | undefined {
   return response?.messages?.[0]?.id
 }
 
+// WhatsApp rejects an interactive message if any reply-button / list-row `id`
+// repeats ("(#131009) Parameter value is not valid ... Duplicated row id"),
+// which fails the ENTIRE message so the user sees no options to tap. The id we
+// use is the option value (the Rasa payload), so duplicate values are
+// functionally redundant — drop them, keeping the first occurrence.
+function dedupeChoiceOptions(
+  options: Extract<OutgoingMessage, { type: 'choice' }>['options'],
+  logger: Logger,
+  recipientPhone: string
+): Extract<OutgoingMessage, { type: 'choice' }>['options'] {
+  const seen = new Set<string>()
+  const unique = options.filter((opt) => {
+    if (seen.has(opt.value)) {
+      return false
+    }
+    seen.add(opt.value)
+    return true
+  })
+  if (unique.length !== options.length) {
+    logger.warn(
+      `[WhatsApp] Dropped ${options.length - unique.length} duplicate choice option(s) for ${recipientPhone} (WhatsApp requires unique button/row ids)`
+    )
+  }
+  return unique
+}
+
 function asNonEmptyTuple<T>(items: T[]): [T, ...T[]] | undefined {
   const [first, ...rest] = items
   return first ? [first, ...rest] : undefined
@@ -135,9 +161,10 @@ export async function sendWhatsAppMessage(
       return messageId
     }
     case 'choice': {
-      if (message.options.length <= 3) {
+      const options = dedupeChoiceOptions(message.options, logger, recipientPhone)
+      if (options.length <= 3) {
         // Use reply buttons for up to 3 options
-        const buttons = message.options.map((opt) => new Button(opt.value, opt.label.substring(0, 20)))
+        const buttons = options.map((opt) => new Button(opt.value, opt.label.substring(0, 20)))
         const buttonTuple = asNonEmptyTuple(buttons)
         if (!buttonTuple) {
           logger.warn(`[WhatsApp] Choice message for ${recipientPhone} had no button options`)
@@ -156,7 +183,7 @@ export async function sendWhatsAppMessage(
       }
 
       // For more than 3 options, use list format
-      const rows = message.options.map((opt) => new Row(opt.value, opt.label.substring(0, 24)))
+      const rows = options.map((opt) => new Row(opt.value, opt.label.substring(0, 24)))
       const rowTuple = asNonEmptyTuple(rows)
       if (!rowTuple) {
         logger.warn(`[WhatsApp] Choice list for ${recipientPhone} had no rows`)
@@ -183,7 +210,7 @@ export async function sendWhatsAppMessage(
 
       // Send image first if available
       if (message.imageUrl) {
-        logger.debug(`[WhatsApp] Sending card image reply to ${recipientPhone}`)
+        logger.debug(`[WhatsApp] Sending card image reply to ${recipientPhone} (url=${message.imageUrl}, captionLen=${text.length})`)
         const imageResponse = await client.sendMessage(
           config.phoneNumberId,
           recipientPhone,

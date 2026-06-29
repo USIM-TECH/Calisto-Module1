@@ -119,7 +119,11 @@ MSG_VERIFY="$(get_env MESSENGER_VERIFY_TOKEN)"
 WA_PHONE_ID="$(get_env WHATSAPP_PHONE_NUMBER_ID)"
 WA_TOKEN="$(get_env WHATSAPP_ACCESS_TOKEN)"
 WA_VERIFY="$(get_env WHATSAPP_VERIFY_TOKEN)"
-WABA_ID="${WABA_ID:-}"   # optional: only needed to (re)subscribe the WABA
+# WABA (WhatsApp Business Account) ID. REQUIRED for inbound messages: a WABA only
+# delivers message webhooks to an app it is subscribed to (POST /{WABA_ID}/subscribed_apps).
+# Prefer the shell env, then .env (WHATSAPP_WABA_ID, then legacy WABA_ID).
+WABA_ID="${WABA_ID:-$(get_env WHATSAPP_WABA_ID)}"
+[[ -z "$WABA_ID" ]] && WABA_ID="$(get_env WABA_ID)"
 
 if [[ -z "$APP_ID" || -z "$APP_SECRET" ]]; then
   echo "ERROR: APP_ID / APP_SECRET missing in .env (INSTAGRAM_CLIENT_ID + MESSENGER_CLIENT_SECRET)." >&2
@@ -179,6 +183,13 @@ if [[ -n "$WA_PHONE_ID" && -n "$WA_TOKEN" ]]; then
     echo "--- Subscribe WABA ($WABA_ID) ---"
     curl -sS -X POST "https://graph.facebook.com/${GRAPH_VERSION}/${WABA_ID}/subscribed_apps" \
       -H "Authorization: Bearer ${WA_TOKEN}" | pretty
+    echo
+  else
+    echo "!!! WARNING: WHATSAPP_WABA_ID is not set in .env -> WABA NOT subscribed."
+    echo "    Inbound WhatsApp messages will NOT be delivered (you'll see a double"
+    echo "    grey tick but no reply). Add to chatbot-integrations/.env:"
+    echo "        WHATSAPP_WABA_ID=<your WhatsApp Business Account ID>"
+    echo "    (Meta dashboard -> WhatsApp -> API Setup -> 'WhatsApp Business Account ID')"
     echo
   fi
   echo "--- Override callback on phone number ($WA_PHONE_ID) ---"

@@ -54,7 +54,20 @@ export async function handleWhatsAppWebhook({
         }
 
         for (const status of change.value.statuses ?? []) {
-          logger.debug(`WhatsApp message ${status.id} status: ${status.status}`)
+          if (status.status === 'failed') {
+            const reason = (status.errors ?? [])
+              .map(
+                (e) =>
+                  `[${e.code}] ${e.title}: ${e.message}` +
+                  (e.error_data?.details ? ` — ${e.error_data.details}` : '')
+              )
+              .join('; ')
+            logger.error(
+              `WhatsApp message ${status.id} FAILED${reason ? `: ${reason}` : ' (no error detail provided)'}`
+            )
+          } else {
+            logger.debug(`WhatsApp message ${status.id} status: ${status.status}`)
+          }
         }
 
         for (const message of change.value.messages ?? []) {

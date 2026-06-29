@@ -1075,12 +1075,48 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
     )
 
 
+def _force_jpeg_format(url: str) -> str:
+    """Some image CDNs (Unsplash / imgix) content-negotiate via `auto=format`
+    and serve WebP/AVIF to any client that advertises support — including
+    Meta's media fetcher. Meta channels (WhatsApp/Messenger/Instagram) reject
+    those formats for image messages ("WebP image uploads are not currently
+    supported"), so the card silently fails to deliver. Pin these URLs to JPEG
+    by dropping the `format` token from `auto` and forcing `fm=jpg`. JPEG is
+    accepted by every channel, so this is safe to apply universally."""
+    try:
+        parts = urllib.parse.urlsplit(url)
+    except ValueError:
+        return url
+    host = (parts.netloc or "").lower()
+    if "unsplash.com" not in host and "imgix" not in host:
+        return url
+    new_query = []
+    has_fm = False
+    for key, val in urllib.parse.parse_qsl(parts.query, keep_blank_values=True):
+        if key == "auto":
+            tokens = [t for t in val.split(",") if t and t != "format"]
+            if tokens:
+                new_query.append(("auto", ",".join(tokens)))
+            continue
+        if key == "fm":
+            has_fm = True
+            new_query.append(("fm", "jpg"))
+            continue
+        new_query.append((key, val))
+    if not has_fm:
+        new_query.append(("fm", "jpg"))
+    return urllib.parse.urlunsplit(
+        (parts.scheme, parts.netloc, parts.path, urllib.parse.urlencode(new_query), parts.fragment)
+    )
+
+
 def _resolve_card_image_url(raw: Any) -> Optional[str]:
     """Absolutise a relative imageUrl (e.g. /static/products/abc.jpg) using
     PUBLIC_BASE_URL so channels (Telegram/WhatsApp/Messenger) can fetch it
-    from the public internet. Already-absolute URLs are returned untouched.
-    Empty/missing values return None so the caller can fall back to the
-    placeholder image."""
+    from the public internet. Already-absolute URLs are returned untouched
+    (aside from forcing a WhatsApp-safe JPEG format on CDNs that would
+    otherwise serve WebP/AVIF). Empty/missing values return None so the caller
+    can fall back to the placeholder image."""
     if raw is None:
         return None
     try:
@@ -1092,7 +1128,7 @@ def _resolve_card_image_url(raw: Any) -> Optional[str]:
     if not value or value.lower() in {"none", "null", "nan"}:
         return None
     if value.startswith("http://") or value.startswith("https://"):
-        return value
+        return _force_jpeg_format(value)
     base = (os.getenv("PUBLIC_BASE_URL") or "http://localhost:3000").rstrip("/")
     suffix = value if value.startswith("/") else f"/{value}"
     return f"{base}{suffix}"

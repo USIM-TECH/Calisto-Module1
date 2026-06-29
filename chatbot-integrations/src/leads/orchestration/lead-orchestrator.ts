@@ -582,7 +582,17 @@ export class LeadOrchestrator {
   }
 
   private async _syncQualifiedLead(customer: CustomerRecord): Promise<void> {
-    if (!this._hubspot || customer.qualificationStatus !== 'qualified') return
+    // Skip when HubSpot is disabled or the lead isn't qualified. Also skip when
+    // it is already synced: without this, every subsequent qualified message
+    // would create a brand-new HubSpot lead (duplicate). `pending`/`failed`
+    // still (re)try so a transient HubSpot error self-heals on the next turn.
+    if (
+      !this._hubspot ||
+      customer.qualificationStatus !== 'qualified' ||
+      customer.crmStatus === 'synced'
+    ) {
+      return
+    }
 
     try {
       const existing = await this._hubspot.searchContact({
