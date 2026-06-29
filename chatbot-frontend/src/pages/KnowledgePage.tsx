@@ -9,6 +9,7 @@ import {
 } from '../api/client'
 import Button from '../components/Button'
 import PageContainer from '../components/PageContainer'
+import { SkeletonBlock, SkeletonTable, SkeletonTopbar } from '../components/Skeleton'
 import Topbar from '../components/Topbar'
 import type { KnowledgeDocumentSummary } from '../types'
 
@@ -31,6 +32,7 @@ const errorClass = 'mt-1 text-xs font-semibold text-rose-600'
 
 export default function KnowledgePage() {
   const [documents, setDocuments] = useState<KnowledgeDocumentSummary[]>([])
+  const [docsLoading, setDocsLoading] = useState(true)
   const [selected, setSelected] = useState<string | null>(null)
   const [preview, setPreview] = useState<string>('')
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -50,8 +52,14 @@ export default function KnowledgePage() {
 
   function loadDocuments() {
     return getKnowledgeDocuments()
-      .then((data) => setDocuments(data.documents))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load knowledge documents.'))
+      .then((data) => {
+        setDocuments(data.documents)
+        setDocsLoading(false)
+      })
+      .catch((err) => {
+        setDocsLoading(false)
+        setError(err instanceof Error ? err.message : 'Failed to load knowledge documents.')
+      })
   }
 
   useEffect(() => {
@@ -102,7 +110,7 @@ export default function KnowledgePage() {
 
   async function loadPreview(source: string) {
     setSelected(source)
-    setPreview('Loading...')
+    setPreview('__loading__')
     setError(null)
     setSuccessMessage(null)
     try {
@@ -118,7 +126,7 @@ export default function KnowledgePage() {
 
   async function openEdit(source: string) {
     setEditingSource(source)
-    setEditText('Loading...')
+    setEditText('__loading__')
     setEditFile(null)
     setError(null)
     setSuccessMessage(null)
@@ -203,6 +211,17 @@ export default function KnowledgePage() {
         </div>
       )}
 
+      {docsLoading && (
+        <>
+          <SkeletonTopbar />
+          <SkeletonTable
+            cols={4}
+            rows={5}
+            headers={['Source file', 'Chunks', 'Updated', 'Actions']}
+          />
+        </>
+      )}
+
 
       <section className="mt-5 rounded-xl border border-calisto-line-subtle bg-calisto-surface p-3 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -226,7 +245,13 @@ export default function KnowledgePage() {
 
       <section className="mt-5 overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[820px] table-fixed border-collapse text-left text-sm">
+            <colgroup>
+              <col className="w-[50%]" />
+              <col className="w-[12%]" />
+              <col className="w-[23%]" />
+              <col className="w-[15%]" />
+            </colgroup>
             <thead>
               <tr className="bg-calisto-table/90 text-xs font-bold uppercase tracking-wider text-calisto-ink">
                 <th className="px-7 py-5">Source file</th>
@@ -341,12 +366,20 @@ export default function KnowledgePage() {
                   <label className={labelClass} htmlFor="knowledgeText">
                     Text content
                   </label>
-                  <textarea
-                    id="knowledgeText"
-                    className={textareaClass}
-                    onChange={(event) => setEditText(event.target.value)}
-                    value={editText}
-                  />
+                  {editText === '__loading__' ? (
+                    <div className="space-y-3 rounded-xl border border-calisto-line bg-calisto-table p-4">
+                      {[...Array(8)].map((_, i) => (
+                        <SkeletonBlock key={i} className={`h-4 ${i % 4 === 3 ? 'w-2/5' : 'w-full'}`} />
+                      ))}
+                    </div>
+                  ) : (
+                    <textarea
+                      id="knowledgeText"
+                      className={textareaClass}
+                      onChange={(event) => setEditText(event.target.value)}
+                      value={editText}
+                    />
+                  )}
                 </div>
 
                 <div className="mt-6 flex justify-end gap-3 border-t border-calisto-line pt-5">
@@ -453,7 +486,15 @@ export default function KnowledgePage() {
             <h3 id="previewTitle" className="text-base font-extrabold text-calisto-ink">Preview: {selected}</h3>
             <Button id="closePreview" onClick={() => setSelected(null)}>Close</Button>
           </div>
-          <pre id="previewBody" className="max-h-[420px] overflow-auto whitespace-pre-wrap bg-calisto-surface-muted px-5 py-4 text-sm leading-6 text-calisto-body">{preview}</pre>
+          {preview === '__loading__' ? (
+            <div className="space-y-3 px-5 py-5">
+              {[...Array(6)].map((_, i) => (
+                <SkeletonBlock key={i} className={`h-4 ${i % 3 === 2 ? 'w-3/5' : 'w-full'}`} />
+              ))}
+            </div>
+          ) : (
+            <pre id="previewBody" className="max-h-[420px] overflow-auto whitespace-pre-wrap bg-calisto-surface-muted px-5 py-4 text-sm leading-6 text-calisto-body">{preview}</pre>
+          )}
         </section>
       )}
     </PageContainer>

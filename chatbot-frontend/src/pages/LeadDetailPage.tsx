@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { Mail, MapPin, Paperclip, Pencil, Phone, Plus, Send, Smile, X } from 'lucide-react'
 import { getLeadDetail } from '../api/client'
 import PageContainer from '../components/PageContainer'
+import { SkeletonLeadDetail } from '../components/Skeleton'
 import type { ConversationMessageRecord, LeadDetailResponse } from '../types'
 
 function formatDate(value: string) {
@@ -166,9 +167,7 @@ export default function LeadDetailPage() {
   if (loading) {
     return (
       <PageContainer>
-        <div className="rounded-2xl border border-calisto-line-subtle bg-calisto-surface p-8 text-sm font-medium text-calisto-muted shadow-sm">
-          Loading lead details...
-        </div>
+        <SkeletonLeadDetail />
       </PageContainer>
     )
   }

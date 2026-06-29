@@ -4,6 +4,7 @@ import { postWebchatMessage } from '../api/client'
 import Button from '../components/Button'
 import ChatMessageBubble from '../components/ChatMessageBubble'
 import PageContainer from '../components/PageContainer'
+import { TypingIndicator } from '../components/Skeleton'
 import Topbar from '../components/Topbar'
 import { getOrCreateSenderId, messagePreview, persistSenderId, resetSenderId } from '../lib/chat'
 import type { WebchatResponse } from '../types'
@@ -197,15 +198,11 @@ export default function WebchatPage() {
               />
             ))}
             {loading && (
-              <div className="flex flex-col items-end gap-1">
-                <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-blue-600 px-4 py-3 text-calisto-surface shadow-sm">
-                  <div className="inline-flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-calisto-surface/90" />
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-calisto-surface/90 [animation-delay:150ms]" />
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-calisto-surface/90 [animation-delay:300ms]" />
-                  </div>
-                </div>
-                <span className="text-xs font-semibold text-calisto-soft">Outbound (AI Assistant) - {currentStamp()}</span>
+              <div>
+                <TypingIndicator />
+                <span className="mt-1 block text-xs font-semibold text-calisto-soft">
+                  AI Assistant is typing…
+                </span>
               </div>
             )}
           </div>

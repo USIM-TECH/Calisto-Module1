@@ -5,6 +5,7 @@ import Button from '../components/Button'
 import AddProductModal, { type ProductFormData } from '../components/AddProductModal'
 import ImportCsvModal from '../components/ImportCsvModal'
 import PageContainer from '../components/PageContainer'
+import { SkeletonFilterBar, SkeletonTable, SkeletonTopbar } from '../components/Skeleton'
 import Topbar from '../components/Topbar'
 import type { ProductImportMode, ProductListResult, ProductRecord } from '../types'
 
@@ -284,9 +285,15 @@ export default function ProductsPage() {
         </div>
       )}
       {!data && !error && (
-        <div className="rounded-2xl border border-calisto-line-subtle bg-calisto-surface p-8 text-sm font-medium text-calisto-muted shadow-sm">
-          Loading...
-        </div>
+        <>
+          <SkeletonTopbar />
+          <SkeletonFilterBar />
+          <SkeletonTable
+            cols={9}
+            rows={8}
+            headers={['', 'ID', 'Product', 'Type', 'Category', 'Price', 'Stock', 'Rating', 'Actions']}
+          />
+        </>
       )}
       {data && (
         <>
