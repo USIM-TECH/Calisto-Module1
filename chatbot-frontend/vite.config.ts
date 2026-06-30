@@ -8,7 +8,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/webchat': backendTarget,
+      '/webchat/message': backendTarget,
       '/reports': backendTarget,
       '/admin': backendTarget,
       '/products/search': backendTarget,
