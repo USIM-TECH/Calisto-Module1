@@ -85,11 +85,21 @@ trap cleanup EXIT
 trap 'exit 130' INT TERM
 
 # start_bg NAME LOGFILE COMMAND_STRING
+# Uses perl -MPOSIX to create a new session (setsid equivalent) because
+# macOS does not ship the setsid binary (Linux util-linux only).
+_setsid() {
+  if command -v setsid >/dev/null 2>&1; then
+    setsid "$@"
+  else
+    perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV' -- "$@"
+  fi
+}
+
 start_bg() {
   local name="$1" logfile="$2" cmd="$3"
   local pidfile; pidfile="$(mktemp)"
   # The child bash records its own PID (= new session/group leader) to pidfile.
-  setsid bash -c 'echo $$ > "'"$pidfile"'"; '"$cmd" >"$logfile" 2>&1 &
+  _setsid bash -c 'echo $$ > "'"$pidfile"'"; '"$cmd" >"$logfile" 2>&1 &
   local leader="" tries=0
   while [[ -z "$leader" && $tries -lt 100 ]]; do
     leader="$(cat "$pidfile" 2>/dev/null)"
