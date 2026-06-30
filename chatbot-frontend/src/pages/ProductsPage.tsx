@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react'
-import { createProduct, deleteProduct, getProduct, getProductImportTemplateUrl, getProducts, importProductsCsv, updateProduct } from '../api/client'
+import { createProduct, deleteProduct, getProduct, getProductImportTemplateUrl, getProducts, importProductsCsv, resolveAssetUrl, updateProduct } from '../api/client'
 import Button from '../components/Button'
 import AddProductModal, { type ProductFormData } from '../components/AddProductModal'
 import ImportCsvModal from '../components/ImportCsvModal'
@@ -374,12 +374,26 @@ export default function ProductsPage() {
                   {paginated.map((product: ProductRecord) => (
                     <tr key={product.productId} className="transition hover:bg-calisto-surface-muted" data-product-id={product.productId}>
                       <td className="px-3 py-4 text-center align-middle">
-                        <div className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-violet-600 text-xs font-bold text-calisto-surface">
-                          {product.imageUrl ? (
-                            <img className="h-full w-full object-cover" src={product.imageUrl} alt={product.productName} />
-                          ) : (
-                            <span>{productInitial(product)}</span>
-                          )}
+                        <div className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-calisto-line bg-calisto-surface-muted text-xs font-bold text-calisto-muted">
+                          {resolveAssetUrl(product.imageUrl ?? undefined) ? (
+                            <img
+                              className="h-full w-full object-cover"
+                              src={resolveAssetUrl(product.imageUrl ?? undefined)}
+                              alt={product.productName}
+                              onError={(e) => {
+                                const target = e.currentTarget
+                                target.style.display = 'none'
+                                const fallback = target.nextElementSibling as HTMLElement | null
+                                if (fallback) fallback.style.display = 'flex'
+                              }}
+                            />
+                          ) : null}
+                          <span
+                            className="hidden h-full w-full items-center justify-center"
+                            style={{ display: resolveAssetUrl(product.imageUrl ?? undefined) ? 'none' : 'flex' }}
+                          >
+                            {productInitial(product)}
+                          </span>
                         </div>
                       </td>
                       <td className="px-3 py-4 align-middle font-mono text-[0.8rem] text-calisto-body"><span className="block truncate">{product.productId}</span></td>
