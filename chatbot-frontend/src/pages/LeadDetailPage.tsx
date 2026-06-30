@@ -84,6 +84,32 @@ function richTypeLabel(messageType: string) {
   }
 }
 
+function titleCase(value: string) {
+  return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+// Button clicks are stored as raw Rasa payloads, e.g.
+// `/select_brand{"brand":"Bossini"}` or `/browse_eyewear`. Render the human
+// label a person would have tapped instead of the raw payload string.
+function humanizeMessageText(text: string): string {
+  const match = /^\/([a-z0-9_]+)(\{.*\})?$/i.exec(text.trim())
+  if (!match) return text
+
+  const [, intent, jsonPart] = match
+  if (jsonPart) {
+    try {
+      const entities = JSON.parse(jsonPart) as Record<string, unknown>
+      const values = Object.values(entities).filter(
+        (value): value is string => typeof value === 'string' && value.trim() !== '',
+      )
+      if (values.length > 0) return values.join(', ')
+    } catch {
+      // Fall back to the prettified intent name below.
+    }
+  }
+  return titleCase(intent)
+}
+
 function MessageBody({ message }: { message: ConversationMessageRecord }) {
   const payload = message.metadata?.payload
 
@@ -147,7 +173,7 @@ function MessageBody({ message }: { message: ConversationMessageRecord }) {
   }
 
   if (message.text) {
-    return <span>{message.text}</span>
+    return <span>{humanizeMessageText(message.text)}</span>
   }
 
   // Legacy messages stored before rich payloads were captured.
@@ -474,7 +500,7 @@ export default function LeadDetailPage() {
               <div className="grid gap-3">
                 {notes.length > 0 ? notes.map((message) => (
                   <div className="rounded-lg border border-calisto-line-subtle bg-calisto-surface-muted px-3 py-2 text-[11px] font-medium leading-5 text-calisto-body" key={message.messageId}>
-                    {message.text}
+                    {message.text ? humanizeMessageText(message.text) : ''}
                   </div>
                 )) : (
                   <div className="rounded-lg border border-dashed border-calisto-line bg-calisto-table px-3 py-3 text-xs font-medium text-calisto-muted">
