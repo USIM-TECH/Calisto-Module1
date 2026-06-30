@@ -12,7 +12,7 @@ export interface KnowledgeChunkStore {
   deleteById(id: string): Promise<boolean>
   listDocuments(): Promise<KnowledgeDocumentSummary[]>
   getChunksBySource(source: string): Promise<KnowledgeChunkRecord[]>
-  replaceDocument(source: string, chunks: Array<{ chunkHash: string; text: string }>): Promise<number>
+  replaceDocument(source: string, chunks: Array<{ chunkHash: string; text: string }>, title?: string): Promise<number>
   deleteDocument(source: string): Promise<boolean>
   documentExists(source: string): Promise<boolean>
 }

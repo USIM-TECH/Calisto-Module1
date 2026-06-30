@@ -14,6 +14,7 @@ export interface KnowledgeChunkWire {
 
 export interface KnowledgeDocumentSummary {
   source: string
+  title?: string | null
   chunkCount: number
   updatedAt: string
 }

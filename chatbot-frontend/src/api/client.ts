@@ -158,12 +158,14 @@ export function createKnowledgeDocument(payload: {
   file?: File | null
   source: string
   text: string
+  title?: string
 }): Promise<{ source: string; chunkCount: number }> {
   if (payload.file) {
     const formData = new FormData()
     formData.set('source', payload.source)
     formData.set('file', payload.file)
     formData.set('text', payload.text)
+    if (payload.title) formData.set('title', payload.title)
     return request<{ source: string; chunkCount: number }>('/admin/knowledge/api/documents', {
       method: 'POST',
       body: formData,
@@ -172,7 +174,7 @@ export function createKnowledgeDocument(payload: {
 
   return request<{ source: string; chunkCount: number }>('/admin/knowledge/api/documents', {
     method: 'POST',
-    body: JSON.stringify({ source: payload.source, text: payload.text }),
+    body: JSON.stringify({ source: payload.source, text: payload.text, title: payload.title }),
   })
 }
 
@@ -183,12 +185,13 @@ export function getKnowledgePreview(source: string): Promise<{ items: Array<{ te
 
 export function updateKnowledgeDocument(
   source: string,
-  payload: { file?: File | null; text: string },
+  payload: { file?: File | null; text: string; title?: string },
 ): Promise<{ source: string; chunkCount: number }> {
   if (payload.file) {
     const formData = new FormData()
     formData.set('file', payload.file)
     formData.set('text', payload.text)
+    if (payload.title) formData.set('title', payload.title)
     return request<{ source: string; chunkCount: number }>(`/admin/knowledge/api/documents/${encodeURIComponent(source)}`, {
       method: 'PUT',
       body: formData,
@@ -197,7 +200,7 @@ export function updateKnowledgeDocument(
 
   return request<{ source: string; chunkCount: number }>(`/admin/knowledge/api/documents/${encodeURIComponent(source)}`, {
     method: 'PUT',
-    body: JSON.stringify({ text: payload.text }),
+    body: JSON.stringify({ text: payload.text, title: payload.title }),
   })
 }
 

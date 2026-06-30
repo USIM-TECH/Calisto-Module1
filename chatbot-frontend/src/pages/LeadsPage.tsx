@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { getLeads } from '../api/client'
 import Button from '../components/Button'
 import PageContainer from '../components/PageContainer'
+import { SkeletonFilterBar, SkeletonStatsCard, SkeletonTable, SkeletonTopbar } from '../components/Skeleton'
 import Topbar from '../components/Topbar'
 import { downloadLeadsCsv } from '../lib/export-leads-csv'
 import type { ChannelIdentityRecord, CustomerRecord, LeadsResponse } from '../types'
@@ -257,7 +258,15 @@ function LeadsTable({
   return (
     <section className="overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[980px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[980px] table-fixed border-collapse text-left text-sm">
+          <colgroup>
+            <col className="w-[20%]" />
+            <col className="w-[22%]" />
+            <col className="w-[18%]" />
+            <col className="w-[15%]" />
+            <col className="w-[10%]" />
+            <col className="w-[15%]" />
+          </colgroup>
           <thead>
             <tr className="bg-calisto-table/90 text-xs font-bold uppercase tracking-wider text-calisto-ink">
               <th className="px-7 py-5">Customer</th>
@@ -484,9 +493,20 @@ export default function LeadsPage() {
       )}
 
       {!data && !error && (
-        <div className="rounded-2xl border border-calisto-line-subtle bg-calisto-surface p-8 text-sm font-medium text-calisto-muted shadow-sm">
-          Loading lead operations...
-        </div>
+        <>
+          <SkeletonTopbar />
+          <section className="mb-6 grid gap-5 md:grid-cols-3">
+            <SkeletonStatsCard />
+            <SkeletonStatsCard />
+            <SkeletonStatsCard />
+          </section>
+          <SkeletonFilterBar />
+          <SkeletonTable
+            cols={6}
+            rows={5}
+            headers={['Customer', 'Identity / Channel', 'Intent', 'Status', 'Contact', 'Actions']}
+          />
+        </>
       )}
 
       {data && (

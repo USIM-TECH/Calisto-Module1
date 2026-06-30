@@ -255,6 +255,7 @@ model Store {
 model KnowledgeDocument {
   id        String   @id @default(cuid())
   source    String   @unique
+  title     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

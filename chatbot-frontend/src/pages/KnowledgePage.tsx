@@ -9,6 +9,7 @@ import {
 } from '../api/client'
 import Button from '../components/Button'
 import PageContainer from '../components/PageContainer'
+import { SkeletonBlock, SkeletonTable, SkeletonTopbar } from '../components/Skeleton'
 import Topbar from '../components/Topbar'
 import type { KnowledgeDocumentSummary } from '../types'
 
@@ -31,6 +32,7 @@ const errorClass = 'mt-1 text-xs font-semibold text-rose-600'
 
 export default function KnowledgePage() {
   const [documents, setDocuments] = useState<KnowledgeDocumentSummary[]>([])
+  const [docsLoading, setDocsLoading] = useState(true)
   const [selected, setSelected] = useState<string | null>(null)
   const [preview, setPreview] = useState<string>('')
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -47,11 +49,19 @@ export default function KnowledgePage() {
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingSource, setDeletingSource] = useState<string | null>(null)
+  const [addTitle, setAddTitle] = useState('')
+  const [editTitle, setEditTitle] = useState('')
 
   function loadDocuments() {
     return getKnowledgeDocuments()
-      .then((data) => setDocuments(data.documents))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load knowledge documents.'))
+      .then((data) => {
+        setDocuments(data.documents)
+        setDocsLoading(false)
+      })
+      .catch((err) => {
+        setDocsLoading(false)
+        setError(err instanceof Error ? err.message : 'Failed to load documents.')
+      })
   }
 
   useEffect(() => {
@@ -61,7 +71,10 @@ export default function KnowledgePage() {
   const filteredDocuments = useMemo(() => {
     const term = filter.trim().toLowerCase()
     if (!term) return documents
-    return documents.filter((document) => document.source.toLowerCase().includes(term))
+    return documents.filter((document) => 
+      document.source.toLowerCase().includes(term) ||
+      (document.title && document.title.toLowerCase().includes(term))
+    )
   }, [documents, filter])
 
   const totalChunks = documents.reduce((sum, document) => sum + document.chunkCount, 0)
@@ -71,6 +84,7 @@ export default function KnowledgePage() {
     setAddSource('')
     setAddText('')
     setAddFile(null)
+    setAddTitle('')
     setAddErrors({})
   }
 
@@ -89,6 +103,7 @@ export default function KnowledgePage() {
         file: addFile,
         source: addSource,
         text: addText,
+        title: addTitle,
       })
       await loadDocuments()
       setSuccessMessage(`Added ${result.source}.`)
@@ -102,7 +117,7 @@ export default function KnowledgePage() {
 
   async function loadPreview(source: string) {
     setSelected(source)
-    setPreview('Loading...')
+    setPreview('__loading__')
     setError(null)
     setSuccessMessage(null)
     try {
@@ -117,8 +132,10 @@ export default function KnowledgePage() {
   }
 
   async function openEdit(source: string) {
+    const doc = documents.find((d) => d.source === source)
+    setEditTitle(doc?.title ?? '')
     setEditingSource(source)
-    setEditText('Loading...')
+    setEditText('__loading__')
     setEditFile(null)
     setError(null)
     setSuccessMessage(null)
@@ -137,7 +154,7 @@ export default function KnowledgePage() {
     setError(null)
     setSuccessMessage(null)
     try {
-      await updateKnowledgeDocument(editingSource, { file: editFile, text: editText })
+      await updateKnowledgeDocument(editingSource, { file: editFile, text: editText, title: editTitle })
       await loadDocuments()
       setSuccessMessage(`Updated ${editingSource}.`)
       setEditingSource(null)
@@ -181,7 +198,7 @@ export default function KnowledgePage() {
   return (
     <PageContainer>
       <Topbar
-        title="Knowledge base"
+        title="Documents"
         actions={(
           <>
             <span className="text-sm font-semibold text-calisto-muted">
@@ -201,6 +218,17 @@ export default function KnowledgePage() {
         <div className="mb-5 rounded-2xl border border-rose-100 bg-calisto-surface p-5 text-sm font-medium text-rose-700 shadow-sm">
           {error}
         </div>
+      )}
+
+      {docsLoading && (
+        <>
+          <SkeletonTopbar />
+          <SkeletonTable
+            cols={4}
+            rows={5}
+            headers={['Source file', 'Chunks', 'Updated', 'Actions']}
+          />
+        </>
       )}
 
 
@@ -226,10 +254,16 @@ export default function KnowledgePage() {
 
       <section className="mt-5 overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[820px] table-fixed border-collapse text-left text-sm">
+            <colgroup>
+              <col className="w-[50%]" />
+              <col className="w-[12%]" />
+              <col className="w-[23%]" />
+              <col className="w-[15%]" />
+            </colgroup>
             <thead>
               <tr className="bg-calisto-table/90 text-xs font-bold uppercase tracking-wider text-calisto-ink">
-                <th className="px-7 py-5">Source file</th>
+                <th className="px-7 py-5">Document Title</th>
                 <th className="px-7 py-5">Chunks</th>
                 <th className="px-7 py-5">Updated</th>
                 <th className="px-7 py-5 text-right">Actions</th>
@@ -241,7 +275,12 @@ export default function KnowledgePage() {
               )}
               {filteredDocuments.map((document) => (
                 <tr key={document.source} className="transition hover:bg-calisto-surface-muted">
-                  <td className="break-all px-7 py-4 font-mono text-[0.86rem]">{document.source}</td>
+                  <td className="px-7 py-4 font-semibold text-calisto-ink">
+                    {document.title || document.source}
+                    {document.title && (
+                      <span className="block font-mono text-[0.7rem] font-medium text-calisto-muted mt-0.5">{document.source}</span>
+                    )}
+                  </td>
                   <td className="px-7 py-4 text-calisto-body">{document.chunkCount}</td>
                   <td className="px-7 py-4 text-calisto-body">{formatDate(document.updatedAt)}</td>
                   <td className="px-7 py-4 text-right">
@@ -306,6 +345,20 @@ export default function KnowledgePage() {
 
               <div className="max-h-[75vh] overflow-y-auto px-6 py-5">
                 <div>
+                  <label className={labelClass} htmlFor="knowledgeTitle">
+                    Title of the Document
+                  </label>
+                  <input
+                    id="knowledgeTitle"
+                    className={inputClass}
+                    type="text"
+                    placeholder="Enter a descriptive title for this document"
+                    value={editTitle}
+                    onChange={(event) => setEditTitle(event.target.value)}
+                  />
+                </div>
+
+                <div className="mt-5">
                   <label className={labelClass} htmlFor="knowledgeSource">
                     Source filename *
                   </label>
@@ -341,12 +394,20 @@ export default function KnowledgePage() {
                   <label className={labelClass} htmlFor="knowledgeText">
                     Text content
                   </label>
-                  <textarea
-                    id="knowledgeText"
-                    className={textareaClass}
-                    onChange={(event) => setEditText(event.target.value)}
-                    value={editText}
-                  />
+                  {editText === '__loading__' ? (
+                    <div className="space-y-3 rounded-xl border border-calisto-line bg-calisto-table p-4">
+                      {[...Array(8)].map((_, i) => (
+                        <SkeletonBlock key={i} className={`h-4 ${i % 4 === 3 ? 'w-2/5' : 'w-full'}`} />
+                      ))}
+                    </div>
+                  ) : (
+                    <textarea
+                      id="knowledgeText"
+                      className={textareaClass}
+                      onChange={(event) => setEditText(event.target.value)}
+                      value={editText}
+                    />
+                  )}
                 </div>
 
                 <div className="mt-6 flex justify-end gap-3 border-t border-calisto-line pt-5">
@@ -385,6 +446,18 @@ export default function KnowledgePage() {
 
               <div className="max-h-[75vh] overflow-y-auto px-6 py-5">
                 <div>
+                  <label className={labelClass} htmlFor="addKnowledgeTitle">Title of the Document</label>
+                  <input
+                    id="addKnowledgeTitle"
+                    className={inputClass}
+                    onChange={(event) => setAddTitle(event.target.value)}
+                    placeholder="e.g. FAQ / Customer Support, Company Profile"
+                    type="text"
+                    value={addTitle}
+                  />
+                </div>
+
+                <div className="mt-5">
                   <label className={labelClass} htmlFor="addKnowledgeSource">Source filename *</label>
                   <input
                     id="addKnowledgeSource"
@@ -453,7 +526,15 @@ export default function KnowledgePage() {
             <h3 id="previewTitle" className="text-base font-extrabold text-calisto-ink">Preview: {selected}</h3>
             <Button id="closePreview" onClick={() => setSelected(null)}>Close</Button>
           </div>
-          <pre id="previewBody" className="max-h-[420px] overflow-auto whitespace-pre-wrap bg-calisto-surface-muted px-5 py-4 text-sm leading-6 text-calisto-body">{preview}</pre>
+          {preview === '__loading__' ? (
+            <div className="space-y-3 px-5 py-5">
+              {[...Array(6)].map((_, i) => (
+                <SkeletonBlock key={i} className={`h-4 ${i % 3 === 2 ? 'w-3/5' : 'w-full'}`} />
+              ))}
+            </div>
+          ) : (
+            <pre id="previewBody" className="max-h-[420px] overflow-auto whitespace-pre-wrap bg-calisto-surface-muted px-5 py-4 text-sm leading-6 text-calisto-body">{preview}</pre>
+          )}
         </section>
       )}
     </PageContainer>
