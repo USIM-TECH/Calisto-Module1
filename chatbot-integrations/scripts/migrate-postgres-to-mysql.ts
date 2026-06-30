@@ -25,7 +25,7 @@ async function assertPostgresReachable(pool: pg.Pool): Promise<void> {
       message,
       '\n\nStart the old database first, e.g.:',
       '\n  docker compose -f docker-compose.postgres-import.yml up -d',
-      '\n  ./scripts/setup-local-mysql.sh --import-postgres',
+      '\n  ./scripts/setup-database.sh --import-postgres',
     )
     process.exit(1)
   }

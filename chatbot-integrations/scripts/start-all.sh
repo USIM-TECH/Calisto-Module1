@@ -165,11 +165,13 @@ log "Starting MySQL + Redis (Docker)..."
 docker compose -f "$INTEG_DIR/docker-compose.mysql.yml" up -d || die "failed to start MySQL/Redis"
 wait_for_mysql || die "MySQL did not become healthy in time"
 
-# ---- 3. Database migrations ------------------------------------------------
-log "Applying database migrations (prisma migrate deploy)..."
-( cd "$INTEG_DIR" && npm run db:migrate ) \
-  && ok "migrations applied" \
-  || warn "migrations failed — backend will use the existing schema (check DB connectivity)"
+# ---- 3. Database (Prisma generate + migrate) -------------------------------
+log "Preparing database (setup-database.sh --no-docker)..."
+if bash "$SCRIPT_DIR/setup-database.sh" --no-docker; then
+  ok "database ready"
+else
+  warn "database setup reported an issue — check output above"
+fi
 
 # ---- 4. Rasa NLP + action server -------------------------------------------
 log "Starting Rasa NLP + action server (Docker)..."

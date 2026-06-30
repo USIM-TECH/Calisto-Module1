@@ -55,6 +55,27 @@ automatically activates when Redis is enabled. It resolves contextual references
 
 ## Quick Start
 
+### Recommended: one command (daily dev)
+
+After first-time `.env` setup (see below), start everything from `chatbot-integrations/`:
+
+```bash
+cd chatbot-integrations
+cp .env.example .env   # first time only — edit tokens, DATABASE_URL, etc.
+./scripts/start-all.sh
+```
+
+`start-all.sh` starts MySQL + Redis, runs database migrations, Rasa, Cloudflare tunnel, backend, frontend, and registers Meta/Telegram webhooks when configured.
+
+**First-time database only** (new machine, optional presets):
+
+```bash
+cd chatbot-integrations
+./scripts/setup-database.sh --seed-presets   # or: npm run db:setup -- --seed-presets
+```
+
+For step-by-step manual startup, see [Typical dev workflow](#typical-dev-workflow) below.
+
 ### 0. Start Ollama + pull Llama 3 (one-time, only if LLM fallback is enabled)
 
 ```bash
@@ -104,7 +125,7 @@ Set `STORAGE_BACKEND=mysql` and `DATABASE_URL` in `.env`. The database is **self
 
 ```bash
 docker compose -f docker-compose.mysql.yml up -d
-./scripts/setup-local-mysql.sh
+./scripts/setup-database.sh
 ```
 
 `.env`:
@@ -207,7 +228,16 @@ Instagram callback URLs must be set in the Meta App Dashboard (Instagram → API
 
 ## Typical dev workflow
 
-### Option A: Fully Docker-based (recommended for production-like setup)
+### Option 0: One-shot start (recommended)
+
+```bash
+cd chatbot-integrations
+./scripts/start-all.sh
+```
+
+Then open **http://localhost:5173** for the admin UI.
+
+### Option A: Fully Docker-based (production-like, manual terminals)
 
 Run these in separate terminals:
 
@@ -284,7 +314,7 @@ cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
 docker compose -f docker-compose.postgres.yml up -d
 
 # 2. Setup database schema
-./scripts/setup-local-postgres.sh
+./scripts/setup-database.sh
 
 # 3. Build and train Rasa
 cd ../calisto_nlp_export
@@ -402,7 +432,7 @@ docker compose -f docker-compose.services.yml up -d
 
 # 4. Setup database schema
 cd chatbot-integrations
-./scripts/setup-local-postgres.sh
+./scripts/setup-database.sh
 
 # 5. Train Rasa model
 cd ../calisto_nlp_export

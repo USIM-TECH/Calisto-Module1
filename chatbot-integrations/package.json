@@ -13,6 +13,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
+    "db:setup": "bash scripts/setup-database.sh",
     "db:reset:dev": "prisma migrate reset --force",
     "db:studio": "prisma studio",
     "db:seed:products": "tsx src/products/service/seed-from-csv.ts",
