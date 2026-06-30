@@ -44,12 +44,13 @@ export default function WebchatPage() {
     transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight
   }, [bubbles, loading])
 
-  async function sendMessage(text: string) {
+  async function sendMessage(text: string, displayText?: string) {
     if (!text.trim() || loading) return
     const trimmed = text.trim()
+    const visible = (displayText ?? trimmed).trim()
     setBubbles((prev) => [
       ...prev,
-      { id: `${Date.now()}-user`, direction: 'customer', content: trimmed, timestamp: currentStamp() },
+      { id: `${Date.now()}-user`, direction: 'customer', content: visible, timestamp: currentStamp() },
     ])
     setMessage('')
     setLoading(true)

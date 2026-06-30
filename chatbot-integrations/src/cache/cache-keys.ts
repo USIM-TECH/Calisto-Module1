@@ -1,5 +1,6 @@
 export const CACHE_KEYS = {
   productsCatalogue: 'products:catalogue:v1',
+  presetActive: 'presets:active:v1',
   knowledgeChunks: 'knowledge:chunks:v1',
   knowledgeSummary: 'knowledge:summary:v1',
   knowledgeDocuments: 'knowledge:documents:v1',

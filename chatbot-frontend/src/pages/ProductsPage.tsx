@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react'
-import { createProduct, deleteProduct, getProduct, getProductImportTemplateUrl, getProducts, importProductsCsv, updateProduct } from '../api/client'
+import { createProduct, deleteProduct, getProduct, getProductImportTemplateUrl, getProducts, importProductsCsv, setProductPresetIds, updateProduct } from '../api/client'
 import Button from '../components/Button'
 import AddProductModal, { type ProductFormData } from '../components/AddProductModal'
 import ImportCsvModal from '../components/ImportCsvModal'
@@ -212,9 +212,11 @@ export default function ProductsPage() {
     try {
       if (modalMode === 'edit' && editingProduct) {
         await updateProduct(editingProduct.productId, productFormToPayload(form, false))
+        await setProductPresetIds(editingProduct.productId, form.presetIds)
         setSuccessMessage('Product updated successfully.')
       } else {
-        await createProduct(productFormToPayload(form, true))
+        const created = await createProduct(productFormToPayload(form, true))
+        await setProductPresetIds(created.productId, form.presetIds)
         setSuccessMessage('Product added successfully.')
       }
       await loadProducts()

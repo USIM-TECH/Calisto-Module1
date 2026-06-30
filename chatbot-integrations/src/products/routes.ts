@@ -40,6 +40,7 @@ interface RegisterArgs {
 }
 
 export { registerStoreRoutes } from './routes/store-routes.js'
+export { registerPresetRoutes } from './routes/preset-routes.js'
 
 function extensionFor(mime: string): string {
   if (mime === 'image/png') return '.png'

@@ -499,6 +499,9 @@ export class LeadOrchestrator {
             conversationId: message.conversationId,
             customerId: customer.id,
             channelIdentityId: identity.id,
+            // Keep the full rich payload for non-text replies so the admin
+            // transcript can render the card/image/choice the user actually saw.
+            ...(outgoingMessage.type === 'text' ? {} : { payload: outgoingMessage }),
           },
         },
         message.channel,

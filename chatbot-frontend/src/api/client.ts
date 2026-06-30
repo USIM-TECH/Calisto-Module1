@@ -4,6 +4,8 @@ import type {
   KnowledgeSummaryResponse,
   LeadDetailResponse,
   LeadsResponse,
+  PresetListResult,
+  PresetRecord,
   ProductImportMode,
   ProductImportResult,
   ProductListResult,
@@ -139,6 +141,48 @@ export function importProductsCsv(file: File, mode: ProductImportMode): Promise<
 
 export function getProductImportTemplateUrl(): string {
   return `${API_BASE_URL}/admin/products/api/import/template.csv`
+}
+
+export function getPresets(): Promise<PresetListResult> {
+  return request<PresetListResult>('/admin/presets/api')
+}
+
+export function createPreset(payload: { name: string; description?: string }): Promise<PresetRecord> {
+  return request<PresetRecord>('/admin/presets/api', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function updatePreset(id: string, payload: { name?: string; description?: string }): Promise<PresetRecord> {
+  return request<PresetRecord>(`/admin/presets/api/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function deletePreset(id: string): Promise<void> {
+  return request<void>(`/admin/presets/api/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+}
+
+export function setActivePreset(presetId: string | null): Promise<PresetListResult> {
+  return request<PresetListResult>('/admin/presets/api/active', {
+    method: 'POST',
+    body: JSON.stringify({ presetId }),
+  })
+}
+
+export function getProductPresetIds(productId: string): Promise<{ presetIds: string[] }> {
+  return request<{ presetIds: string[] }>(`/admin/presets/api/product/${encodeURIComponent(productId)}`)
+}
+
+export function setProductPresetIds(productId: string, presetIds: string[]): Promise<{ presetIds: string[] }> {
+  return request<{ presetIds: string[] }>(`/admin/presets/api/product/${encodeURIComponent(productId)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ presetIds }),
+  })
 }
 
 export function getKnowledgeSummary(): Promise<KnowledgeSummaryResponse> {

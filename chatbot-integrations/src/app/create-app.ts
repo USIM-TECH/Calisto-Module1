@@ -2,14 +2,13 @@ import express, { type Express } from 'express'
 import { createWebhookRouter } from '../core/webhook/index.js'
 import type { ChannelIdentityRecord, ConversationRecord, RuntimeStore } from '../leads/index.js'
 
-function findConversationByCustomerId(
+function findConversationsByCustomerId(
   conversations: ConversationRecord[],
   customerId: string,
-): ConversationRecord | undefined {
+): ConversationRecord[] {
   return conversations
-    .slice()
+    .filter((entry) => entry.customerId === customerId)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .find((entry) => entry.customerId === customerId)
 }
 
 async function listIdentitiesForCustomer(
@@ -28,6 +27,7 @@ async function loadLeadDetailPayload(
   identities: ChannelIdentityRecord[]
   interests: Awaited<ReturnType<RuntimeStore['listInterestsByCustomer']>>
   conversation?: ConversationRecord
+  conversations: ConversationRecord[]
   transcript: NonNullable<ConversationRecord['messages']>
   crm: {
     status: 'pending' | 'synced' | 'failed'
@@ -39,19 +39,24 @@ async function loadLeadDetailPayload(
     throw new Error('Customer not found')
   }
 
-  const [conversations, identities, interests] = await Promise.all([
+  const [allConversations, identities, interests] = await Promise.all([
     runtimeStore.listConversations(),
     listIdentitiesForCustomer(runtimeStore, customer.id),
     runtimeStore.listInterestsByCustomer(customer.id),
   ])
 
-  const conversation = findConversationByCustomerId(conversations, customer.id)
+  // A customer can be merged across channels (e.g. WhatsApp + Instagram), so
+  // return every per-channel conversation. The most recent stays as the default
+  // `conversation`/`transcript` for backward compatibility.
+  const conversations = findConversationsByCustomerId(allConversations, customer.id)
+  const conversation = conversations[0]
 
   return {
     customer,
     identities,
     interests,
     conversation,
+    conversations,
     transcript: conversation?.messages ?? [],
     crm: {
       status: customer.crmStatus,
@@ -60,7 +65,7 @@ async function loadLeadDetailPayload(
   }
 }
 import { registerKnowledgeRoutes } from '../knowledge/routes.js'
-import { registerProductRoutes, registerStoreRoutes } from '../products/routes.js'
+import { registerPresetRoutes, registerProductRoutes, registerStoreRoutes } from '../products/routes.js'
 import type { AppDependencies } from './dependencies.js'
 import { createWebsiteRateLimiter } from './website-rate-limiter.js'
 import { normaliseEmail, normalisePhone } from '../leads/storage/helpers.js'
@@ -111,6 +116,7 @@ export function createApp(dependencies: AppDependencies): Express {
     orchestrator,
     runtimeStore,
     productStore,
+    presetStore,
     storeStore,
     knowledgeChunkStore,
   } = dependencies
@@ -292,6 +298,10 @@ export function createApp(dependencies: AppDependencies): Express {
     app.get('/admin/products', (_req, res) => {
       res.status(503).type('html').send('<h1>Product catalogue unavailable</h1><p>Set <code>STORAGE_BACKEND=mysql</code> and restart.</p>')
     })
+  }
+
+  if (presetStore) {
+    registerPresetRoutes({ app, store: presetStore, logger })
   }
 
   if (knowledgeChunkStore) {

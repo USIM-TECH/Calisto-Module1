@@ -77,6 +77,16 @@ class ServiceGateway:
             return products if isinstance(products, list) else None
         return response if isinstance(response, list) else None
 
+    def get_active_preset(self) -> Optional[Dict[str, Any]]:
+        """Return the active merchandising preset and its member product ids.
+
+        Shape: {"presetId": str|None, "name": str|None, "productIds": [str]}.
+        Returns None on any backend failure so callers fall back to the full
+        catalogue (never breaking product suggestions).
+        """
+        response = self.get_json("/products/active-preset")
+        return response if isinstance(response, dict) else None
+
     def search_stores(self, location: str) -> Optional[List[Dict[str, Any]]]:
         response = self._request("POST", "/stores/search", {"location": location})
         if response is None:

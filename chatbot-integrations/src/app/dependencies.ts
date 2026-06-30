@@ -22,7 +22,7 @@ import {
 } from '../leads/index.js'
 import { getPrismaClient } from '../db/prisma.js'
 import { PrismaKnowledgeChunkStore, type KnowledgeChunkStore } from '../knowledge/index.js'
-import { PrismaProductStore, PrismaStoreStore, type ProductStore, type StoreStore } from '../products/index.js'
+import { PrismaProductStore, PrismaPresetStore, PrismaStoreStore, type PresetStore, type ProductStore, type StoreStore } from '../products/index.js'
 import { createNlpMessageHandler } from './message-handler.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -35,6 +35,7 @@ export interface AppDependencies {
   deduplicator: MessageDeduplicator
   runtimeStore: RuntimeStore
   productStore?: ProductStore
+  presetStore?: PresetStore
   storeStore?: StoreStore
   knowledgeChunkStore?: KnowledgeChunkStore
   orchestrator: LeadOrchestrator
@@ -71,6 +72,10 @@ export async function createDependencies(): Promise<AppDependencies> {
   const productStore: ProductStore | undefined =
     config.storageBackend === 'mysql'
       ? new PrismaProductStore(getPrismaClient(), cacheService, config.cache.productCatalogueTtlSec)
+      : undefined
+  const presetStore: PresetStore | undefined =
+    config.storageBackend === 'mysql'
+      ? new PrismaPresetStore(getPrismaClient(), cacheService)
       : undefined
   const storeStore: StoreStore | undefined =
     config.storageBackend === 'mysql'
@@ -226,6 +231,7 @@ export async function createDependencies(): Promise<AppDependencies> {
     deduplicator,
     runtimeStore,
     productStore,
+    presetStore,
     storeStore,
     knowledgeChunkStore,
     orchestrator,

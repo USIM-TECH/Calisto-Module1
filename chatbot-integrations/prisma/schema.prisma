@@ -228,9 +228,43 @@ model Product {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
+  presets ProductPreset[]
+
   @@index([productType])
   @@index([brand])
   @@index([priceMyr])
+}
+
+/// Merchandising preset (e.g. "Best Seller", "Highest Rated", "Recommended").
+/// Admins curate which products belong to each preset and activate exactly one
+/// preset globally. When a preset is active the chatbot only suggests products
+/// in it (falling back to the full catalogue when the preset has no match for a
+/// user's specific query). No active preset = default ranking over everything.
+model Preset {
+  id          String          @id @default(cuid())
+  name        String          @unique
+  description String?
+  isActive    Boolean         @default(false)
+  sortOrder   Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  products    ProductPreset[]
+
+  @@index([isActive])
+}
+
+/// Join table for the many-to-many between products and presets.
+model ProductPreset {
+  productId String
+  presetId  String
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [productId], onDelete: Cascade)
+  preset  Preset  @relation(fields: [presetId], references: [id], onDelete: Cascade)
+
+  @@id([productId, presetId])
+  @@index([presetId])
+  @@index([productId])
 }
 
 /// Store locator catalogue. Seeded from calisto_stores.csv and exposed to

@@ -17,7 +17,8 @@
     "db:studio": "prisma studio",
     "db:seed:products": "tsx src/products/service/seed-from-csv.ts",
     "db:seed:stores": "tsx src/products/service/seed-stores-from-csv.ts",
-    "db:seed:knowledge": "tsx src/knowledge/service/seed-from-meta-json.ts"
+    "db:seed:knowledge": "tsx src/knowledge/service/seed-from-meta-json.ts",
+    "db:seed:presets": "tsx src/products/service/seed-presets.ts"
   },
   "dependencies": {
     "@hubspot/api-client": "^13.1.0",

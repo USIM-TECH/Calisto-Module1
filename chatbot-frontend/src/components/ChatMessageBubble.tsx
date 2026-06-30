@@ -6,7 +6,7 @@ interface ChatMessageBubbleProps {
   content: string
   customerLabel?: string
   direction: 'customer' | 'assistant'
-  onPostback: (value: string) => void
+  onPostback: (value: string, label?: string) => void
   payload?: OutgoingMessage
   timestamp: string
   variant?: 'chatbot' | 'console'
@@ -56,7 +56,7 @@ export default function ChatMessageBubble({
               <button
                 className="rounded-full border border-calisto-line bg-calisto-surface px-3 py-2 text-xs font-bold text-calisto-ink transition hover:bg-calisto-surface-muted"
                 key={option.value}
-                onClick={() => onPostback(option.value)}
+                onClick={() => onPostback(option.value, option.label)}
                 type="button"
               >
                 {option.label}
@@ -96,7 +96,7 @@ export default function ChatMessageBubble({
                       <button
                         className="rounded-full border border-calisto-line bg-calisto-surface px-3 py-2 text-xs font-bold text-calisto-ink transition hover:bg-calisto-surface-muted"
                         key={action.value}
-                        onClick={() => onPostback(action.value)}
+                        onClick={() => onPostback(action.value, action.title)}
                         type="button"
                       >
                         {action.title}

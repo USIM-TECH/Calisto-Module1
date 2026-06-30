@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { BookOpen, Boxes, LogOut, MessageSquareText, UsersRound } from 'lucide-react'
+import { BookOpen, Boxes, LogOut, MessageSquareText, Sparkles, UsersRound } from 'lucide-react'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import WebchatPage from './pages/WebchatPage'
 import LeadsPage from './pages/LeadsPage'
 import ProductsPage from './pages/ProductsPage'
+import PresetsPage from './pages/PresetsPage'
 import KnowledgePage from './pages/KnowledgePage'
 import NotFoundPage from './pages/NotFoundPage'
 import LeadDetailPage from './pages/LeadDetailPage'
@@ -13,6 +14,7 @@ import calistoLogo from '../calisto.svg'
 const navItems = [
   { label: 'Leads', to: '/leads', icon: UsersRound },
   { label: 'Products', to: '/products', icon: Boxes },
+  { label: 'Presets', to: '/presets', icon: Sparkles },
   { label: 'Documents', to: '/knowledge', icon: BookOpen },
   { label: 'Webchat', to: '/webchat', icon: MessageSquareText },
 ]
@@ -68,7 +70,7 @@ export default function App() {
 
       <header className="sticky top-0 z-30 border-b border-calisto-surface/15 bg-calisto-sidebar px-4 py-3 text-calisto-surface lg:hidden">
         <img className="mb-3 h-6 w-auto brightness-0 invert" src={calistoLogo} alt="Calisto" />
-        <nav className="grid grid-cols-4 gap-2">
+        <nav className="grid grid-cols-5 gap-2">
           {navItems.map(({ icon: Icon, label, to }) => (
             <NavLink
               key={to}
@@ -94,6 +96,7 @@ export default function App() {
           <Route path="/leads" element={<LeadsPage />} />
           <Route path="/leads/:customerId" element={<LeadDetailPage />} />
           <Route path="/products" element={<ProductsPage />} />
+          <Route path="/presets" element={<PresetsPage />} />
           <Route path="/knowledge" element={<KnowledgePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

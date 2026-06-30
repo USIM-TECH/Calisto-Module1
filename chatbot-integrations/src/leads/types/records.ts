@@ -1,4 +1,4 @@
-import type { IncomingMessage } from '../../core/types.js'
+import type { IncomingMessage, OutgoingMessage } from '../../core/types.js'
 
 export type ChannelName = IncomingMessage['channel']
 
@@ -78,6 +78,9 @@ export interface ConversationMessageRecord {
     conversationId: string
     customerId: string
     channelIdentityId: string
+    // Full rich outgoing payload (card/image/choice) so the admin transcript
+    // can render exactly what the user saw, instead of a "[card]" placeholder.
+    payload?: OutgoingMessage
   }
 }
 

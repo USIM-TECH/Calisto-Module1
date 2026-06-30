@@ -4,6 +4,7 @@ export {
   createCacheService,
   invalidateKnowledgeCache,
   invalidateLeadsCache,
+  invalidatePresetCache,
   invalidateProductCache,
 } from './create-cache-service.js'
 export { disconnectRedis, isRedisConnected } from './redis-client.js'

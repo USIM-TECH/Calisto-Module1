@@ -150,7 +150,7 @@ function messageToRecord(m: {
     text: m.text ?? undefined,
     messageType: m.messageType,
     timestamp: m.timestamp.toISOString(),
-    metadata: m.metadata as ConversationMessageRecord['metadata'],
+    metadata: m.metadata as unknown as ConversationMessageRecord['metadata'],
   }
 }
 
@@ -562,7 +562,7 @@ export class PrismaRuntimeStore implements RuntimeStore {
     const direction = message.direction === 'inbound' ? MessageDirection.inbound : MessageDirection.outbound
     const ts = parseMessageTimestampToDate(message.timestamp)
     const now = new Date()
-    const metadata = message.metadata as Prisma.InputJsonValue
+    const metadata = message.metadata as unknown as Prisma.InputJsonValue
 
     return this._prisma.$transaction(async (tx) => {
       const existing = await tx.conversation.findUnique({
