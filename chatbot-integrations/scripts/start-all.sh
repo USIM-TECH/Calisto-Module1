@@ -10,6 +10,7 @@
 #   5. Frontend admin dashboard (host:    npm run dev / vite, port 5173)
 #   6. Meta webhooks            (WhatsApp + Messenger via set-meta-webhooks.sh;
 #                                Instagram is dashboard-only and is printed, not set)
+#   7. Telegram webhook         (register-telegram-webhook.ts when TELEGRAM_BOT_TOKEN is set)
 #
 # Bootstrap: runs `npm install` when node_modules is missing, and
 # `prisma migrate deploy` before starting the backend.
@@ -25,7 +26,7 @@
 # Optional env overrides:
 #   BACKEND_PORT=3000  FRONTEND_PORT=5173  CF_METRICS_PORT=20241
 #   SKIP_TUNNEL=1      # don't start/expect a tunnel (skips webhook wiring too)
-#   SKIP_WEBHOOKS=1    # start everything but don't touch Meta webhooks
+#   SKIP_WEBHOOKS=1    # start everything but don't wire Meta/Telegram webhooks
 
 set -uo pipefail
 
@@ -223,17 +224,28 @@ else
     || warn "frontend did not come up yet — check $LOG_DIR/frontend.log"
 fi
 
-# ---- 8. Meta webhooks ------------------------------------------------------
+# ---- 8. Webhooks (Meta + Telegram) -----------------------------------------
 if [[ "${SKIP_WEBHOOKS:-0}" == "1" || "${SKIP_TUNNEL:-0}" == "1" ]]; then
-  log "Skipping Meta webhook wiring"
+  log "Skipping webhook wiring (SKIP_WEBHOOKS or SKIP_TUNNEL)"
 elif [[ -z "$TUNNEL_URL" ]]; then
-  warn "no tunnel URL — skipping Meta webhook wiring"
+  warn "no tunnel URL — skipping webhook wiring"
 else
   log "Wiring Meta webhooks to $TUNNEL_URL ..."
   if BASE_URL="$TUNNEL_URL" bash "$SCRIPT_DIR/set-meta-webhooks.sh"; then
     ok "Meta webhooks configured"
   else
-    warn "webhook setup reported an error (see output above) — services are still running"
+    warn "Meta webhook setup reported an error (see output above) — services are still running"
+  fi
+
+  if grep -qE '^TELEGRAM_BOT_TOKEN=.+' "$INTEG_DIR/.env" 2>/dev/null; then
+    log "Registering Telegram webhook -> ${TUNNEL_URL}/webhooks/telegram ..."
+    if ( cd "$INTEG_DIR" && npm run telegram:webhook -- "$TUNNEL_URL" ); then
+      ok "Telegram webhook configured"
+    else
+      warn "Telegram webhook setup failed — check TELEGRAM_BOT_TOKEN and output above"
+    fi
+  else
+    info "TELEGRAM_BOT_TOKEN not set in .env — skipping Telegram webhook"
   fi
 fi
 
