@@ -1,11 +1,5 @@
 import type { ChannelIdentityRecord, CustomerRecord } from '../types'
-
-function csvCell(value: string | number | undefined | null): string {
-  if (value === undefined || value === null) return ''
-  const text = String(value)
-  if (/[",\n\r]/.test(text)) return `"${text.replace(/"/g, '""')}"`
-  return text
-}
+import { downloadXlsx } from './download-xlsx'
 
 function customerDisplayName(customer: CustomerRecord): string {
   return customer.leadName ?? customer.email ?? customer.phone ?? 'Unknown Customer'
@@ -25,7 +19,7 @@ function formatIdentities(identities: ChannelIdentityRecord[]): { channels: stri
   return { channels, handles }
 }
 
-export function downloadLeadsCsv(
+export function downloadLeadsXlsx(
   customers: CustomerRecord[],
   identitiesByCustomer: Map<string, ChannelIdentityRecord[]>,
 ): void {
@@ -74,16 +68,10 @@ export function downloadLeadsCsv(
     ]
   })
 
-  const csv = [
-    headers.join(','),
-    ...rows.map((row) => row.map(csvCell).join(',')),
-  ].join('\n')
-
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `calisto-leads-${new Date().toISOString().slice(0, 10)}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
+  downloadXlsx(
+    `calisto-leads-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    'Leads',
+    headers,
+    rows,
+  )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Pencil, Trash2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Pencil, Trash2, X } from 'lucide-react'
 import { createProduct, deleteProduct, getProduct, getProductImportTemplateUrl, getProducts, importProductsCsv, resolveAssetUrl, setProductPresetIds, updateProduct } from '../api/client'
 import Button from '../components/Button'
 import AddProductModal, { type ProductFormData } from '../components/AddProductModal'
@@ -7,6 +7,7 @@ import ImportCsvModal from '../components/ImportCsvModal'
 import PageContainer from '../components/PageContainer'
 import { SkeletonFilterBar, SkeletonTable, SkeletonTopbar } from '../components/Skeleton'
 import Topbar from '../components/Topbar'
+import { downloadProductsXlsx } from '../lib/export-products-xlsx'
 import type { ProductImportMode, ProductListResult, ProductRecord } from '../types'
 
 const PAGE_SIZE = 10
@@ -278,12 +279,23 @@ export default function ProductsPage() {
     window.location.assign(getProductImportTemplateUrl())
   }
 
+  function handleExportProducts() {
+    downloadProductsXlsx(filtered)
+  }
+
   return (
     <PageContainer>
       <Topbar
         title="Product Catalogue"
         actions={(
           <>
+            <Button
+              disabled={filtered.length === 0}
+              icon={<Download className="h-4 w-4" />}
+              onClick={handleExportProducts}
+            >
+              Export
+            </Button>
             <Button id="importCsvBtn" onClick={() => setIsImportOpen(true)}>Import CSV</Button>
             <Button id="addBtn" variant="primary" onClick={openCreateModal}>Add Product</Button>
           </>

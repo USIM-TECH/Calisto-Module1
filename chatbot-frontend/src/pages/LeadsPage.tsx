@@ -7,7 +7,7 @@ import Button from '../components/Button'
 import PageContainer from '../components/PageContainer'
 import { SkeletonFilterBar, SkeletonStatsCard, SkeletonTable, SkeletonTopbar } from '../components/Skeleton'
 import Topbar from '../components/Topbar'
-import { downloadLeadsCsv } from '../lib/export-leads-csv'
+import { downloadLeadsXlsx } from '../lib/export-leads-xlsx'
 import type { ChannelIdentityRecord, CustomerRecord, LeadsResponse } from '../types'
 
 type ChannelName = ChannelIdentityRecord['channel']
@@ -467,7 +467,7 @@ export default function LeadsPage() {
 
   function handleExport() {
     if (!data) return
-    downloadLeadsCsv(data.customers, identitiesByCustomer)
+    downloadLeadsXlsx(data.customers, identitiesByCustomer)
   }
 
   return (
