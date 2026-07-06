@@ -6,6 +6,8 @@ This guide details the complete production architecture, provisioning steps, con
 
 ## 1. System Architecture Overview
 
+For a detailed visual diagram prompt and data flow explanation, see [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md).
+
 ```
                           Internet (Meta Webhooks, Telegram, X, Webchat)
                                        │
@@ -43,10 +45,10 @@ This guide details the complete production architecture, provisioning steps, con
 
 ### Step B: EC2 Instance
 1. **Operating System**: **Ubuntu Server 22.04 LTS**.
-2. **Instance Size (Based on Concurrency Requirements)**:
-   * **Start/Test Phase (up to 50–100 active chat users)**: `t3.xlarge` (4 vCPU, 16 GB RAM).
-   * **Scale Phase (up to 500 concurrent active users)**: `c5a.xlarge` or `c5a.2xlarge` (compute-optimized, faster CPU inference for NLU and Ollama).
-3. **Storage**: Allocate at least **30–40 GB gp3** storage (Docker cache, Rasa models, and LLM weights consume significant disk space).
+2. **Instance Size (100 concurrent users)**:
+   * **Recommended**: `t3.large` (2 vCPU, 8 GB RAM) — sufficient for Rasa + Node.js API + action server at this concurrency level. Ollama (`llama3.2:3b` ~2 GB RAM) fits comfortably alongside the other services.
+   * **Upgrade path**: If p99 latency degrades under sustained load, move to `t3.xlarge` (4 vCPU, 16 GB RAM) without any config changes.
+3. **Storage**: Allocate at least **30 GB gp3** storage (Docker cache, Rasa models, and LLM weights).
 4. **Elastic IP**: Allocate and associate an Elastic IP to the instance so that the public-facing IP remains static upon server restarts.
 5. **Security Group**: Inbound Rules:
    | Protocol / Port | Source | Description |
@@ -68,8 +70,8 @@ By default, Rasa runs with a single worker thread, which queues incoming request
 
 ### B. Ollama Concurrency & Performance
 Since the fallback classifier utilizes a local Llama model via Ollama, parallel slots have been configured to prevent queue blocking:
-* `OLLAMA_NUM_PARALLEL: 2` (Allows 2 concurrent LLM completions to run simultaneously).
-* `OLLAMA_MAX_QUEUE: 4` (Queues up to 4 additional requests before returning busy errors).
+* `OLLAMA_NUM_PARALLEL: 1` (Single concurrent LLM completion — sufficient for 100 users since LLM is only the fallback path; keeps RAM usage low on `t3.large`).
+* `OLLAMA_MAX_QUEUE: 3` (Queues up to 3 additional requests before returning busy errors).
 * `OLLAMA_KEEP_ALIVE: "10m"` (Keeps the model hot in system memory/RAM for 10 minutes between requests, avoiding a 10-second reload latency).
 * **Location**: Defined in [docker-compose.yml](file:///Users/aswanthb/Documents/GitHub/Calisto-Module1/docker-compose.yml#L115-L127).
 
@@ -98,24 +100,25 @@ On your EC2 host machine, these model weights are stored persistently under:
 
 ---
 
-## 5. Capacity Planning & AWS Cost Estimation (Excluding DB Storage)
+## 5. Capacity Planning & AWS Cost Estimation (100 Concurrent Users)
 
-### Baseline Setup (~50 active concurrent users)
-* **EC2 Instance**: `t3.xlarge` (4 vCPU, 16 GB RAM) - **~$120/month** (On-Demand).
-* **Data Transfer Outbound**: minimal (~5–10 GB) - **~$1/month**.
-* **Elastic IP**: Free (when attached to a running instance).
-* **Estimated Total**: **~$121/month**.
+| Resource | Spec | On-Demand | 1-yr Savings Plan |
+|:---|:---|:---|:---|
+| EC2 `t3.large` | 2 vCPU, 8 GB RAM | ~$60/mo | ~$38/mo |
+| RDS `db.t3.micro` | 2 vCPU, 1 GB RAM | ~$15/mo | ~$10/mo |
+| Data Transfer (outbound ~10 GB) | — | ~$1/mo | ~$1/mo |
+| Elastic IP | Attached to running instance | Free | Free |
+| **Estimated Total** | | **~$76/mo** | **~$49/mo** |
 
-### Production Scale (~500 active concurrent users)
-To guarantee low latency for 500 active users chatting concurrently, running Rasa + Ollama side-by-side on a single CPU instance is not recommended. You should use a 2-node cluster with a load balancer:
-* **Load Balancer**: 1 Application Load Balancer (ALB) - **~$22/month**.
-* **EC2 Instances**: 2x `c5a.xlarge` (compute-optimized, 4 vCPU, 8 GB RAM each) - **~$160/month** (On-Demand).
-* **Data Transfer**: **~$5/month**.
-* **Estimated Total**: **~$187/month** (reduces to **~$130/month** if utilizing 1-year Reserved Instances / Savings Plans).
+**Notes:**
+* `db.t3.micro` handles 100 concurrent users comfortably for this workload (short-lived chatbot queries, not heavy analytics). Upgrade to `db.t3.medium` if you observe connection pool exhaustion.
+* The 1-year Savings Plan (~35% discount) is the most cost-effective commitment for a stable production workload.
+* No ALB is needed at this scale — Nginx on the EC2 instance handles SSL termination (see Section 7, Option B).
+* **Upgrade trigger**: If CPU consistently exceeds 70% or free memory drops below 1 GB, move to `t3.xlarge` (~$120/mo On-Demand, ~$76/mo Savings Plan).
 
 ---
 
-## 6. EC2 Deployment Instructions
+## 6. EC2 Deployment Instructions 
 
 ### Step 1: Install Docker and Git on EC2
 Once logged into your EC2 instance via SSH:

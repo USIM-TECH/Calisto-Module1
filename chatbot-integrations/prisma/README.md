@@ -1,8 +1,8 @@
-# Database: local MySQL + Prisma tooling
+# Database: MySQL + Prisma tooling
 
 ## What stores your data
 
-**MySQL on your machine** (Docker or native install). All leads, products, knowledge, and related tables live there.
+**MySQL on your machine for local development** or **AWS RDS MySQL for production**. All leads, products, knowledge, and related tables live there.
 
 ## What Prisma is in this project (and what it is not)
 
@@ -10,10 +10,10 @@
 |-------|------|
 | **MySQL** | The actual database — where rows are stored |
 | **Prisma ORM** (`@prisma/client`) | TypeScript layer that reads/writes MySQL (used by the app) |
-| **Prisma Migrate** | Applies `prisma/migrations/*.sql` to your local MySQL |
-| **Prisma Studio** (`npm run db:studio`) | Browser UI to view/edit local MySQL tables |
+| **Prisma Migrate** | Applies `prisma/migrations/*.sql` to your MySQL instance |
+| **Prisma Studio** (`npm run db:studio`) | Browser UI to view/edit MySQL tables |
 
-Prisma is **not** your database server. The app only connects via `DATABASE_URL` to **your** MySQL instance.
+Prisma is **not** your database server. The app only connects via `DATABASE_URL` to **your** MySQL instance, whether that is local Docker or AWS RDS.
 
 ## Migrating from PostgreSQL
 

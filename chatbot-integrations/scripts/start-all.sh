@@ -79,10 +79,16 @@ cleanup() {
   echo
   info "Docker services were left running. Stop them with:"
   info "  docker compose -f \"$INTEG_DIR/docker-compose.mysql.yml\" down"
-  info "  ( cd \"$RASA_DIR\" && docker compose down )"
 }
 trap cleanup EXIT
 trap 'exit 130' INT TERM
+
+# setsid polyfill for macOS (required to kill the whole process tree later)
+if ! command -v setsid >/dev/null 2>&1; then
+  setsid() {
+    python3 -c "import os, sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])" "$@"
+  }
+fi
 
 # start_bg NAME LOGFILE COMMAND_STRING
 start_bg() {
@@ -123,7 +129,7 @@ wait_for_mysql() {
   return 1
 }
 
-detect_tunnel() { # echoes https://host if a cloudflared quick tunnel is reachable
+detect_cloudflare_tunnel() {
   local port host
   for port in "$CF_METRICS_PORT" 20241 20242 20243 20244 20245 20246 20247 20248 20249 20250; do
     host="$(curl -fsS --max-time 2 "http://127.0.0.1:${port}/quicktunnel" 2>/dev/null \
@@ -133,10 +139,27 @@ detect_tunnel() { # echoes https://host if a cloudflared quick tunnel is reachab
   return 1
 }
 
-wait_for_tunnel() {
+wait_for_cloudflare_tunnel() {
   local i=0 url
   while (( i < 30 )); do
-    url="$(detect_tunnel)" && { echo "$url"; return 0; }
+    url="$(detect_cloudflare_tunnel)" && { echo "$url"; return 0; }
+    sleep 1; i=$((i + 1))
+  done
+  return 1
+}
+
+detect_ngrok_tunnel() {
+  local host
+  host="$(curl -fsS --max-time 2 "http://127.0.0.1:4040/api/tunnels" 2>/dev/null \
+    | python3 -c "import sys,json;d=json.load(sys.stdin);print([t['public_url'] for t in d.get('tunnels', []) if t['public_url'].startswith('https')][0])" 2>/dev/null)"
+  [[ -n "$host" ]] && { echo "$host"; return 0; }
+  return 1
+}
+
+wait_for_ngrok_tunnel() {
+  local i=0 url
+  while (( i < 30 )); do
+    url="$(detect_ngrok_tunnel)" && { echo "$url"; return 0; }
     sleep 1; i=$((i + 1))
   done
   return 1
@@ -170,30 +193,47 @@ log "Applying database migrations (prisma migrate deploy)..."
   && ok "migrations applied" \
   || warn "migrations failed — backend will use the existing schema (check DB connectivity)"
 
-# ---- 4. Rasa NLP + action server -------------------------------------------
-log "Starting Rasa NLP + action server (Docker)..."
-( cd "$RASA_DIR" && docker compose up -d ) || die "failed to start Rasa stack"
-if wait_for_http "http://localhost:5005/version" "Rasa NLP" 90; then :; else
-  warn "Rasa NLP not answering yet (model still loading?) — it will keep starting in the background"
-fi
+# ---- 4. Tunnels (Cloudflare + Ngrok) -----------------------------------------
+CF_TUNNEL_URL=""
+NGROK_TUNNEL_URL=""
 
-# ---- 5. Cloudflare tunnel --------------------------------------------------
-TUNNEL_URL=""
 if [[ "${SKIP_TUNNEL:-0}" == "1" ]]; then
-  log "Skipping Cloudflare tunnel (SKIP_TUNNEL=1)"
+  log "Skipping tunnels (SKIP_TUNNEL=1)"
 else
-  log "Starting Cloudflare tunnel -> http://localhost:${BACKEND_PORT} ..."
-  if TUNNEL_URL="$(detect_tunnel)"; then
-    info "Reusing already-running tunnel: $TUNNEL_URL"
+  log "Starting Cloudflare tunnel (for Meta) -> http://localhost:${BACKEND_PORT} ..."
+  if CF_TUNNEL_URL="$(detect_cloudflare_tunnel)"; then
+    info "Reusing Cloudflare tunnel: $CF_TUNNEL_URL"
   else
     start_bg "cloudflared" "$LOG_DIR/cloudflared.log" \
       "exec cloudflared tunnel --no-autoupdate --metrics 127.0.0.1:${CF_METRICS_PORT} --url http://localhost:${BACKEND_PORT}"
-    if TUNNEL_URL="$(wait_for_tunnel)"; then
-      ok "tunnel up: $TUNNEL_URL"
+    if CF_TUNNEL_URL="$(wait_for_cloudflare_tunnel)"; then
+      ok "Cloudflare tunnel up: $CF_TUNNEL_URL"
     else
-      warn "could not detect the tunnel URL — see $LOG_DIR/cloudflared.log"
+      warn "could not detect Cloudflare tunnel URL — see $LOG_DIR/cloudflared.log"
     fi
   fi
+
+  log "Starting Ngrok tunnel (for Telegram) -> http://localhost:${BACKEND_PORT} ..."
+  if NGROK_TUNNEL_URL="$(detect_ngrok_tunnel)"; then
+    info "Reusing Ngrok tunnel: $NGROK_TUNNEL_URL"
+  else
+    start_bg "ngrok" "$LOG_DIR/ngrok.log" \
+      "exec ngrok http ${BACKEND_PORT} --log stdout"
+    if NGROK_TUNNEL_URL="$(wait_for_ngrok_tunnel)"; then
+      ok "Ngrok tunnel up: $NGROK_TUNNEL_URL"
+    else
+      warn "could not detect Ngrok tunnel URL — see $LOG_DIR/ngrok.log"
+    fi
+  fi
+fi
+
+# ---- 5. Rasa NLP + action server (Local) -----------------------------------
+log "Starting Rasa NLP + action server (Local)..."
+pub_env=""
+[[ -n "$CF_TUNNEL_URL" ]] && pub_env="PUBLIC_BASE_URL=$CF_TUNNEL_URL "
+start_bg "rasa-stack" "$LOG_DIR/rasa.log" "cd \"$RASA_DIR\" && ${pub_env}bash start.sh local"
+if wait_for_http "http://localhost:5005/version" "Rasa NLP" 90; then :; else
+  warn "Rasa NLP not answering yet (model still loading?) — it will keep starting in the background"
 fi
 
 # ---- 6. Backend ------------------------------------------------------------
@@ -202,10 +242,9 @@ if http_up "http://localhost:${BACKEND_PORT}/health"; then
   warn "something is already listening on :${BACKEND_PORT} — reusing it (not managed by this script)"
   [[ -n "$TUNNEL_URL" ]] && warn "if PUBLIC_BASE_URL changed, restart that backend so it picks up $TUNNEL_URL"
 else
-  # Pass PUBLIC_BASE_URL through the environment so product-card image links use
-  # the live tunnel host immediately (dotenv does not override real env vars).
+  # Pass CF_TUNNEL_URL as PUBLIC_BASE_URL (for Meta images).
   pub_env=""
-  [[ -n "$TUNNEL_URL" ]] && pub_env="PUBLIC_BASE_URL=$TUNNEL_URL "
+  [[ -n "$CF_TUNNEL_URL" ]] && pub_env="PUBLIC_BASE_URL=$CF_TUNNEL_URL "
   start_bg "backend" "$LOG_DIR/backend.log" \
     "cd \"$INTEG_DIR\" && ${pub_env}npm run dev"
   wait_for_http "http://localhost:${BACKEND_PORT}/health" "backend" 60 \
@@ -223,17 +262,31 @@ else
     || warn "frontend did not come up yet — check $LOG_DIR/frontend.log"
 fi
 
-# ---- 8. Meta webhooks ------------------------------------------------------
+# ---- 8. Meta webhooks (Cloudflare) -------------------------------------------
 if [[ "${SKIP_WEBHOOKS:-0}" == "1" || "${SKIP_TUNNEL:-0}" == "1" ]]; then
   log "Skipping Meta webhook wiring"
-elif [[ -z "$TUNNEL_URL" ]]; then
-  warn "no tunnel URL — skipping Meta webhook wiring"
+elif [[ -z "$CF_TUNNEL_URL" ]]; then
+  warn "no Cloudflare tunnel URL — skipping Meta webhook wiring"
 else
-  log "Wiring Meta webhooks to $TUNNEL_URL ..."
-  if BASE_URL="$TUNNEL_URL" bash "$SCRIPT_DIR/set-meta-webhooks.sh"; then
+  log "Wiring Meta webhooks to $CF_TUNNEL_URL ..."
+  if BASE_URL="$CF_TUNNEL_URL" bash "$SCRIPT_DIR/set-meta-webhooks.sh"; then
     ok "Meta webhooks configured"
   else
     warn "webhook setup reported an error (see output above) — services are still running"
+  fi
+fi
+
+# ---- 9. Telegram webhooks (Ngrok) --------------------------------------------
+if [[ "${SKIP_WEBHOOKS:-0}" == "1" || "${SKIP_TUNNEL:-0}" == "1" ]]; then
+  log "Skipping Telegram webhook wiring"
+elif [[ -z "$NGROK_TUNNEL_URL" ]]; then
+  warn "no Ngrok tunnel URL — skipping Telegram webhook wiring"
+else
+  log "Wiring Telegram webhooks to $NGROK_TUNNEL_URL ..."
+  if ( cd "$INTEG_DIR" && npx tsx scripts/register-telegram-webhook.ts "$NGROK_TUNNEL_URL" ); then
+    ok "Telegram webhooks configured"
+  else
+    warn "Telegram webhook setup reported an error (see output above)"
   fi
 fi
 
@@ -242,14 +295,15 @@ log "Everything is up."
 printf '    %-22s %s\n' "Frontend (admin):" "http://localhost:${FRONTEND_PORT}"
 printf '    %-22s %s\n' "Backend API:"      "http://localhost:${BACKEND_PORT}"
 printf '    %-22s %s\n' "Rasa NLP:"         "http://localhost:5005"
-[[ -n "$TUNNEL_URL" ]] && printf '    %-22s %s\n' "Public tunnel:" "$TUNNEL_URL"
+printf '    %-22s %s\n' "Cloudflare (Meta):" "${CF_TUNNEL_URL:-"not running"}"
+printf '    %-22s %s\n' "Ngrok (Telegram):"  "${NGROK_TUNNEL_URL:-"not running"}"
 echo
 info "Streaming logs below. Press Ctrl+C to stop backend, frontend and the tunnel."
 echo
 
 # Tail whatever managed logs exist; -F tolerates files that don't exist yet.
 tail_targets=()
-for f in cloudflared backend frontend; do
+for f in cloudflared ngrok backend frontend; do
   [[ -f "$LOG_DIR/$f.log" ]] && tail_targets+=("$LOG_DIR/$f.log")
 done
 if (( ${#tail_targets[@]} > 0 )); then

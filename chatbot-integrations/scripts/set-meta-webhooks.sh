@@ -86,17 +86,9 @@ open(env_file, 'w').write('\n'.join(out) + '\n')
 print(f'    Updated PUBLIC_BASE_URL in {env_file}')
 PY
 
-  # 2) Recreate the Rasa action server with the live URL (effective immediately).
-  local rasa_dir="$SCRIPT_DIR/../../calisto_nlp_export"
-  if [[ -f "$rasa_dir/docker-compose.yml" ]] && command -v docker >/dev/null 2>&1; then
-    echo "    Recreating Rasa action server with PUBLIC_BASE_URL=$url ..."
-    ( cd "$rasa_dir" && PUBLIC_BASE_URL="$url" docker compose up -d action-server ) \
-      && echo "    Action server updated." \
-      || echo "    WARNING: could not recreate action server (start it manually: PUBLIC_BASE_URL=$url docker compose up -d action-server)"
-  else
-    echo "    NOTE: Rasa action server not recreated (docker or compose file unavailable)."
-    echo "          Run manually: cd calisto_nlp_export && PUBLIC_BASE_URL=$url docker compose up -d action-server"
-  fi
+  # 2) Since Rasa now runs locally, we skip recreating the Docker action server.
+  # Note: The local action server might need a restart if it relies on PUBLIC_BASE_URL.
+  echo "    NOTE: Rasa action server runs locally now. Skipping Docker restart."
 }
 
 echo "==================== IMAGE BASE URL ===================="

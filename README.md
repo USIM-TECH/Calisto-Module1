@@ -98,7 +98,7 @@ npm run db:migrate
 npm run dev
 ```
 
-Set `STORAGE_BACKEND=mysql` and `DATABASE_URL` in `.env`. The database is **self-hosted MySQL** — Prisma is only the ORM/migration tool, not the database server.
+Set `STORAGE_BACKEND=mysql` and `DATABASE_URL` in `.env`. For production, point `DATABASE_URL` at AWS RDS MySQL; Prisma is only the ORM/migration tool, not the database server.
 
 **Local dev (Docker MySQL):**
 
