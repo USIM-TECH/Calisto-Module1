@@ -1,7 +1,8 @@
 import { X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import Button from './Button'
-import type { ProductRecord } from '../types'
+import { getPresets, getProductPresetIds } from '../api/client'
+import type { PresetRecord, ProductRecord } from '../types'
 
 export interface ProductFormData {
   productId: string
@@ -36,6 +37,8 @@ export interface ProductFormData {
 
   bestseller: boolean
   newArrival: boolean
+
+  presetIds: string[]
 
   imageFile: File | null
   imageUrl: string
@@ -90,6 +93,7 @@ function createDefaultForm(productId: string): ProductFormData {
     city: '',
     bestseller: false,
     newArrival: false,
+    presetIds: [],
     imageFile: null,
     imageUrl: '',
   }
@@ -130,6 +134,7 @@ function createFormFromProduct(product: ProductRecord): ProductFormData {
     city: product.city ?? '',
     bestseller: product.bestseller ?? false,
     newArrival: product.newArrival ?? false,
+    presetIds: [],
     imageFile: null,
     imageUrl: product.imageUrl ?? '',
   }
@@ -156,6 +161,7 @@ export default function AddProductModal({
   const [formData, setFormData] = useState<ProductFormData>(() => createDefaultForm(generateProductId()))
   const [errors, setErrors] = useState<FormErrors>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [presets, setPresets] = useState<PresetRecord[]>([])
   const firstFieldRef = useRef<HTMLInputElement | null>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
   const isEditMode = mode === 'edit'
@@ -166,6 +172,43 @@ export default function AddProductModal({
     setErrors({})
     setSubmitError(null)
   }, [initialData, isEditMode, open])
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+
+    void getPresets()
+      .then((result) => {
+        if (!cancelled) setPresets(result.items)
+      })
+      .catch(() => {
+        if (!cancelled) setPresets([])
+      })
+
+    if (isEditMode && initialData) {
+      void getProductPresetIds(initialData.productId)
+        .then((result) => {
+          if (!cancelled) {
+            setFormData((prev) => ({ ...prev, presetIds: result.presetIds }))
+          }
+        })
+        .catch(() => undefined)
+    }
+
+    return () => {
+      cancelled = true
+    }
+  }, [initialData, isEditMode, open])
+
+  function togglePreset(presetId: string) {
+    setFormData((prev) => ({
+      ...prev,
+      presetIds: prev.presetIds.includes(presetId)
+        ? prev.presetIds.filter((id) => id !== presetId)
+        : [...prev.presetIds, presetId],
+    }))
+    setSubmitError(null)
+  }
 
   useEffect(() => {
     if (!open) return
@@ -584,6 +627,40 @@ export default function AddProductModal({
                 New Arrival
               </label>
             </div>
+          </section>
+
+          <section className="mt-6 grid gap-4 border-t border-calisto-line-subtle pt-6">
+            <div className="text-xs font-bold uppercase tracking-wider text-calisto-ink">Presets</div>
+            <p className="-mt-2 text-xs font-medium text-calisto-muted">
+              Choose which merchandising presets this product belongs to. The admin can activate one preset on the Presets page to control what the chatbot suggests.
+            </p>
+            {presets.length === 0 ? (
+              <p className="text-sm font-medium text-calisto-soft">No presets yet. Create them on the Presets page.</p>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {presets.map((preset) => {
+                  const checked = formData.presetIds.includes(preset.id)
+                  return (
+                    <label
+                      key={preset.id}
+                      className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+                        checked
+                          ? 'border-calisto-accent bg-calisto-accent/10 text-calisto-accent'
+                          : 'border-calisto-line bg-calisto-table text-calisto-body hover:bg-calisto-surface-muted'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-calisto-line text-calisto-accent focus:ring-2 focus:ring-calisto-focus"
+                        checked={checked}
+                        onChange={() => togglePreset(preset.id)}
+                      />
+                      {preset.name}
+                    </label>
+                  )
+                })}
+              </div>
+            )}
           </section>
 
           <section className="mt-6 grid gap-4 border-t border-calisto-line-subtle pt-6">

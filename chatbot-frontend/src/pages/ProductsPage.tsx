@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react'
-import { createProduct, deleteProduct, getProduct, getProductImportTemplateUrl, getProducts, importProductsCsv, updateProduct } from '../api/client'
+import { ChevronLeft, ChevronRight, Pencil, Trash2, X } from 'lucide-react'
+import { createProduct, deleteProduct, getProduct, getProductImportTemplateUrl, getProducts, importProductsCsv, resolveAssetUrl, setProductPresetIds, updateProduct } from '../api/client'
 import Button from '../components/Button'
 import AddProductModal, { type ProductFormData } from '../components/AddProductModal'
 import ImportCsvModal from '../components/ImportCsvModal'
@@ -21,6 +21,10 @@ function stockTone(status: string) {
 
 function productInitial(product: ProductRecord) {
   return (product.brand?.[0] ?? '?').toUpperCase()
+}
+
+function productThumbUrl(product: ProductRecord): string | undefined {
+  return resolveAssetUrl(product.imageUrl ?? product.fallbackImageUrl ?? undefined)
 }
 
 function formatStockStatus(status: string) {
@@ -123,6 +127,7 @@ export default function ProductsPage() {
   const [deleteTarget, setDeleteTarget] = useState<ProductRecord | null>(null)
   const [deletingProduct, setDeletingProduct] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [preview, setPreview] = useState<{ url: string; name: string } | null>(null)
 
   function loadProducts() {
     return getProducts()
@@ -133,6 +138,15 @@ export default function ProductsPage() {
   useEffect(() => {
     loadProducts()
   }, [])
+
+  useEffect(() => {
+    if (!preview) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setPreview(null)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [preview])
 
   const filtered = useMemo(() => {
     if (!data) return []
@@ -212,9 +226,11 @@ export default function ProductsPage() {
     try {
       if (modalMode === 'edit' && editingProduct) {
         await updateProduct(editingProduct.productId, productFormToPayload(form, false))
+        await setProductPresetIds(editingProduct.productId, form.presetIds)
         setSuccessMessage('Product updated successfully.')
       } else {
-        await createProduct(productFormToPayload(form, true))
+        const created = await createProduct(productFormToPayload(form, true))
+        await setProductPresetIds(created.productId, form.presetIds)
         setSuccessMessage('Product added successfully.')
       }
       await loadProducts()
@@ -374,13 +390,24 @@ export default function ProductsPage() {
                   {paginated.map((product: ProductRecord) => (
                     <tr key={product.productId} className="transition hover:bg-calisto-surface-muted" data-product-id={product.productId}>
                       <td className="px-3 py-4 text-center align-middle">
-                        <div className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-violet-600 text-xs font-bold text-calisto-surface">
-                          {product.imageUrl ? (
-                            <img className="h-full w-full object-cover" src={product.imageUrl} alt={product.productName} />
+                        {(() => {
+                          const thumb = productThumbUrl(product)
+                          return thumb ? (
+                            <button
+                              type="button"
+                              onClick={() => setPreview({ url: thumb, name: product.productName })}
+                              className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-full ring-1 ring-calisto-line transition hover:ring-2 hover:ring-calisto-accent focus:outline-none focus:ring-2 focus:ring-calisto-accent"
+                              aria-label={`Preview ${product.productName}`}
+                              title="Click to enlarge"
+                            >
+                              <img className="h-full w-full object-cover" src={thumb} alt={product.productName} />
+                            </button>
                           ) : (
-                            <span>{productInitial(product)}</span>
-                          )}
-                        </div>
+                            <div className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-violet-600 text-xs font-bold text-calisto-surface">
+                              <span>{productInitial(product)}</span>
+                            </div>
+                          )
+                        })()}
                       </td>
                       <td className="px-3 py-4 align-middle font-mono text-[0.8rem] text-calisto-body"><span className="block truncate">{product.productId}</span></td>
                       <td className="px-3 py-4 align-middle">
@@ -475,6 +502,32 @@ export default function ProductsPage() {
         onConfirm={handleConfirmDelete}
         product={deleteTarget}
       />
+      {preview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-calisto-ink/70 p-4"
+          onClick={() => setPreview(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${preview.name} image preview`}
+        >
+          <div className="relative max-h-[85vh] max-w-[85vw]" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setPreview(null)}
+              className="absolute -right-3 -top-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-calisto-line bg-calisto-surface text-calisto-ink shadow-dashboard transition hover:bg-calisto-surface-muted"
+              aria-label="Close preview"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <img
+              src={preview.url}
+              alt={preview.name}
+              className="max-h-[85vh] max-w-[85vw] rounded-2xl object-contain shadow-dashboard"
+            />
+            <div className="mt-3 text-center text-sm font-semibold text-calisto-surface">{preview.name}</div>
+          </div>
+        </div>
+      )}
     </PageContainer>
   )
 }

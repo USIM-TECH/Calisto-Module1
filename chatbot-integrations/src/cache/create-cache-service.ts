@@ -20,6 +20,10 @@ export async function invalidateProductCache(cache: CacheService): Promise<void>
   await cache.del('products:catalogue:v1')
 }
 
+export async function invalidatePresetCache(cache: CacheService): Promise<void> {
+  await cache.del('presets:active:v1')
+}
+
 export async function invalidateKnowledgeCache(cache: CacheService): Promise<void> {
   await cache.delMany([
     'knowledge:chunks:v1',

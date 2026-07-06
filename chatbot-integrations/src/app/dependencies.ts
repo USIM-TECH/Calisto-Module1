@@ -5,14 +5,16 @@ import type { AppConfig } from '../config/index.js'
 import { loadConfig } from '../config/index.js'
 import type { CacheService } from '../cache/index.js'
 import { createCacheService } from '../cache/index.js'
+import {
+  ChannelAccountService,
+  ChannelAccountStore,
+  seedChannelAccountsFromEnv,
+} from '../channel-accounts/index.js'
 import { ConsoleLogger, LlmIntentClassifier, NLPClient, type Logger } from '../core/utils/index.js'
-import { InstagramChannel } from '../integrations/channels/instagram/index.js'
-import { MessengerChannel } from '../integrations/channels/messenger/index.js'
-import { TelegramChannel } from '../integrations/channels/telegram/index.js'
-import { WhatsAppChannel } from '../integrations/channels/whatsapp/index.js'
 import { XChannel } from '../integrations/channels/x/index.js'
 import { WebsiteChannel } from '../integrations/channels/website/index.js'
 import { HubSpotClient } from '../integrations/crm/hubspot/index.js'
+import { createNlpMessageHandler } from './message-handler.js'
 import {
   createMessageDeduplicator,
   createRuntimeStore,
@@ -22,8 +24,7 @@ import {
 } from '../leads/index.js'
 import { getPrismaClient } from '../db/prisma.js'
 import { PrismaKnowledgeChunkStore, type KnowledgeChunkStore } from '../knowledge/index.js'
-import { PrismaProductStore, PrismaStoreStore, type ProductStore, type StoreStore } from '../products/index.js'
-import { createNlpMessageHandler } from './message-handler.js'
+import { PrismaProductStore, PrismaPresetStore, PrismaStoreStore, type PresetStore, type ProductStore, type StoreStore } from '../products/index.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -35,14 +36,12 @@ export interface AppDependencies {
   deduplicator: MessageDeduplicator
   runtimeStore: RuntimeStore
   productStore?: ProductStore
+  presetStore?: PresetStore
   storeStore?: StoreStore
   knowledgeChunkStore?: KnowledgeChunkStore
   orchestrator: LeadOrchestrator
   nlpClient: NLPClient
-  whatsapp?: WhatsAppChannel
-  instagram?: InstagramChannel
-  messenger?: MessengerChannel
-  telegram?: TelegramChannel
+  channelAccountService?: ChannelAccountService
   x?: XChannel
   website: WebsiteChannel
   hubspot?: HubSpotClient
@@ -71,6 +70,10 @@ export async function createDependencies(): Promise<AppDependencies> {
   const productStore: ProductStore | undefined =
     config.storageBackend === 'mysql'
       ? new PrismaProductStore(getPrismaClient(), cacheService, config.cache.productCatalogueTtlSec)
+      : undefined
+  const presetStore: PresetStore | undefined =
+    config.storageBackend === 'mysql'
+      ? new PrismaPresetStore(getPrismaClient(), cacheService)
       : undefined
   const storeStore: StoreStore | undefined =
     config.storageBackend === 'mysql'
@@ -131,12 +134,9 @@ export async function createDependencies(): Promise<AppDependencies> {
 
   logger.info(`NLP client configured for ${config.rasaUrl}`)
 
-  let whatsapp: WhatsAppChannel | undefined
-  let instagram: InstagramChannel | undefined
-  let messenger: MessengerChannel | undefined
-  let telegram: TelegramChannel | undefined
   let x: XChannel | undefined
   let hubspot: HubSpotClient | undefined
+  let channelAccountService: ChannelAccountService | undefined
 
   if (config.hubspot) {
     hubspot = new HubSpotClient(config.hubspot, logger)
@@ -153,57 +153,28 @@ export async function createDependencies(): Promise<AppDependencies> {
   })
   const website = new WebsiteChannel(orchestrator, logger)
 
-  if (config.whatsapp) {
-    whatsapp = new WhatsAppChannel(config.whatsapp, logger)
-    whatsapp.onMessage(createNlpMessageHandler({
-      channelName: 'WhatsApp',
-      logger,
-      orchestrator,
-      cacheService,
-      sendText: (recipientId, text) => whatsapp!.sendMessage(recipientId, { type: 'text', text }),
-      sendMessage: (recipientId, message) => whatsapp!.sendMessage(recipientId, message),
-    }))
-    logger.info('WhatsApp channel enabled')
-  }
-
-  if (config.instagram) {
-    instagram = new InstagramChannel(config.instagram, logger, cacheService)
-    instagram.onMessage(createNlpMessageHandler({
-      channelName: 'Instagram',
-      logger,
-      orchestrator,
-      cacheService,
-      sendText: (recipientId, text) => instagram!.sendTextMessage(recipientId, text),
-      sendMessage: (recipientId, message) => instagram!.sendMessage(recipientId, message),
-    }))
-    logger.info('Instagram channel enabled')
-  }
-
-  if (config.messenger) {
-    messenger = new MessengerChannel(config.messenger, logger)
-    messenger.onMessage(createNlpMessageHandler({
-      channelName: 'Messenger',
-      logger,
-      orchestrator,
-      cacheService,
-      sendText: (recipientId, text) => messenger!.sendText(recipientId, text),
-      sendMessage: (recipientId, message) => messenger!.sendMessage(recipientId, message),
-    }))
-    logger.info('Messenger channel enabled')
-  }
-
-  if (config.telegram) {
-    telegram = new TelegramChannel(config.telegram, logger, cacheService, config.cache.telegramAliasTtlSec)
-    telegram.onMessage(createNlpMessageHandler({
-      channelName: 'Telegram',
-      logger,
-      orchestrator,
-      cacheService,
-      getRecipientId: (message) => message.conversationId,
-      sendText: (recipientId, text) => telegram!.sendTextMessage(recipientId, text),
-      sendMessage: (recipientId, message) => telegram!.sendMessage(recipientId, message),
-    }))
-    logger.info('Telegram channel enabled')
+  if (config.storageBackend === 'mysql') {
+    if (!config.channelCredentialsEncryptionKey) {
+      logger.warn('CHANNEL_CREDENTIALS_ENCRYPTION_KEY is not set — channel accounts are disabled until it is configured.')
+    } else {
+      const store = new ChannelAccountStore(getPrismaClient(), config.channelCredentialsEncryptionKey)
+      const imported = await seedChannelAccountsFromEnv(config.channelCredentialsEncryptionKey)
+      if (imported > 0) {
+        logger.info(`Imported ${imported} channel account(s) from .env into the database`)
+      }
+      channelAccountService = new ChannelAccountService(
+        store,
+        logger,
+        cacheService,
+        orchestrator,
+        config.cache.telegramAliasTtlSec,
+        config.publicBaseUrl,
+      )
+      await channelAccountService.initialize()
+      logger.info(`Channel account registry loaded (${channelAccountService.registry.size} enabled account(s))`)
+    }
+  } else {
+    logger.warn('Channel accounts require STORAGE_BACKEND=mysql')
   }
 
   if (config.x) {
@@ -226,14 +197,12 @@ export async function createDependencies(): Promise<AppDependencies> {
     deduplicator,
     runtimeStore,
     productStore,
+    presetStore,
     storeStore,
     knowledgeChunkStore,
     orchestrator,
     nlpClient,
-    whatsapp,
-    instagram,
-    messenger,
-    telegram,
+    channelAccountService,
     x,
     website,
     hubspot,

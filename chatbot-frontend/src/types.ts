@@ -70,11 +70,47 @@ export interface ChannelIdentityRecord {
   customerId: string
   channel: 'whatsapp' | 'instagram' | 'messenger' | 'telegram' | 'x' | 'website'
   sourceId: string
+  channelAccountId?: string
+  accountLabel?: string
   senderName?: string
   username?: string
   conversationId: string
   firstSeenAt: string
   lastSeenAt: string
+}
+
+export type ManagedChannel = 'whatsapp' | 'instagram' | 'messenger' | 'telegram'
+
+export interface ChannelAccountRecord {
+  id: string
+  label: string
+  channel: ManagedChannel
+  nativeId: string
+  enabled: boolean
+  verifyToken?: string
+  metaAppId?: string
+  apiVersion?: string
+  webhookStatus: 'pending' | 'active' | 'error'
+  webhookUrl?: string
+  webhookError?: string
+  tokenExpiresAt?: string
+  createdAt: string
+  updatedAt: string
+  credentialsPreview: Record<string, string | undefined>
+}
+
+export interface ChannelAccountInput {
+  label: string
+  channel: ManagedChannel
+  nativeId?: string
+  verifyToken?: string
+  metaAppId?: string
+  apiVersion?: string
+  credentials: Record<string, string | undefined>
+}
+
+export interface ChannelAccountListResult {
+  items: ChannelAccountRecord[]
 }
 
 export interface ConversationMessageRecord {
@@ -89,7 +125,19 @@ export interface ConversationMessageRecord {
     conversationId: string
     customerId: string
     channelIdentityId: string
+    payload?: OutgoingMessage
   }
+}
+
+export interface ConversationRecord {
+  id: string
+  customerId: string
+  channelIdentityId: string
+  channel: ChannelIdentityRecord['channel']
+  sourceId: string
+  createdAt: string
+  updatedAt: string
+  messages: ConversationMessageRecord[]
 }
 
 export interface InterestRecord {
@@ -110,6 +158,7 @@ export interface LeadDetailResponse {
   identities: ChannelIdentityRecord[]
   interests: InterestRecord[]
   transcript: ConversationMessageRecord[]
+  conversations: ConversationRecord[]
   crm: LeadCRMInfo
 }
 
@@ -157,6 +206,22 @@ export interface ProductListResult {
   total: number
   page: number
   limit: number
+}
+
+export interface PresetRecord {
+  id: string
+  name: string
+  description?: string | null
+  isActive: boolean
+  sortOrder: number
+  productCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PresetListResult {
+  items: PresetRecord[]
+  activePresetId: string | null
 }
 
 export type ProductImportMode = 'skip' | 'update'

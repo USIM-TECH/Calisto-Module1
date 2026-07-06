@@ -4,7 +4,8 @@ import { Mail, MapPin, Paperclip, Pencil, Phone, Plus, Send, Smile, X } from 'lu
 import { getLeadDetail } from '../api/client'
 import PageContainer from '../components/PageContainer'
 import { SkeletonLeadDetail } from '../components/Skeleton'
-import type { ConversationMessageRecord, LeadDetailResponse } from '../types'
+import { cardImageUrl } from '../lib/chat'
+import type { ConversationMessageRecord, ConversationRecord, LeadDetailResponse } from '../types'
 
 function formatDate(value: string) {
   const date = new Date(value)
@@ -73,8 +74,130 @@ function WhatsAppIcon({ className = 'h-4 w-4' }: { className?: string }) {
   )
 }
 
+function richTypeLabel(messageType: string) {
+  switch (messageType) {
+    case 'card': return 'Product card'
+    case 'image': return 'Image'
+    case 'choice': return 'Quick replies'
+    case 'location': return 'Location'
+    default: return messageType
+  }
+}
+
+function titleCase(value: string) {
+  return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+// Button clicks are stored as raw Rasa payloads, e.g.
+// `/select_brand{"brand":"Bossini"}` or `/browse_eyewear`. Render the human
+// label a person would have tapped instead of the raw payload string.
+function humanizeMessageText(text: string): string {
+  const match = /^\/([a-z0-9_]+)(\{.*\})?$/i.exec(text.trim())
+  if (!match) return text
+
+  const [, intent, jsonPart] = match
+  if (jsonPart) {
+    try {
+      const entities = JSON.parse(jsonPart) as Record<string, unknown>
+      const values = Object.values(entities).filter(
+        (value): value is string => typeof value === 'string' && value.trim() !== '',
+      )
+      if (values.length > 0) return values.join(', ')
+    } catch {
+      // Fall back to the prettified intent name below.
+    }
+  }
+  return titleCase(intent)
+}
+
+function MessageBody({ message }: { message: ConversationMessageRecord }) {
+  const payload = message.metadata?.payload
+
+  if (payload?.type === 'card') {
+    return (
+      <div className="overflow-hidden rounded-xl border border-calisto-line bg-calisto-surface text-calisto-ink shadow-sm">
+        {payload.imageUrl && (
+          <img alt={payload.title} className="max-h-48 w-full object-cover" src={cardImageUrl(payload.imageUrl)} />
+        )}
+        <div className="p-3">
+          <div className="text-sm font-extrabold">{payload.title}</div>
+          {payload.subtitle && (
+            <div className="mt-1 whitespace-pre-line text-xs font-medium leading-5 text-calisto-body">{payload.subtitle}</div>
+          )}
+          {payload.actions && payload.actions.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {payload.actions.map((action) => (
+                <span
+                  className="inline-flex rounded-full border border-calisto-line bg-calisto-table px-3 py-1.5 text-[11px] font-bold text-calisto-body"
+                  key={action.value}
+                >
+                  {action.title}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (payload?.type === 'image') {
+    return (
+      <div className="grid gap-2">
+        <img
+          alt={payload.caption ?? 'Image'}
+          className="max-h-56 w-full rounded-xl border border-calisto-line object-cover"
+          src={cardImageUrl(payload.imageUrl)}
+        />
+        {payload.caption && <div className="text-xs font-medium text-calisto-body">{payload.caption}</div>}
+      </div>
+    )
+  }
+
+  if (payload?.type === 'choice') {
+    return (
+      <div className="rounded-xl bg-calisto-surface px-4 py-3 text-calisto-ink shadow-sm">
+        {payload.text && <div className="whitespace-pre-wrap text-[0.86rem] font-medium leading-6">{payload.text}</div>}
+        <div className="mt-2 flex flex-wrap gap-2">
+          {payload.options.map((option) => (
+            <span
+              className="inline-flex rounded-full border border-calisto-line bg-calisto-table px-3 py-1.5 text-[11px] font-bold text-calisto-body"
+              key={option.value}
+            >
+              {option.label}
+            </span>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (message.text) {
+    return <span>{humanizeMessageText(message.text)}</span>
+  }
+
+  // Legacy messages stored before rich payloads were captured.
+  return <span className="italic opacity-80">{richTypeLabel(message.messageType)}</span>
+}
+
 function renderChatMessage(message: ConversationMessageRecord) {
   const isOutbound = message.direction === 'outbound'
+  const payload = message.metadata?.payload
+  const isRich = Boolean(payload) && payload?.type !== 'text'
+
+  if (isRich) {
+    return (
+      <div key={message.messageId} className={`flex flex-col ${isOutbound ? 'items-end' : 'items-start'}`}>
+        <div className="w-full max-w-[20rem]">
+          <MessageBody message={message} />
+        </div>
+        <div className="mt-1.5 px-1 text-[10px] font-semibold text-calisto-muted">
+          {formatTime(message.timestamp)}
+        </div>
+      </div>
+    )
+  }
+
   const bubbleClass = isOutbound
     ? 'ml-auto rounded-br-md bg-calisto-surface text-calisto-ink shadow-sm'
     : 'mr-auto rounded-bl-md bg-calisto-sidebar text-calisto-surface shadow-sm'
@@ -82,7 +205,7 @@ function renderChatMessage(message: ConversationMessageRecord) {
   return (
     <div key={message.messageId} className={`flex flex-col ${isOutbound ? 'items-end' : 'items-start'}`}>
       <div className={`max-w-[78%] whitespace-pre-wrap rounded-xl px-4 py-3 text-[0.86rem] font-medium leading-6 ${bubbleClass}`}>
-        {message.text ?? `[${message.messageType}]`}
+        <MessageBody message={message} />
       </div>
       <div className="mt-1.5 px-1 text-[10px] font-semibold text-calisto-muted">
         {formatTime(message.timestamp)}
@@ -100,6 +223,7 @@ export default function LeadDetailPage() {
   const [isAddingTag, setIsAddingTag] = useState(false)
   const [newTag, setNewTag] = useState('')
   const [isEditingLead, setIsEditingLead] = useState(false)
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
   const [leadDraft, setLeadDraft] = useState({
     email: '',
     leadName: '',
@@ -144,7 +268,35 @@ export default function LeadDetailPage() {
     setIsAddingTag(false)
     setNewTag('')
     setIsEditingLead(false)
+    setActiveConversationId(null)
   }, [customerId])
+
+  const conversations = useMemo<ConversationRecord[]>(() => {
+    if (!data) return []
+    if (data.conversations?.length) {
+      return data.conversations
+    }
+    // Backward-compat: older payloads only return a flat transcript.
+    if (data.transcript?.length) {
+      const channel = data.identities[0]?.channel ?? data.transcript[0]?.metadata?.channel ?? 'website'
+      return [{
+        id: 'legacy',
+        customerId: data.customer.id,
+        channelIdentityId: data.identities[0]?.id ?? '',
+        channel,
+        sourceId: data.identities[0]?.sourceId ?? '',
+        createdAt: data.transcript[0]?.timestamp ?? new Date().toISOString(),
+        updatedAt: data.transcript[data.transcript.length - 1]?.timestamp ?? new Date().toISOString(),
+        messages: data.transcript,
+      }]
+    }
+    return []
+  }, [data])
+
+  const activeConversation = useMemo(() => {
+    if (!conversations.length) return undefined
+    return conversations.find((conv) => conv.id === activeConversationId) ?? conversations[0]
+  }, [conversations, activeConversationId])
 
   const tags = useMemo(() => {
     if (!data) return []
@@ -192,9 +344,11 @@ export default function LeadDetailPage() {
     )
   }
 
-  const { customer, identities, transcript } = data
+  const { customer, identities } = data
   const primaryIdentity = identities[0]
-  const titleChannel = primaryIdentity ? channelLabel(primaryIdentity.channel) : 'Lead'
+  const activeMessages = activeConversation?.messages ?? []
+  const activeChannel = activeConversation?.channel ?? primaryIdentity?.channel
+  const titleChannel = activeChannel ? channelLabel(activeChannel) : 'Lead'
 
   function openLeadEdit() {
     setLeadDraft({
@@ -346,7 +500,7 @@ export default function LeadDetailPage() {
               <div className="grid gap-3">
                 {notes.length > 0 ? notes.map((message) => (
                   <div className="rounded-lg border border-calisto-line-subtle bg-calisto-surface-muted px-3 py-2 text-[11px] font-medium leading-5 text-calisto-body" key={message.messageId}>
-                    {message.text}
+                    {message.text ? humanizeMessageText(message.text) : ''}
                   </div>
                 )) : (
                   <div className="rounded-lg border border-dashed border-calisto-line bg-calisto-table px-3 py-3 text-xs font-medium text-calisto-muted">
@@ -361,7 +515,7 @@ export default function LeadDetailPage() {
         <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-calisto-line-subtle bg-calisto-surface shadow-sm">
           <div className="flex h-14 shrink-0 items-center justify-between border-b border-calisto-line-subtle px-5">
             <div className="flex min-w-0 items-center gap-2">
-              {primaryIdentity?.channel === 'whatsapp' && <WhatsAppIcon className="h-4 w-4 shrink-0 text-calisto-accent" />}
+              {activeChannel === 'whatsapp' && <WhatsAppIcon className="h-4 w-4 shrink-0 text-calisto-accent" />}
               <h2 className="truncate text-sm font-extrabold uppercase tracking-wider text-calisto-ink">
                 {titleChannel} Chat with {customerName(data).split(/\s+/)[0] ?? customerName(data)}
               </h2>
@@ -372,18 +526,43 @@ export default function LeadDetailPage() {
             </span>
           </div>
 
+          {conversations.length > 1 && (
+            <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-calisto-line-subtle px-5 py-2.5">
+              {conversations.map((conv) => {
+                const isActive = conv.id === (activeConversation?.id ?? '')
+                const identity = identities.find((entry) => entry.id === conv.channelIdentityId)
+                return (
+                  <button
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wide transition ${
+                      isActive
+                        ? 'bg-calisto-sidebar text-calisto-surface'
+                        : 'border border-calisto-line bg-calisto-surface text-calisto-body hover:bg-calisto-surface-muted'
+                    }`}
+                    key={conv.id}
+                    onClick={() => setActiveConversationId(conv.id)}
+                    type="button"
+                  >
+                    {conv.channel === 'whatsapp' && <WhatsAppIcon className="h-3.5 w-3.5" />}
+                    {channelLabel(conv.channel)}
+                    {identity?.accountLabel ? ` · ${identity.accountLabel}` : ''}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
           <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-y-auto overscroll-contain bg-calisto-table/80 px-12 py-7">
-            {transcript.length > 0 && (
+            {activeMessages.length > 0 && (
               <div className="self-center rounded-full bg-calisto-surface px-3 py-1 text-[10px] font-bold text-calisto-soft shadow-sm">
-                {formatDate(transcript[0].timestamp)}
+                {formatDate(activeMessages[0].timestamp)}
               </div>
             )}
-            {transcript.length === 0 ? (
+            {activeMessages.length === 0 ? (
               <div className="flex min-h-80 items-center justify-center rounded-xl border border-dashed border-calisto-line bg-calisto-surface text-sm font-medium text-calisto-muted">
                 No transcript available yet.
               </div>
             ) : (
-              transcript.map((message) => renderChatMessage(message))
+              activeMessages.map((message) => renderChatMessage(message))
             )}
           </div>
 

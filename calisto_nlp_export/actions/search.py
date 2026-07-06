@@ -19,11 +19,44 @@ from search.filters import *
 from search.formatters import *
 from search.engine import rank_products_safely
 from search.filters import _lens_feature_match, _yes_no_match
+from gateway.service_gateway import gateway
 
 logger = logging.getLogger(__name__)
 
 _RECENT_SEARCH_SIGNATURES: Dict[str, float] = {}
 _RECENT_SEARCH_WINDOW_SECONDS = 1.5
+
+# Short-lived cache of the active merchandising preset's product ids so we do
+# not issue an extra backend call on every single turn. The backend already
+# invalidates its own cache on changes; this just smooths bursty traffic.
+_ACTIVE_PRESET_CACHE: Dict[str, Any] = {"ts": 0.0, "ids": None}
+_ACTIVE_PRESET_TTL_SECONDS = 20.0
+
+
+def _active_preset_product_ids() -> Optional[set]:
+    """Product ids belonging to the globally active preset.
+
+    Returns a set of ids when a preset is active, or None when no preset is
+    active or the backend is unreachable (callers then use the full catalogue,
+    so product suggestions never break).
+    """
+    now = time.monotonic()
+    cached = _ACTIVE_PRESET_CACHE["ids"]
+    if cached is not None and now - _ACTIVE_PRESET_CACHE["ts"] < _ACTIVE_PRESET_TTL_SECONDS:
+        return cached or None
+
+    ids: set = set()
+    try:
+        payload = gateway.get_active_preset()
+        if isinstance(payload, dict) and payload.get("presetId"):
+            ids = {str(pid) for pid in (payload.get("productIds") or [])}
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Active preset lookup failed; using full catalogue: %s", exc)
+        ids = set()
+
+    _ACTIVE_PRESET_CACHE["ts"] = now
+    _ACTIVE_PRESET_CACHE["ids"] = ids
+    return ids or None
 
 
 def _search_signature(tracker: Tracker, raw_text: str, intent_name: str) -> str:
@@ -824,6 +857,16 @@ def search_products_engine(
     lens_type_value = list(extracted["lens_type"])[0] if "lens_type" in extracted and extracted["lens_type"] else None
     frame_shape_value = list(extracted["frame_shape"])[0] if "frame_shape" in extracted and extracted["frame_shape"] else None
     price_modifier_value = list(extracted["price_modifier"])[0] if "price_modifier" in extracted and extracted["price_modifier"] else None
+
+    # --- Global merchandising preset (hard pre-filter with fallback) ---
+    # When an admin has activated a preset, only suggest products inside it.
+    # If the user's specific request has no match within the preset, fall back
+    # to the full candidate set so we still show exactly what they asked for.
+    preset_ids = _active_preset_product_ids()
+    if preset_ids and not filtered.empty and "product_id" in filtered.columns:
+        within_preset = filtered[filtered["product_id"].astype(str).isin(preset_ids)]
+        if not within_preset.empty:
+            filtered = within_preset
 
     if filtered.empty and not allow_similar_requested:
         for col, values in extracted.items():

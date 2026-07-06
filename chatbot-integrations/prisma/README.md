@@ -20,7 +20,7 @@ Prisma is **not** your database server. The app only connects via `DATABASE_URL`
 If you still have data in a local Postgres database (Docker volume `calisto-postgres-data`):
 
 ```bash
-./scripts/setup-local-mysql.sh --import-postgres
+./scripts/setup-database.sh --import-postgres
 ```
 
 This starts a temporary Postgres container, copies all rows into MySQL, then stops Postgres again.
@@ -39,15 +39,29 @@ For production, set `DATABASE_URL` to your client's MySQL server (RDS, Azure Dat
 
 Optional Redis caching (products, knowledge, leads, Telegram aliases): see [CACHING.md](../CACHING.md).
 
-## Quick start
+## Quick start (new machine)
 
 From `chatbot-integrations/`:
 
 ```bash
-./scripts/setup-local-mysql.sh
+./scripts/setup-database.sh          # MySQL + Redis + Prisma baseline migration
+./scripts/setup-database.sh --seed-presets   # optional: default merchandising presets
 npm run db:studio    # http://localhost:5555
 npm run dev
 ```
+
+On a machine that already ran older incremental migrations, `setup-database.sh` **rebases** `_prisma_migrations` to the single baseline without dropping data.
+
+### Migration layout
+
+All schema is in **one** Prisma migration: `prisma/migrations/20260701000000_baseline/`. Older incremental folders were squashed so new clones only need `prisma migrate deploy` (or `npm run db:setup`).
+
+| Flag | Purpose |
+|------|---------|
+| `--fresh` | Wipe Docker MySQL volume and recreate (destroys local data) |
+| `--no-docker` | Skip Docker; only `prisma generate` + migrate (external MySQL) |
+| `--import-postgres` | One-time row copy from local Postgres |
+| `--seed-presets` | Run `npm run db:seed:presets` after migrate |
 
 `.env`:
 
@@ -63,6 +77,7 @@ Legacy `STORAGE_BACKEND=postgres` is still accepted and mapped to `mysql`.
 
 | Command | Purpose |
 |---------|---------|
+| `npm run db:setup` | Full local DB bootstrap (Docker + migrate + optional flags) |
 | `npm run db:migrate:dev` | Dev migrations |
 | `npm run db:migrate` | Production deploy |
 | `npm run db:generate` | Regenerate Prisma Client |

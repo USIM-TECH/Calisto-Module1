@@ -10,6 +10,7 @@
 #   5. Frontend admin dashboard (host:    npm run dev / vite, port 5173)
 #   6. Meta webhooks            (WhatsApp + Messenger via set-meta-webhooks.sh;
 #                                Instagram is dashboard-only and is printed, not set)
+#   7. Telegram webhook         (register-telegram-webhook.ts when TELEGRAM_BOT_TOKEN is set)
 #
 # Bootstrap: runs `npm install` when node_modules is missing, and
 # `prisma migrate deploy` before starting the backend.
@@ -25,7 +26,7 @@
 # Optional env overrides:
 #   BACKEND_PORT=3000  FRONTEND_PORT=5173  CF_METRICS_PORT=20241
 #   SKIP_TUNNEL=1      # don't start/expect a tunnel (skips webhook wiring too)
-#   SKIP_WEBHOOKS=1    # start everything but don't touch Meta webhooks
+#   SKIP_WEBHOOKS=1    # start everything but don't wire Meta/Telegram webhooks
 
 set -uo pipefail
 
@@ -51,8 +52,9 @@ warn() { printf '\033[1;33m    WARN: %s\033[0m\n' "$*" >&2; }
 die()  { printf '\033[1;31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
 
 # ---- Background-process tracking + cleanup ---------------------------------
-# We start each host process via `setsid` in its own session so we can kill the
-# whole process tree (npm -> tsx/vite -> node) by signalling its process group.
+# Each host process runs in its own session so cleanup can kill the whole tree
+# (npm -> tsx/vite -> node) via process-group signal. Linux uses `setsid`;
+# macOS/BSD fall back to Python's posix setsid (python3 is required below).
 MANAGED_PIDS=()
 MANAGED_NAMES=()
 CLEANED=0
@@ -94,8 +96,19 @@ fi
 start_bg() {
   local name="$1" logfile="$2" cmd="$3"
   local pidfile; pidfile="$(mktemp)"
-  # The child bash records its own PID (= new session/group leader) to pidfile.
-  setsid bash -c 'echo $$ > "'"$pidfile"'"; '"$cmd" >"$logfile" 2>&1 &
+  if command -v setsid >/dev/null 2>&1; then
+    setsid bash -c 'echo $$ > "'"$pidfile"'"; '"$cmd" >"$logfile" 2>&1 &
+  else
+    python3 -c '
+import os, subprocess, sys
+pidfile, logfile, cmd = sys.argv[1], sys.argv[2], sys.argv[3]
+os.setsid()
+with open(pidfile, "w") as f:
+    f.write(str(os.getpid()))
+with open(logfile, "ab") as log:
+    subprocess.call(["bash", "-c", cmd], stdout=log, stderr=subprocess.STDOUT)
+' "$pidfile" "$logfile" "$cmd" &
+  fi
   local leader="" tries=0
   while [[ -z "$leader" && $tries -lt 100 ]]; do
     leader="$(cat "$pidfile" 2>/dev/null)"
@@ -187,11 +200,13 @@ log "Starting MySQL + Redis (Docker)..."
 docker compose -f "$INTEG_DIR/docker-compose.mysql.yml" up -d || die "failed to start MySQL/Redis"
 wait_for_mysql || die "MySQL did not become healthy in time"
 
-# ---- 3. Database migrations ------------------------------------------------
-log "Applying database migrations (prisma migrate deploy)..."
-( cd "$INTEG_DIR" && npm run db:migrate ) \
-  && ok "migrations applied" \
-  || warn "migrations failed — backend will use the existing schema (check DB connectivity)"
+# ---- 3. Database (Prisma generate + migrate) -------------------------------
+log "Preparing database (setup-database.sh --no-docker)..."
+if bash "$SCRIPT_DIR/setup-database.sh" --no-docker; then
+  ok "database ready"
+else
+  warn "database setup reported an issue — check output above"
+fi
 
 # ---- 4. Tunnels (Cloudflare + Ngrok) -----------------------------------------
 CF_TUNNEL_URL=""
@@ -262,17 +277,28 @@ else
     || warn "frontend did not come up yet — check $LOG_DIR/frontend.log"
 fi
 
-# ---- 8. Meta webhooks (Cloudflare) -------------------------------------------
+# ---- 8. Webhooks (Meta + Telegram) -----------------------------------------
 if [[ "${SKIP_WEBHOOKS:-0}" == "1" || "${SKIP_TUNNEL:-0}" == "1" ]]; then
-  log "Skipping Meta webhook wiring"
+  log "Skipping webhook wiring (SKIP_WEBHOOKS or SKIP_TUNNEL)"
 elif [[ -z "$CF_TUNNEL_URL" ]]; then
-  warn "no Cloudflare tunnel URL — skipping Meta webhook wiring"
+  warn "no Cloudflare tunnel URL — skipping webhook wiring"
 else
   log "Wiring Meta webhooks to $CF_TUNNEL_URL ..."
   if BASE_URL="$CF_TUNNEL_URL" bash "$SCRIPT_DIR/set-meta-webhooks.sh"; then
     ok "Meta webhooks configured"
   else
-    warn "webhook setup reported an error (see output above) — services are still running"
+    warn "Meta webhook setup reported an error (see output above) — services are still running"
+  fi
+
+  if grep -qE '^TELEGRAM_BOT_TOKEN=.+' "$INTEG_DIR/.env" 2>/dev/null; then
+    log "Registering Telegram webhook -> ${TUNNEL_URL}/webhooks/telegram ..."
+    if ( cd "$INTEG_DIR" && npm run telegram:webhook -- "$TUNNEL_URL" ); then
+      ok "Telegram webhook configured"
+    else
+      warn "Telegram webhook setup failed — check TELEGRAM_BOT_TOKEN and output above"
+    fi
+  else
+    info "TELEGRAM_BOT_TOKEN not set in .env — skipping Telegram webhook"
   fi
 fi
 

@@ -57,14 +57,15 @@ export default function ChatbotPage() {
     transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight
   }, [messages, isSending])
 
-  async function sendMessage(text: string) {
+  async function sendMessage(text: string, displayText?: string) {
     const trimmed = text.trim()
     if (!trimmed || isSending) return
+    const visible = (displayText ?? trimmed).trim()
 
     setMessages((current) => [
       ...current,
       {
-        content: trimmed,
+        content: visible,
         direction: 'customer',
         id: `${Date.now()}-customer`,
         timestamp: currentStamp(),

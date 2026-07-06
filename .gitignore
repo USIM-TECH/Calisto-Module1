@@ -78,3 +78,4 @@ calisto_nlp_export/models/*.tar.gz
 *.db-journal
 *.sqlite*
 chatbot-integrations/prisma/dev.db
+chatbot-integrations/dumps/
