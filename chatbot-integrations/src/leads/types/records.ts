@@ -33,6 +33,8 @@ export interface ChannelIdentityRecord {
   customerId: string
   channel: ChannelName
   sourceId: string
+  channelAccountId?: string
+  accountLabel?: string
   senderName?: string
   username?: string
   conversationId: string

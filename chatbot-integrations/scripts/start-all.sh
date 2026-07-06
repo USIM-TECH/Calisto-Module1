@@ -52,8 +52,9 @@ warn() { printf '\033[1;33m    WARN: %s\033[0m\n' "$*" >&2; }
 die()  { printf '\033[1;31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
 
 # ---- Background-process tracking + cleanup ---------------------------------
-# We start each host process via `setsid` in its own session so we can kill the
-# whole process tree (npm -> tsx/vite -> node) by signalling its process group.
+# Each host process runs in its own session so cleanup can kill the whole tree
+# (npm -> tsx/vite -> node) via process-group signal. Linux uses `setsid`;
+# macOS/BSD fall back to Python's posix setsid (python3 is required below).
 MANAGED_PIDS=()
 MANAGED_NAMES=()
 CLEANED=0
@@ -89,8 +90,19 @@ trap 'exit 130' INT TERM
 start_bg() {
   local name="$1" logfile="$2" cmd="$3"
   local pidfile; pidfile="$(mktemp)"
-  # The child bash records its own PID (= new session/group leader) to pidfile.
-  setsid bash -c 'echo $$ > "'"$pidfile"'"; '"$cmd" >"$logfile" 2>&1 &
+  if command -v setsid >/dev/null 2>&1; then
+    setsid bash -c 'echo $$ > "'"$pidfile"'"; '"$cmd" >"$logfile" 2>&1 &
+  else
+    python3 -c '
+import os, subprocess, sys
+pidfile, logfile, cmd = sys.argv[1], sys.argv[2], sys.argv[3]
+os.setsid()
+with open(pidfile, "w") as f:
+    f.write(str(os.getpid()))
+with open(logfile, "ab") as log:
+    subprocess.call(["bash", "-c", cmd], stdout=log, stderr=subprocess.STDOUT)
+' "$pidfile" "$logfile" "$cmd" &
+  fi
   local leader="" tries=0
   while [[ -z "$leader" && $tries -lt 100 ]]; do
     leader="$(cat "$pidfile" 2>/dev/null)"

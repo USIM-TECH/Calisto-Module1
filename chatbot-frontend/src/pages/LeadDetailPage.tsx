@@ -530,6 +530,7 @@ export default function LeadDetailPage() {
             <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-calisto-line-subtle px-5 py-2.5">
               {conversations.map((conv) => {
                 const isActive = conv.id === (activeConversation?.id ?? '')
+                const identity = identities.find((entry) => entry.id === conv.channelIdentityId)
                 return (
                   <button
                     className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wide transition ${
@@ -543,6 +544,7 @@ export default function LeadDetailPage() {
                   >
                     {conv.channel === 'whatsapp' && <WhatsAppIcon className="h-3.5 w-3.5" />}
                     {channelLabel(conv.channel)}
+                    {identity?.accountLabel ? ` · ${identity.accountLabel}` : ''}
                   </button>
                 )
               })}

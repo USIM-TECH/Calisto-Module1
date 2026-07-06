@@ -69,11 +69,15 @@ export class FileRuntimeStore implements RuntimeStore {
   public async resolveIdentity(message: IncomingMessage, identityUpdate?: IdentitySnapshot): Promise<ResolvedIdentity> {
     const sourceId = message.sourceId ?? message.senderId
     const timestamp = nowIso()
+    const accountId = message.accountId
     let result!: ResolvedIdentity
 
     this._store.update((state) => {
       const existing = state.identities.find(
-        (entry) => entry.channel === message.channel && entry.sourceId === sourceId,
+        (entry) =>
+          entry.channel === message.channel
+          && entry.sourceId === sourceId
+          && (entry.channelAccountId ?? undefined) === (accountId ?? undefined),
       )
 
       if (existing) {
@@ -117,6 +121,8 @@ export class FileRuntimeStore implements RuntimeStore {
         customerId: newCustomer.id,
         channel: message.channel,
         sourceId,
+        channelAccountId: accountId,
+        accountLabel: message.accountLabel,
         senderName: identityUpdate?.senderName ?? message.senderName,
         username: identityUpdate?.username ?? message.username,
         conversationId: identityUpdate?.conversationId ?? message.conversationId,

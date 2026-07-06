@@ -46,6 +46,36 @@ enum MessageDirection {
   outbound
 }
 
+enum WebhookRegistrationStatus {
+  pending
+  active
+  error
+}
+
+/// Connected business account for a messaging channel (WhatsApp number, IG account, etc.).
+model ChannelAccount {
+  id                   String                    @id @default(cuid())
+  label                String
+  channel              ChatChannel
+  nativeId             String
+  enabled              Boolean                   @default(true)
+  credentialsEncrypted String                    @db.Text
+  verifyToken          String?
+  metaAppId            String?
+  apiVersion           String?
+  webhookStatus        WebhookRegistrationStatus @default(pending)
+  webhookUrl           String?
+  webhookError         String?                   @db.Text
+  tokenExpiresAt       DateTime?
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+
+  identities ChannelIdentity[]
+
+  @@unique([channel, nativeId])
+  @@index([channel, enabled])
+}
+
 /// One row per real human. Identifying fields (phone, email) are kept
 /// here so the same person on multiple channels collapses to one record.
 model Customer {
@@ -79,21 +109,24 @@ model Customer {
 /// One row per (channel, sourceId). A customer owns N of these so we
 /// can recognise them across WhatsApp, Telegram, Instagram, etc.
 model ChannelIdentity {
-  id             String      @id
-  customerId     String
-  channel        ChatChannel
-  sourceId       String
-  senderName     String?
-  username       String?
-  conversationId String
-  firstSeenAt    DateTime
-  lastSeenAt     DateTime
+  id               String      @id
+  customerId       String
+  channel          ChatChannel
+  sourceId         String
+  channelAccountId String?
+  senderName       String?
+  username         String?
+  conversationId   String
+  firstSeenAt      DateTime
+  lastSeenAt       DateTime
 
-  customer      Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  conversations Conversation[]
+  customer       Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  channelAccount ChannelAccount? @relation(fields: [channelAccountId], references: [id], onDelete: SetNull)
+  conversations  Conversation[]
 
-  @@unique([channel, sourceId])
+  @@unique([channel, sourceId, channelAccountId])
   @@index([customerId])
+  @@index([channelAccountId])
   @@index([username])
 }
 

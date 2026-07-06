@@ -20,6 +20,7 @@
     "db:seed:stores": "tsx src/products/service/seed-stores-from-csv.ts",
     "db:seed:knowledge": "tsx src/knowledge/service/seed-from-meta-json.ts",
     "db:seed:presets": "tsx src/products/service/seed-presets.ts",
+    "db:seed:channel-accounts": "tsx src/channel-accounts/seed-from-env.ts",
     "telegram:webhook": "tsx scripts/register-telegram-webhook.ts"
   },
   "dependencies": {

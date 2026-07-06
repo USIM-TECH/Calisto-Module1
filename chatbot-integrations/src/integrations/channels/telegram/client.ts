@@ -57,11 +57,32 @@ export class TelegramChannel {
   }
 
   public async setWebhook(webhookUrl: string): Promise<void> {
-    await axios.post(`${this._baseUrl}/setWebhook`, {
+    const body: Record<string, unknown> = {
       url: webhookUrl,
-      secret_token: this._config.secretToken,
       allowed_updates: ['message', 'edited_message', 'callback_query'],
-    })
+      drop_pending_updates: true,
+    }
+    const secret = this._config.secretToken?.trim()
+    if (secret) {
+      if (!/^[A-Za-z0-9_-]{1,256}$/.test(secret)) {
+        throw new Error(
+          'Telegram secret_token must be 1–256 characters and only contain A-Z, a-z, 0-9, _ and -',
+        )
+      }
+      body.secret_token = secret
+    }
+
+    let response
+    try {
+      response = await axios.post(`${this._baseUrl}/setWebhook`, body, { timeout: 15_000 })
+    } catch (error: any) {
+      const description = error?.response?.data?.description
+      throw new Error(description ?? error?.message ?? 'Telegram setWebhook failed')
+    }
+
+    if (!response.data?.ok) {
+      throw new Error(response.data?.description ?? 'Telegram setWebhook failed')
+    }
   }
 
   public async editMessageReplyMarkup(chatId: string, messageId: string, replyMarkup?: any): Promise<void> {

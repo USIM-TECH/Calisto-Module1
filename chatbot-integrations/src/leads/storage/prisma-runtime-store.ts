@@ -83,11 +83,13 @@ type PrismaIdentity = {
   customerId: string
   channel: ChatChannel
   sourceId: string
+  channelAccountId: string | null
   senderName: string | null
   username: string | null
   conversationId: string
   firstSeenAt: Date
   lastSeenAt: Date
+  channelAccount?: { label: string } | null
 }
 
 function identityToRecord(row: PrismaIdentity): ChannelIdentityRecord {
@@ -96,6 +98,8 @@ function identityToRecord(row: PrismaIdentity): ChannelIdentityRecord {
     customerId: row.customerId,
     channel: row.channel as ChannelIdentityRecord['channel'],
     sourceId: row.sourceId,
+    channelAccountId: row.channelAccountId ?? undefined,
+    accountLabel: row.channelAccount?.label,
     senderName: row.senderName ?? undefined,
     username: row.username ?? undefined,
     conversationId: row.conversationId,
@@ -247,14 +251,26 @@ export class PrismaRuntimeStore implements RuntimeStore {
   public async resolveIdentity(message: IncomingMessage, identityUpdate?: IdentitySnapshot): Promise<ResolvedIdentity> {
     const sourceId = message.sourceId ?? message.senderId
     const channel = toPrismaChannel(message.channel)
+    const channelAccountId = message.accountId ?? null
     const messageTs = parseMessageTimestampToDate(message.timestamp)
     const now = new Date()
 
     return this._prisma.$transaction(async (tx) => {
-      const existing = await tx.channelIdentity.findUnique({
-        where: { channel_sourceId: { channel, sourceId } },
-        include: { customer: true },
-      })
+      const existing = channelAccountId
+        ? await tx.channelIdentity.findUnique({
+            where: {
+              channel_sourceId_channelAccountId: {
+                channel,
+                sourceId,
+                channelAccountId,
+              },
+            },
+            include: { customer: true, channelAccount: true },
+          })
+        : await tx.channelIdentity.findFirst({
+            where: { channel, sourceId, channelAccountId: null },
+            include: { customer: true, channelAccount: true },
+          })
 
       if (existing) {
         const senderName = identityUpdate?.senderName ?? message.senderName ?? existing.senderName ?? undefined
@@ -269,6 +285,7 @@ export class PrismaRuntimeStore implements RuntimeStore {
             conversationId,
             lastSeenAt: now,
           },
+          include: { channelAccount: true },
         })
 
         const updatedCustomer = await tx.customer.update({
@@ -302,12 +319,14 @@ export class PrismaRuntimeStore implements RuntimeStore {
           customerId: customer.id,
           channel,
           sourceId,
+          channelAccountId,
           senderName: identityUpdate?.senderName ?? message.senderName ?? null,
           username: identityUpdate?.username ?? message.username ?? null,
           conversationId: identityUpdate?.conversationId ?? message.conversationId,
           firstSeenAt: now,
           lastSeenAt: now,
         },
+        include: { channelAccount: true },
       })
 
       return {
@@ -720,6 +739,7 @@ export class PrismaRuntimeStore implements RuntimeStore {
 
   public async listIdentities(): Promise<ChannelIdentityRecord[]> {
     const rows = await this._prisma.channelIdentity.findMany({
+      include: { channelAccount: true },
       orderBy: { lastSeenAt: 'desc' },
     })
     return rows.map(identityToRecord)

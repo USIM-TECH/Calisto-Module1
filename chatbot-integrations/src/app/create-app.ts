@@ -66,6 +66,8 @@ async function loadLeadDetailPayload(
 }
 import { registerKnowledgeRoutes } from '../knowledge/routes.js'
 import { registerPresetRoutes, registerProductRoutes, registerStoreRoutes } from '../products/routes.js'
+import { registerChannelAccountRoutes, ChannelAccountRegistry } from '../channel-accounts/index.js'
+import { createAdminAuthMiddleware } from '../core/auth/admin-auth.js'
 import type { AppDependencies } from './dependencies.js'
 import { createWebsiteRateLimiter } from './website-rate-limiter.js'
 import { normaliseEmail, normalisePhone } from '../leads/storage/helpers.js'
@@ -106,10 +108,7 @@ export function createApp(dependencies: AppDependencies): Express {
     logger,
     cacheService,
     nlpClient,
-    whatsapp,
-    instagram,
-    messenger,
-    telegram,
+    channelAccountService,
     x,
     website,
     hubspot,
@@ -120,6 +119,9 @@ export function createApp(dependencies: AppDependencies): Express {
     storeStore,
     knowledgeChunkStore,
   } = dependencies
+
+  const registry = channelAccountService?.registry
+  const accountCount = registry?.size ?? 0
 
   const app = express()
   const websiteRateLimiter = createWebsiteRateLimiter(
@@ -141,8 +143,16 @@ export function createApp(dependencies: AppDependencies): Express {
     next()
   })
 
+  const requireAdmin = createAdminAuthMiddleware(config.adminApiToken)
+  app.use(['/admin', '/reports'], requireAdmin)
+
   const router = express.Router()
-  createWebhookRouter(router, { whatsapp, instagram, messenger, telegram, x, logger, runtimeStore })
+  createWebhookRouter(router, {
+    registry: registry ?? new ChannelAccountRegistry(),
+    x,
+    logger,
+    runtimeStore,
+  })
   app.use(router)
 
   app.post('/webchat/message', async (req, res) => {
@@ -174,13 +184,14 @@ export function createApp(dependencies: AppDependencies): Express {
   })
 
   app.get('/', (_req, res) => {
+    const accounts = registry?.list() ?? []
     res.json({
       name: 'chatbot-integrations',
       channels: {
-        whatsapp: Boolean(whatsapp),
-        instagram: Boolean(instagram),
-        messenger: Boolean(messenger),
-        telegram: Boolean(telegram),
+        whatsapp: accounts.filter((a) => a.record.channel === 'whatsapp').length,
+        instagram: accounts.filter((a) => a.record.channel === 'instagram').length,
+        messenger: accounts.filter((a) => a.record.channel === 'messenger').length,
+        telegram: accounts.filter((a) => a.record.channel === 'telegram').length,
         x: Boolean(x),
         website: true,
       },
@@ -192,10 +203,10 @@ export function createApp(dependencies: AppDependencies): Express {
       },
       endpoints: {
         health: '/health',
-        whatsapp: whatsapp ? '/webhooks/whatsapp' : null,
-        instagram: instagram ? '/webhooks/instagram' : null,
-        messenger: messenger ? '/webhooks/messenger' : null,
-        telegram: telegram ? '/webhooks/telegram' : null,
+        whatsapp: '/webhooks/whatsapp',
+        instagram: '/webhooks/instagram',
+        messenger: '/webhooks/messenger',
+        telegram: '/webhooks/telegram/:accountId',
         x: x ? '/webhooks/x' : null,
         website: '/webchat/message',
       },
@@ -204,6 +215,7 @@ export function createApp(dependencies: AppDependencies): Express {
 
   app.get('/health', async (_req, res) => {
     const nlpHealth = await nlpClient.healthCheck()
+    const accounts = registry?.list() ?? []
     let redis: 'ok' | 'disabled' | 'error' = 'disabled'
     if (cacheService.backend === 'redis') {
       try {
@@ -220,13 +232,14 @@ export function createApp(dependencies: AppDependencies): Express {
       cacheBackend: cacheService.backend,
       nlp: nlpHealth,
       channels: {
-        whatsapp: Boolean(whatsapp),
-        instagram: Boolean(instagram),
-        messenger: Boolean(messenger),
-        telegram: Boolean(telegram),
+        whatsapp: accounts.filter((a) => a.record.channel === 'whatsapp').length,
+        instagram: accounts.filter((a) => a.record.channel === 'instagram').length,
+        messenger: accounts.filter((a) => a.record.channel === 'messenger').length,
+        telegram: accounts.filter((a) => a.record.channel === 'telegram').length,
         x: Boolean(x),
         website: true,
       },
+      channelAccounts: accountCount,
     })
   })
 
@@ -319,6 +332,17 @@ export function createApp(dependencies: AppDependencies): Express {
   } else {
     app.get('/stores', (_req, res) => {
       res.status(503).type('html').send('<h1>Store service unavailable</h1><p>Set <code>STORAGE_BACKEND=mysql</code> and restart.</p>')
+    })
+  }
+
+  if (channelAccountService) {
+    registerChannelAccountRoutes({ app, service: channelAccountService, logger })
+    logger.info('Channel account routes registered: /admin/channel-accounts/api')
+  } else {
+    app.get('/admin/channel-accounts/api', (_req, res) => {
+      res.status(503).json({
+        error: 'Channel accounts require STORAGE_BACKEND=mysql and CHANNEL_CREDENTIALS_ENCRYPTION_KEY',
+      })
     })
   }
 

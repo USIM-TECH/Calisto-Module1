@@ -70,11 +70,47 @@ export interface ChannelIdentityRecord {
   customerId: string
   channel: 'whatsapp' | 'instagram' | 'messenger' | 'telegram' | 'x' | 'website'
   sourceId: string
+  channelAccountId?: string
+  accountLabel?: string
   senderName?: string
   username?: string
   conversationId: string
   firstSeenAt: string
   lastSeenAt: string
+}
+
+export type ManagedChannel = 'whatsapp' | 'instagram' | 'messenger' | 'telegram'
+
+export interface ChannelAccountRecord {
+  id: string
+  label: string
+  channel: ManagedChannel
+  nativeId: string
+  enabled: boolean
+  verifyToken?: string
+  metaAppId?: string
+  apiVersion?: string
+  webhookStatus: 'pending' | 'active' | 'error'
+  webhookUrl?: string
+  webhookError?: string
+  tokenExpiresAt?: string
+  createdAt: string
+  updatedAt: string
+  credentialsPreview: Record<string, string | undefined>
+}
+
+export interface ChannelAccountInput {
+  label: string
+  channel: ManagedChannel
+  nativeId?: string
+  verifyToken?: string
+  metaAppId?: string
+  apiVersion?: string
+  credentials: Record<string, string | undefined>
+}
+
+export interface ChannelAccountListResult {
+  items: ChannelAccountRecord[]
 }
 
 export interface ConversationMessageRecord {

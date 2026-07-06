@@ -4,7 +4,7 @@ import { disconnectRedis } from '../cache/index.js'
 
 async function main() {
   const dependencies = await createDependencies()
-  const { config, logger, whatsapp, instagram, messenger, telegram, x, hubspot } = dependencies
+  const { config, logger, channelAccountService, x, hubspot } = dependencies
   const app = createApp(dependencies)
   const server = app.listen(config.port, () => {
     logger.info(`Chatbot integrations server running on port ${config.port}`)
@@ -43,7 +43,7 @@ async function main() {
   process.on('SIGINT', () => shutdown('SIGINT'))
   process.on('SIGTERM', () => shutdown('SIGTERM'))
 
-  return { app, hubspot, instagram, messenger, server, telegram, whatsapp, x }
+  return { app, hubspot, channelAccountService, server, x }
 }
 
 const boot = main()

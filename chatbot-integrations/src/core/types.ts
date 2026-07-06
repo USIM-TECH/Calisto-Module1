@@ -10,6 +10,12 @@ export interface IncomingMessage {
 
   leadId?: string
 
+  /** Internal channel account id (DB-backed business account). */
+  accountId?: string
+
+  /** Human-readable channel account label for logs/admin. */
+  accountLabel?: string
+
   senderName?: string
 
   /** Channel-native handle (e.g. Telegram @username, IG username, X screen_name). */

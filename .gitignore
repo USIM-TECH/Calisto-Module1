@@ -60,4 +60,5 @@ calisto_nlp_export/models/*.tar.gz
 *.db
 *.db-journal
 *.sqlite*
+chatbot-integrations/dumps/
 

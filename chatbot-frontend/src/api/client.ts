@@ -11,7 +11,11 @@ import type {
   ProductListResult,
   WebchatRequest,
   WebchatResponse,
+  ChannelAccountInput,
+  ChannelAccountListResult,
+  ChannelAccountRecord,
 } from '../types'
+import { getAdminToken } from '../lib/auth'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 const WEBCHAT_AUTH_TOKEN = import.meta.env.VITE_WEBSITE_AUTH_TOKEN?.trim()
@@ -45,12 +49,17 @@ function formatApiError(text: string, status: number): string {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const isFormData = init?.body instanceof FormData
+  const adminToken = getAdminToken()
   const headers: Record<string, string> = isFormData
     ? { ...(init?.headers as Record<string, string> | undefined) }
     : {
         'Content-Type': 'application/json',
         ...(init?.headers as Record<string, string> | undefined),
       }
+
+  if (adminToken && (path.startsWith('/admin') || path.startsWith('/reports'))) {
+    headers.Authorization = `Bearer ${adminToken}`
+  }
 
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
@@ -251,5 +260,39 @@ export function updateKnowledgeDocument(
 export function deleteKnowledgeDocument(source: string): Promise<void> {
   return request<void>(`/admin/knowledge/api/documents/${encodeURIComponent(source)}`, {
     method: 'DELETE',
+  })
+}
+
+export function getChannelAccounts(): Promise<ChannelAccountListResult> {
+  return request<ChannelAccountListResult>('/admin/channel-accounts/api')
+}
+
+export function createChannelAccount(payload: ChannelAccountInput): Promise<ChannelAccountRecord> {
+  return request<ChannelAccountRecord>('/admin/channel-accounts/api', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function disableChannelAccount(id: string): Promise<void> {
+  return request<void>(`/admin/channel-accounts/api/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+}
+
+export function registerChannelAccountWebhook(id: string, publicBaseUrl?: string): Promise<ChannelAccountRecord> {
+  return request<ChannelAccountRecord>(`/admin/channel-accounts/api/${encodeURIComponent(id)}/register-webhook`, {
+    method: 'POST',
+    body: JSON.stringify(publicBaseUrl ? { publicBaseUrl } : {}),
+  })
+}
+
+export function updateChannelAccount(
+  id: string,
+  payload: Partial<ChannelAccountInput> & { credentials?: Record<string, string | undefined> },
+): Promise<ChannelAccountRecord> {
+  return request<ChannelAccountRecord>(`/admin/channel-accounts/api/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
   })
 }

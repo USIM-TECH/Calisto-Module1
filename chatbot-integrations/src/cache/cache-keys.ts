@@ -5,7 +5,7 @@ export const CACHE_KEYS = {
   knowledgeSummary: 'knowledge:summary:v1',
   knowledgeDocuments: 'knowledge:documents:v1',
   reportsLeads: 'reports:leads:v1',
-  instagramToken: 'ig:access_token',
+  instagramToken: (accountId?: string) => (accountId ? `ig:access_token:${accountId}` : 'ig:access_token'),
   telegramCallbackPrefix: 'tg:cb:',
 } as const
 

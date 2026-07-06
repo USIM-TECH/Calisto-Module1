@@ -21,9 +21,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
  */
 const TOKEN_CACHE_PATH = path.resolve(__dirname, '..', '..', '..', '..', '.instagram-token-cache.json')
 
-function saveTokenCache(token: string, expiresAt: number): void {
+function tokenCachePath(accountId?: string): string {
+  if (!accountId) return TOKEN_CACHE_PATH
+  return path.resolve(__dirname, '..', '..', '..', '..', `.instagram-token-cache.${accountId}.json`)
+}
+
+function saveTokenCache(token: string, expiresAt: number, accountId?: string): void {
   try {
-    fs.writeFileSync(TOKEN_CACHE_PATH, JSON.stringify({ token, expiresAt }), 'utf8')
+    fs.writeFileSync(tokenCachePath(accountId), JSON.stringify({ token, expiresAt }), 'utf8')
   } catch {
     // Non-fatal — the in-memory token is already updated
   }
@@ -33,27 +38,28 @@ async function saveTokenToCache(
   cache: CacheService | undefined,
   token: string,
   expiresAt: number,
+  accountId?: string,
 ): Promise<void> {
-  saveTokenCache(token, expiresAt)
+  saveTokenCache(token, expiresAt, accountId)
   if (!cache) return
   const ttlSec = Math.max(60, Math.floor((expiresAt - Date.now()) / 1000) - 3600)
-  await cache.setJson(CACHE_KEYS.instagramToken, { token, expiresAt }, ttlSec)
+  await cache.setJson(CACHE_KEYS.instagramToken(accountId), { token, expiresAt }, ttlSec)
 }
 
-async function loadTokenFromCache(cache: CacheService | undefined): Promise<{ token: string; expiresAt: number } | null> {
+async function loadTokenFromCache(cache: CacheService | undefined, accountId?: string): Promise<{ token: string; expiresAt: number } | null> {
   if (cache) {
-    const data = await cache.getJson<{ token: string; expiresAt: number }>(CACHE_KEYS.instagramToken)
+    const data = await cache.getJson<{ token: string; expiresAt: number }>(CACHE_KEYS.instagramToken(accountId))
     if (data && typeof data.token === 'string' && typeof data.expiresAt === 'number' && data.expiresAt > Date.now()) {
       return data
     }
   }
-  return loadCachedInstagramToken()
+  return loadCachedInstagramToken(accountId)
 }
 
 /** Load a previously cached token if it has not expired yet. */
-export function loadCachedInstagramToken(): { token: string; expiresAt: number } | null {
+export function loadCachedInstagramToken(accountId?: string): { token: string; expiresAt: number } | null {
   try {
-    const raw = fs.readFileSync(TOKEN_CACHE_PATH, 'utf8')
+    const raw = fs.readFileSync(tokenCachePath(accountId), 'utf8')
     const data = JSON.parse(raw) as { token: string; expiresAt: number }
     if (typeof data.token === 'string' && typeof data.expiresAt === 'number' && data.expiresAt > Date.now()) {
       return data
@@ -71,6 +77,8 @@ export interface InstagramConfig {
   clientId: string
   clientSecret?: string
   apiVersion?: string
+  accountId?: string
+  onTokenRefreshed?: (accessToken: string, expiresAt: Date) => Promise<void>
 }
 
 /**
@@ -99,10 +107,10 @@ export class InstagramChannel {
   }
 
   private async _bootstrapAccessToken(): Promise<void> {
-    const cached = await loadTokenFromCache(this._cacheService)
+    const cached = await loadTokenFromCache(this._cacheService, this._config.accountId)
     if (cached) {
       this._config.accessToken = cached.token
-      this._logger.info('[Instagram] Loaded cached access token')
+      this._logger.info(`[Instagram${this._config.accountId ? `:${this._config.accountId}` : ''}] Loaded cached access token`)
     }
   }
 
@@ -119,8 +127,12 @@ export class InstagramChannel {
           this._logger.info('[Instagram] Proactively refreshing access token…')
           const { accessToken, expirationTime } = await this.refreshAccessToken()
           this._config.accessToken = accessToken
-          await saveTokenToCache(this._cacheService, accessToken, expirationTime)
-          const expiryDate = new Date(expirationTime).toISOString()
+          const expiresAt = new Date(expirationTime)
+          await saveTokenToCache(this._cacheService, accessToken, expirationTime, this._config.accountId)
+          if (this._config.onTokenRefreshed) {
+            await this._config.onTokenRefreshed(accessToken, expiresAt)
+          }
+          const expiryDate = expiresAt.toISOString()
           this._logger.info(`[Instagram] Access token refreshed — new expiry: ${expiryDate}`)
         } catch (err: any) {
           this._logger.error(`[Instagram] Failed to auto-refresh access token: ${err?.message ?? err}`)
