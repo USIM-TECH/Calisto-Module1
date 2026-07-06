@@ -12,11 +12,13 @@ const requiredColumns = [
   'price_myr',
 ]
 
+const ACCEPTED_EXTENSIONS = '.xlsx,.xls,.csv'
+
 const labelClass = 'mb-2 block text-[0.68rem] font-bold uppercase tracking-wider text-calisto-ink'
 const fileInputClass = 'block h-11 w-full rounded-xl border border-calisto-line bg-calisto-table px-3 py-1.5 text-sm font-medium text-calisto-body outline-none transition file:mr-3 file:h-8 file:rounded-lg file:border-0 file:bg-calisto-surface file:px-3 file:text-xs file:font-semibold file:text-calisto-ink hover:file:bg-calisto-surface-muted focus:border-calisto-accent/50 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus'
 const radioClass = 'h-4 w-4 border-calisto-line text-calisto-accent focus:ring-2 focus:ring-calisto-focus'
 
-interface ImportCsvModalProps {
+interface ImportProductsModalProps {
   importing?: boolean
   onClose: () => void
   onDownloadTemplate: () => void
@@ -24,21 +26,21 @@ interface ImportCsvModalProps {
   open: boolean
 }
 
-export default function ImportCsvModal({
+export default function ImportProductsModal({
   importing = false,
   onClose,
   onDownloadTemplate,
   onImport,
   open,
-}: ImportCsvModalProps) {
-  const [csvFile, setCsvFile] = useState<File | null>(null)
+}: ImportProductsModalProps) {
+  const [importFile, setImportFile] = useState<File | null>(null)
   const [duplicateHandling, setDuplicateHandling] = useState<ProductImportMode>('skip')
   const [error, setError] = useState<string | null>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     if (!open) return
-    setCsvFile(null)
+    setImportFile(null)
     setDuplicateHandling('skip')
     setError(null)
   }, [open])
@@ -73,14 +75,14 @@ export default function ImportCsvModal({
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
-    if (!csvFile) {
-      setError('CSV file is required.')
+    if (!importFile) {
+      setError('An XLSX or CSV file is required.')
       return
     }
 
     try {
       setError(null)
-      await onImport(csvFile, duplicateHandling)
+      await onImport(importFile, duplicateHandling)
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to import products.')
@@ -95,22 +97,22 @@ export default function ImportCsvModal({
         <div
           role="dialog"
           aria-modal="true"
-          aria-labelledby="importCsvTitle"
+          aria-labelledby="importProductsTitle"
           className="w-full max-w-2xl overflow-hidden rounded-3xl border border-calisto-line bg-calisto-surface text-calisto-ink shadow-dashboard"
           onMouseDown={(event) => event.stopPropagation()}
         >
           <div className="flex items-start justify-between gap-4 border-b border-calisto-line px-6 py-5">
             <div>
-              <h2 id="importCsvTitle" className="text-lg font-bold text-calisto-ink">Import products from CSV</h2>
+              <h2 id="importProductsTitle" className="text-lg font-bold text-calisto-ink">Import products from XLSX</h2>
               <p className="mt-1 text-sm leading-6 text-calisto-body">
-                Upload a CSV with the same columns as the catalogue export.
+                Upload an XLSX or CSV file with the same columns as the catalogue export.
               </p>
             </div>
             <button
               type="button"
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-calisto-line bg-calisto-surface text-calisto-ink transition hover:bg-calisto-surface-muted"
               onClick={onClose}
-              aria-label="Close import CSV modal"
+              aria-label="Close import modal"
             >
               <X className="h-5 w-5" />
             </button>
@@ -132,27 +134,27 @@ export default function ImportCsvModal({
             </section>
 
             <section className="mt-6 grid gap-3 border-t border-calisto-line-subtle pt-6">
-              <div className="text-xs font-bold uppercase tracking-wider text-calisto-ink">Download template CSV</div>
+              <div className="text-xs font-bold uppercase tracking-wider text-calisto-ink">Download template</div>
               <Button className="w-fit" icon={<Download className="h-4 w-4" />} onClick={onDownloadTemplate}>
-                Download template CSV
+                Download template XLSX
               </Button>
             </section>
 
             <section className="mt-6 grid gap-4 border-t border-calisto-line-subtle pt-6">
               <div>
-                <label className={labelClass} htmlFor="csvFile">CSV file *</label>
+                <label className={labelClass} htmlFor="importFile">XLSX or CSV file *</label>
                 <input
-                  id="csvFile"
+                  id="importFile"
                   className={fileInputClass}
                   type="file"
-                  accept=".csv,text/csv"
+                  accept={`${ACCEPTED_EXTENSIONS},application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv`}
                   onChange={(event) => {
-                    setCsvFile(event.target.files?.[0] ?? null)
+                    setImportFile(event.target.files?.[0] ?? null)
                     setError(null)
                   }}
                 />
                 <p className="mt-2 text-xs font-semibold text-calisto-muted">
-                  {csvFile ? `Selected: ${csvFile.name}` : 'Accepted: .csv'}
+                  {importFile ? `Selected: ${importFile.name}` : 'Accepted: .xlsx, .csv'}
                 </p>
               </div>
             </section>
@@ -203,4 +205,3 @@ export default function ImportCsvModal({
     </div>
   )
 }
-

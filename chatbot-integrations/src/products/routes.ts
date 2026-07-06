@@ -9,9 +9,10 @@ import { invalidateProductCache, type CacheService } from '../cache/index.js'
 import { ProductSearchService } from './service/product-search.js'
 import {
   formatImportErrorResponse,
-  importProductsFromCsv,
+  importProductsFromFile,
   isProductCsvImportError,
   productCsvTemplate,
+  productXlsxTemplate,
   type ProductImportMode,
 } from './service/csv-import.js'
 import type { ProductStore } from './storage/product-store.interface.js'
@@ -29,7 +30,7 @@ const UPLOAD_DIR = path.resolve(__dirname, '..', '..', 'public', 'products')
 const STATIC_PREFIX = '/static'
 const ALLOWED_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024
-const MAX_CSV_BYTES = 10 * 1024 * 1024
+const MAX_IMPORT_BYTES = 10 * 1024 * 1024
 
 interface RegisterArgs {
   app: Express
@@ -76,19 +77,22 @@ const upload = multer({
   },
 })
 
-const csvUpload = multer({
+const importUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_CSV_BYTES },
+  limits: { fileSize: MAX_IMPORT_BYTES },
   fileFilter: (_req, file, cb) => {
     const name = file.originalname.toLowerCase()
     const ok = name.endsWith('.csv')
+      || name.endsWith('.xlsx')
+      || name.endsWith('.xls')
       || file.mimetype === 'text/csv'
       || file.mimetype === 'application/vnd.ms-excel'
+      || file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       || file.mimetype === 'text/plain'
     if (ok) {
       cb(null, true)
     } else {
-      cb(new Error('Upload a .csv file'))
+      cb(new Error('Upload a .csv or .xlsx file'))
     }
   },
 })
@@ -289,16 +293,22 @@ export function registerProductRoutes({ app, store, logger, publicBaseUrl, cache
       .send(productCsvTemplate())
   })
 
-  app.post('/admin/products/api/import', csvUpload.single('file'), async (req, res, next) => {
+  app.get('/admin/products/api/import/template.xlsx', (_req, res) => {
+    res
+      .type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      .set('Content-Disposition', 'attachment; filename="product_import_template.xlsx"')
+      .send(productXlsxTemplate())
+  })
+
+  app.post('/admin/products/api/import', importUpload.single('file'), async (req, res, next) => {
     try {
       const file = (req as Request & { file?: Express.Multer.File }).file
       if (!file) {
-        res.status(400).json({ error: 'CSV file is required' })
+        res.status(400).json({ error: 'Import file is required' })
         return
       }
       const mode = parseImportMode((req.body as Record<string, unknown>).mode)
-      const csvText = file.buffer.toString('utf-8')
-      const result = await importProductsFromCsv(store, csvText, mode)
+      const result = await importProductsFromFile(store, file.buffer, file.originalname, mode)
       if (cacheService && result.ok) {
         await invalidateProductCache(cacheService)
       }
@@ -309,12 +319,12 @@ export function registerProductRoutes({ app, store, logger, publicBaseUrl, cache
         res.status(400).json(formatImportErrorResponse(error))
         return
       }
-      if (error?.message === 'Upload a .csv file') {
+      if (error?.message === 'Upload a .csv or .xlsx file') {
         res.status(400).json({ error: error.message })
         return
       }
       if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
-        res.status(400).json({ error: `CSV too large (max ${MAX_CSV_BYTES / (1024 * 1024)} MB)` })
+        res.status(400).json({ error: `Import file too large (max ${MAX_IMPORT_BYTES / (1024 * 1024)} MB)` })
         return
       }
       logger.error(`/admin/products/api/import error: ${error.message}`)

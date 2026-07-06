@@ -1,3 +1,4 @@
+import * as XLSX from 'xlsx'
 import type { ProductInput } from '../types.js'
 import type { ProductStore } from '../storage/product-store.interface.js'
 
@@ -208,6 +209,66 @@ export function parseProductCsv(text: string): ParsedCsv {
   return { headers, rows }
 }
 
+function cellToString(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'boolean') return value ? 'yes' : 'no'
+  if (typeof value === 'number') return String(value)
+  return String(value).trim()
+}
+
+export function parseProductXlsx(buffer: Buffer): ParsedCsv {
+  const workbook = XLSX.read(buffer, { type: 'buffer' })
+  const sheetName = workbook.SheetNames[0]
+  if (!sheetName) {
+    throw new ProductCsvImportError('XLSX file has no worksheets.', 'EMPTY_FILE')
+  }
+
+  const sheet = workbook.Sheets[sheetName]
+  const raw = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: '' })
+  if (raw.length === 0) {
+    throw new ProductCsvImportError('XLSX file is empty.', 'EMPTY_FILE')
+  }
+
+  const headerRow = raw[0] ?? []
+  const headers = headerRow.map((cell) => cellToString(cell).toLowerCase()).filter(Boolean)
+  if (headers.length === 0) {
+    throw new ProductCsvImportError('XLSX file has no header row.', 'NO_HEADER')
+  }
+
+  const rows: Array<Record<string, string>> = []
+  for (let i = 1; i < raw.length; i += 1) {
+    const line = raw[i] ?? []
+    if (!Array.isArray(line) || line.every((cell) => cellToString(cell) === '')) continue
+    const row: Record<string, string> = {}
+    for (let c = 0; c < headers.length; c += 1) {
+      row[headers[c]] = cellToString(line[c])
+    }
+    rows.push(row)
+  }
+
+  return { headers, rows }
+}
+
+function isXlsxFilename(filename: string): boolean {
+  const lower = filename.toLowerCase()
+  return lower.endsWith('.xlsx') || lower.endsWith('.xls')
+}
+
+function isCsvFilename(filename: string): boolean {
+  const lower = filename.toLowerCase()
+  return lower.endsWith('.csv')
+}
+
+export function parseProductSpreadsheet(buffer: Buffer, filename: string): ParsedCsv {
+  if (isXlsxFilename(filename)) {
+    return parseProductXlsx(buffer)
+  }
+  if (isCsvFilename(filename)) {
+    return parseProductCsv(buffer.toString('utf-8'))
+  }
+  throw new ProductCsvImportError('Upload a .csv or .xlsx file.', 'INVALID_FILE')
+}
+
 export function validateCsvHeaders(headers: string[]): void {
   const headerSet = new Set(headers)
   const missingColumns = PRODUCT_CSV_REQUIRED_COLUMNS.filter((col) => !headerSet.has(col))
@@ -323,17 +384,17 @@ function inputToUpdate(input: ProductInput): Omit<ProductInput, 'productId'> {
   return rest
 }
 
-export async function importProductsFromCsv(
+async function importProductsFromParsed(
   store: ProductStore,
-  csvText: string,
-  mode: ProductImportMode = 'skip',
+  parsed: ParsedCsv,
+  mode: ProductImportMode,
 ): Promise<ProductImportResult> {
-  const { headers, rows } = parseProductCsv(csvText)
+  const { headers, rows } = parsed
   validateCsvHeaders(headers)
 
   if (rows.length === 0) {
     throw new ProductCsvImportError(
-      'CSV has a header row but no product rows.',
+      'File has a header row but no product rows.',
       'NO_DATA_ROWS',
       { foundColumns: headers },
     )
@@ -407,37 +468,65 @@ export async function importProductsFromCsv(
   return result
 }
 
+export async function importProductsFromCsv(
+  store: ProductStore,
+  csvText: string,
+  mode: ProductImportMode = 'skip',
+): Promise<ProductImportResult> {
+  return importProductsFromParsed(store, parseProductCsv(csvText), mode)
+}
+
+export async function importProductsFromFile(
+  store: ProductStore,
+  buffer: Buffer,
+  filename: string,
+  mode: ProductImportMode = 'skip',
+): Promise<ProductImportResult> {
+  return importProductsFromParsed(store, parseProductSpreadsheet(buffer, filename), mode)
+}
+
+const PRODUCT_TEMPLATE_SAMPLE_ROW = [
+  'P9999',
+  'Sample Frame',
+  'Frames',
+  'Designer Frames',
+  'Calisto',
+  '299.00',
+  'Unisex',
+  'Sample product description',
+  'in_stock',
+  '4.5',
+  'acetate',
+  'round',
+  'black',
+  'classic',
+  'single_vision',
+  'clear',
+  'blue_light',
+  '',
+  'yes',
+  'no',
+  'no',
+  'Calisto HQ',
+  'Kuala Lumpur',
+  'no',
+  'yes',
+  '',
+]
+
 export function productCsvTemplate(): string {
   const header = PRODUCT_CSV_COLUMNS.join(',')
-  const sample = [
-    'P9999',
-    'Sample Frame',
-    'Frames',
-    'Designer Frames',
-    'Calisto',
-    '299.00',
-    'Unisex',
-    'Sample product description',
-    'in_stock',
-    '4.5',
-    'acetate',
-    'round',
-    'black',
-    'classic',
-    'single_vision',
-    'clear',
-    'blue_light',
-    '',
-    'yes',
-    'no',
-    'no',
-    'Calisto HQ',
-    'Kuala Lumpur',
-    'no',
-    'yes',
-    '',
-  ].join(',')
-  return `${header}\n${sample}\n`
+  return `${header}\n${PRODUCT_TEMPLATE_SAMPLE_ROW.join(',')}\n`
+}
+
+export function productXlsxTemplate(): Buffer {
+  const workbook = XLSX.utils.book_new()
+  const worksheet = XLSX.utils.aoa_to_sheet([
+    [...PRODUCT_CSV_COLUMNS],
+    PRODUCT_TEMPLATE_SAMPLE_ROW,
+  ])
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Products')
+  return Buffer.from(XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }))
 }
 
 export function formatImportErrorResponse(error: ProductCsvImportError): Record<string, unknown> {
