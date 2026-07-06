@@ -207,54 +207,41 @@ export async function sendWhatsAppMessage(
       let lastId: string | undefined
       const text = convertMarkdownToWhatsApp(formatCardAsText(message))
       const postbackActions = message.actions ? splitCardActions(message.actions).postbackActions : []
+      const buttons = postbackActions.slice(0, 3).map((action) => new Button(action.value, action.title.substring(0, 20)))
+      const buttonTuple = asNonEmptyTuple(buttons)
 
-      // Send image first if available
-      if (message.imageUrl) {
-        logger.debug(`[WhatsApp] Sending card image reply to ${recipientPhone} (url=${message.imageUrl}, captionLen=${text.length})`)
-        const imageResponse = await client.sendMessage(
-          config.phoneNumberId,
-          recipientPhone,
-          new Image(message.imageUrl, false, text)
+      if (message.imageUrl && buttonTuple) {
+        // Single interactive message: image header + product details body + buttons
+        const bodyText = text.substring(0, 1024)
+        const interactive = new Interactive(
+          new ActionButtons(...buttonTuple),
+          new Body(bodyText),
+          new Header(new Image(message.imageUrl, false))
         )
-        lastId = extractMessageId(imageResponse)
-        logger.debug(`[WhatsApp] Card image send response for ${recipientPhone}: ${JSON.stringify(imageResponse)}`)
-        if (!lastId) {
-          logger.warn(`[WhatsApp] Card image send returned no message id for ${recipientPhone}`)
-        }
-        await sleep(PART_DELAY_MS)
+        logger.debug(`[WhatsApp] Sending card as single interactive message to ${recipientPhone}`)
+        const response = await client.sendMessage(config.phoneNumberId, recipientPhone, interactive)
+        lastId = extractMessageId(response)
+        logger.debug(`[WhatsApp] Card interactive send response for ${recipientPhone}: ${JSON.stringify(response)}`)
+        if (!lastId) logger.warn(`[WhatsApp] Card interactive send returned no message id for ${recipientPhone}`)
+      } else if (message.imageUrl) {
+        // Image with caption, no buttons
+        const response = await client.sendMessage(config.phoneNumberId, recipientPhone, new Image(message.imageUrl, false, text))
+        lastId = extractMessageId(response)
+        if (!lastId) logger.warn(`[WhatsApp] Card image send returned no message id for ${recipientPhone}`)
+      } else if (buttonTuple) {
+        // No image: text body + buttons
+        const bodyText = text.substring(0, 1024)
+        const interactive = new Interactive(new ActionButtons(...buttonTuple), new Body(bodyText))
+        const response = await client.sendMessage(config.phoneNumberId, recipientPhone, interactive)
+        lastId = extractMessageId(response)
+        if (!lastId) logger.warn(`[WhatsApp] Card text+buttons send returned no message id for ${recipientPhone}`)
       } else {
-        // Send text if no image
+        // Text only
         const chunks = splitTextMessageIfNeeded(text)
-        logger.debug(`[WhatsApp] Sending card reply to ${recipientPhone} in ${chunks.length} chunk(s)`)
         for (let i = 0; i < chunks.length; i++) {
           if (i > 0) await sleep(PART_DELAY_MS)
           const response = await client.sendMessage(config.phoneNumberId, recipientPhone, new Text(chunks[i]!))
           lastId = extractMessageId(response)
-          logger.debug(`[WhatsApp] Card send response for ${recipientPhone}: ${JSON.stringify(response)}`)
-          if (!lastId) {
-            logger.warn(`[WhatsApp] Card send returned no message id for ${recipientPhone}`)
-          }
-        }
-      }
-
-      // Send buttons as separate reply buttons message
-      if (postbackActions.length) {
-        await sleep(PART_DELAY_MS)
-        const buttons = postbackActions
-          .slice(0, 3)
-          .map((action) => new Button(action.value, action.title.substring(0, 20)))
-        const buttonTuple = asNonEmptyTuple(buttons)
-        if (buttonTuple) {
-          const interactive = new Interactive(new ActionButtons(...buttonTuple), new Body('What would you like to do next?'))
-          logger.debug(`[WhatsApp] Sending card action buttons to ${recipientPhone} with ${buttons.length} option(s)`)
-          const response = await client.sendMessage(config.phoneNumberId, recipientPhone, interactive)
-          const messageId = extractMessageId(response)
-          logger.debug(`[WhatsApp] Card action send response for ${recipientPhone}: ${JSON.stringify(response)}`)
-          if (messageId) {
-            lastId = messageId
-          } else {
-            logger.warn(`[WhatsApp] Card action send returned no message id for ${recipientPhone}`)
-          }
         }
       }
 
