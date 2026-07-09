@@ -134,12 +134,14 @@ class ActionHandleGreet(Action):
         
         if not active_loop:
             dispatcher.utter_message(response="utter_greet")
+            dispatcher.utter_message(response="utter_open_app")
             return []
         
         # User said "hi" during a form - they want to exit/restart
         logger.info(f"User greeted during form ({active_loop}). Resetting state and showing greeting.")
         events, _, _ = reset_conversation_state(tracker)
         dispatcher.utter_message(response="utter_greet")
+        dispatcher.utter_message(response="utter_open_app")
         return events
 
 
