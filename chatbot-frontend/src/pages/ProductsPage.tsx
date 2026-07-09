@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Download, Pencil, Trash2, X } from 'lucide-react'
-import { createProduct, deleteProduct, getProduct, getProductImportTemplateUrl, getProducts, importProductsCsv, resolveAssetUrl, setProductPresetIds, updateProduct } from '../api/client'
+import { createProduct, deleteProduct, getProduct, getProductImportTemplateUrl, getProducts, importProducts, resolveAssetUrl, setProductPresetIds, updateProduct } from '../api/client'
 import Button from '../components/Button'
 import AddProductModal, { type ProductFormData } from '../components/AddProductModal'
-import ImportCsvModal from '../components/ImportCsvModal'
+import ImportProductsModal from '../components/ImportProductsModal'
 import PageContainer from '../components/PageContainer'
 import { SkeletonFilterBar, SkeletonTable, SkeletonTopbar } from '../components/Skeleton'
 import Topbar from '../components/Topbar'
@@ -262,7 +262,7 @@ export default function ProductsPage() {
     setError(null)
     setSuccessMessage(null)
     try {
-      const result = await importProductsCsv(file, duplicateHandling)
+      const result = await importProducts(file, duplicateHandling)
       await loadProducts()
       const parts = [
         result.inserted ? `${result.inserted} added` : null,
@@ -296,7 +296,7 @@ export default function ProductsPage() {
             >
               Export
             </Button>
-            <Button id="importCsvBtn" onClick={() => setIsImportOpen(true)}>Import CSV</Button>
+            <Button id="importProductsBtn" onClick={() => setIsImportOpen(true)}>Import XLSX</Button>
             <Button id="addBtn" variant="primary" onClick={openCreateModal}>Add Product</Button>
           </>
         )}
@@ -501,7 +501,7 @@ export default function ProductsPage() {
         mode={modalMode}
         saving={savingProduct}
       />
-      <ImportCsvModal
+      <ImportProductsModal
         importing={importingProducts}
         onClose={() => setIsImportOpen(false)}
         onDownloadTemplate={handleDownloadImportTemplate}

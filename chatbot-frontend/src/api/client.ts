@@ -138,7 +138,7 @@ export function deleteProduct(productId: string): Promise<void> {
   })
 }
 
-export function importProductsCsv(file: File, mode: ProductImportMode): Promise<ProductImportResult> {
+export function importProducts(file: File, mode: ProductImportMode): Promise<ProductImportResult> {
   const payload = new FormData()
   payload.set('file', file)
   payload.set('mode', mode)
@@ -148,8 +148,11 @@ export function importProductsCsv(file: File, mode: ProductImportMode): Promise<
   })
 }
 
+/** @deprecated Use importProducts */
+export const importProductsCsv = importProducts
+
 export function getProductImportTemplateUrl(): string {
-  return `${API_BASE_URL}/admin/products/api/import/template.csv`
+  return `${API_BASE_URL}/admin/products/api/import/template.xlsx`
 }
 
 export function getPresets(): Promise<PresetListResult> {
