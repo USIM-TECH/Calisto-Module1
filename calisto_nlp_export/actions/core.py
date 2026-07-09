@@ -124,24 +124,53 @@ class ActionDefaultFallback(Action):
 
 
 
+APP_DOWNLOAD_URL = "https://www.lenskart.com/mobile-app"
+
 class ActionHandleGreet(Action):
     def name(self) -> Text:
         return "action_handle_greet"
 
+    def _send_greet(self, dispatcher: CollectingDispatcher, lang: str) -> None:
+        dispatcher.utter_message(
+            text=tr(
+                lang,
+                f"Welcome to Calisto Eyewear.\nI can help you discover products, check pricing, find a store, or arrange a consultation. What would you like to do first?\n\n📱 Download our app: {APP_DOWNLOAD_URL}",
+                f"Selamat datang ke Calisto Eyewear.\nSaya boleh bantu anda melihat produk, semak harga, cari kedai, atau aturkan konsultasi. Apa yang anda mahu lakukan dahulu?\n\n📱 Muat turun aplikasi kami: {APP_DOWNLOAD_URL}",
+                f"欢迎来到 Calisto Eyewear。\n我可以帮您浏览产品、查看价格、寻找门店，或安排咨询。您想先做什么？\n\n📱 下载我们的应用: {APP_DOWNLOAD_URL}",
+            ),
+            buttons=[
+                {"title": tr(lang, "Browse Eyewear", "Lihat Produk", "浏览产品"), "payload": "/browse_eyewear"},
+                {"title": tr(lang, "Check Pricing", "Semak Harga", "查看价格"), "payload": "/ask_pricing"},
+                {"title": tr(lang, "Support & Policies", "Sokongan & Polisi", "支持与政策"), "payload": "/support_and_policies"},
+            ],
+        )
+
     def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         active_loop = get_active_loop_name(tracker)
-        requested_slot = tracker.get_slot("requested_slot")
-        
+        lang = tracker.get_slot("preferred_language") or "en"
+
         if not active_loop:
-            dispatcher.utter_message(response="utter_greet")
-            dispatcher.utter_message(response="utter_open_app")
+            self._send_greet(dispatcher, lang)
             return []
-        
+
         # User said "hi" during a form - they want to exit/restart
         logger.info(f"User greeted during form ({active_loop}). Resetting state and showing greeting.")
         events, _, _ = reset_conversation_state(tracker)
-        dispatcher.utter_message(response="utter_greet")
-        dispatcher.utter_message(response="utter_open_app")
+        self._send_greet(dispatcher, lang)
+        return events
+
+    def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        active_loop = get_active_loop_name(tracker)
+        lang = tracker.get_slot("preferred_language") or "en"
+
+        if not active_loop:
+            self._send_greet(dispatcher, lang)
+            return []
+
+        # User said "hi" during a form - they want to exit/restart
+        logger.info(f"User greeted during form ({active_loop}). Resetting state and showing greeting.")
+        events, _, _ = reset_conversation_state(tracker)
+        self._send_greet(dispatcher, lang)
         return events
 
 
