@@ -397,6 +397,16 @@ forms:
       - purchase_timeline
 
 responses:
+  utter_open_app:
+  - text: "Download the Calisto app to browse our full collection, book appointments, and get exclusive offers."
+    custom:
+      type: "card"
+      title: "Get the Calisto App"
+      actions:
+        - title: "Download App"
+          type: "url"
+          value: "https://www.lenskart.com/mobile-app"
+
   utter_email_support:
     - text: "For further assistance, please contact: calisto123@gmail.com"
 

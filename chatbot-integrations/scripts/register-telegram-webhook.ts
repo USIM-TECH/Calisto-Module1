@@ -1,6 +1,7 @@
 import * as dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { PrismaClient } from '@prisma/client'
 
 type TelegramSetWebhookResponse = {
   ok: boolean
@@ -52,7 +53,12 @@ async function main() {
   const secretToken = process.env.TELEGRAM_SECRET_TOKEN?.trim()
   const apiBaseUrl = (process.env.TELEGRAM_API_BASE_URL?.trim() || 'https://api.telegram.org').replace(/\/$/, '')
 
-  const webhookUrl = `${publicBaseUrl}/webhooks/telegram`
+  const prisma = new PrismaClient()
+  const account = await prisma.channelAccount.findFirst({ where: { channel: 'telegram' } })
+  await prisma.$disconnect()
+  if (!account) throw new Error('No Telegram channel account found in DB')
+
+  const webhookUrl = `${publicBaseUrl}/webhooks/telegram/${account.id}`
   const setWebhookUrl = `${apiBaseUrl}/bot${botToken}/setWebhook`
   const getWebhookInfoUrl = `${apiBaseUrl}/bot${botToken}/getWebhookInfo`
 
