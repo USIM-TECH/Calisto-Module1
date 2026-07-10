@@ -1,13 +1,12 @@
-import * as XLSX from 'xlsx'
-
 export type XlsxCell = string | number | boolean | null | undefined
 
-export function downloadXlsx(
+export async function downloadXlsx(
   filename: string,
   sheetName: string,
   headers: string[],
   rows: XlsxCell[][],
-): void {
+): Promise<void> {
+  const XLSX = await import('xlsx')
   const worksheet = XLSX.utils.aoa_to_sheet([
     headers,
     ...rows.map((row) => row.map((cell) => cell ?? '')),

@@ -467,7 +467,7 @@ export default function LeadsPage() {
 
   function handleExport() {
     if (!data) return
-    downloadLeadsXlsx(data.customers, identitiesByCustomer)
+    void downloadLeadsXlsx(data.customers, identitiesByCustomer)
   }
 
   return (

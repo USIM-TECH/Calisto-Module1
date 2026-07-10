@@ -19,6 +19,23 @@ from search.engine import rank_products_safely
 logger = logging.getLogger(__name__)
 
 
+def _extract_city_from_payload(raw_text: str) -> Optional[str]:
+    """Extract city from intent payload text like /choose_city{"city":"Batu Gajah"}.
+    Rasa does not populate tracker.latest_message["entities"] for /intent{...} payloads.
+    """
+    import json
+    if not raw_text or not raw_text.startswith("/"):
+        return None
+    brace = raw_text.find("{")
+    if brace == -1:
+        return None
+    try:
+        data = json.loads(raw_text[brace:])
+        return str(data.get("city") or "").strip() or None
+    except Exception:
+        return None
+
+
 def _store_value(store: Any, *keys: str) -> str:
     for key in keys:
         if isinstance(store, dict):
@@ -62,10 +79,11 @@ class ActionAskCity(Action):
         lang = get_language(tracker)
         metadata = latest_metadata(tracker)
         channel = str(metadata.get("channel") or "").lower()
-        # Check latest entities first (message-level), then slots
+        # Check latest entities first (message-level), then payload, then slots
         entities = latest_entity_values(tracker)
         city_candidate = (
             entities.get("city")
+            or _extract_city_from_payload(raw_text)
             or tracker.get_slot("city")
             or tracker.get_slot("lead_location")
         )
@@ -120,7 +138,16 @@ class ActionFindStore(Action):
         lang = get_language(tracker)
         metadata = latest_metadata(tracker)
         channel = str(metadata.get("channel") or "").lower()
-        city_candidate = tracker.get_slot("city") or tracker.get_slot("lead_location")
+        entities = latest_entity_values(tracker)
+        city_candidate = (
+            entities.get("city")
+            or _extract_city_from_payload(raw_text)
+            or tracker.get_slot("city")
+            or tracker.get_slot("lead_location")
+        )
+        if not city_candidate:
+            msg = tracker.latest_message.get("text") or ""
+            city_candidate = resolve_city(msg) or None
         city = resolve_city(city_candidate)
         if not city:
             dispatcher.utter_message(text=tr(lang, "Please specify the city to find a store.", "Sila nyatakan bandar untuk mencari kedai.", "请提供要查询的城市。"))

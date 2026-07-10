@@ -280,7 +280,7 @@ export default function ProductsPage() {
   }
 
   function handleExportProducts() {
-    downloadProductsXlsx(filtered)
+    void downloadProductsXlsx(filtered)
   }
 
   return (

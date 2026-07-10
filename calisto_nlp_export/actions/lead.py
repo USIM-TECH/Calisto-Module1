@@ -230,6 +230,10 @@ class ActionHandleLeadCaptureInterruption(Action):
             events.append(FollowupAction("action_document_search"))
         elif intent_name == "email_support":
             dispatcher.utter_message(response="utter_email_support")
+        elif intent_name == "support_and_policies":
+            dispatcher.utter_message(response="utter_support_policies_menu")
+        elif intent_name in {"return_policy_inquiry", "warranty_policy_inquiry", "support_actions", "ask_a_question"}:
+            dispatcher.utter_message(response=f"utter_{intent_name}_menu" if intent_name not in {"support_actions", "ask_a_question"} else f"utter_{intent_name}_menu")
         else:
             if requested_slot:
                 dispatcher.utter_message(response=f"utter_ask_{requested_slot}")

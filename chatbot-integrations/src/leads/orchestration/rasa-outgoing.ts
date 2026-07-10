@@ -86,6 +86,7 @@ export function mapNlpResponseToOutgoingMessages(nlpResponse: NLPResponse): Outg
         options: reply.buttons.map((btn: { title: string; payload: string }) => ({
           label: btn.title,
           value: btn.payload,
+          type: btn.payload.startsWith('http://') || btn.payload.startsWith('https://') ? 'url' as const : 'postback' as const,
         })),
       })
       continue

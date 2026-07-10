@@ -36,6 +36,9 @@ services:
       - ./models:/app/models
     networks:
       - calisto-net
+    environment:
+      SQLALCHEMY_SILENCE_UBER_WARNING: "1"
+      PYTHONWARNINGS: ignore
 
   # ── Rasa Action Server ──────────────────────────────────
   action-server:

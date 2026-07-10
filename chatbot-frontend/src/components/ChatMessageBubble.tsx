@@ -52,16 +52,28 @@ export default function ChatMessageBubble({
 
         {payload?.type === 'choice' && (
           <div className={`${content ? 'mt-4 ' : ''}flex flex-wrap gap-2`}>
-            {payload.options.map((option) => (
-              <button
-                className="rounded-full border border-calisto-line bg-calisto-surface px-3 py-2 text-xs font-bold text-calisto-ink transition hover:bg-calisto-surface-muted"
-                key={option.value}
-                onClick={() => onPostback(option.value, option.label)}
-                type="button"
-              >
-                {option.label}
-              </button>
-            ))}
+            {payload.options.map((option) =>
+              option.type === 'url' ? (
+                <a
+                  className="rounded-full border border-calisto-line bg-calisto-surface px-3 py-2 text-xs font-bold text-calisto-ink transition hover:bg-calisto-surface-muted"
+                  href={option.value}
+                  key={option.value}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {option.label}
+                </a>
+              ) : (
+                <button
+                  className="rounded-full border border-calisto-line bg-calisto-surface px-3 py-2 text-xs font-bold text-calisto-ink transition hover:bg-calisto-surface-muted"
+                  key={option.value}
+                  onClick={() => onPostback(option.value, option.label)}
+                  type="button"
+                >
+                  {option.label}
+                </button>
+              ),
+            )}
           </div>
         )}
 

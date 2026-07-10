@@ -65,7 +65,7 @@ function productToRow(product: ProductRecord) {
   ]
 }
 
-export function downloadProductsXlsx(products: ProductRecord[]): void {
+export async function downloadProductsXlsx(products: ProductRecord[]): Promise<void> {
   downloadXlsx(
     `calisto-products-${new Date().toISOString().slice(0, 10)}.xlsx`,
     'Products',

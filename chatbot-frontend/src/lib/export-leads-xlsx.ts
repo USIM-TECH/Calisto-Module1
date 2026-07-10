@@ -19,10 +19,10 @@ function formatIdentities(identities: ChannelIdentityRecord[]): { channels: stri
   return { channels, handles }
 }
 
-export function downloadLeadsXlsx(
+export async function downloadLeadsXlsx(
   customers: CustomerRecord[],
   identitiesByCustomer: Map<string, ChannelIdentityRecord[]>,
-): void {
+): Promise<void> {
   const headers = [
     'customer_id',
     'name',

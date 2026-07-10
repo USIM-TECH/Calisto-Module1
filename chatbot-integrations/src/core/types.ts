@@ -89,7 +89,7 @@ export interface OutgoingCardMessage {
 export interface OutgoingChoiceMessage {
   type: 'choice'
   text: string
-  options: Array<{ label: string; value: string }>
+  options: Array<{ label: string; value: string; type?: 'url' | 'postback' }>
 }
 
 export type OutgoingMessage =

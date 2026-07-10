@@ -1,16 +1,16 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { BookOpen, Boxes, LogOut, MessageSquareText, Radio, Sparkles, UsersRound } from 'lucide-react'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
-import WebchatPage from './pages/WebchatPage'
-import LeadsPage from './pages/LeadsPage'
-import ProductsPage from './pages/ProductsPage'
-import PresetsPage from './pages/PresetsPage'
-import KnowledgePage from './pages/KnowledgePage'
-import ChannelsPage from './pages/ChannelsPage'
-import LoginPage from './pages/LoginPage'
-import NotFoundPage from './pages/NotFoundPage'
-import LeadDetailPage from './pages/LeadDetailPage'
-import ChatbotPage from './pages/ChatbotPage'
+const WebchatPage = lazy(() => import('./pages/WebchatPage'))
+const LeadsPage = lazy(() => import('./pages/LeadsPage'))
+const ProductsPage = lazy(() => import('./pages/ProductsPage'))
+const PresetsPage = lazy(() => import('./pages/PresetsPage'))
+const KnowledgePage = lazy(() => import('./pages/KnowledgePage'))
+const ChannelsPage = lazy(() => import('./pages/ChannelsPage'))
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
+const LeadDetailPage = lazy(() => import('./pages/LeadDetailPage'))
+const ChatbotPage = lazy(() => import('./pages/ChatbotPage'))
 import { clearAdminToken, isAuthenticated } from './lib/auth'
 import calistoLogo from '../calisto.svg'
 
@@ -38,9 +38,11 @@ export default function App() {
   if (location.pathname === '/chatbot') {
     return (
       <div className="min-h-screen bg-calisto-canvas text-calisto-ink">
-        <Routes>
-          <Route path="/chatbot" element={<ChatbotPage />} />
-        </Routes>
+        <Suspense>
+          <Routes>
+            <Route path="/chatbot" element={<ChatbotPage />} />
+          </Routes>
+        </Suspense>
       </div>
     )
   }
@@ -48,9 +50,11 @@ export default function App() {
   if (location.pathname === '/login') {
     return (
       <div className="min-h-screen bg-calisto-canvas text-calisto-ink">
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-        </Routes>
+        <Suspense>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+          </Routes>
+        </Suspense>
       </div>
     )
   }
@@ -113,17 +117,19 @@ export default function App() {
         </header>
 
         <main className="min-h-screen lg:pl-60">
-          <Routes>
-            <Route path="/" element={<Navigate to="/leads" replace />} />
-            <Route path="/webchat" element={<WebchatPage />} />
-            <Route path="/leads" element={<LeadsPage />} />
-            <Route path="/leads/:customerId" element={<LeadDetailPage />} />
-            <Route path="/channels" element={<ChannelsPage />} />
-            <Route path="/products" element={<ProductsPage />} />
-            <Route path="/presets" element={<PresetsPage />} />
-            <Route path="/knowledge" element={<KnowledgePage />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
+          <Suspense>
+            <Routes>
+              <Route path="/" element={<Navigate to="/leads" replace />} />
+              <Route path="/webchat" element={<WebchatPage />} />
+              <Route path="/leads" element={<LeadsPage />} />
+              <Route path="/leads/:customerId" element={<LeadDetailPage />} />
+              <Route path="/channels" element={<ChannelsPage />} />
+              <Route path="/products" element={<ProductsPage />} />
+              <Route path="/presets" element={<PresetsPage />} />
+              <Route path="/knowledge" element={<KnowledgePage />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </Suspense>
         </main>
 
         {showLogoutConfirm && (
