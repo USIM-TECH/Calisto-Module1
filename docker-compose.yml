@@ -129,6 +129,7 @@ services:
       - calisto-net
 
   reasoning-server:
+    profiles: ["reasoning"]
     build:
       context: ./calisto_nlp_export
       dockerfile: Dockerfile.reasoning

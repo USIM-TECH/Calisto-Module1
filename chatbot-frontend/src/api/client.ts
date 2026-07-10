@@ -283,6 +283,13 @@ export function disableChannelAccount(id: string): Promise<void> {
   })
 }
 
+export function enableChannelAccount(id: string): Promise<ChannelAccountRecord> {
+  return request<ChannelAccountRecord>(`/admin/channel-accounts/api/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ enabled: true }),
+  })
+}
+
 export function registerChannelAccountWebhook(id: string, publicBaseUrl?: string): Promise<ChannelAccountRecord> {
   return request<ChannelAccountRecord>(`/admin/channel-accounts/api/${encodeURIComponent(id)}/register-webhook`, {
     method: 'POST',
@@ -292,7 +299,10 @@ export function registerChannelAccountWebhook(id: string, publicBaseUrl?: string
 
 export function updateChannelAccount(
   id: string,
-  payload: Partial<ChannelAccountInput> & { credentials?: Record<string, string | undefined> },
+  payload: Partial<ChannelAccountInput> & {
+    credentials?: Record<string, string | undefined>
+    enabled?: boolean
+  },
 ): Promise<ChannelAccountRecord> {
   return request<ChannelAccountRecord>(`/admin/channel-accounts/api/${encodeURIComponent(id)}`, {
     method: 'PUT',

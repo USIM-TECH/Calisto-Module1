@@ -3,6 +3,7 @@ import { KeyRound, Link2, Plus, Power } from 'lucide-react'
 import {
   createChannelAccount,
   disableChannelAccount,
+  enableChannelAccount,
   getChannelAccounts,
   registerChannelAccountWebhook,
   updateChannelAccount,
@@ -74,6 +75,19 @@ export default function ChannelsPage() {
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to disable account')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function handleEnable(account: ChannelAccountRecord) {
+    if (!window.confirm(`Re-enable "${account.label}"? Webhooks will start accepting messages again.`)) return
+    setBusyId(account.id)
+    try {
+      await enableChannelAccount(account.id)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to enable account')
     } finally {
       setBusyId(null)
     }
@@ -219,7 +233,7 @@ export default function ChannelsPage() {
                           Register webhook
                         </Button>
                       )}
-                      {account.enabled && (
+                      {account.enabled ? (
                         <Button
                           icon={<Power className="h-4 w-4" />}
                           variant="ghost"
@@ -227,6 +241,15 @@ export default function ChannelsPage() {
                           onClick={() => void handleDisable(account)}
                         >
                           Disable
+                        </Button>
+                      ) : (
+                        <Button
+                          icon={<Power className="h-4 w-4" />}
+                          variant="primary"
+                          disabled={busyId === account.id}
+                          onClick={() => void handleEnable(account)}
+                        >
+                          Enable
                         </Button>
                       )}
                     </div>
