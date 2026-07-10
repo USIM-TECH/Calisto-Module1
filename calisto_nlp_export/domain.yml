@@ -808,8 +808,8 @@ responses:
           payload: /find_a_store
         - title: Sokongan & Polisi
           payload: /support_and_policies
-        - title: Tanya Soalan
-          payload: /ask_a_question
+        - title: Buka Aplikasi
+          payload: https://www.lenskart.com/mobile-app
     - condition:
         - type: slot
           name: preferred_language
@@ -820,8 +820,8 @@ responses:
           payload: /find_a_store
         - title: Sokongan & Polisi
           payload: /support_and_policies
-        - title: Tanya Soalan
-          payload: /ask_a_question
+        - title: Buka Aplikasi
+          payload: https://www.lenskart.com/mobile-app
     - condition:
         - type: slot
           name: preferred_language
@@ -832,8 +832,8 @@ responses:
           payload: /find_a_store
         - title: Sokongan & Polisi
           payload: /support_and_policies
-        - title: Tanya Soalan
-          payload: /ask_a_question
+        - title: Buka Aplikasi
+          payload: https://www.lenskart.com/mobile-app
     - condition:
         - type: slot
           name: preferred_language
@@ -844,8 +844,8 @@ responses:
           payload: /find_a_store
         - title: Sokongan & Polisi
           payload: /support_and_policies
-        - title: Tanya Soalan
-          payload: /ask_a_question
+        - title: Buka Aplikasi
+          payload: https://www.lenskart.com/mobile-app
     - condition:
         - type: slot
           name: preferred_language
@@ -856,8 +856,8 @@ responses:
           payload: /find_a_store
         - title: 支持与政策
           payload: /support_and_policies
-        - title: 提问
-          payload: /ask_a_question
+        - title: 打开应用
+          payload: https://www.lenskart.com/mobile-app
     - condition:
         - type: slot
           name: preferred_language
@@ -868,8 +868,8 @@ responses:
           payload: /find_a_store
         - title: 支持与政策
           payload: /support_and_policies
-        - title: 提问
-          payload: /ask_a_question
+        - title: 打开应用
+          payload: https://www.lenskart.com/mobile-app
     - condition:
         - type: slot
           name: preferred_language
@@ -880,8 +880,8 @@ responses:
           payload: /find_a_store
         - title: 支持与政策
           payload: /support_and_policies
-        - title: 提问
-          payload: /ask_a_question
+        - title: 打开应用
+          payload: https://www.lenskart.com/mobile-app
     - condition:
         - type: slot
           name: preferred_language
@@ -892,40 +892,40 @@ responses:
           payload: /find_a_store
         - title: 支持与政策
           payload: /support_and_policies
-        - title: 提问
-          payload: /ask_a_question
+        - title: 打开应用
+          payload: https://www.lenskart.com/mobile-app
     - text: "Would you like to try these frames at a Calisto store?"
       buttons:
         - title: Find Nearest Store
           payload: /find_a_store
         - title: Support & Policies
           payload: /support_and_policies
-        - title: Ask a Question
-          payload: /ask_a_question
+        - title: Open Calisto App
+          payload: https://www.lenskart.com/mobile-app
     - text: "If you'd like, you can try these styles at a Calisto store. What would you like to do next?"
       buttons:
         - title: Find Nearest Store
           payload: /find_a_store
         - title: Support & Policies
           payload: /support_and_policies
-        - title: Ask a Question
-          payload: /ask_a_question
+        - title: Open Calisto App
+          payload: https://www.lenskart.com/mobile-app
     - text: "You can also try these styles in person at a Calisto store. Which next step would you prefer?"
       buttons:
         - title: Find Nearest Store
           payload: /find_a_store
         - title: Support & Policies
           payload: /support_and_policies
-        - title: Ask a Question
-          payload: /ask_a_question
+        - title: Open Calisto App
+          payload: https://www.lenskart.com/mobile-app
     - text: "If you'd like a closer look, you can try these styles in person at a Calisto store. What would you like to do next?"
       buttons:
         - title: Find Nearest Store
           payload: /find_a_store
         - title: Support & Policies
           payload: /support_and_policies
-        - title: Ask a Question
-          payload: /ask_a_question
+        - title: Open Calisto App
+          payload: https://www.lenskart.com/mobile-app
 
   utter_ask_lens_type:
     - condition:
@@ -1582,6 +1582,7 @@ actions:
   - action_handle_store_hours
   - action_show_pricing
   - action_filter_products
+  - action_ask_try_frames
   - action_ask_budget_range
   - action_explain_lens
   - action_find_store

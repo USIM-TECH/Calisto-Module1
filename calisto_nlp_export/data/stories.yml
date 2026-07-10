@@ -23,7 +23,7 @@ stories:
       - slot_was_set:
           - price_range
       - action: action_filter_products
-      - action: utter_ask_try_frames
+      - action: action_ask_try_frames
 
   - story: Lens and Vision Flow
     steps:
@@ -51,7 +51,7 @@ stories:
       - slot_was_set:
           - price_range
       - action: action_filter_products
-      - action: utter_ask_try_frames
+      - action: action_ask_try_frames
 
   - story: Combined product search flow
     steps:

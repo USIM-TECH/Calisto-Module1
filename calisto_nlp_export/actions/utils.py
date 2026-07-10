@@ -457,8 +457,19 @@ def get_previous_intent(tracker: Tracker) -> str:
     return ""
 
 
+MENU_INTENTS = {
+    "support_and_policies",
+    "support_actions",
+    "ask_a_question",
+    "return_policy_inquiry",
+    "warranty_policy_inquiry",
+    "ask_faq",
+    "email_support",
+}
+
+
 def resolve_domain_from_intent(intent_name: str) -> str:
-    if intent_name in SUPPORT_INTENTS:
+    if intent_name in SUPPORT_INTENTS or intent_name in MENU_INTENTS:
         return "support"
     if intent_name in SHOPPING_INTENTS:
         return "shopping"
@@ -846,29 +857,22 @@ def choose_product_image_theme(product_type: str, preferred_service: Optional[st
     return "eyewear"
 
 
+APP_DOWNLOAD_URL = "https://www.lenskart.com/mobile-app"
+
 def lead_buttons(lang: str, preferred_service: Optional[str] = None) -> List[Dict[str, str]]:
-    payload = '/capture_lead'
-    if preferred_service:
-        safe_service = str(preferred_service).replace('"', '\\"')
-        payload = f'/capture_lead{{"preferred_service":"{safe_service}"}}'
     return [
-        {"title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "payload": "/book_appointment"},
-        {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-        {"title": tr(lang, "Ask a Question", "Tanya Soalan", "提问"), "payload": payload},
+        {"type": "postback", "title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "value": "/book_appointment"},
+        {"type": "postback", "title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "value": "/find_a_store"},
+        {"type": "url", "title": tr(lang, "Open Calisto App", "Buka Aplikasi Calisto", "打开 Calisto 应用"), "value": APP_DOWNLOAD_URL},
     ]
 
 
 def support_nav_buttons(lang: str) -> List[Dict[str, str]]:
-    """Standardised 3-button navigation tail appended to every support response.
-
-    Keeps navigation consistent across all support flows so the user always
-    has the same exit paths regardless of which support action handled their
-    request.
-    """
+    """Standardised 3-button navigation tail appended to every support response."""
     return [
-        {"title": tr(lang, "Back to Support", "Kembali ke Sokongan", "返回支持"), "payload": "/support_and_policies"},
-        {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-        {"title": tr(lang, "Ask a Question", "Tanya Soalan", "提问"), "payload": "/ask_a_question"},
+        {"type": "postback", "title": tr(lang, "Back to Support", "Kembali ke Sokongan", "返回支持"), "value": "/support_and_policies"},
+        {"type": "postback", "title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "value": "/find_a_store"},
+        {"type": "url", "title": tr(lang, "Open Calisto App", "Buka Aplikasi Calisto", "打开 Calisto 应用"), "value": APP_DOWNLOAD_URL},
     ]
 
 
@@ -1059,9 +1063,9 @@ def emit_product_card(dispatcher: CollectingDispatcher, product: Dict[str, Any],
     actions = []
     actions.append({"type": "postback", "title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "value": _book_payload})
     actions.append({
-        "type": "postback",
-        "title": tr(lang, "Ask a Question", "Tanya Soalan", "提问"),
-        "value": lead_buttons(lang, preferred_service)[-1]["payload"],
+        "type": "url",
+        "title": tr(lang, "Open Product Link", "Buka Pautan Produk", "打开产品链接"),
+        "value": "https://www.lenskart.com/vincent-chase-vc-s11748-c8-sunglasses.html",
     })
 
     dispatcher.utter_message(

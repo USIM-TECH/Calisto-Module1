@@ -76,12 +76,16 @@ class ActionExplainLens(Action):
         else:
             dispatcher.utter_message(text=tr(lang, "I can explain different lens solutions if you tell me which one you are considering.", "Saya boleh terangkan pilihan kanta yang berbeza jika anda beritahu yang mana anda sedang pertimbangkan.", "如果您告诉我您正在考虑哪一种，我可以为您解释不同的镜片方案。"))
         dispatcher.utter_message(
-            text=tr(lang, "If you want, I can help you compare more lens options, find a store, or arrange a consultation.", "Jika anda mahu, saya boleh bantu bandingkan lebih banyak pilihan kanta, cari kedai, atau aturkan konsultasi.", "如果您愿意，我可以帮您比较更多镜片方案、查找门店，或安排咨询。"),
-            buttons=[
-                {"title": tr(lang, "Set Budget", "Tetapkan Bajet", "设置预算"), "payload": '/select_budget{"price_range":"RM100 - RM250"}'},
-                {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-                {"title": tr(lang, "Ask a Question", "Tanya Soalan", "提问"), "payload": '/capture_lead{"preferred_service":"Lens Consultation"}'},
-            ],
+            json_message={
+                "type": "card",
+                "title": tr(lang, "Lens Options", "Pilihan Kanta", "镜片方案"),
+                "subtitle": tr(lang, "If you want, I can help you compare more lens options, find a store, or arrange a consultation.", "Jika anda mahu, saya boleh bantu bandingkan lebih banyak pilihan kanta, cari kedai, atau aturkan konsultasi.", "如果您愿意，我可以帮您比较更多镜片方案、查找门店，或安排咨询。"),
+                "actions": [
+                    {"type": "postback", "title": tr(lang, "Set Budget", "Tetapkan Bajet", "设置预算"), "value": '/select_budget{"price_range":"RM100 - RM250"}'},
+                    {"type": "postback", "title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "value": "/find_a_store"},
+                    {"type": "url", "title": tr(lang, "Open Calisto App", "Buka Aplikasi Calisto", "打开 Calisto 应用"), "value": APP_DOWNLOAD_URL},
+                ],
+            }
         )
         return events
 
@@ -378,7 +382,7 @@ class ActionShowPricing(Action):
                 "buttons": [
                     {"title": tr(lang, "Browse Frames", "Lihat Bingkai", "浏览镜框"), "payload": '/select_product_type{"product_type":"Designer Frames"}'},
                     {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-                    {"title": tr(lang, "Ask a Question", "Tanya Soalan", "提问"), "payload": '/capture_lead{"preferred_service":"Designer Frames"}'},
+                    {"title": tr(lang, "Open Calisto App", "Buka Aplikasi Calisto", "打开 Calisto 应用")},
                 ],
             },
             "Luxury Sunglasses": {
@@ -392,7 +396,7 @@ class ActionShowPricing(Action):
                 "buttons": [
                     {"title": tr(lang, "Browse Sunglasses", "Lihat Cermin Mata Hitam", "浏览太阳镜"), "payload": '/select_product_type{"product_type":"Luxury Sunglasses"}'},
                     {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-                    {"title": tr(lang, "Ask a Question", "Tanya Soalan", "提问"), "payload": '/capture_lead{"preferred_service":"Luxury Sunglasses"}'},
+                    {"title": tr(lang, "Open Calisto App", "Buka Aplikasi Calisto", "打开 Calisto 应用")},
                 ],
             },
             "Lens Consultation": {
@@ -406,12 +410,55 @@ class ActionShowPricing(Action):
                 "buttons": [
                     {"title": tr(lang, "Lens Options", "Pilihan Kanta", "镜片方案"), "payload": "/lens_vision_solutions"},
                     {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-                    {"title": tr(lang, "Ask a Question", "Tanya Soalan", "提问"), "payload": '/capture_lead{"preferred_service":"Lens Consultation"}'},
+                    {"title": tr(lang, "Open Calisto App", "Buka Aplikasi Calisto", "打开 Calisto 应用")},
                 ],
             },
         }
 
         pricing_info = pricing_map.get(preferred_service, pricing_map["Designer Frames"])
         text = "\n\n".join([pricing_info["headline"], *pricing_info["lines"], pricing_info["note"]])
-        dispatcher.utter_message(text=text, buttons=pricing_info["buttons"])
+        browse_btn, store_btn, app_btn = pricing_info["buttons"]
+        dispatcher.utter_message(
+            json_message={
+                "type": "card",
+                "title": pricing_info["headline"],
+                "subtitle": text,
+                "actions": [
+                    {"type": "postback", "title": browse_btn["title"], "value": browse_btn["payload"]},
+                    {"type": "postback", "title": store_btn["title"], "value": store_btn["payload"]},
+                    {"type": "url", "title": app_btn["title"], "value": APP_DOWNLOAD_URL},
+                ],
+            }
+        )
         return events
+
+
+class ActionAskTryFrames(Action):
+    def name(self) -> Text:
+        return "action_ask_try_frames"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        lang = get_language(tracker)
+        dispatcher.utter_message(
+            json_message={
+                "type": "card",
+                "title": tr(lang, "Try in Store", "Cuba di Kedai", "到店体验"),
+                "subtitle": tr(
+                    lang,
+                    "Would you like to try these frames at a Calisto store?",
+                    "Adakah anda mahu mencuba bingkai ini di kedai Calisto?",
+                    "您想在 Calisto 门店亲身体验这些镜框吗？",
+                ),
+                "actions": [
+                    {"type": "postback", "title": tr(lang, "Find Nearest Store", "Cari Kedai Terdekat", "查找最近门店"), "value": "/find_a_store"},
+                    {"type": "postback", "title": tr(lang, "Support & Policies", "Sokongan & Polisi", "支持与政策"), "value": "/support_and_policies"},
+                    {"type": "url", "title": tr(lang, "Open Calisto App", "Buka Aplikasi Calisto", "打开 Calisto 应用"), "value": APP_DOWNLOAD_URL},
+                ],
+            }
+        )
+        return []
