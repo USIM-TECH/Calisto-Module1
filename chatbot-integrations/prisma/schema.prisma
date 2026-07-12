@@ -319,6 +319,16 @@ model Store {
   @@index([state])
 }
 
+/// Calisto app download links and branding shown in chatbot promo cards.
+/// Only one row is used (id = "default"). Edit via Prisma Studio or the API.
+model AppConfig {
+  id            String   @id @default("default")
+  playStoreUrl  String?
+  appStoreUrl   String?
+  imageUrl      String?
+  updatedAt     DateTime @updatedAt
+}
+
 model KnowledgeDocument {
   id        String   @id @default(cuid())
   source    String   @unique

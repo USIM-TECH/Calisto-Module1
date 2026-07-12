@@ -64,6 +64,7 @@ async function loadLeadDetailPayload(
     },
   }
 }
+import { getPrismaClient } from '../db/prisma.js'
 import { registerKnowledgeRoutes } from '../knowledge/routes.js'
 import { registerPresetRoutes, registerProductRoutes, registerStoreRoutes } from '../products/routes.js'
 import { registerChannelAccountRoutes, ChannelAccountRegistry } from '../channel-accounts/index.js'
@@ -345,6 +346,17 @@ export function createApp(dependencies: AppDependencies): Express {
       })
     })
   }
+
+  // ── GET /app-config ──────────────────────────────────────────────────────
+  app.get('/app-config', async (_req, res, next) => {
+    try {
+      const prisma = getPrismaClient()
+      const row = await (prisma as any).appConfig.findUnique({ where: { id: 'default' } })
+      res.json(row ?? {})
+    } catch (error) {
+      next(error)
+    }
+  })
 
   // ── POST /leads ───────────────────────────────────────────────────────────
   // Called by Rasa's ActionSubmitLeadCapture after the lead capture form

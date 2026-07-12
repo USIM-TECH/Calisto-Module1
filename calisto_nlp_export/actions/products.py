@@ -83,10 +83,10 @@ class ActionExplainLens(Action):
                 "actions": [
                     {"type": "postback", "title": tr(lang, "Set Budget", "Tetapkan Bajet", "设置预算"), "value": '/select_budget{"price_range":"RM100 - RM250"}'},
                     {"type": "postback", "title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "value": "/find_a_store"},
-                    {"type": "url", "title": tr(lang, "Open Calisto App", "Buka Aplikasi Calisto", "打开 Calisto 应用"), "value": APP_DOWNLOAD_URL},
                 ],
             }
         )
+        emit_app_promo_card(dispatcher, lang)
         return events
 
 
@@ -382,7 +382,6 @@ class ActionShowPricing(Action):
                 "buttons": [
                     {"title": tr(lang, "Browse Frames", "Lihat Bingkai", "浏览镜框"), "payload": '/select_product_type{"product_type":"Designer Frames"}'},
                     {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-                    {"title": tr(lang, "Open Calisto App", "Buka Aplikasi Calisto", "打开 Calisto 应用")},
                 ],
             },
             "Luxury Sunglasses": {
@@ -396,7 +395,6 @@ class ActionShowPricing(Action):
                 "buttons": [
                     {"title": tr(lang, "Browse Sunglasses", "Lihat Cermin Mata Hitam", "浏览太阳镜"), "payload": '/select_product_type{"product_type":"Luxury Sunglasses"}'},
                     {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-                    {"title": tr(lang, "Open Calisto App", "Buka Aplikasi Calisto", "打开 Calisto 应用")},
                 ],
             },
             "Lens Consultation": {
@@ -410,14 +408,13 @@ class ActionShowPricing(Action):
                 "buttons": [
                     {"title": tr(lang, "Lens Options", "Pilihan Kanta", "镜片方案"), "payload": "/lens_vision_solutions"},
                     {"title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "payload": "/find_a_store"},
-                    {"title": tr(lang, "Open Calisto App", "Buka Aplikasi Calisto", "打开 Calisto 应用")},
                 ],
             },
         }
 
         pricing_info = pricing_map.get(preferred_service, pricing_map["Designer Frames"])
         text = "\n\n".join([pricing_info["headline"], *pricing_info["lines"], pricing_info["note"]])
-        browse_btn, store_btn, app_btn = pricing_info["buttons"]
+        browse_btn, store_btn = pricing_info["buttons"]
         dispatcher.utter_message(
             json_message={
                 "type": "card",
@@ -426,10 +423,10 @@ class ActionShowPricing(Action):
                 "actions": [
                     {"type": "postback", "title": browse_btn["title"], "value": browse_btn["payload"]},
                     {"type": "postback", "title": store_btn["title"], "value": store_btn["payload"]},
-                    {"type": "url", "title": app_btn["title"], "value": APP_DOWNLOAD_URL},
                 ],
             }
         )
+        emit_app_promo_card(dispatcher, lang)
         return events
 
 
@@ -457,8 +454,8 @@ class ActionAskTryFrames(Action):
                 "actions": [
                     {"type": "postback", "title": tr(lang, "Find Nearest Store", "Cari Kedai Terdekat", "查找最近门店"), "value": "/find_a_store"},
                     {"type": "postback", "title": tr(lang, "Support & Policies", "Sokongan & Polisi", "支持与政策"), "value": "/support_and_policies"},
-                    {"type": "url", "title": tr(lang, "Open Calisto App", "Buka Aplikasi Calisto", "打开 Calisto 应用"), "value": APP_DOWNLOAD_URL},
                 ],
             }
         )
+        emit_app_promo_card(dispatcher, lang)
         return []

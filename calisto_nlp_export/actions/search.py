@@ -292,7 +292,8 @@ class ActionDocumentSearch(Action):
             dispatcher.utter_message(response="utter_return_policy_menu")
         else:
             dispatcher.utter_message(response="utter_support_actions_menu")
-            
+
+        emit_app_promo_card(dispatcher, lang)
         return []
 
 
@@ -1034,6 +1035,9 @@ def search_products_engine(
         product_dict["_channel"] = str(metadata.get("channel") or "").lower()
         emit_product_card(dispatcher, product_dict, str(ranking_type) if ranking_type else "", lang)
         emitted_count += 1
+
+    if emitted_count > 0:
+        emit_app_promo_card(dispatcher, lang)
 
     if emitted_count == 0:
         if clear_brand_filter:

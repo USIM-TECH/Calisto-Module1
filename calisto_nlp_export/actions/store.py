@@ -164,8 +164,8 @@ class ActionFindStore(Action):
             return events
 
         _emit_store_cards(dispatcher, store_records, str(city), lang, channel)
+        emit_app_promo_card(dispatcher, lang)
         return events
-
 
 
 class ActionHandleStoreHours(Action):
@@ -207,6 +207,7 @@ class ActionHandleStoreHours(Action):
                     {"title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "payload": '/book_appointment{"service":"Store Visit"}'},
                 ],
             )
+            emit_app_promo_card(dispatcher, lang)
             return events
 
         dispatcher.utter_message(
@@ -216,6 +217,7 @@ class ActionHandleStoreHours(Action):
                 {"title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "payload": '/book_appointment{"service":"Store Visit"}'},
             ],
         )
+        emit_app_promo_card(dispatcher, lang)
         return events
 
 
@@ -328,6 +330,7 @@ class ActionBookAppointment(Action):
                 ],
             }
         )
+        emit_app_promo_card(dispatcher, lang)
         return events
 
 

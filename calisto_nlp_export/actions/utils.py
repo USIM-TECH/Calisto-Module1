@@ -857,13 +857,64 @@ def choose_product_image_theme(product_type: str, preferred_service: Optional[st
     return "eyewear"
 
 
-APP_DOWNLOAD_URL = "https://www.lenskart.com/mobile-app"
+_PLAY_STORE_URL_DEFAULT = "https://play.google.com/store/apps/details?id=com.lenskart.app&hl=en_IN"
+_APP_STORE_URL_DEFAULT = "https://apps.apple.com/in/app/lenskart-eyewear/id970343205"
+_APP_IMAGE_URL_DEFAULT = "https://s3-eu-west-1.amazonaws.com/tpd/logos/66f14812d36fdcc4d52b2525/0x0.png"
+
+_APP_CONFIG_CACHE: Dict[str, Any] = {"ts": 0.0, "data": None}
+_APP_CONFIG_TTL = 60.0
+
+
+def _get_app_config() -> Dict[str, Any]:
+    now = time.monotonic()
+    if _APP_CONFIG_CACHE["data"] is not None and now - _APP_CONFIG_CACHE["ts"] < _APP_CONFIG_TTL:
+        return _APP_CONFIG_CACHE["data"]
+    try:
+        data = gateway.get_app_config() or {}
+    except Exception:
+        data = {}
+    _APP_CONFIG_CACHE["data"] = data
+    _APP_CONFIG_CACHE["ts"] = now
+    return data
+
+
+def emit_app_promo_card(dispatcher: CollectingDispatcher, lang: str = "en") -> None:
+    """Emit a dedicated Calisto app promotion card with Play Store and App Store links."""
+    cfg = _get_app_config()
+    play_store_url = cfg.get("playStoreUrl") or _PLAY_STORE_URL_DEFAULT
+    app_store_url = cfg.get("appStoreUrl") or _APP_STORE_URL_DEFAULT
+    image_url = cfg.get("imageUrl") or _APP_IMAGE_URL_DEFAULT
+    dispatcher.utter_message(
+        json_message={
+            "type": "card",
+            "title": tr(lang, "Download the Calisto App", "Muat Turun Aplikasi Calisto", "下载 Calisto 应用"),
+            "subtitle": tr(
+                lang,
+                "Browse eyewear, book appointments, and manage your orders — all in one place.",
+                "Lihat cermin mata, tempah temujanji, dan urus pesanan anda — semuanya di satu tempat.",
+                "浏览眼镜、预约到店、管理订单——一站式体验。",
+            ),
+            "imageUrl": image_url,
+            "actions": [
+                {
+                    "type": "url",
+                    "title": tr(lang, "Google Play", "Google Play", "Google Play"),
+                    "value": play_store_url,
+                },
+                {
+                    "type": "url",
+                    "title": tr(lang, "App Store", "App Store", "App Store"),
+                    "value": app_store_url,
+                },
+            ],
+        }
+    )
+
 
 def lead_buttons(lang: str, preferred_service: Optional[str] = None) -> List[Dict[str, str]]:
     return [
         {"type": "postback", "title": tr(lang, "Book Visit", "Tempah Lawatan", "预约到店"), "value": "/book_appointment"},
         {"type": "postback", "title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "value": "/find_a_store"},
-        {"type": "url", "title": tr(lang, "Open Calisto App", "Buka Aplikasi Calisto", "打开 Calisto 应用"), "value": APP_DOWNLOAD_URL},
     ]
 
 
@@ -872,7 +923,6 @@ def support_nav_buttons(lang: str) -> List[Dict[str, str]]:
     return [
         {"type": "postback", "title": tr(lang, "Back to Support", "Kembali ke Sokongan", "返回支持"), "value": "/support_and_policies"},
         {"type": "postback", "title": tr(lang, "Find Store", "Cari Kedai", "查找门店"), "value": "/find_a_store"},
-        {"type": "url", "title": tr(lang, "Open Calisto App", "Buka Aplikasi Calisto", "打开 Calisto 应用"), "value": APP_DOWNLOAD_URL},
     ]
 
 

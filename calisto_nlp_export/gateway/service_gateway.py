@@ -98,6 +98,11 @@ class ServiceGateway:
             return stores if isinstance(stores, list) else None
         return None
 
+    def get_app_config(self) -> Optional[Dict[str, Any]]:
+        """Return app download links and image from the DB (AppConfig table)."""
+        response = self.get_json("/app-config")
+        return response if isinstance(response, dict) else None
+
     def submit_lead(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         return self._request("POST", "/leads", payload)
 gateway = ServiceGateway()
