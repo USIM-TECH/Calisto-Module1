@@ -573,7 +573,7 @@ def route_support_flow(
     tracker: Tracker,
     intent_name: str,
 ) -> List[Dict[Text, Any]]:
-    lang = detect_language_from_text(tracker.latest_message.get("text") or "") or "en"
+    lang = get_language(tracker)
     
     service_map = {
         "return_request": "Return Request",
@@ -597,11 +597,36 @@ def route_support_flow(
     # The ask_faq path (action_document_search) is responsible for the buttons-only
     # flow where the user is just asking about policy without initiating an action.
     _support_intros = [
-        f"Of course. I'll connect you with our support team for your {preferred_service.lower()} right away.",
-        f"Understood. Let me get our support team on your {preferred_service.lower()}.",
-        f"No problem. I'm routing your {preferred_service.lower()} to the right team now.",
-        f"Got it. Our support team will take care of your {preferred_service.lower()} from here.",
-        f"Noted. I'm passing your {preferred_service.lower()} to a specialist who can assist you.",
+        tr(
+            lang,
+            f"Of course. I'll connect you with our support team for your {preferred_service.lower()} right away.",
+            f"Baik. Saya akan sambungkan anda dengan pasukan sokongan kami untuk {preferred_service.lower()} anda.",
+            f"好的。我会马上帮您联系支持团队处理您的{preferred_service.lower()}。",
+        ),
+        tr(
+            lang,
+            f"Understood. Let me get our support team on your {preferred_service.lower()}.",
+            f"Faham. Saya akan minta pasukan sokongan kami bantu dengan {preferred_service.lower()} anda.",
+            f"明白。我会让支持团队协助处理您的{preferred_service.lower()}。",
+        ),
+        tr(
+            lang,
+            f"No problem. I'm routing your {preferred_service.lower()} to the right team now.",
+            f"Tiada masalah. Saya sedang salurkan {preferred_service.lower()} anda kepada pasukan yang sesuai.",
+            f"没问题。我现在会把您的{preferred_service.lower()}转交给相关团队。",
+        ),
+        tr(
+            lang,
+            f"Got it. Our support team will take care of your {preferred_service.lower()} from here.",
+            f"Baik, diterima. Pasukan sokongan kami akan uruskan {preferred_service.lower()} anda selepas ini.",
+            f"收到。接下来我们的支持团队会处理您的{preferred_service.lower()}。",
+        ),
+        tr(
+            lang,
+            f"Noted. I'm passing your {preferred_service.lower()} to a specialist who can assist you.",
+            f"Baik, saya catatkan. Saya akan serahkan {preferred_service.lower()} anda kepada pakar yang boleh membantu.",
+            f"好的。我会把您的{preferred_service.lower()}交给可协助您的专员。",
+        ),
     ]
     dispatcher.utter_message(text=random.choice(_support_intros))
 
@@ -1293,75 +1318,75 @@ from forms.validators import (
 )
 
 
-def detect_language_from_text(text: str) -> str:
-    normalized = str(text or "").strip().lower()
-    if not normalized:
-        return ""
+# Strong Malay markers — unambiguous, high-weight signals (score 2 each)
+_MALAY_STRONG = [
+    # pronouns / core verbs
+    "saya", "nak", "mahu", "ingin", "perlukan", "perlu",
+    "tunjukkan", "tunjuk",
+    # greetings
+    "selamat pagi", "selamat petang", "selamat malam", "selamat datang",
+    "assalamualaikum", "apa khabar", "terima kasih",
+    # eyewear-specific
+    "cermin mata", "bingkai", "kanta sentuh", "kanta",
+    # shopping
+    "kedai", "cawangan", "harga", "produk", "cadangkan", "cadangan",
+    "pilihan", "koleksi", "jenama", "tempah", "janji temu",
+    "penghantaran", "pesanan", "nombor", "pembelian", "membeli",
+    "murah", "mahal", "bajet", "berdekatan", "terdekat",
+    # support
+    "waranti", "bantuan", "semak", "tolong",
+    "selepas jualan", "khidmat pelanggan", "orang sebenar",
+    "bayaran balik", "pertukaran", "pembaikan", "pemulangan",
+    "jadualkan semula", "tukar masa", "batalkan",
+    # people
+    "lelaki", "perempuan", "wanita",
+    # compound phrases
+    "saya nak", "saya mahu", "saya ingin", "boleh tak", "boleh ke",
+    "ada tak", "ada ke", "macam mana", "camne", "camna",
+    "nak tengok", "nak beli", "nak tanya", "nak tahu",
+    "di mana", "kat mana", "cari kedai",
+    "pukul berapa", "waktu operasi",
+]
 
-    # Button payloads like `/browse_eyewear` or `/share_service_interest{...}`
-    # are internal control messages, not user language signals.
-    if normalized.startswith("/"):
-        return ""
+# Weak Malay markers — short words that can appear in mixed text (score 1 each)
+_MALAY_WEAK = [
+    "tak", "tidak", "ya", "baik", "betul", "dah", "bila",
+    "pukul", "waktu", "buka", "tutup", "dekat", "lokasi", "alamat",
+    "telefon", "hubungi", "bawah", "atas", "rosak", "patah", "longgar",
+    "tuntutan", "warna", "bentuk", "bahan", "saiz", "salah",
+    "minta", "mohon", "sila", "butiran", "maklumat",
+    "jejak", "hantar", "lambat", "lewat", "batal",
+    "ubah", "tukar", "baiki", "staf", "ejen", "polisi", "dasar",
+    "sokongan", "outlet", "lihat", "cari", "berapa", "bagaimana",
+    "apakah", "adakah", "jumpa", "spek", "boleh",
+]
+
+
+def detect_language_from_text(text: str) -> str:
+    """Detect language from the current message text. Returns 'ms', 'zh', or 'en'."""
+    normalized = str(text or "").strip().lower()
+    if not normalized or normalized.startswith("/"):
+        return "en"
 
     if re.search(r"[\u3400-\u9FFF]", normalized):
         return "zh"
 
-    english_keywords = [
-        "hello",
-        "hi",
-        "help",
-        "price",
-        "store",
-        "appointment",
-        "warranty",
-        "order",
-        "recommend",
-        "browse",
-        "frames",
-        "lenses",
-    ]
-    malay_keywords = [
-        "saya",
-        "nak",
-        "mahu",
-        "ingin",
-        "boleh",
-        "lihat",
-        "cari",
-        "produk",
-        "harga",
-        "kedai",
-        "cawangan",
-        "waranti",
-        "tempah",
-        "janji temu",
-        "berdekatan",
-        "tolong",
-        "bantuan",
-        "semak",
-        "pesanan",
-        "emel",
-        "nombor",
-        "laraskan",
-        "penghantaran",
-    ]
-    if any(keyword in normalized for keyword in malay_keywords):
+    malay_score = 0
+    for phrase in _MALAY_STRONG:
+        if re.search(rf"(?<![a-z]){re.escape(phrase)}(?![a-z])", normalized):
+            malay_score += 2
+    for word in _MALAY_WEAK:
+        if re.search(rf"\b{re.escape(word)}\b", normalized):
+            malay_score += 1
+
+    if malay_score >= 2:
         return "ms"
-
-    if any(keyword in normalized for keyword in english_keywords):
-        return "en"
-
-    if len(normalized) <= 3:
-        return ""
 
     return "en"
 
 
 def get_language(tracker: Tracker) -> str:
-    slot_language = str(tracker.get_slot("preferred_language") or "").strip().lower()
-    if slot_language in {"en", "ms", "zh"}:
-        return slot_language
-
+    """Always detect language fresh from the current message — no slot fallback."""
     return detect_language_from_text(tracker.latest_message.get("text") or "")
 
 
@@ -1371,4 +1396,3 @@ def tr(lang: str, en: str, ms: str, zh: str) -> str:
     if lang == "zh":
         return zh
     return en
-

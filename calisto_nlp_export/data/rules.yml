@@ -453,3 +453,14 @@ rules:
       - intent: ask_availability
       - action: action_set_language
       - action: action_handle_availability
+
+  - rule: Handle goodbye
+    steps:
+      - intent: goodbye
+      - action: action_set_language
+      - action: action_handle_goodbye
+
+  - rule: Handle language switch
+    steps:
+      - intent: switch_language
+      - action: action_set_language

@@ -1,6 +1,8 @@
 version: "3.1"
 
 intents:
+  - goodbye
+  - switch_language
   - email_support
   - support_and_policies
   - support_actions
@@ -1581,6 +1583,7 @@ actions:
   - action_handle_greet
   - action_book_appointment
   - action_handle_availability
+  - action_handle_goodbye
 
 session_config:
   session_expiration_time: 60

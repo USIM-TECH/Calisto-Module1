@@ -79,6 +79,7 @@ FORM_INTERRUPTION_INTENTS = {
     "warranty_support",
     "repair_support",
     "human_handoff",
+    "goodbye",
 }
 
 # Mapping from intent to general flow name

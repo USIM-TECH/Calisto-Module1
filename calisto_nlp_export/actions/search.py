@@ -293,7 +293,6 @@ class ActionDocumentSearch(Action):
         else:
             dispatcher.utter_message(response="utter_support_actions_menu")
 
-        emit_app_promo_card(dispatcher, lang)
         return []
 
 
@@ -1037,7 +1036,6 @@ def search_products_engine(
         emitted_count += 1
 
     if emitted_count > 0:
-        emit_app_promo_card(dispatcher, lang)
 
     if emitted_count == 0:
         if clear_brand_filter:

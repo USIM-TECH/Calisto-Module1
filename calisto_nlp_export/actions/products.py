@@ -86,7 +86,6 @@ class ActionExplainLens(Action):
                 ],
             }
         )
-        emit_app_promo_card(dispatcher, lang)
         return events
 
 
@@ -426,7 +425,6 @@ class ActionShowPricing(Action):
                 ],
             }
         )
-        emit_app_promo_card(dispatcher, lang)
         return events
 
 
@@ -457,5 +455,4 @@ class ActionAskTryFrames(Action):
                 ],
             }
         )
-        emit_app_promo_card(dispatcher, lang)
         return []

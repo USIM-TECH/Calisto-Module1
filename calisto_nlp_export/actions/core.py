@@ -29,12 +29,16 @@ class ActionSetLanguage(Action):
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
         current = str(tracker.get_slot("preferred_language") or "").strip().lower()
-        detected = detect_language_from_text(tracker.latest_message.get("text") or "")
-        if current in {"en", "ms", "zh"}:
-            language = current
-        else:
-            language = detected or "en"
-        return [SlotSet("preferred_language", language)]
+        language = get_language(tracker)
+        events = [SlotSet("preferred_language", language)]
+        if current and current != language and current in {"en", "ms", "zh"}:
+            dispatcher.utter_message(text=tr(
+                language,
+                "Got it, switching to English.",
+                "Baik, saya akan berbahasa Melayu sekarang.",
+                "好的，我现在切换到中文。",
+            ))
+        return events
 
 
 
@@ -146,7 +150,7 @@ class ActionHandleGreet(Action):
 
     def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
         active_loop = get_active_loop_name(tracker)
-        lang = tracker.get_slot("preferred_language") or "en"
+        lang = get_language(tracker)  # respects mid-conversation language switch
 
         if not active_loop:
             self._send_greet(dispatcher, lang)
@@ -159,3 +163,37 @@ class ActionHandleGreet(Action):
         return events
 
 
+
+class ActionHandleGoodbye(Action):
+    def name(self) -> Text:
+        return "action_handle_goodbye"
+
+    def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        import random
+        lang = get_language(tracker)
+
+        _en = random.choice([
+            "Thank you for visiting Calisto Eyewear. We hope to see you soon!",
+            "Thanks for chatting with us! Feel free to come back anytime.",
+            "It was great helping you today. Take care!",
+            "Thank you! Don't hesitate to reach out if you need anything else.",
+            "Goodbye! We look forward to helping you again soon.",
+        ])
+        _ms = random.choice([
+            "Terima kasih kerana melawat Calisto Eyewear. Jumpa lagi!",
+            "Terima kasih kerana berbual dengan kami! Jangan segan untuk kembali bila-bila masa.",
+            "Seronok dapat membantu anda hari ini. Jaga diri!",
+            "Terima kasih! Jangan teragak-agak untuk menghubungi kami jika ada apa-apa lagi.",
+            "Selamat tinggal! Kami berharap dapat membantu anda lagi tidak lama lagi.",
+        ])
+        _zh = random.choice([
+            "感谢您光临 Calisto Eyewear，期待再次为您服务！",
+            "感谢您的咨询！随时欢迎您回来。",
+            "很高兴今天能帮到您，保重！",
+            "谢谢！如有任何需要，随时联系我们。",
+            "再见！期待很快再次为您服务。",
+        ])
+
+        dispatcher.utter_message(text=tr(lang, _en, _ms, _zh))
+        emit_app_promo_card(dispatcher, lang)
+        return []

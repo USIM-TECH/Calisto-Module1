@@ -234,6 +234,9 @@ class ActionHandleLeadCaptureInterruption(Action):
             dispatcher.utter_message(response="utter_support_policies_menu")
         elif intent_name in {"return_policy_inquiry", "warranty_policy_inquiry", "support_actions", "ask_a_question"}:
             dispatcher.utter_message(response=f"utter_{intent_name}_menu" if intent_name not in {"support_actions", "ask_a_question"} else f"utter_{intent_name}_menu")
+        elif intent_name == "goodbye":
+            from actions.core import ActionHandleGoodbye
+            events.extend(ActionHandleGoodbye().run(dispatcher, tracker, domain))
         else:
             if requested_slot:
                 dispatcher.utter_message(response=f"utter_ask_{requested_slot}")
