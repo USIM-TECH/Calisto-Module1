@@ -1035,8 +1035,6 @@ def search_products_engine(
         emit_product_card(dispatcher, product_dict, str(ranking_type) if ranking_type else "", lang)
         emitted_count += 1
 
-    if emitted_count > 0:
-
     if emitted_count == 0:
         if clear_brand_filter:
             emit_slot("brand", None)
