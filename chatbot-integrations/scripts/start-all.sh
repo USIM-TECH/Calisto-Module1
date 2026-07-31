@@ -4,13 +4,11 @@
 #
 # What it starts (in order):
 #   1. MySQL + Redis            (Docker:  chatbot-integrations/docker-compose.mysql.yml)
-#   2. Rasa NLP + action server (Docker:  calisto_nlp_export/docker-compose.yml)
+#   2. Rasa NLP + action server (Local:   calisto_nlp_export/start.sh local)
 #   3. Cloudflare quick tunnel  (host:    cloudflared -> http://localhost:3000)
 #   4. Backend integration API  (host:    npm run dev, port 3000)
 #   5. Frontend admin dashboard (host:    npm run dev / vite, port 5173)
-#   6. Meta webhooks            (WhatsApp + Messenger via set-meta-webhooks.sh;
-#                                Instagram is dashboard-only and is printed, not set)
-#   7. Telegram webhook         (register-telegram-webhook.ts when TELEGRAM_BOT_TOKEN is set)
+#   6. Meta + Telegram webhooks (via set-meta-webhooks.sh and register-telegram-webhook.ts)
 #
 # Bootstrap: runs `npm install` when node_modules is missing, and
 # `prisma migrate deploy` before starting the backend.
@@ -19,6 +17,10 @@
 # logs. Press Ctrl+C once to stop the backend, frontend and tunnel. The Docker
 # services (MySQL, Redis, Rasa, action server) are left running on purpose; the
 # stop commands are printed on shutdown.
+#
+# Before starting, conflicting Docker containers on project ports are stopped
+# (root docker-compose.yml, calisto_nlp_export/docker-compose.yml, and any
+# orphan containers bound to 3306, 6379, 3000, 5005, 5015, 5055).
 #
 # Usage:
 #   ./scripts/start-all.sh
@@ -81,6 +83,8 @@ cleanup() {
   echo
   info "Docker services were left running. Stop them with:"
   info "  docker compose -f \"$INTEG_DIR/docker-compose.mysql.yml\" down"
+  info "  docker compose -f \"$ROOT_DIR/docker-compose.yml\" down"
+  info "  docker compose -f \"$RASA_DIR/docker-compose.yml\" down"
 }
 trap cleanup EXIT
 trap 'exit 130' INT TERM
@@ -161,21 +165,31 @@ wait_for_cloudflare_tunnel() {
   return 1
 }
 
-detect_ngrok_tunnel() {
-  local host
-  host="$(curl -fsS --max-time 2 "http://127.0.0.1:4040/api/tunnels" 2>/dev/null \
-    | python3 -c "import sys,json;d=json.load(sys.stdin);print([t['public_url'] for t in d.get('tunnels', []) if t['public_url'].startswith('https')][0])" 2>/dev/null)"
-  [[ -n "$host" ]] && { echo "$host"; return 0; }
-  return 1
-}
+# Stop Docker stacks and orphan containers that compete for project ports.
+stop_conflicting_docker() {
+  log "Stopping conflicting Docker containers..."
 
-wait_for_ngrok_tunnel() {
-  local i=0 url
-  while (( i < 30 )); do
-    url="$(detect_ngrok_tunnel)" && { echo "$url"; return 0; }
-    sleep 1; i=$((i + 1))
+  if [[ -f "$ROOT_DIR/docker-compose.yml" ]]; then
+    info "docker compose down (repo root — full stack)"
+    (cd "$ROOT_DIR" && docker compose down 2>/dev/null) || true
+  fi
+
+  if [[ -f "$RASA_DIR/docker-compose.yml" ]]; then
+    info "docker compose down (calisto_nlp_export — Rasa stack)"
+    (cd "$RASA_DIR" && docker compose down 2>/dev/null) || true
+  fi
+
+  local port ids
+  for port in 3306 6379 3000 5005 5015 5055; do
+    ids="$(docker ps -q --filter "publish=${port}" 2>/dev/null || true)"
+    if [[ -n "$ids" ]]; then
+      info "stopping container(s) bound to port ${port}"
+      # shellcheck disable=SC2086
+      docker stop $ids >/dev/null 2>&1 || true
+    fi
   done
-  return 1
+
+  ok "conflicting Docker containers stopped"
 }
 
 # ---- Preflight -------------------------------------------------------------
@@ -195,8 +209,10 @@ ensure_deps() { # dir name
 ensure_deps "$INTEG_DIR" "backend"
 ensure_deps "$FRONTEND_DIR" "frontend"
 
-# ---- 2. MySQL + Redis ------------------------------------------------------
-log "Starting MySQL + Redis (Docker)..."
+# ---- 2. Stop conflicting Docker, then start dev MySQL + Redis ----------------
+stop_conflicting_docker
+
+log "Starting dev MySQL + Redis (Docker: docker-compose.mysql.yml)..."
 docker compose -f "$INTEG_DIR/docker-compose.mysql.yml" up -d || die "failed to start MySQL/Redis"
 wait_for_mysql || die "MySQL did not become healthy in time"
 
@@ -208,36 +224,22 @@ else
   warn "database setup reported an issue — check output above"
 fi
 
-# ---- 4. Tunnels (Cloudflare + Ngrok) -----------------------------------------
-CF_TUNNEL_URL=""
-NGROK_TUNNEL_URL=""
+# ---- 4. Cloudflare tunnel --------------------------------------------------
+TUNNEL_URL=""
 
 if [[ "${SKIP_TUNNEL:-0}" == "1" ]]; then
-  log "Skipping tunnels (SKIP_TUNNEL=1)"
+  log "Skipping tunnel (SKIP_TUNNEL=1)"
 else
-  log "Starting Cloudflare tunnel (for Meta) -> http://localhost:${BACKEND_PORT} ..."
-  if CF_TUNNEL_URL="$(detect_cloudflare_tunnel)"; then
-    info "Reusing Cloudflare tunnel: $CF_TUNNEL_URL"
+  log "Starting Cloudflare tunnel -> http://localhost:${BACKEND_PORT} ..."
+  if TUNNEL_URL="$(detect_cloudflare_tunnel)"; then
+    info "Reusing Cloudflare tunnel: $TUNNEL_URL"
   else
     start_bg "cloudflared" "$LOG_DIR/cloudflared.log" \
       "exec cloudflared tunnel --no-autoupdate --metrics 127.0.0.1:${CF_METRICS_PORT} --url http://localhost:${BACKEND_PORT}"
-    if CF_TUNNEL_URL="$(wait_for_cloudflare_tunnel)"; then
-      ok "Cloudflare tunnel up: $CF_TUNNEL_URL"
+    if TUNNEL_URL="$(wait_for_cloudflare_tunnel)"; then
+      ok "Cloudflare tunnel up: $TUNNEL_URL"
     else
       warn "could not detect Cloudflare tunnel URL — see $LOG_DIR/cloudflared.log"
-    fi
-  fi
-
-  log "Starting Ngrok tunnel (for Telegram) -> http://localhost:${BACKEND_PORT} ..."
-  if NGROK_TUNNEL_URL="$(detect_ngrok_tunnel)"; then
-    info "Reusing Ngrok tunnel: $NGROK_TUNNEL_URL"
-  else
-    start_bg "ngrok" "$LOG_DIR/ngrok.log" \
-      "exec ngrok http ${BACKEND_PORT} --log stdout"
-    if NGROK_TUNNEL_URL="$(wait_for_ngrok_tunnel)"; then
-      ok "Ngrok tunnel up: $NGROK_TUNNEL_URL"
-    else
-      warn "could not detect Ngrok tunnel URL — see $LOG_DIR/ngrok.log"
     fi
   fi
 fi
@@ -245,7 +247,7 @@ fi
 # ---- 5. Rasa NLP + action server (Local) -----------------------------------
 log "Starting Rasa NLP + action server (Local)..."
 pub_env=""
-[[ -n "$CF_TUNNEL_URL" ]] && pub_env="PUBLIC_BASE_URL=$CF_TUNNEL_URL "
+[[ -n "$TUNNEL_URL" ]] && pub_env="PUBLIC_BASE_URL=$TUNNEL_URL "
 start_bg "rasa-stack" "$LOG_DIR/rasa.log" "cd \"$RASA_DIR\" && ${pub_env}bash start.sh local"
 if wait_for_http "http://localhost:5005/version" "Rasa NLP" 90; then :; else
   warn "Rasa NLP not answering yet (model still loading?) — it will keep starting in the background"
@@ -257,9 +259,9 @@ if http_up "http://localhost:${BACKEND_PORT}/health"; then
   warn "something is already listening on :${BACKEND_PORT} — reusing it (not managed by this script)"
   [[ -n "$TUNNEL_URL" ]] && warn "if PUBLIC_BASE_URL changed, restart that backend so it picks up $TUNNEL_URL"
 else
-  # Pass CF_TUNNEL_URL as PUBLIC_BASE_URL (for Meta images).
+  # Pass TUNNEL_URL as PUBLIC_BASE_URL (for Meta images and Telegram webhooks).
   pub_env=""
-  [[ -n "$CF_TUNNEL_URL" ]] && pub_env="PUBLIC_BASE_URL=$CF_TUNNEL_URL "
+  [[ -n "$TUNNEL_URL" ]] && pub_env="PUBLIC_BASE_URL=$TUNNEL_URL "
   start_bg "backend" "$LOG_DIR/backend.log" \
     "cd \"$INTEG_DIR\" && ${pub_env}npm run dev"
   wait_for_http "http://localhost:${BACKEND_PORT}/health" "backend" 60 \
@@ -277,14 +279,14 @@ else
     || warn "frontend did not come up yet — check $LOG_DIR/frontend.log"
 fi
 
-# ---- 8. Webhooks (Meta + Telegram) -----------------------------------------
+# ---- 8. Webhooks (Meta + Telegram via Cloudflare) --------------------------
 if [[ "${SKIP_WEBHOOKS:-0}" == "1" || "${SKIP_TUNNEL:-0}" == "1" ]]; then
   log "Skipping webhook wiring (SKIP_WEBHOOKS or SKIP_TUNNEL)"
-elif [[ -z "$CF_TUNNEL_URL" ]]; then
+elif [[ -z "$TUNNEL_URL" ]]; then
   warn "no Cloudflare tunnel URL — skipping webhook wiring"
 else
-  log "Wiring Meta webhooks to $CF_TUNNEL_URL ..."
-  if BASE_URL="$CF_TUNNEL_URL" bash "$SCRIPT_DIR/set-meta-webhooks.sh"; then
+  log "Wiring Meta webhooks to $TUNNEL_URL ..."
+  if BASE_URL="$TUNNEL_URL" bash "$SCRIPT_DIR/set-meta-webhooks.sh"; then
     ok "Meta webhooks configured"
   else
     warn "Meta webhook setup reported an error (see output above) — services are still running"
@@ -302,34 +304,19 @@ else
   fi
 fi
 
-# ---- 9. Telegram webhooks (Ngrok) --------------------------------------------
-if [[ "${SKIP_WEBHOOKS:-0}" == "1" || "${SKIP_TUNNEL:-0}" == "1" ]]; then
-  log "Skipping Telegram webhook wiring"
-elif [[ -z "$NGROK_TUNNEL_URL" ]]; then
-  warn "no Ngrok tunnel URL — skipping Telegram webhook wiring"
-else
-  log "Wiring Telegram webhooks to $NGROK_TUNNEL_URL ..."
-  if ( cd "$INTEG_DIR" && npx tsx scripts/register-telegram-webhook.ts "$NGROK_TUNNEL_URL" ); then
-    ok "Telegram webhooks configured"
-  else
-    warn "Telegram webhook setup reported an error (see output above)"
-  fi
-fi
-
 # ---- Summary + foreground log stream ---------------------------------------
 log "Everything is up."
 printf '    %-22s %s\n' "Frontend (admin):" "http://localhost:${FRONTEND_PORT}"
 printf '    %-22s %s\n' "Backend API:"      "http://localhost:${BACKEND_PORT}"
 printf '    %-22s %s\n' "Rasa NLP:"         "http://localhost:5005"
-printf '    %-22s %s\n' "Cloudflare (Meta):" "${CF_TUNNEL_URL:-"not running"}"
-printf '    %-22s %s\n' "Ngrok (Telegram):"  "${NGROK_TUNNEL_URL:-"not running"}"
+printf '    %-22s %s\n' "Cloudflare tunnel:"  "${TUNNEL_URL:-"not running"}"
 echo
 info "Streaming logs below. Press Ctrl+C to stop backend, frontend and the tunnel."
 echo
 
 # Tail whatever managed logs exist; -F tolerates files that don't exist yet.
 tail_targets=()
-for f in cloudflared ngrok backend frontend; do
+for f in cloudflared backend frontend; do
   [[ -f "$LOG_DIR/$f.log" ]] && tail_targets+=("$LOG_DIR/$f.log")
 done
 if (( ${#tail_targets[@]} > 0 )); then
