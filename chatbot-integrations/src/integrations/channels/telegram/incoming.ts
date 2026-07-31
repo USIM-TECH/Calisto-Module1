@@ -8,14 +8,21 @@ function displayName(from?: TelegramMessage['from']): string | undefined {
   return [from.first_name, from.last_name].filter(Boolean).join(' ') || from.username
 }
 
-export function normalizeTelegramUpdate(update: TelegramUpdate): IncomingMessage | undefined {
+export async function normalizeTelegramUpdate(
+  update: TelegramUpdate,
+  resolveCallbackData: (value: string) => string | Promise<string> = (value) => value,
+): Promise<IncomingMessage | undefined> {
   const message = update.message ?? update.edited_message
   if (message) {
+    const contactName = message.contact
+      ? [message.contact.first_name, message.contact.last_name].filter(Boolean).join(' ')
+      : undefined
     const incoming: IncomingMessage = {
       channel: 'telegram',
       senderId: String(message.from?.id ?? message.chat.id),
       conversationId: String(message.chat.id),
-      senderName: displayName(message.from),
+      senderName: displayName(message.from) ?? contactName,
+      username: message.from?.username,
       messageId: String(message.message_id),
       timestamp: String(message.date),
       type: 'unknown',
@@ -25,6 +32,8 @@ export function normalizeTelegramUpdate(update: TelegramUpdate): IncomingMessage
     if (message.text) {
       incoming.type = 'text'
       incoming.text = message.text
+    } else if (message.contact) {
+      incoming.type = 'unknown'
     } else if (message.location) {
       incoming.type = 'location'
       incoming.location = {
@@ -38,29 +47,33 @@ export function normalizeTelegramUpdate(update: TelegramUpdate): IncomingMessage
 
   const callback = update.callback_query
   if (callback?.message) {
-    return normalizeTelegramCallbackQuery(callback, update)
+    return normalizeTelegramCallbackQuery(callback, update, resolveCallbackData)
   }
 
   return undefined
 }
 
-function normalizeTelegramCallbackQuery(
+async function normalizeTelegramCallbackQuery(
   callback: TelegramCallbackQuery,
-  rawPayload: TelegramUpdate
-): IncomingMessage {
+  rawPayload: TelegramUpdate,
+  resolveCallbackData: (value: string) => string | Promise<string>,
+): Promise<IncomingMessage> {
+  const rawData = callback.data ?? callback.id
+  const resolvedData = await resolveCallbackData(rawData)
   return {
     channel: 'telegram',
     senderId: String(callback.from.id),
     conversationId: String(callback.message!.chat.id),
     senderName: displayName(callback.from),
+    username: callback.from.username,
     messageId: callback.id,
     timestamp: String(callback.message!.date),
     type: 'interactive',
-    text: callback.data,
+    text: resolvedData,
     interactive: {
       type: 'button',
-      id: callback.data ?? callback.id,
-      title: callback.data ?? '',
+      id: resolvedData,
+      title: resolvedData,
     },
     rawPayload,
   }

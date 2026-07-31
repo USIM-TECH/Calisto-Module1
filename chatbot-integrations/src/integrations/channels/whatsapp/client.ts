@@ -14,11 +14,6 @@ export interface WhatsAppConfig {
   apiVersion?: string
 }
 
-/**
- * WhatsApp Channel Integration.
- * Extracted from Botpress WhatsApp integration with Botpress SDK dependencies removed.
- * Uses whatsapp-api-js and direct Meta Cloud API calls.
- */
 export class WhatsAppChannel {
   private _client: WhatsAppAPI
   private _config: WhatsAppConfig
@@ -35,17 +30,14 @@ export class WhatsAppChannel {
     })
   }
 
-  /** Register a callback for incoming messages (NLP connection point) */
   public onMessage(handler: (message: IncomingMessage) => Promise<void>) {
     this._onMessage = handler
   }
 
-  /** Send an outgoing message to a WhatsApp user */
   public async sendMessage(recipientPhone: string, message: OutgoingMessage): Promise<string | undefined> {
     return sendWhatsAppMessage(this._client, this._config, this._logger, recipientPhone, message)
   }
 
-  /** Retrieve media URL from WhatsApp media ID */
   public async getMediaUrl(mediaId: string): Promise<string> {
     const apiVersion = this._config.apiVersion ?? 'v22.0'
     const { data } = await axios.get(`https://graph.facebook.com/${apiVersion}/${mediaId}`, {
@@ -54,10 +46,6 @@ export class WhatsAppChannel {
     return data.url
   }
 
-  /**
-   * Handle incoming webhook requests from Meta.
-   * This is the main entry point called by the webhook router.
-   */
   public async handleWebhook(req: WebhookRequest): Promise<WebhookResponse> {
     return handleWhatsAppWebhook({
       config: this._config,

@@ -19,6 +19,7 @@ export function normalizeXDirectMessageEvent(
     senderId,
     conversationId: recipientId,
     senderName: sender?.name ?? sender?.screen_name,
+    username: sender?.screen_name,
     type: 'text',
     text: event.message_create.message_data.text,
     messageId: event.id,

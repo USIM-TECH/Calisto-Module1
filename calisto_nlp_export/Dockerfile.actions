@@ -3,7 +3,17 @@
 # ============================================================
 FROM rasa/rasa-sdk:3.6.2
 
-# Copy custom actions
+USER root
+
+COPY action-requirements.txt /app/action-requirements.txt
+RUN pip install --no-cache-dir -r /app/action-requirements.txt
+
 COPY actions/ /app/actions/
+COPY forms/ /app/forms/
+COPY search/ /app/search/
+COPY config/ /app/config/
+COPY nlp/ /app/nlp/
+COPY gateway/ /app/gateway/
+COPY cache/ /app/cache/
 
 EXPOSE 5055

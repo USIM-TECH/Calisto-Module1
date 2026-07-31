@@ -16,9 +16,16 @@ WORKDIR /app
 COPY config.yml .
 COPY domain.yml .
 COPY endpoints.yml .
+COPY endpoints.docker.yml .
 COPY credentials.yml .
 COPY data/ ./data/
 COPY actions/ ./actions/
+COPY forms/ ./forms/
+COPY search/ ./search/
+COPY config/ ./config/
+COPY nlp/ ./nlp/
+COPY gateway/ ./gateway/
+COPY cache/ ./cache/
 
 # Switch back to non-root user
 USER 1001
@@ -27,4 +34,4 @@ USER 1001
 EXPOSE 5005
 
 # Run Rasa with the REST API enabled
-CMD ["run", "--enable-api", "--cors", "*", "--endpoints", "endpoints.yml", "--credentials", "credentials.yml", "--port", "5005"]
+CMD ["run", "--enable-api", "--cors", "*", "--endpoints", "endpoints.docker.yml", "--credentials", "credentials.yml", "--port", "5005"]

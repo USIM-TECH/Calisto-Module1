@@ -1,12 +1,5 @@
 import { marked, type Token as MarkedToken } from 'marked'
 
-/**
- * Markdown-to-WhatsApp RTF converter.
- * Extracted from Botpress WhatsApp integration.
- *
- * WhatsApp supports: *bold*, _italic_, ~strikethrough~, ```code```
- * Reference: https://faq.whatsapp.com/539178204879377
- */
 
 const FIXED_SIZE_SPACE_CHAR = '\u2002'
 const ALT_BULLET_SYMBOLS = ['•', '◦', '➤', '✦']
@@ -119,10 +112,6 @@ function processBlockQuote(token: any, ctx: Context): string {
     .join('\n')
 }
 
-/**
- * Splits text that exceeds WhatsApp's max message length.
- * WhatsApp max text length = 4096 characters.
- */
 export function splitTextMessageIfNeeded(message: string): string[] {
   const MAX_LENGTH = 4096
   if (message.length <= MAX_LENGTH) return [message]

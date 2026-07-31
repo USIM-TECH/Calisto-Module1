@@ -1,0 +1,161 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: calisto_chatbot
+      MYSQL_USER: calisto
+      MYSQL_PASSWORD: calisto
+    ports:
+      - "3306:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "calisto", "-pcalisto"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - calisto-net
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - calisto-net
+
+  integration:
+    build:
+      context: ./chatbot-integrations
+      dockerfile: Dockerfile
+    environment:
+      PORT: 3000
+      DATABASE_URL: mysql://calisto:calisto@mysql:3306/calisto_chatbot
+      REDIS_URL: redis://redis:6379
+      STORAGE_BACKEND: mysql
+      RASA_URL: http://rasa:5015
+      RASA_TIMEOUT_MS: 5000
+      DATA_DIR: /app/data/runtime
+      LLM_LAYER_ENABLED: ${LLM_LAYER_ENABLED:-true}
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
+      OLLAMA_TIMEOUT_MS: ${OLLAMA_TIMEOUT_MS:-8000}
+      OLLAMA_TEMPERATURE: ${OLLAMA_TEMPERATURE:-0.1}
+      RASA_NLU_CONFIDENCE_FLOOR: ${RASA_NLU_CONFIDENCE_FLOOR:-0.4}
+      LLM_CONFIDENCE_FLOOR: ${LLM_CONFIDENCE_FLOOR:-0.35}
+      RESPONSE_STYLE: ${RESPONSE_STYLE:-casual}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:-}
+      CHANNEL_CREDENTIALS_ENCRYPTION_KEY: ${CHANNEL_CREDENTIALS_ENCRYPTION_KEY:-}
+      WEBSITE_AUTH_TOKEN: ${WEBSITE_AUTH_TOKEN:-}
+      WEBSITE_ALLOWED_ORIGINS: ${WEBSITE_ALLOWED_ORIGINS:-}
+      WEBSITE_RATE_LIMIT_MAX: ${WEBSITE_RATE_LIMIT_MAX:-30}
+      WEBSITE_RATE_LIMIT_WINDOW_MS: ${WEBSITE_RATE_LIMIT_WINDOW_MS:-60000}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
+      WHATSAPP_CLIENT_SECRET: ${WHATSAPP_CLIENT_SECRET:-}
+      WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-}
+      INSTAGRAM_ACCESS_TOKEN: ${INSTAGRAM_ACCESS_TOKEN:-}
+      INSTAGRAM_ID: ${INSTAGRAM_ID:-}
+      INSTAGRAM_VERIFY_TOKEN: ${INSTAGRAM_VERIFY_TOKEN:-}
+      INSTAGRAM_CLIENT_ID: ${INSTAGRAM_CLIENT_ID:-}
+      INSTAGRAM_CLIENT_SECRET: ${INSTAGRAM_CLIENT_SECRET:-}
+      INSTAGRAM_API_VERSION: ${INSTAGRAM_API_VERSION:-}
+      MESSENGER_PAGE_ACCESS_TOKEN: ${MESSENGER_PAGE_ACCESS_TOKEN:-}
+      MESSENGER_PAGE_ID: ${MESSENGER_PAGE_ID:-}
+      MESSENGER_VERIFY_TOKEN: ${MESSENGER_VERIFY_TOKEN:-}
+      MESSENGER_CLIENT_ID: ${MESSENGER_CLIENT_ID:-}
+      MESSENGER_CLIENT_SECRET: ${MESSENGER_CLIENT_SECRET:-}
+      MESSENGER_APP_TOKEN: ${MESSENGER_APP_TOKEN:-}
+      MESSENGER_API_VERSION: ${MESSENGER_API_VERSION:-}
+      X_API_KEY: ${X_API_KEY:-}
+      X_API_SECRET: ${X_API_SECRET:-}
+      X_ACCESS_TOKEN: ${X_ACCESS_TOKEN:-}
+      X_ACCESS_TOKEN_SECRET: ${X_ACCESS_TOKEN_SECRET:-}
+      X_API_BASE_URL: ${X_API_BASE_URL:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_SECRET_TOKEN: ${TELEGRAM_SECRET_TOKEN:-}
+      TELEGRAM_API_BASE_URL: ${TELEGRAM_API_BASE_URL:-}
+      HUBSPOT_ACCESS_TOKEN: ${HUBSPOT_ACCESS_TOKEN:-}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./chatbot-integrations/data/runtime:/app/data/runtime
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rasa:
+        condition: service_started
+    networks:
+      - calisto-net
+
+  rasa:
+    build:
+      context: ./calisto_nlp_export
+      dockerfile: Dockerfile
+    command: ["/app/scripts/start-rasa.sh"]
+    environment:
+      RASA_MODEL_PATH: ${RASA_MODEL_PATH:-}
+    ports:
+      - "5015:5015"
+    depends_on:
+      action-server:
+        condition: service_started
+    volumes:
+      - ./calisto_nlp_export/models:/app/models
+    networks:
+      - calisto-net
+
+  action-server:
+    build:
+      context: ./calisto_nlp_export
+      dockerfile: Dockerfile.actions
+    ports:
+      - "5055:5055"
+    networks:
+      - calisto-net
+
+  reasoning-server:
+    profiles: ["reasoning"]
+    build:
+      context: ./calisto_nlp_export
+      dockerfile: Dockerfile.reasoning
+    ports:
+      - "8008:8008"
+    networks:
+      - calisto-net
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["llm"]
+    ports:
+      - "11434:11434"
+    environment:
+      OLLAMA_NUM_PARALLEL: 2       # process 2 LLM requests simultaneously
+      OLLAMA_MAX_QUEUE: 4          # queue up to 4 more before rejecting
+      OLLAMA_KEEP_ALIVE: "10m"     # keep model loaded in RAM between requests
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - calisto-net
+
+volumes:
+  ollama-data:
+  mysql-data:
+
+networks:
+  calisto-net:
+    driver: bridge

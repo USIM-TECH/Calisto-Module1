@@ -1,0 +1,8 @@
+export { ChannelAccountService } from './channel-account-service.js'
+export { ChannelAccountStore, validateCredentials } from './channel-account-store.js'
+export { buildChannelAccountRegistry, ChannelAccountRegistry } from './channel-account-registry.js'
+export { registerAccountWebhook } from './webhook-registration.js'
+export type { RegisteredChannelAccount } from './channel-account-registry.js'
+export { registerChannelAccountRoutes } from './routes.js'
+export { seedChannelAccountsFromEnv } from './seed-from-env.js'
+export type * from './credential-types.js'

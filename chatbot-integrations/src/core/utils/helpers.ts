@@ -1,9 +1,6 @@
 import crypto from 'crypto'
 
-/**
- * Validates Meta webhook signature (used by WhatsApp, Instagram, Messenger).
- * Extracted from Botpress integrations - preserves exact verification logic.
- */
+
 export function validateMetaSignature(
   rawBody: string,
   signature: string | undefined,
@@ -30,9 +27,6 @@ export function validateMetaSignature(
   return { valid: true }
 }
 
-/**
- * Splits an array into chunks of a given size.
- */
 export function chunkArray<T>(array: T[], chunkSize: number): T[][] {
   const chunks: T[][] = []
   if (chunkSize <= 0) return chunks
@@ -42,9 +36,6 @@ export function chunkArray<T>(array: T[], chunkSize: number): T[][] {
   return chunks
 }
 
-/**
- * Truncates a string to maxLength, adding ellipsis if truncated.
- */
 export function truncate(input: string, maxLength: number): string {
   let truncated = input.substring(0, maxLength)
   if (truncated.length < input.length) {
@@ -53,16 +44,12 @@ export function truncate(input: string, maxLength: number): string {
   return truncated
 }
 
-/**
- * Sleep utility.
- */
+
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-/**
- * Safe JSON parse that returns success/failure.
- */
+
 export function safeJsonParse(input: string | undefined): { data: any; success: true } | { data: null; success: false } {
   if (!input) return { data: null, success: false }
   try {
@@ -72,10 +59,45 @@ export function safeJsonParse(input: string | undefined): { data: any; success: 
   }
 }
 
-/**
- * Extracts file extension from a URL or filename.
- */
+
 export function extractFileExtension(input: string): string | undefined {
   const match = input.match(/\.([a-zA-Z0-9]+)(?:\?.*)?$/)
   return match ? `.${match[1]}` : undefined
+}
+
+/**
+ * Channel payloads (e.g. WhatsApp Cloud API) often send Unix time as a string in **seconds**.
+ * `new Date("1739265432")` is Invalid Date in JS; this normalizes to a real Date for DB fields.
+ * Also accepts ISO strings and millisecond epoch strings (13+ digit integers).
+ */
+export function parseMessageTimestampToDate(raw: string | undefined): Date {
+  if (raw === undefined || raw === '') {
+    return new Date()
+  }
+  const trimmed = raw.trim()
+  if (!trimmed) {
+    return new Date()
+  }
+
+  if (trimmed.includes('T') || /^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+    const fromIso = new Date(trimmed)
+    if (!Number.isNaN(fromIso.getTime())) {
+      return fromIso
+    }
+  }
+
+  if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+    const n = Number(trimmed)
+    if (!Number.isFinite(n)) {
+      return new Date()
+    }
+    const intPart = Math.trunc(Math.abs(n)).toString()
+    if (intPart.length <= 10) {
+      return new Date(n * 1000)
+    }
+    return new Date(n)
+  }
+
+  const fallback = new Date(trimmed)
+  return Number.isNaN(fallback.getTime()) ? new Date() : fallback
 }

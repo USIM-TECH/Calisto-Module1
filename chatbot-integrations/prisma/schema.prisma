@@ -1,0 +1,345 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum ChatChannel {
+  whatsapp
+  instagram
+  messenger
+  x
+  telegram
+  website
+}
+
+enum WebhookDirection {
+  inbound
+  outbound
+}
+
+enum QualificationStatus {
+  new
+  qualified
+  unqualified
+  needs_review
+}
+
+enum CrmStatus {
+  pending
+  synced
+  failed
+}
+
+enum ResponseStyle {
+  casual
+  professional
+  warm
+  concierge
+}
+
+enum MessageDirection {
+  inbound
+  outbound
+}
+
+enum WebhookRegistrationStatus {
+  pending
+  active
+  error
+}
+
+/// Connected business account for a messaging channel (WhatsApp number, IG account, etc.).
+model ChannelAccount {
+  id                   String                    @id @default(cuid())
+  label                String
+  channel              ChatChannel
+  nativeId             String
+  enabled              Boolean                   @default(true)
+  credentialsEncrypted String                    @db.Text
+  verifyToken          String?
+  metaAppId            String?
+  apiVersion           String?
+  webhookStatus        WebhookRegistrationStatus @default(pending)
+  webhookUrl           String?
+  webhookError         String?                   @db.Text
+  tokenExpiresAt       DateTime?
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+
+  identities ChannelIdentity[]
+
+  @@unique([channel, nativeId])
+  @@index([channel, enabled])
+}
+
+/// One row per real human. Identifying fields (phone, email) are kept
+/// here so the same person on multiple channels collapses to one record.
+model Customer {
+  id                  String              @id
+  leadName            String?
+  email               String?
+  phone               String?
+  location            String?
+  preferredService    String?
+  responseStyle       ResponseStyle?
+  qualificationStatus QualificationStatus
+  crmStatus           CrmStatus
+  crmRecordId         String?
+  lastIntent          String?
+  lastMessageAt       DateTime
+  firstSeenAt         DateTime
+  updatedAt           DateTime
+
+  identities       ChannelIdentity[]
+  interests        Interest[]
+  currentInterests CurrentInterest[]
+  supportCases     SupportCase[]
+  conversations    Conversation[]
+  webhookEvents    WebhookEvent[]
+
+  @@index([phone])
+  @@index([email])
+  @@index([updatedAt])
+}
+
+/// One row per (channel, sourceId). A customer owns N of these so we
+/// can recognise them across WhatsApp, Telegram, Instagram, etc.
+model ChannelIdentity {
+  id               String      @id
+  customerId       String
+  channel          ChatChannel
+  sourceId         String
+  channelAccountId String?
+  senderName       String?
+  username         String?
+  conversationId   String
+  firstSeenAt      DateTime
+  lastSeenAt       DateTime
+
+  customer       Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  channelAccount ChannelAccount? @relation(fields: [channelAccountId], references: [id], onDelete: SetNull)
+  conversations  Conversation[]
+
+  @@unique([channel, sourceId, channelAccountId])
+  @@index([customerId])
+  @@index([channelAccountId])
+  @@index([username])
+}
+
+/// Append-only log of every distinct interest the bot picks up.
+/// Lets us answer "what was customer X interested in last month".
+model Interest {
+  id         String   @id @default(cuid())
+  customerId String
+  kind       String
+  value      String
+  capturedAt DateTime
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, kind, value])
+  @@index([customerId, capturedAt])
+}
+
+model CurrentInterest {
+  id         String   @id @default(cuid())
+  customerId String
+  kind       String
+  value      String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, kind])
+  @@index([customerId])
+}
+
+model SupportCase {
+  id         String   @id @default(cuid())
+  customerId String
+  caseType   String
+  status     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+model Conversation {
+  id                String      @id
+  customerId        String
+  channelIdentityId String
+  channel           ChatChannel
+  sourceId          String
+  createdAt         DateTime
+  updatedAt         DateTime
+
+  customer        Customer              @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  channelIdentity ChannelIdentity       @relation(fields: [channelIdentityId], references: [id], onDelete: Cascade)
+  messages        ConversationMessage[]
+
+  @@index([customerId])
+  @@index([channelIdentityId])
+}
+
+model ConversationMessage {
+  id             String           @id @default(cuid())
+  conversationId String
+  direction      MessageDirection
+  messageId      String
+  text           String?          @db.Text
+  messageType    String
+  timestamp      DateTime
+  metadata       Json
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, timestamp])
+}
+
+model WebhookEvent {
+  id             String           @id
+  channel        ChatChannel
+  direction      WebhookDirection
+  path           String
+  sourceId       String
+  conversationId String
+  customerId     String?
+  receivedAt     DateTime
+  payload        Json
+
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([receivedAt])
+  @@index([customerId])
+}
+
+model DedupeKey {
+  key    String   @id
+  seenAt DateTime
+
+  @@index([seenAt])
+}
+
+/// Editable product catalogue. Seeded once from the CSV and managed
+/// through the admin UI thereafter. Rasa reads via POST /products/search.
+model Product {
+  productId        String   @id
+  productName      String
+  category         String
+  productType      String
+  brand            String
+  priceMyr         Float
+  description      String?  @db.Text
+  frameMaterial    String?
+  frameShape       String?
+  frameColor       String?
+  gender           String?
+  uvProtection     String?
+  polarized        String?
+  lensColor        String?
+  frameStyle       String?
+  lensType         String?
+  lensFeature      String?
+  lensDuration     String?
+  multifocal       String?
+  storeLocation    String?
+  city             String?
+  stockStatus      String   @default("in_stock")
+  rating           Float?
+  bestseller       Boolean  @default(false)
+  newArrival       Boolean  @default(false)
+  imageUrl         String?
+  fallbackImageUrl String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  presets ProductPreset[]
+
+  @@index([productType])
+  @@index([brand])
+  @@index([priceMyr])
+}
+
+/// Merchandising preset (e.g. "Best Seller", "Highest Rated", "Recommended").
+/// Admins curate which products belong to each preset and activate exactly one
+/// preset globally. When a preset is active the chatbot only suggests products
+/// in it (falling back to the full catalogue when the preset has no match for a
+/// user's specific query). No active preset = default ranking over everything.
+model Preset {
+  id          String          @id @default(cuid())
+  name        String          @unique
+  description String?
+  isActive    Boolean         @default(false)
+  sortOrder   Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  products    ProductPreset[]
+
+  @@index([isActive])
+}
+
+/// Join table for the many-to-many between products and presets.
+model ProductPreset {
+  productId String
+  presetId  String
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [productId], onDelete: Cascade)
+  preset  Preset  @relation(fields: [presetId], references: [id], onDelete: Cascade)
+
+  @@id([productId, presetId])
+  @@index([presetId])
+  @@index([productId])
+}
+
+/// Store locator catalogue. Seeded from calisto_stores.csv and exposed to
+/// Rasa via /stores, /stores/cities, and /stores/search.
+model Store {
+  id               String   @id @default(cuid())
+  name             String
+  address          String?
+  phone            String?
+  state            String?
+  city             String
+  imageUrl         String?
+  fallbackImageUrl String?
+  mapUrl           String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([city])
+  @@index([state])
+}
+
+model KnowledgeDocument {
+  id        String   @id @default(cuid())
+  source    String   @unique
+  title     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chunks KnowledgeChunk[]
+}
+
+model KnowledgeChunk {
+  id         String   @id @default(cuid())
+  documentId String
+  chunkHash  String   @unique
+  source     String
+  text       String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([source])
+}

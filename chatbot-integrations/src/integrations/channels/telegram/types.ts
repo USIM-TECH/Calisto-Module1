@@ -18,6 +18,12 @@ const telegramMessageSchema = z.object({
   text: z.string().optional(),
   from: telegramUserSchema.optional(),
   chat: telegramChatSchema,
+  contact: z.object({
+    phone_number: z.string(),
+    first_name: z.string(),
+    last_name: z.string().optional(),
+    user_id: z.number().optional(),
+  }).optional(),
   location: z.object({
     latitude: z.number(),
     longitude: z.number(),

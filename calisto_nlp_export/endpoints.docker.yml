@@ -1,0 +1,8 @@
+# ============================================================
+# Calisto Eyewear – Docker Action Server Endpoint
+# ============================================================
+# Used only by the Docker Rasa container.
+# ============================================================
+
+action_endpoint:
+  url: "http://action-server:5055/webhook"

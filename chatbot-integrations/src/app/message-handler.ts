@@ -1,14 +1,16 @@
-import type { IncomingMessage } from '../core/types.js'
+import type { IncomingMessage, OutgoingMessage } from '../core/types.js'
 import type { Logger } from '../core/utils/index.js'
-import { NLPClient } from '../core/utils/index.js'
-import type { MessageDeduplicator } from './message-deduplicator.js'
+import { invalidateLeadsCache, type CacheService } from '../cache/index.js'
+import type { LeadOrchestrator } from '../leads/index.js'
 
 interface CreateNlpMessageHandlerProps {
   channelName: 'WhatsApp' | 'Instagram' | 'Messenger' | 'X' | 'Telegram'
   logger: Logger
-  nlpClient: NLPClient
+  orchestrator: LeadOrchestrator
+  cacheService: CacheService
   sendText: (recipientId: string, text: string) => Promise<unknown>
-  deduplicator: MessageDeduplicator
+  sendMessage?: (recipientId: string, message: OutgoingMessage) => Promise<unknown>
+  getRecipientId?: (message: IncomingMessage) => string
 }
 
 function redactSenderId(senderId: string): string {
@@ -22,32 +24,47 @@ function redactSenderId(senderId: string): string {
 export function createNlpMessageHandler({
   channelName,
   logger,
-  nlpClient,
+  orchestrator,
+  cacheService,
   sendText,
-  deduplicator,
+  sendMessage,
+  getRecipientId,
 }: CreateNlpMessageHandlerProps) {
   return async (message: IncomingMessage): Promise<void> => {
-    const messageText = message.text || message.interactive?.title
     const senderLabel = redactSenderId(message.senderId)
-
-    if (!deduplicator.shouldProcess(message)) {
-      logger.warn(`[${channelName}] Ignoring duplicate message ${message.messageId} from ${senderLabel}`)
-      return
-    }
-
-    if (!messageText) {
-      logger.warn(`[${channelName}] Ignoring non-text message from ${senderLabel}`)
-      return
-    }
+    const recipientId = getRecipientId ? getRecipientId(message) : message.senderId
 
     try {
-      const nlpResponse = await nlpClient.getResponse(message.senderId, messageText)
+      const result = await orchestrator.process(message)
+      if (!result) {
+        return
+      }
+
+      await invalidateLeadsCache(cacheService)
+
       logger.info(`[${channelName}] Reply generated for ${senderLabel}`)
-      await sendText(message.senderId, nlpResponse.text)
+      const outgoingMessages = result.outgoingMessages
+
+      for (const outgoingMessage of outgoingMessages) {
+        if (outgoingMessage.type === 'choice' && sendMessage) {
+          logger.debug(`[${channelName}] Sending choice message with ${outgoingMessage.options.length} buttons to ${senderLabel}`)
+          await sendMessage(recipientId, outgoingMessage)
+          continue
+        }
+
+        if (outgoingMessage.type === 'text') {
+          await sendText(recipientId, outgoingMessage.text)
+          continue
+        }
+
+        if (sendMessage) {
+          await sendMessage(recipientId, outgoingMessage)
+        }
+      }
     } catch (error: any) {
       logger.error(`[${channelName}] Failed to process message for ${senderLabel}: ${error.message}`)
       try {
-        await sendText(message.senderId, 'Sorry, something went wrong. Please try again.')
+        await sendText(recipientId, 'Sorry, something went wrong. Please try again.')
       } catch (sendError: any) {
         logger.error(`[${channelName}] Failed to send fallback reply to ${senderLabel}: ${sendError.message}`)
       }

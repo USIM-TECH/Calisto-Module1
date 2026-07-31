@@ -16,14 +16,24 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    entrypoint: [ "rasa" ]
+    command:
+      - run
+      - --enable-api
+      - --cors
+      - "*"
+      - --endpoints
+      - endpoints.docker.yml
+      - --credentials
+      - credentials.yml
+      - --port
+      - "5005"
     ports:
       - "5005:5005"
     depends_on:
       - action-server
     volumes:
       - ./models:/app/models
-    environment:
-      - ACTION_ENDPOINT_URL=http://action-server:5055/webhook
     networks:
       - calisto-net
 
@@ -36,6 +46,20 @@ services:
       - "5055:5055"
     networks:
       - calisto-net
+    # Reach the host's Node integration service (chatbot-integrations on
+    # localhost:3000). Product catalogue actions require this remote DB-backed API.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Host machine URL for chatbot-integrations (must match PORT in chatbot-integrations/.env).
+      BACKEND_API_BASE_URL: "http://host.docker.internal:3000"
+      # Base URL for absolutising /static/... product images in emit_product_card.
+      # Defaults to the host integration service; override with a PUBLIC tunnel URL
+      # so channels that fetch images from the internet (WhatsApp/Telegram/Messenger)
+      # can load them. chatbot-integrations/scripts/set-meta-webhooks.sh syncs this
+      # automatically from the live Cloudflare tunnel:
+      #   PUBLIC_BASE_URL=https://your-subdomain.trycloudflare.com docker compose up -d action-server
+      PUBLIC_BASE_URL: "${PUBLIC_BASE_URL:-http://host.docker.internal:3000}"
 
 networks:
   calisto-net:

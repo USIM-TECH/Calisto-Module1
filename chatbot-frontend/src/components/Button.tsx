@@ -1,0 +1,40 @@
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
+
+type ButtonVariant = 'primary' | 'secondary' | 'ghost'
+
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  icon?: ReactNode
+  variant?: ButtonVariant
+}
+
+const variants: Record<ButtonVariant, string> = {
+  primary: 'border-calisto-accent bg-calisto-accent text-calisto-surface shadow-sm hover:bg-calisto-accent/90',
+  secondary: 'border-calisto-line bg-calisto-surface text-calisto-ink hover:bg-calisto-surface-muted',
+  ghost: 'border-transparent bg-transparent text-calisto-accent hover:bg-calisto-accent/10',
+}
+
+export default function Button({
+  children,
+  className = '',
+  icon,
+  type = 'button',
+  variant = 'secondary',
+  ...props
+}: ButtonProps) {
+  return (
+    <button
+      type={type}
+      className={[
+        'inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60',
+        variants[variant],
+        className,
+      ].join(' ')}
+      {...props}
+    >
+      {icon}
+      <span>{children}</span>
+    </button>
+  )
+}
+
+

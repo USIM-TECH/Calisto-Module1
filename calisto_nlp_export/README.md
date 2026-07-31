@@ -34,7 +34,32 @@ calisto_nlp_export/
 └── calisto_rasa_client.js   ← Node.js integration example
 ```
 
-The custom actions still use in-memory catalog, order, and store data. That is suitable for demo and development only. Production readiness requires replacing those helpers with real backend/API calls.
+Product catalogue and knowledge chunks are loaded at runtime from **chatbot-integrations** (MySQL via `BACKEND_API_BASE_URL`). Manage them in the admin UI at `/admin/products` and `/admin/knowledge`. Set `STORAGE_BACKEND=mysql` and `DATABASE_URL` in `chatbot-integrations/.env`.
+
+## Multilingual Support
+
+The bot currently supports:
+
+- English `en`
+- Malay `ms`
+- Mandarin `zh`
+
+The current multilingual design is Rasa-first:
+
+- intent understanding comes from multilingual examples in [data/nlu.yml](./data/nlu.yml)
+- language state is stored in the `preferred_language` slot in [domain.yml](./domain.yml)
+- `action_set_language` in [actions/actions.py](./actions/actions.py) sets or preserves conversation language
+- domain responses and custom actions localize text, buttons, and card labels based on that slot
+
+Supporting a new or improved language requires all of these to move together:
+
+1. parallel training examples per intent
+2. canonical entity synonyms and lookups
+3. localized responses in `domain.yml`
+4. localized custom-action copy in `actions.py`
+5. regression coverage in:
+   - [MULTILINGUAL_INTENT_MATRIX.md](./MULTILINGUAL_INTENT_MATRIX.md)
+   - [MULTILINGUAL_QA_REGRESSION.md](./MULTILINGUAL_QA_REGRESSION.md)
 
 ## Setup & Run (Docker — Recommended)
 
@@ -56,6 +81,13 @@ This builds and starts two containers:
 | `action-server` | `rasa/rasa-sdk:3.6.2` | `5055` | Custom actions (Python) |
 
 The containers are connected via an internal Docker network (`calisto-net`). The Rasa server automatically loads the pre-trained model from `models/`.
+
+The action server requires the integration API:
+
+- `GET /admin/products/api?limit=500` — product catalogue
+- `GET /knowledge/chunks` — knowledge chunks
+
+Configure `BACKEND_API_BASE_URL` in `docker-compose.yml` (default `http://host.docker.internal:3000`).
 
 ### 2. Verify containers are running
 
@@ -98,18 +130,32 @@ docker compose down
 ```
 
 ---
+## Telegram Webhook Setup
+```bash
+curl -X POST "https://api.telegram.org/bot<Telegram-Bot-Token>/setWebhook" \
+-H "Content-Type: application/json" \
+-d '{
+  "url": "https://YOUR-NGROK-URL.ngrok-free.app/webhooks/telegram"
+}'
+```
 
 ## Setup & Run (Local — Requires Python 3.8–3.10)
 
 > ⚠️ Rasa 3.6.x does **not** support Python 3.11+. If your system Python is newer, use Docker instead.
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install rasa==3.6.21 rasa-sdk==3.6.2
+
+       # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 
 chmod +x start.sh
 ./start.sh
+```
+
+If you run the action server directly, use:
+
+```bash
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 rasa run actions
 ```
 
 ---
@@ -133,7 +179,7 @@ chmod +x start.sh
 ```
 
 - **Rasa server** receives user messages, runs NLU classification, manages dialogue state
-- **Action server** executes custom Python actions (frame catalog lookup, order tracking, store locator)
+- **Action server** executes custom Python actions using the local knowledge base (catalog lookup, document retrieval, store locator)
 - Rasa calls the action server at `http://action-server:5055/webhook` (configured in `endpoints.yml`)
 
 ---
@@ -226,11 +272,25 @@ docker compose down
 docker compose up -d --build
 ```
 
+### Recommended retrain flow for this project
+
+When you update multilingual NLU, rules, or responses, use:
+
+```bash
+docker compose down
+rm -f models/*.tar.gz
+docker compose build --no-cache rasa
+docker compose run --rm rasa train
+docker compose up -d --build
+```
+
+After retraining, run through the checks in [MULTILINGUAL_QA_REGRESSION.md](./MULTILINGUAL_QA_REGRESSION.md).
+
 ### Via local Python (requires Python 3.8–3.10)
 ```bash
-curl -X POST http://localhost:5005/webhooks/rest/webhook \
-  -H "Content-Type: application/json" \
-  -d '{"sender":"test-user","message":"hi"}'
+rasa train
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 rasa run actions
+rasa shell
 ```
 
 ---
@@ -244,9 +304,9 @@ curl -X POST http://localhost:5005/webhooks/rest/webhook \
 | Face shape advice | "I have a round face, what frames suit me?" |
 | Lens info | "what types of lenses do you have?" |
 | Lens pricing | "how much do progressive lenses cost?" |
-| Store locator | "find a store in Mumbai" |
+| Store locator | "find a store in Kuala Lumpur" |
 | Order tracking | "track my order ORD12345" |
-| Eye test booking | "book an eye test in Delhi" |
+| Eye test booking | "book an eye test in Nilai" |
 
 ---
 
@@ -259,3 +319,5 @@ curl -X POST http://localhost:5005/webhooks/rest/webhook \
 | Action server errors (`InvalidURL`) | Verify `endpoints.yml` has `url: "http://action-server:5055/webhook"` (no `${...}` syntax). |
 | Python version error (local setup) | Rasa 3.6.x needs Python 3.8–3.10. Use Docker instead. |
 | Port 5005 already in use | Stop existing containers: `docker compose down`, or kill the process: `lsof -ti :5005 \| xargs kill -9` |
+
+

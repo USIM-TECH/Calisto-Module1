@@ -49,25 +49,23 @@ check_python_version() {
 
 # ── Local (venv) mode ──────────────────────────────────────
 start_local() {
-  if ! check_python_version; then
-    echo "❌ Rasa 3.6.x requires Python >=3.8,<3.11"
-    echo "   Your Python version: $(python3 --version 2>/dev/null || echo 'not found')"
-    echo ""
-    echo "   Options:"
-    echo "   1. Run: ./start.sh docker    (recommended)"
-    echo "   2. Install Python 3.10 via pyenv/deadsnakes and retry"
-    exit 1
-  fi
-
-  # Python venv setup (first time)
-  if [ ! -d ".venv" ]; then
+  if [ -d ".venv" ]; then
+    source .venv/bin/activate
+  else
+    if ! check_python_version; then
+      echo "❌ Rasa 3.6.x requires Python >=3.8,<3.11"
+      echo "   Your Python version: $(python3 --version 2>/dev/null || echo 'not found')"
+      echo ""
+      echo "   Options:"
+      echo "   1. Run: ./start.sh docker    (recommended)"
+      echo "   2. Install Python 3.10 via pyenv/deadsnakes and retry"
+      exit 1
+    fi
     echo "⚙️  Creating virtual environment..."
     python3 -m venv .venv
     source .venv/bin/activate
     pip install --upgrade pip
     pip install rasa==3.6.21 rasa-sdk==3.6.2
-  else
-    source .venv/bin/activate
   fi
 
   local SUB_MODE="${1:-all}"
@@ -98,6 +96,8 @@ start_local() {
 
 start_actions() {
   echo "🚀 Starting Calisto Action Server on port 5055..."
+  BACKEND_API_BASE_URL="${BACKEND_API_BASE_URL:-http://127.0.0.1:3000}" \
+  HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   rasa run actions --actions actions.actions --port 5055 &
   ACTION_PID=$!
   echo "   Action server PID: $ACTION_PID"

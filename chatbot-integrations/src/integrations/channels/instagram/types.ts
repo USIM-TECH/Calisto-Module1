@@ -1,9 +1,6 @@
 import { z } from 'zod'
 
-/** Instagram recipient - either a user ID or a comment ID */
 export type InstagramRecipientId = { id: string } | { comment_id: string }
-
-// ── Incoming Payload Schemas ───────────────────────────────────────────
 
 const instagramEntryBaseSchema = z.object({
   id: z.string(),
@@ -100,7 +97,6 @@ export type InstagramComment = z.infer<typeof instagramCommentEntrySchema>['valu
 export type InstagramLegacyCommentEntry = z.infer<typeof instagramLegacyCommentEntrySchema>
 export type InstagramLegacyComment = z.infer<typeof instagramLegacyCommentEntrySchema>['changes'][number]['value']
 
-// ── Outgoing Message Types ─────────────────────────────────────────────
 
 export type InstagramActionBase = { title: string }
 
@@ -137,7 +133,6 @@ export type GenericTemplateMessage = {
   }
 }
 
-// Card/Carousel types for outgoing messages
 export interface CardPayload {
   title: string
   subtitle?: string

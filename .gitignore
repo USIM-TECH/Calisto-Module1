@@ -4,31 +4,78 @@ chatbot-integrations/dist/
 chatbot-integrations/.turbo/
 chatbot-integrations/.eslintcache
 chatbot-integrations/.tsbuildinfo
+chatbot-frontend/dist/
+chatbot-frontend/*.tsbuildinfo
+chatbot-frontend/vite.config.js
+chatbot-frontend/vite.config.d.ts
 
 # Python / Rasa
 .calisto-env/
 __pycache__/
 *.pyc
 .calisto-nlp-env/
+.pytest_cache/
 
 # Rasa cache and models
 calisto_nlp_export/.rasa/
 calisto_nlp_export/models/
 !calisto_nlp_export/models/*.tar.gz
+calisto_nlp_export/dump.rdb
+calisto_nlp_export/latest_model.txt
+calisto_nlp_export/actions/knowledge_base/
+calisto_nlp_export/knowledge_base/
+calisto_nlp_export/reasoning_service/
 
 # Env files and secrets
 .env
 *.env
 chatbot-integrations/.env
+calisto_nlp_export/.env
 
 # Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.log
+chatbot-integrations/.dev-logs/
 
 # OS / Editor
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+.claude/
+.kilo/
+
+# Virtual Environments
+.venv/
+.venv*/
+venv/
+calisto_nlp_export/.venv/
+calisto_nlp_export/.venv_reasoning/
+chatbot-integrations/.venv/
+
+# Python
+__pycache__/
+*.pyc
+
+# Local scratch/report files
+*.txt
+!requirements.txt
+!calisto_nlp_export/requirements.txt
+calisto_nlp_export/rasa_train_output.txt
+conda_info.txt
+find_py.txt
+ls_models.txt
+ls_output.txt
+pwd.txt
+
+# Models
+calisto_nlp_export/models/*.tar.gz
+
+# Databases
+*.db
+*.db-journal
+*.sqlite*
+chatbot-integrations/prisma/dev.db
+chatbot-integrations/dumps/
