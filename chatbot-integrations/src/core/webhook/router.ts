@@ -12,13 +12,20 @@ export interface WebhookRouterConfig {
   x?: XChannel
   logger: Logger
   runtimeStore: RuntimeStore
+  // Instagram has no webhook-registration API to confirm success against, so
+  // registerWebhook() always leaves it 'pending'. A real inbound delivery
+  // that passes signature validation is the only trustworthy proof it's
+  // actually working -- this callback flips the stored status to 'active'
+  // the first time that happens. Optional so tests/router usage without a
+  // ChannelAccountService (e.g. no DB) keep working unchanged.
+  confirmInstagramWebhookActive?: (accountId: string) => Promise<void>
 }
 
 export function createWebhookRouter(
   expressRouter: Router,
   config: WebhookRouterConfig
 ): Router {
-  const { logger, runtimeStore, registry } = config
+  const { logger, runtimeStore, registry, confirmInstagramWebhookActive } = config
 
   function toWebhookRequest(req: Request): WebhookRequest {
     const headers: Record<string, string> = {}
@@ -95,6 +102,11 @@ export function createWebhookRouter(
           logger,
           webhookReq,
           async (account, routedReq) => account.client.handleWebhook(routedReq),
+          (account) => {
+            confirmInstagramWebhookActive?.(account.record.id).catch((err) =>
+              logger.warn(`Failed to confirm Instagram webhook active for ${account.record.id}: ${err.message}`),
+            )
+          },
         )
         res.status(result.status).send(result.body ?? '')
       } catch (error: any) {

@@ -89,6 +89,29 @@ export function buildMessengerChoiceMessage(message: Extract<OutgoingMessage, { 
     }
   }
 
+  // Up to 3 options: a persistent button template, attached permanently to
+  // this message. Unlike quick_replies (below), these are NOT cleared by
+  // whatever message the bot sends next, so they survive being immediately
+  // followed by another message (e.g. utter_greet -> utter_open_app).
+  // Meta caps button templates at 3 buttons, so larger option sets still
+  // fall back to quick_replies.
+  if (message.options.length <= 3) {
+    return {
+      attachment: {
+        type: 'template',
+        payload: {
+          template_type: 'button',
+          text: message.text,
+          buttons: message.options.map((option) => ({
+            type: 'postback',
+            title: option.label.substring(0, 20),
+            payload: option.value,
+          })),
+        },
+      },
+    }
+  }
+
   return {
     text: message.text,
     quick_replies: message.options.map((option) => ({

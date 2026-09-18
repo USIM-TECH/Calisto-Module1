@@ -152,6 +152,9 @@ export function createApp(dependencies: AppDependencies): Express {
     x,
     logger,
     runtimeStore,
+    confirmInstagramWebhookActive: channelAccountService
+      ? (accountId) => channelAccountService.confirmWebhookActive(accountId)
+      : undefined,
   })
   app.use(router)
 

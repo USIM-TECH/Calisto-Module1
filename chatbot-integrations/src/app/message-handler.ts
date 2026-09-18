@@ -62,11 +62,13 @@ export function createNlpMessageHandler({
         }
       }
     } catch (error: any) {
-      logger.error(`[${channelName}] Failed to process message for ${senderLabel}: ${error.message}`)
+      const detail = error?.stack || error?.message || JSON.stringify(error)
+      logger.error(`[${channelName}] Failed to process message for ${senderLabel}: ${detail}`)
       try {
         await sendText(recipientId, 'Sorry, something went wrong. Please try again.')
       } catch (sendError: any) {
-        logger.error(`[${channelName}] Failed to send fallback reply to ${senderLabel}: ${sendError.message}`)
+        const sendDetail = sendError?.stack || sendError?.message || JSON.stringify(sendError)
+        logger.error(`[${channelName}] Failed to send fallback reply to ${senderLabel}: ${sendDetail}`)
       }
     }
   }

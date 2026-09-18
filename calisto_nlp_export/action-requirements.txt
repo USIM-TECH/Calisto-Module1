@@ -1,0 +1,11 @@
+# Extra deps for the Rasa action server, on top of the rasa/rasa-sdk base image.
+# Keep in sync with the third-party imports under actions/, search/ and cache/.
+
+# Tabular helpers for the remote product catalogue (actions/, search/)
+pandas>=1.5.0
+
+# TTL caches for catalogue + knowledge lookups (cache/)
+cachetools>=5.3.0
+
+# Optional .env loading in actions/__init__.py
+python-dotenv>=1.0.0

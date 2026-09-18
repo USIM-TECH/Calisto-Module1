@@ -54,6 +54,7 @@ export async function handleMetaChannelWebhook(
   logger: Logger,
   req: WebhookRequest,
   handler: (account: RegisteredChannelAccount, req: WebhookRequest) => Promise<WebhookResponse>,
+  onInstagramDeliveryConfirmed?: (account: RegisteredChannelAccount) => void,
 ): Promise<WebhookResponse> {
   const queryParams = new URLSearchParams(req.query)
   if (queryParams.has('hub.mode')) {
@@ -105,6 +106,14 @@ export async function handleMetaChannelWebhook(
     if (!account) {
       logger.warn(`No ${channel} account registered for entry.id=${entryId}`)
       continue
+    }
+    // Signature validation above already proved this request genuinely came
+    // from Meta, so a resolved Instagram account here is real, confirmed
+    // proof the dashboard-configured webhook is working -- the only such
+    // proof available, since Instagram has no registration API to confirm
+    // success against.
+    if (channel === 'instagram') {
+      onInstagramDeliveryConfirmed?.(account)
     }
     lastResponse = await handler(account, req)
   }

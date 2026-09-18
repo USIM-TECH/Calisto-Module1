@@ -1,3 +1,4 @@
+import { WebhookRegistrationStatus } from '@prisma/client'
 import type { Logger } from '../core/utils/index.js'
 import type { CacheService } from '../cache/index.js'
 import type { LeadOrchestrator } from '../leads/index.js'
@@ -44,6 +45,28 @@ export class ChannelAccountService {
 
   public async list() {
     return this.store.list()
+  }
+
+  // Instagram's webhook callback can only be configured by hand in the Meta
+  // App Dashboard (Meta does not expose an API for it), so registerWebhook()
+  // can never confirm success -- it always leaves the account 'pending'. This
+  // is the only trustworthy signal that it actually works: a real inbound
+  // webhook delivery that passed signature validation. Call it once a
+  // message has been routed to a resolved account; it no-ops once the
+  // account is already 'active' so it doesn't write to the DB on every
+  // message for the rest of the process lifetime.
+  public async confirmWebhookActive(accountId: string): Promise<void> {
+    const account = this._registry.getById(accountId)
+    if (!account || account.record.webhookStatus === WebhookRegistrationStatus.active) {
+      return
+    }
+    await this.store.updateWebhookState(accountId, {
+      webhookStatus: WebhookRegistrationStatus.active,
+      webhookUrl: account.record.webhookUrl ?? null,
+      webhookError: null,
+    })
+    account.record.webhookStatus = WebhookRegistrationStatus.active
+    account.record.webhookError = undefined
   }
 
   public async get(id: string) {

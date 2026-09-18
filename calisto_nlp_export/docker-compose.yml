@@ -53,6 +53,14 @@ services:
     environment:
       # Host machine URL for chatbot-integrations (must match PORT in chatbot-integrations/.env).
       BACKEND_API_BASE_URL: "http://host.docker.internal:3000"
+      # /admin/products/api requires this (chatbot-integrations' ADMIN_API_TOKEN,
+      # requireAdmin middleware on /admin/* and /reports/*). Without it,
+      # gateway.list_products() gets 401 and action_ask_brand's load_catalogue()
+      # raises "Remote product catalogue unavailable", crashing the
+      # browse-eyewear -> product type -> brand selection flow on every channel.
+      # Set BACKEND_API_KEY in calisto_nlp_export/.env to the same value as
+      # chatbot-integrations/.env's ADMIN_API_TOKEN.
+      BACKEND_API_KEY: "${BACKEND_API_KEY:-}"
       # Base URL for absolutising /static/... product images in emit_product_card.
       # Defaults to the host integration service; override with a PUBLIC tunnel URL
       # so channels that fetch images from the internet (WhatsApp/Telegram/Messenger)

@@ -63,6 +63,7 @@ __pycache__/
 *.txt
 !requirements.txt
 !calisto_nlp_export/requirements.txt
+!calisto_nlp_export/action-requirements.txt
 calisto_nlp_export/rasa_train_output.txt
 conda_info.txt
 find_py.txt
