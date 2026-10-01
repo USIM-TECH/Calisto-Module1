@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft, Mail, MapPin, Paperclip, Pencil, Phone, Plus, Send, Smile } from 'lucide-react'
+import { ChevronLeft, Copy, Mail, MapPin, MessageSquareText, Pencil, Phone, Plus, Sparkles, Target } from 'lucide-react'
 import { getLeadDetail } from '../api/client'
-import { ChannelIcon } from '../components/ChannelIcon'
+import { ChannelIcon, WhatsAppIcon } from '../components/ChannelIcon'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
+import { useSnackbar } from '../components/Snackbar'
 import { SkeletonLeadDetail } from '../components/Skeleton'
 import { cardImageUrl } from '../lib/chat'
 import { formatIntent } from '../lib/format'
@@ -18,6 +19,20 @@ function formatDate(value: string) {
     month: 'short',
     day: '2-digit',
     hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+/** Compact date for the Details card, e.g. "29 Sep, 10:48 am" (year only if not this year). */
+function formatShortDate(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const sameYear = date.getFullYear() === new Date().getFullYear()
+  return date.toLocaleString('en-MY', {
+    day: 'numeric',
+    month: 'short',
+    ...(sameYear ? {} : { year: 'numeric' }),
+    hour: 'numeric',
     minute: '2-digit',
   })
 }
@@ -61,21 +76,162 @@ function statusLabel(status: string) {
  * Returns to the Leads list. Coming from it, go back in history so its search,
  * filters and page (kept in the URL) are restored; otherwise open /leads.
  */
-function BackToLeads() {
+function BackToLeads({ compact = false }: { compact?: boolean }) {
   const navigate = useNavigate()
   const location = useLocation()
   const fromLeads = Boolean((location.state as { fromLeads?: boolean } | null)?.fromLeads)
+  const goBack = () => (fromLeads ? navigate(-1) : navigate('/leads'))
+
+  if (compact) {
+    return (
+      <button
+        aria-label="Back to leads"
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-calisto-line text-calisto-body transition hover:bg-calisto-surface-muted hover:text-calisto-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-calisto-accent/40"
+        onClick={goBack}
+        title="Back to leads"
+        type="button"
+      >
+        <ChevronLeft className="h-4 w-4" strokeWidth={2.2} />
+      </button>
+    )
+  }
 
   return (
     <button
       className="mb-4 inline-flex items-center gap-1 rounded-lg py-1 pr-2 text-sm font-semibold text-calisto-body transition hover:text-calisto-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-calisto-accent/40"
-      onClick={() => (fromLeads ? navigate(-1) : navigate('/leads'))}
+      onClick={goBack}
       type="button"
     >
       <ChevronLeft className="h-4 w-4" strokeWidth={2.2} />
       Back to leads
     </button>
   )
+}
+
+/** Highlighted fact at the top of the card (tinted tile with an icon). */
+function HighlightTile({ icon, label, value }: { icon: ReactNode; label: string; value?: string }) {
+  return (
+    <div className="min-w-0 rounded-xl bg-calisto-accent/[0.06] px-3 py-2.5">
+      <div className="flex items-center gap-1.5 text-[11px] font-medium text-calisto-accent">
+        {icon}
+        {label}
+      </div>
+      <div className={`mt-1 line-clamp-2 break-words text-sm font-semibold leading-5 ${value ? 'text-calisto-ink' : 'text-calisto-soft'}`} title={value}>
+        {value ?? 'Not yet known'}
+      </div>
+    </div>
+  )
+}
+
+/** Contact line: icon in a soft square, clickable value, copy button on hover. */
+function ContactRow({
+  icon,
+  label,
+  value,
+  href,
+  external = false,
+}: {
+  icon: ReactNode
+  label: string
+  value?: string
+  href?: string
+  external?: boolean
+}) {
+  const snackbar = useSnackbar()
+
+  async function copy() {
+    if (!value) return
+    try {
+      await navigator.clipboard.writeText(value)
+      snackbar.success(`${label} copied.`)
+    } catch {
+      snackbar.error('Could not copy. Select the text and copy it manually.')
+    }
+  }
+
+  return (
+    <div className="group flex min-w-0 items-center gap-3">
+      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-calisto-table text-calisto-body">
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-[11px] text-calisto-muted">{label}</div>
+        {value ? (
+          href ? (
+            <a
+              className="block truncate text-sm text-calisto-ink transition hover:text-calisto-accent"
+              href={href}
+              rel={external ? 'noreferrer' : undefined}
+              target={external ? '_blank' : undefined}
+              title={value}
+            >
+              {value}
+            </a>
+          ) : (
+            <div className="truncate text-sm text-calisto-ink" title={value}>{value}</div>
+          )
+        ) : (
+          <div className="text-sm text-calisto-soft">Not provided</div>
+        )}
+      </div>
+      {value && (
+        <button
+          aria-label={`Copy ${label.toLowerCase()}`}
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-calisto-muted opacity-0 transition hover:bg-calisto-table hover:text-calisto-ink focus-visible:opacity-100 group-hover:opacity-100"
+          onClick={() => void copy()}
+          title="Copy"
+          type="button"
+        >
+          <Copy className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** "just now", "5m ago", "2h ago", "3d ago", else a short date. */
+function timeAgo(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const minutes = Math.round((Date.now() - date.getTime()) / 60000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.round(hours / 24)
+  if (days < 7) return `${days}d ago`
+  return date.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })
+}
+
+const CRM_TONE: Record<string, string> = {
+  synced: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  failed: 'bg-rose-50 text-rose-700 ring-rose-200',
+  pending: 'bg-amber-50 text-amber-700 ring-amber-200',
+}
+
+function whatsappLink(phone?: string) {
+  const digits = phone?.replace(/[^\d]/g, '')
+  return digits ? `https://wa.me/${digits}` : undefined
+}
+
+// Internal notes are kept in this browser per lead (there is no notes API yet).
+const noteKey = (customerId: string) => `calisto-lead-note:${customerId}`
+
+function loadNote(customerId: string): string {
+  try {
+    return window.localStorage.getItem(noteKey(customerId)) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function saveNote(customerId: string, value: string) {
+  try {
+    if (value.trim()) window.localStorage.setItem(noteKey(customerId), value)
+    else window.localStorage.removeItem(noteKey(customerId))
+  } catch {
+    // Storage blocked: the note just won't persist.
+  }
 }
 
 function channelLabel(channel: string) {
@@ -196,36 +352,41 @@ function MessageBody({ message }: { message: ConversationMessageRecord }) {
   return <span className="italic opacity-80">{richTypeLabel(message.messageType)}</span>
 }
 
-function renderChatMessage(message: ConversationMessageRecord) {
+/**
+ * One chat message. Consecutive messages from the same side form a group (like
+ * WhatsApp): tight spacing inside a group, a larger gap when the speaker changes,
+ * and the time shown once under the last message of the group.
+ */
+function renderChatMessage(message: ConversationMessageRecord, previous?: ConversationMessageRecord, next?: ConversationMessageRecord) {
   const isOutbound = message.direction === 'outbound'
   const payload = message.metadata?.payload
   const isRich = Boolean(payload) && payload?.type !== 'text'
+  const startsGroup = previous?.direction !== message.direction
+  const endsGroup = next?.direction !== message.direction
 
-  if (isRich) {
-    return (
-      <div key={message.messageId} className={`flex flex-col ${isOutbound ? 'items-end' : 'items-start'}`}>
+  const bubbleClass = isOutbound
+    ? 'rounded-br-md bg-calisto-surface text-calisto-ink shadow-sm'
+    : 'rounded-bl-md bg-calisto-sidebar text-calisto-surface shadow-sm'
+
+  return (
+    <div
+      key={message.messageId}
+      className={`flex flex-col ${isOutbound ? 'items-end' : 'items-start'} ${previous ? (startsGroup ? 'mt-5' : 'mt-1.5') : ''}`}
+    >
+      {isRich ? (
         <div className="w-full max-w-[20rem]">
           <MessageBody message={message} />
         </div>
-        <div className="mt-1.5 px-1 text-[10px] font-semibold text-calisto-muted">
+      ) : (
+        <div className={`max-w-[78%] whitespace-pre-wrap rounded-xl px-4 py-2.5 text-[0.86rem] font-medium leading-6 ${bubbleClass}`}>
+          <MessageBody message={message} />
+        </div>
+      )}
+      {endsGroup && (
+        <div className="mt-1 px-1 text-[10px] font-semibold text-calisto-muted">
           {formatTime(message.timestamp)}
         </div>
-      </div>
-    )
-  }
-
-  const bubbleClass = isOutbound
-    ? 'ml-auto rounded-br-md bg-calisto-surface text-calisto-ink shadow-sm'
-    : 'mr-auto rounded-bl-md bg-calisto-sidebar text-calisto-surface shadow-sm'
-
-  return (
-    <div key={message.messageId} className={`flex flex-col ${isOutbound ? 'items-end' : 'items-start'}`}>
-      <div className={`max-w-[78%] whitespace-pre-wrap rounded-xl px-4 py-3 text-[0.86rem] font-medium leading-6 ${bubbleClass}`}>
-        <MessageBody message={message} />
-      </div>
-      <div className="mt-1.5 px-1 text-[10px] font-semibold text-calisto-muted">
-        {formatTime(message.timestamp)}
-      </div>
+      )}
     </div>
   )
 }
@@ -240,6 +401,8 @@ export default function LeadDetailPage() {
   const [newTag, setNewTag] = useState('')
   const [isEditingLead, setIsEditingLead] = useState(false)
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
+  const [note, setNote] = useState(() => (customerId ? loadNote(customerId) : ''))
+  const transcriptRef = useRef<HTMLDivElement | null>(null)
   const [leadDraft, setLeadDraft] = useState({
     email: '',
     leadName: '',
@@ -285,6 +448,7 @@ export default function LeadDetailPage() {
     setNewTag('')
     setIsEditingLead(false)
     setActiveConversationId(null)
+    setNote(customerId ? loadNote(customerId) : '')
   }, [customerId])
 
   const conversations = useMemo<ConversationRecord[]>(() => {
@@ -324,13 +488,11 @@ export default function LeadDetailPage() {
     ].filter(Boolean))).slice(0, 10)
   }, [data, extraTags])
 
-  const notes = useMemo(() => {
-    if (!data) return []
-    return data.transcript
-      .filter((message) => message.text)
-      .slice(-3)
-      .reverse()
-  }, [data])
+  // Open each conversation at its most recent message, like a chat app.
+  useEffect(() => {
+    const transcript = transcriptRef.current
+    if (transcript) transcript.scrollTop = transcript.scrollHeight
+  }, [activeConversation?.id, data])
 
   if (loading) {
     return (
@@ -411,203 +573,231 @@ export default function LeadDetailPage() {
     setIsAddingTag(false)
   }
 
+  const firstName = customerName(data).split(/\s+/)[0] ?? customerName(data)
+  const waLink = whatsappLink(customer.phone)
+  const activeIdentity = identities.find((identity) => identity.id === activeConversation?.channelIdentityId)
+  const phoneDisplay = customer.phone ?? (primaryIdentity && primaryIdentity.channel !== 'website' ? primaryIdentity.sourceId : undefined)
+  const crmStatus = data.crm?.status ?? customer.crmStatus
+  const iconButton =
+    'inline-flex h-9 w-9 items-center justify-center rounded-xl border border-calisto-line bg-calisto-surface transition hover:bg-calisto-surface-muted'
+  const secondaryButton =
+    'inline-flex h-9 items-center gap-2 rounded-xl border border-calisto-line bg-calisto-surface px-3.5 text-sm font-semibold text-calisto-ink transition hover:bg-calisto-surface-muted'
+
   return (
-    <PageContainer>
-      <BackToLeads />
-      <div className="grid h-auto min-h-0 gap-5 xl:h-[calc(100dvh-6.75rem)] xl:min-h-[440px] xl:overflow-hidden xl:grid-cols-[320px_minmax(0,1fr)]">
-        <aside className="grid min-h-0 auto-rows-max content-start gap-4 overflow-visible pb-4 pr-1 xl:h-full xl:max-h-full xl:overflow-y-auto xl:overscroll-contain xl:pb-8">
-          <section className="overflow-hidden rounded-2xl border border-calisto-line-subtle bg-calisto-surface shadow-sm">
-            <div className="flex items-start gap-4 border-b border-calisto-line-subtle px-5 py-5">
-              <span className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-calisto-accent text-sm font-extrabold text-calisto-surface">
-                {customerInitials(data)}
+    // Desktop: fills the screen. Header card on top; Details (left) and the
+    // conversation (right) below. Only the chat transcript scrolls.
+    <PageContainer className="xl:flex xl:h-[100dvh] xl:flex-col">
+      <section className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-4 rounded-2xl border border-calisto-line-subtle bg-calisto-surface px-5 py-4 shadow-sm">
+        <div className="flex min-w-0 items-center gap-4">
+          <BackToLeads compact />
+          <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-calisto-accent text-sm font-extrabold text-calisto-surface">
+            {customerInitials(data)}
+          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-xl font-semibold text-calisto-ink">{customerName(data)}</h1>
+              <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ${statusTone(customer.qualificationStatus)}`}>
+                {statusLabel(customer.qualificationStatus)}
               </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-3">
-                  <h1 className="truncate text-xl font-semibold text-calisto-ink">{customerName(data)}</h1>
-                  <button
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-calisto-accent transition hover:bg-calisto-accent/10"
-                    onClick={openLeadEdit}
-                    title="Edit lead"
-                    type="button"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                </div>
-                <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wide ${statusTone(customer.qualificationStatus)}`}>
-                  {statusLabel(customer.qualificationStatus)}
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${CRM_TONE[crmStatus] ?? CRM_TONE.pending}`}>
+                CRM · {statusLabel(crmStatus)}
+              </span>
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-calisto-muted">
+              {identities.map((identity) => (
+                <span className="inline-flex items-center gap-1.5" key={identity.id}>
+                  <ChannelIcon channel={identity.channel} className="h-3.5 w-3.5" />
+                  {channelLabel(identity.channel)}
+                  {identity.accountLabel ? ` · ${identity.accountLabel}` : ''}
                 </span>
-              </div>
+              ))}
+              {identities.length > 0 && <span aria-hidden="true" className="text-calisto-line">|</span>}
+              <span title={formatDate(customer.lastMessageAt)}>Active {timeAgo(customer.lastMessageAt)}</span>
+              <span aria-hidden="true">·</span>
+              <span title={formatDate(customer.firstSeenAt)}>
+                First seen {new Date(customer.firstSeenAt).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })}
+              </span>
             </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {waLink && (
+            <a aria-label="Chat on WhatsApp" className={iconButton} href={waLink} rel="noreferrer" target="_blank" title="Chat on WhatsApp">
+              <WhatsAppIcon className="h-4 w-4 text-emerald-600" />
+            </a>
+          )}
+          {customer.email && (
+            <a aria-label="Send email" className={iconButton} href={`mailto:${customer.email}`} title="Send email">
+              <Mail className="h-4 w-4 text-blue-700" />
+            </a>
+          )}
+          <button className={secondaryButton} onClick={openLeadEdit} title="Edit lead" type="button">
+            <Pencil className="h-4 w-4 text-calisto-accent" />
+            Edit
+          </button>
+        </div>
+      </section>
 
-            <div className="border-b border-calisto-line-subtle px-5 py-5">
-              <div className="mb-4 text-[11px] font-extrabold uppercase tracking-wider text-calisto-ink">Contact Info</div>
-              <div className="grid gap-3 text-sm font-medium text-calisto-body">
-                <div className="flex min-w-0 items-center gap-3">
-                  <Mail className="h-4 w-4 shrink-0 text-calisto-accent" />
-                  <span className="truncate">{customer.email ?? 'Email not provided'}</span>
-                </div>
-                <div className="flex min-w-0 items-center gap-3">
-                  <Phone className="h-4 w-4 shrink-0 text-calisto-accent" />
-                  <span className="truncate">{customer.phone ?? (primaryIdentity && primaryIdentity.channel !== 'website' ? primaryIdentity.sourceId : undefined) ?? 'Phone not provided'}</span>
-                </div>
-                <div className="flex min-w-0 items-center gap-3">
-                  <MapPin className="h-4 w-4 shrink-0 text-calisto-accent" />
-                  <span className="truncate">{customer.location ?? 'Location not provided'}</span>
-                </div>
-              </div>
-            </div>
+      <div className="grid gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[300px_minmax(0,1fr)]">
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-calisto-line-subtle bg-calisto-surface shadow-sm">
+          <section className="grid grid-cols-2 gap-2 border-b border-calisto-line-subtle p-4">
+            <HighlightTile
+              icon={<Target className="h-3.5 w-3.5" />}
+              label="Interested in"
+              value={customer.preferredService ? formatIntent(customer.preferredService) : undefined}
+            />
+            <HighlightTile
+              icon={<Sparkles className="h-3.5 w-3.5" />}
+              label="Last intent"
+              value={customer.lastIntent ? formatIntent(customer.lastIntent) : undefined}
+            />
+          </section>
 
-            <div className="px-5 py-5">
-              <div className="mb-4 text-[11px] font-extrabold uppercase tracking-wider text-calisto-ink">Tags</div>
-              <div className="flex flex-wrap gap-2">
-                {tags.length > 0 ? tags.map((tag) => (
-                  <span
-                    className="inline-flex max-w-full items-center rounded-md border border-calisto-line bg-calisto-table px-2.5 py-1 text-[10px] font-extrabold text-calisto-body"
-                    key={tag}
-                  >
-                    <span className="truncate">{tag}</span>
-                  </span>
-                )) : (
-                  <span className="text-xs font-semibold text-calisto-soft">No tags captured</span>
-                )}
-                {isAddingTag ? (
-                  <form
-                    className="flex max-w-full items-center gap-1"
-                    onSubmit={(event) => {
-                      event.preventDefault()
-                      saveTag()
-                    }}
-                  >
-                    <input
-                      autoFocus
-                      className="h-7 w-28 rounded-md border border-calisto-line bg-calisto-surface px-2 text-[11px] font-semibold text-calisto-body outline-none placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:ring-2 focus:ring-calisto-focus"
-                      onChange={(event) => setNewTag(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Escape') {
-                          setIsAddingTag(false)
-                          setNewTag('')
-                        }
-                      }}
-                      placeholder="New tag"
-                      value={newTag}
-                    />
-                    <button className="inline-flex h-7 items-center rounded-md bg-calisto-sidebar px-2 text-[10px] font-extrabold text-calisto-surface transition hover:bg-calisto-sidebarActive" type="submit">
-                      Add
-                    </button>
-                  </form>
-                ) : (
-                  <button className="inline-flex items-center gap-1 rounded-md border border-calisto-line bg-calisto-surface px-2.5 py-1 text-[10px] font-extrabold text-calisto-body transition hover:bg-calisto-surface-muted" onClick={() => setIsAddingTag(true)} type="button">
-                    <Plus className="h-3 w-3" />
-                    Add Tag
-                  </button>
-                )}
-              </div>
+          <section className="border-b border-calisto-line-subtle px-5 py-4">
+            <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-calisto-ink">Contact</h2>
+            <div className="grid gap-3">
+              <ContactRow
+                href={customer.email ? `mailto:${customer.email}` : undefined}
+                icon={<Mail className="h-4 w-4" />}
+                label="Email"
+                value={customer.email}
+              />
+              <ContactRow
+                external
+                href={whatsappLink(phoneDisplay)}
+                icon={<Phone className="h-4 w-4" />}
+                label="Phone"
+                value={phoneDisplay}
+              />
+              <ContactRow icon={<MapPin className="h-4 w-4" />} label="Location" value={customer.location} />
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-calisto-line-subtle bg-calisto-surface shadow-sm">
-            <div className="border-b border-calisto-line-subtle px-5 py-4 text-[11px] font-extrabold uppercase tracking-wider text-calisto-ink">
-              Quick Notes
+          <section className="border-b border-calisto-line-subtle px-5 py-4">
+            <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-calisto-ink">Tags</h2>
+            <div className="flex flex-wrap gap-1.5">
+              {tags.map((tag) => (
+                <span
+                  className="inline-flex max-w-full items-center rounded-full border border-calisto-line bg-calisto-surface px-2.5 py-1 text-xs font-medium text-calisto-ink"
+                  key={tag}
+                >
+                  <span className="truncate">{tag}</span>
+                </span>
+              ))}
+              {isAddingTag ? (
+                <form
+                  className="flex max-w-full items-center gap-1"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    saveTag()
+                  }}
+                >
+                  <input
+                    autoFocus
+                    className="h-7 w-28 rounded-full border border-calisto-line bg-calisto-surface px-3 text-xs text-calisto-body outline-none placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:ring-2 focus:ring-calisto-focus"
+                    onBlur={saveTag}
+                    onChange={(event) => setNewTag(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') {
+                        setIsAddingTag(false)
+                        setNewTag('')
+                      }
+                    }}
+                    placeholder="New tag"
+                    value={newTag}
+                  />
+                </form>
+              ) : (
+                <button
+                  className="inline-flex items-center gap-1 rounded-full border border-dashed border-calisto-line px-2.5 py-1 text-xs font-medium text-calisto-muted transition hover:border-calisto-accent/40 hover:text-calisto-accent"
+                  onClick={() => setIsAddingTag(true)}
+                  type="button"
+                >
+                  <Plus className="h-3 w-3" />
+                  Add tag
+                </button>
+              )}
             </div>
-            <div className="px-5 py-4">
-              <textarea
-                className="min-h-32 w-full resize-none rounded-md border border-transparent bg-calisto-surface p-3 text-sm font-medium leading-6 text-calisto-body outline-none placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus"
-                placeholder="Jot down your notes..."
-              />
+          </section>
+
+          {/* Notes take whatever height is left, so the card always matches the conversation card. */}
+          <section className="flex min-h-0 flex-1 flex-col px-5 py-4">
+            <div className="mb-2 flex items-baseline justify-between gap-2">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-calisto-ink">Notes</h2>
+              <span className="text-[11px] text-calisto-soft">Saved on this device</span>
             </div>
-            <div className="border-t border-calisto-line-subtle px-5 py-4">
-              <div className="mb-3 text-[11px] font-extrabold uppercase tracking-wider text-calisto-ink">Notes</div>
-              <div className="grid gap-3">
-                {notes.length > 0 ? notes.map((message) => (
-                  <div className="rounded-lg border border-calisto-line-subtle bg-calisto-surface-muted px-3 py-2 text-[11px] font-medium leading-5 text-calisto-body" key={message.messageId}>
-                    {message.text ? humanizeMessageText(message.text) : ''}
-                  </div>
-                )) : (
-                  <div className="rounded-lg border border-dashed border-calisto-line bg-calisto-table px-3 py-3 text-xs font-medium text-calisto-muted">
-                    No notes yet.
-                  </div>
-                )}
-              </div>
-            </div>
+            <textarea
+              aria-label="Notes about this lead"
+              className="min-h-[4.5rem] w-full flex-1 resize-none rounded-xl border border-amber-100 bg-amber-50/60 p-3 text-sm leading-6 text-calisto-ink outline-none placeholder:text-amber-700/40 focus:border-amber-200 focus:ring-4 focus:ring-amber-100"
+              onChange={(event) => {
+                setNote(event.target.value)
+                if (customerId) saveNote(customerId, event.target.value)
+              }}
+              placeholder={`Add a note about ${firstName}…`}
+              value={note}
+            />
           </section>
         </aside>
 
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-calisto-line-subtle bg-calisto-surface shadow-sm">
-          <div className="flex h-14 shrink-0 items-center justify-between border-b border-calisto-line-subtle px-5">
-            <div className="flex min-w-0 items-center gap-2">
-              {activeChannel && <ChannelIcon channel={activeChannel} className="h-4 w-4 shrink-0 text-calisto-accent" />}
-              <h2 className="truncate text-sm font-extrabold uppercase tracking-wider text-calisto-ink">
-                {titleChannel} Chat with {customerName(data).split(/\s+/)[0] ?? customerName(data)}
+        <section className="flex min-h-[28rem] flex-col overflow-hidden rounded-2xl border border-calisto-line-subtle bg-calisto-surface shadow-sm xl:min-h-0">
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-calisto-line-subtle px-5 py-3">
+            {conversations.length > 1 ? (
+              <div aria-label="Conversations" className="flex min-w-0 gap-1 overflow-x-auto rounded-xl bg-calisto-table p-1" role="tablist">
+                {conversations.map((conv) => {
+                  const isActive = conv.id === (activeConversation?.id ?? '')
+                  const identity = identities.find((entry) => entry.id === conv.channelIdentityId)
+                  return (
+                    <button
+                      aria-selected={isActive}
+                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                        isActive ? 'bg-calisto-surface text-calisto-ink shadow-sm' : 'text-calisto-body hover:text-calisto-ink'
+                      }`}
+                      key={conv.id}
+                      onClick={() => setActiveConversationId(conv.id)}
+                      role="tab"
+                      type="button"
+                    >
+                      <ChannelIcon channel={conv.channel} className="h-4 w-4" />
+                      {channelLabel(conv.channel)}
+                      {identity?.accountLabel ? <span className="text-calisto-muted">· {identity.accountLabel}</span> : null}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <h2 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-calisto-ink">
+                {activeChannel ? <ChannelIcon channel={activeChannel} className="h-4 w-4 shrink-0" /> : <MessageSquareText className="h-4 w-4" />}
+                <span className="truncate">
+                  {titleChannel} conversation
+                  {activeIdentity?.accountLabel ? <span className="font-normal text-calisto-muted"> · {activeIdentity.accountLabel}</span> : null}
+                </span>
               </h2>
-            </div>
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wide text-calisto-accent">
-              <span className="h-2 w-2 rounded-full bg-calisto-accent" />
-              Online
-            </span>
-          </div>
+            )}
+            {activeConversation && activeMessages.length > 0 && (
+              <span className="shrink-0 text-xs text-calisto-muted">
+                {activeMessages.length} message{activeMessages.length === 1 ? '' : 's'} · Started {formatShortDate(activeConversation.createdAt)}
+              </span>
+            )}
+          </header>
 
-          {conversations.length > 1 && (
-            <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-calisto-line-subtle px-5 py-2.5">
-              {conversations.map((conv) => {
-                const isActive = conv.id === (activeConversation?.id ?? '')
-                const identity = identities.find((entry) => entry.id === conv.channelIdentityId)
-                return (
-                  <button
-                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wide transition ${
-                      isActive
-                        ? 'bg-calisto-sidebar text-calisto-surface'
-                        : 'border border-calisto-line bg-calisto-surface text-calisto-body hover:bg-calisto-surface-muted'
-                    }`}
-                    key={conv.id}
-                    onClick={() => setActiveConversationId(conv.id)}
-                    type="button"
-                  >
-                    <ChannelIcon channel={conv.channel} className="h-3.5 w-3.5" />
-                    {channelLabel(conv.channel)}
-                    {identity?.accountLabel ? ` · ${identity.accountLabel}` : ''}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          <div className="flex min-h-0 flex-1 flex-col gap-10 overflow-y-auto overscroll-contain bg-calisto-table/80 px-12 py-7">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain bg-calisto-table/80 px-5 py-6 lg:px-8" ref={transcriptRef}>
             {activeMessages.length > 0 && (
-              <div className="self-center rounded-full bg-calisto-surface px-3 py-1 text-[10px] font-bold text-calisto-soft shadow-sm">
+              <div className="mb-5 self-center rounded-full bg-calisto-surface px-3 py-1 text-[10px] font-bold text-calisto-soft shadow-sm">
                 {formatDate(activeMessages[0].timestamp)}
               </div>
             )}
             {activeMessages.length === 0 ? (
-              <div className="flex min-h-80 items-center justify-center rounded-xl border border-dashed border-calisto-line bg-calisto-surface text-sm font-medium text-calisto-muted">
-                No transcript available yet.
+              <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-calisto-muted">
+                <MessageSquareText className="h-8 w-8 text-calisto-soft" strokeWidth={1.5} />
+                No messages in this conversation yet.
               </div>
             ) : (
-              activeMessages.map((message) => renderChatMessage(message))
+              activeMessages.map((message, index) =>
+                renderChatMessage(message, activeMessages[index - 1], activeMessages[index + 1]),
+              )
             )}
           </div>
 
-          <div className="shrink-0 border-t border-calisto-line-subtle bg-calisto-surface px-5 py-4">
-            <div className="flex items-center gap-3 rounded-xl border border-calisto-line bg-calisto-surface px-3 py-2">
-              <button className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-calisto-body transition hover:bg-calisto-surface-muted" type="button">
-                <Paperclip className="h-4 w-4" />
-              </button>
-              <button className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-calisto-body transition hover:bg-calisto-surface-muted" type="button">
-                <Smile className="h-4 w-4" />
-              </button>
-              <input
-                className="h-9 min-w-0 flex-1 bg-transparent text-sm font-medium text-calisto-body outline-none placeholder:text-calisto-soft"
-                placeholder={`Type a message to ${customerName(data).split(/\s+/)[0] ?? 'this lead'}... Use / for templates.`}
-                type="text"
-              />
-              <button className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-calisto-sidebar text-calisto-surface transition hover:bg-calisto-sidebarActive" type="button">
-                <Send className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="mt-2 flex items-center justify-between px-1 text-[10px] font-semibold text-calisto-muted">
-              <span>End-to-end encrypted channel</span>
-              <span>Press Enter to send</span>
-            </div>
-          </div>
         </section>
       </div>
 
