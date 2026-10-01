@@ -1,5 +1,5 @@
-import { Circle, Globe2, MessageSquareText, RotateCcw, Send, Sparkles, UserRound } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Circle, ExternalLink, Globe2, MessageSquareText, RotateCcw, Send, UserRound } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { postWebchatMessage } from '../api/client'
 import Button from '../components/Button'
 import ChatMessageBubble from '../components/ChatMessageBubble'
@@ -7,6 +7,7 @@ import PageContainer from '../components/PageContainer'
 import { TypingIndicator } from '../components/Skeleton'
 import Topbar from '../components/Topbar'
 import { getOrCreateSenderId, messagePreview, persistSenderId, resetSenderId } from '../lib/chat'
+import { displayName, useCurrentUser } from '../lib/current-user'
 import type { WebchatResponse } from '../types'
 
 interface ChatBubble {
@@ -19,30 +20,40 @@ interface ChatBubble {
 
 const WEBCHAT_SCOPE = 'website-admin'
 
-const metrics = [
-  { icon: Globe2, label: 'Channel', trend: 'Website' },
-  { icon: UserRound, label: 'Session', trend: 'Demo' },
-  { icon: Circle, label: 'Status', trend: 'Live' },
+// `display` is what appears in the chat as the user's message; defaults to `label`.
+const promptOptions: Array<{ label: string; value: string; display?: string }> = [
+  { label: 'Start conversation', value: 'hi', display: 'Hi' },
+  { label: 'Browse eyewear', value: '/browse_eyewear' },
+  { label: 'Find a store', value: '/find_a_store' },
+  { label: 'Book appointment', value: 'I want to book an eye test appointment' },
 ]
 
 function currentStamp() {
-  return new Date().toLocaleString('en-MY')
+  return new Date().toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit' })
 }
 
 export default function WebchatPage() {
+  // The sender id stays internal (sent to the backend); the UI shows who is chatting.
+  const currentUser = useCurrentUser()
+  const senderName = displayName(currentUser)
   const [senderId, setSenderId] = useState(() => getOrCreateSenderId(WEBCHAT_SCOPE))
   const [message, setMessage] = useState('')
-  const [status, setStatus] = useState('Ready')
+  const [status, setStatus] = useState<'Ready' | 'Sending' | 'Failed'>('Ready')
+  const [error, setError] = useState<string | null>(null)
   const [bubbles, setBubbles] = useState<ChatBubble[]>([])
-  const [loading, setLoading] = useState(false)
+  const loading = status === 'Sending'
   const transcriptRef = useRef<HTMLDivElement | null>(null)
-
-  const bubbleCount = useMemo(() => bubbles.length, [bubbles])
+  const composerRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
     if (!transcriptRef.current) return
-    transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight
+    transcriptRef.current.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: 'smooth' })
   }, [bubbles, loading])
+
+  // Shrink the auto-growing composer back to one line once the message is sent.
+  useEffect(() => {
+    if (!message && composerRef.current) composerRef.current.style.height = ''
+  }, [message])
 
   async function sendMessage(text: string, displayText?: string) {
     if (!text.trim() || loading) return
@@ -53,11 +64,17 @@ export default function WebchatPage() {
       { id: `${Date.now()}-user`, direction: 'customer', content: visible, timestamp: currentStamp() },
     ])
     setMessage('')
-    setLoading(true)
     setStatus('Sending')
+    setError(null)
 
     try {
-      const response: WebchatResponse = await postWebchatMessage({ senderId, message: trimmed })
+      // Send the signed-in admin's identity so the lead shows their name, not "Unknown Customer".
+      const response: WebchatResponse = await postWebchatMessage({
+        senderId,
+        message: trimmed,
+        name: currentUser.name?.trim() || undefined,
+        email: currentUser.email,
+      })
       persistSenderId(response.senderId, WEBCHAT_SCOPE)
       setSenderId(response.senderId)
 
@@ -70,10 +87,9 @@ export default function WebchatPage() {
       }))
       setBubbles((prev) => [...prev, ...botBubbles])
       setStatus('Ready')
-    } catch (error: unknown) {
-      setStatus(error instanceof Error ? error.message : 'Failed')
-    } finally {
-      setLoading(false)
+    } catch (caught: unknown) {
+      setStatus('Failed')
+      setError(caught instanceof Error ? caught.message : 'Message failed.')
     }
   }
 
@@ -81,137 +97,179 @@ export default function WebchatPage() {
     const nextSenderId = resetSenderId(WEBCHAT_SCOPE)
     setSenderId(nextSenderId)
     setBubbles([])
+    setError(null)
     setStatus('Ready')
   }
 
-  const metricValues = [
-    { value: 'Website', note: <>Directly calls <strong>/webchat/message</strong></> },
-    { value: senderId || 'demo-user', note: 'Sender id used for local testing' },
-    { value: status, note: 'Replies appear in the conversation panel' },
+  const details = [
+    { icon: UserRound, label: 'Chatting as', value: senderName },
+    { icon: Globe2, label: 'Channel', value: 'Website' },
   ]
 
   return (
-    <PageContainer>
+    // On large screens the page fits the viewport and only the transcript scrolls.
+    <PageContainer className="xl:flex xl:h-[100dvh] xl:flex-col">
       <Topbar
         title="Website Chat Console"
         actions={(
           <>
             <Button icon={<RotateCcw className="h-4 w-4" />} onClick={handleResetSession}>Reset Session</Button>
-            <Button icon={<Sparkles className="h-4 w-4" />} variant="primary" disabled={loading} onClick={() => sendMessage(message)}>Live Test</Button>
+            <Button
+              icon={<ExternalLink className="h-4 w-4" />}
+              variant="primary"
+              onClick={() => window.open('/chatbot', '_blank', 'noopener,noreferrer')}
+              title="Open the customer-facing chatbot in a new tab"
+            >
+              Live Test
+            </Button>
           </>
         )}
       />
 
-      <section className="mb-6 grid gap-5 xl:grid-cols-3">
-        {metrics.map(({ icon: Icon, label, trend }, index) => (
-          <article key={label} className="rounded-2xl border border-calisto-line-subtle bg-calisto-surface p-6 shadow-dashboard">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
-                <Icon className="h-5 w-5" strokeWidth={1.9} />
-              </span>
-              <span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">{trend}</span>
-            </div>
-            <div className="text-xs font-bold uppercase tracking-wider text-calisto-muted">{label}</div>
-            <div id={index === 1 ? 'sessionLabel' : index === 2 ? 'statusLabel' : undefined} className="mt-2 truncate text-3xl font-semibold leading-none text-indigo-900">{metricValues[index].value}</div>
-            <div className="mt-3 text-xs text-calisto-muted">{metricValues[index].note}</div>
-          </article>
-        ))}
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,1fr)]">
-        <article className="overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
-          <div className="border-b border-calisto-line px-5 py-4">
-            <h2 className="text-base font-extrabold text-calisto-ink">Test Controls</h2>
-          </div>
-          <div className="p-5">
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-[0.68rem] font-extrabold uppercase tracking-wider text-calisto-soft" htmlFor="senderIdInput">Sender ID</label>
-                <input
-                  id="senderIdInput"
-                  className="h-12 w-full rounded-xl border border-calisto-line bg-calisto-table px-4 text-sm text-calisto-body outline-none transition focus:border-calisto-accent/50 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
-                  type="text"
-                  value={senderId}
-                  onChange={(event) => {
-                    const next = event.target.value
-                    setSenderId(next)
-                    persistSenderId(next, WEBCHAT_SCOPE)
-                  }}
-                />
-              </div>
-              <div>
-                <div className="mb-2 text-[0.68rem] font-extrabold uppercase tracking-wider text-calisto-soft">Suggested Prompts</div>
-                <div className="flex flex-wrap gap-2">
-                  <button className="rounded-full border border-calisto-line bg-calisto-surface px-3 py-2 text-sm font-semibold text-calisto-ink transition hover:bg-calisto-surface-muted" type="button" onClick={() => setMessage('hi')}>hi</button>
-                  <button className="rounded-full border border-calisto-line bg-calisto-surface px-3 py-2 text-sm font-semibold text-calisto-ink transition hover:bg-calisto-surface-muted" type="button" onClick={() => setMessage('/browse_eyewear')}>browse eyewear</button>
-                  <button className="rounded-full border border-calisto-line bg-calisto-surface px-3 py-2 text-sm font-semibold text-calisto-ink transition hover:bg-calisto-surface-muted" type="button" onClick={() => setMessage('/find_a_store')}>find a store</button>
+      <div className="grid gap-6 xl:min-h-0 xl:flex-1 xl:grid-cols-[300px_minmax(0,1fr)]">
+        {/* Below xl the conversation comes first so the chat is visible without scrolling. */}
+        <aside className="order-last flex flex-col gap-5 rounded-2xl border border-calisto-line bg-calisto-surface p-5 shadow-dashboard xl:order-none xl:overflow-y-auto">
+          <section>
+            <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-calisto-muted">Session</h2>
+            <dl className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+              {details.map(({ icon: Icon, label, value }) => (
+                <div key={label} className="flex items-center gap-3">
+                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-calisto-table text-calisto-body">
+                    <Icon className="h-4 w-4" strokeWidth={1.9} />
+                  </span>
+                  <div className="min-w-0">
+                    <dt className="text-xs text-calisto-muted">{label}</dt>
+                    <dd className="truncate text-sm font-semibold text-calisto-ink">{value}</dd>
+                  </div>
                 </div>
-              </div>
-              <div className="lg:col-span-2">
-                <label className="mb-2 block text-[0.68rem] font-extrabold uppercase tracking-wider text-calisto-soft" htmlFor="messageInput">Request Composer</label>
-                <textarea
-                  id="messageInput"
-                  className="min-h-28 w-full resize-y rounded-xl border border-calisto-line bg-calisto-surface-muted p-4 text-sm leading-6 text-calisto-ink outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
-                  placeholder="Type a message like: hi"
-                  value={message}
-                  onChange={(event) => setMessage(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' && !event.shiftKey) {
-                      event.preventDefault()
-                      void sendMessage(message)
-                    }
-                  }}
-                />
-                <div className="mt-3 flex flex-wrap justify-end gap-3">
-                  <Button id="clearChatButton" onClick={() => setBubbles([])}>Clear Chat</Button>
-                  <Button id="sendButton" icon={<Send className="h-4 w-4" />} variant="primary" disabled={loading} onClick={() => sendMessage(message)}>Send Message</Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <article className="flex min-h-[640px] flex-col overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
-          <div className="flex items-center justify-between gap-3 border-b border-calisto-line px-5 py-4">
-            <h2 className="text-base font-extrabold text-calisto-ink">Conversation Preview</h2>
-            <span id="messageCountLabel" className="text-[0.72rem] font-extrabold uppercase tracking-wider text-calisto-soft">
-              {bubbleCount} Message{bubbleCount === 1 ? '' : 's'}
-            </span>
-          </div>
-          <div id="messages" className="grid max-h-[520px] flex-1 content-start gap-4 overflow-y-auto bg-calisto-surface-muted p-5" ref={transcriptRef}>
-            {bubbles.length === 0 && (
-              <div className="flex min-h-40 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-calisto-line bg-calisto-surface text-center text-sm font-medium text-calisto-muted">
-                <MessageSquareText className="h-7 w-7 text-calisto-soft/70" />
-                Send a message to see replies.
-              </div>
-            )}
-            {bubbles.map((bubble) => (
-              <ChatMessageBubble
-                assistantLabel="Outbound (AI Assistant)"
-                content={bubble.content}
-                customerLabel="Inbound"
-                direction={bubble.direction}
-                key={bubble.id}
-                onPostback={sendMessage}
-                payload={bubble.payload}
-                timestamp={bubble.timestamp}
-                variant="console"
-              />
-            ))}
-            {loading && (
-              <div>
-                <TypingIndicator />
-                <span className="mt-1 block text-xs font-semibold text-calisto-soft">
-                  AI Assistant is typing…
+              ))}
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-calisto-table">
+                  <Circle
+                    className={`h-2.5 w-2.5 ${
+                      status === 'Failed'
+                        ? 'fill-rose-500 text-rose-500'
+                        : status === 'Sending'
+                          ? 'fill-amber-400 text-amber-400'
+                          : 'fill-emerald-500 text-emerald-500'
+                    }`}
+                  />
                 </span>
+                <div className="min-w-0">
+                  <dt className="text-xs text-calisto-muted">Status</dt>
+                  <dd className="truncate text-sm font-semibold text-calisto-ink">{status}</dd>
+                </div>
               </div>
+            </dl>
+          </section>
+
+          <section className="border-t border-calisto-line-subtle pt-5">
+            <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-calisto-muted">Suggested prompts</h2>
+            <div className="flex flex-wrap gap-2">
+              {promptOptions.map((option) => (
+                <button
+                  className="rounded-full border border-calisto-line bg-calisto-surface px-3.5 py-1.5 text-sm font-medium text-calisto-ink transition hover:border-calisto-accent/40 hover:bg-calisto-surface-muted disabled:opacity-60"
+                  disabled={loading}
+                  key={option.value}
+                  onClick={() => void sendMessage(option.value, option.display ?? option.label)}
+                  type="button"
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </section>
+
+        </aside>
+
+        {/* Below lg the sticky top nav (~11rem) shares the screen, so leave room for it. */}
+        <section className="flex h-[calc(100dvh-11rem)] min-h-[420px] flex-col overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard xl:h-auto xl:min-h-0">
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-calisto-line px-5 py-3.5">
+            <h2 className="text-base font-bold text-calisto-ink">Conversation</h2>
+            {bubbles.length > 0 && (
+              <span className="text-xs text-calisto-muted">
+                {bubbles.length} message{bubbles.length === 1 ? '' : 's'}
+              </span>
             )}
+          </header>
+
+          <div
+            id="messages"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-calisto-surface-muted px-5 py-5"
+            ref={transcriptRef}
+          >
+            <div className="grid content-start gap-4">
+              {bubbles.length === 0 && !loading && (
+                <div className="flex min-h-40 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-calisto-line bg-calisto-surface px-4 text-center text-sm text-calisto-muted">
+                  <MessageSquareText className="h-7 w-7 text-calisto-soft/70" />
+                  Send a message or pick a suggested prompt to start.
+                </div>
+              )}
+              {bubbles.map((bubble) => (
+                <ChatMessageBubble
+                  assistantLabel="AI Assistant"
+                  content={bubble.content}
+                  customerLabel={senderName}
+                  direction={bubble.direction}
+                  key={bubble.id}
+                  onPostback={sendMessage}
+                  payload={bubble.payload}
+                  timestamp={bubble.timestamp}
+                  variant="console"
+                />
+              ))}
+              {loading && (
+                <div className="flex flex-col items-start gap-1.5">
+                  <TypingIndicator />
+                  <span className="px-1 text-xs text-calisto-soft">AI Assistant is typing…</span>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="border-t border-calisto-line bg-calisto-surface px-5 py-4 text-sm text-calisto-muted">
-            Reply buttons from Rasa will show as clickable chips inside the assistant bubbles.
+
+          {error && (
+            <div className="shrink-0 border-t border-rose-100 bg-rose-50 px-5 py-2.5 text-sm font-medium text-rose-700">
+              {error}
+            </div>
+          )}
+
+          <div className="flex shrink-0 items-end gap-3 border-t border-calisto-line bg-calisto-surface px-5 py-4">
+            <textarea
+              id="messageInput"
+              aria-label="Message"
+              className="max-h-40 min-h-12 flex-1 resize-none rounded-xl border border-calisto-line bg-calisto-surface px-4 py-3 text-sm leading-6 text-calisto-ink outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus"
+              placeholder="Type a message…"
+              title="Enter to send, Shift+Enter for a new line"
+              ref={composerRef}
+              rows={1}
+              value={message}
+              onChange={(event) => {
+                setMessage(event.target.value)
+                // Grow with the text up to max-h-40, then scroll inside the box.
+                event.target.style.height = 'auto'
+                event.target.style.height = `${event.target.scrollHeight}px`
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault()
+                  void sendMessage(message)
+                }
+              }}
+            />
+            <Button
+              id="sendButton"
+              aria-label="Send message"
+              className="h-12 w-12 shrink-0 gap-0 !px-0 sm:w-auto sm:gap-2 sm:!px-5"
+              icon={<Send className="h-4 w-4" />}
+              variant="primary"
+              disabled={loading || !message.trim()}
+              onClick={() => sendMessage(message)}
+            >
+              <span className="hidden sm:inline">Send</span>
+            </Button>
           </div>
-        </article>
-      </section>
+        </section>
+      </div>
     </PageContainer>
   )
 }

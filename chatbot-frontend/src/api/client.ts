@@ -14,8 +14,10 @@ import type {
   ChannelAccountInput,
   ChannelAccountListResult,
   ChannelAccountRecord,
+  PublicUrlStatus,
+  RegisterAllWebhooksResult,
 } from '../types'
-import { getAdminToken } from '../lib/auth'
+import { redirectToLogin } from '../lib/auth'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 const WEBCHAT_AUTH_TOKEN = import.meta.env.VITE_WEBSITE_AUTH_TOKEN?.trim()
@@ -49,7 +51,6 @@ function formatApiError(text: string, status: number): string {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const isFormData = init?.body instanceof FormData
-  const adminToken = getAdminToken()
   const headers: Record<string, string> = isFormData
     ? { ...(init?.headers as Record<string, string> | undefined) }
     : {
@@ -57,14 +58,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         ...(init?.headers as Record<string, string> | undefined),
       }
 
-  if (adminToken && (path.startsWith('/admin') || path.startsWith('/reports'))) {
-    headers.Authorization = `Bearer ${adminToken}`
-  }
-
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers,
+    // Sends the HttpOnly admin session cookie.
+    credentials: 'include',
   })
+
+  if (res.status === 401 && (path.startsWith('/admin') || path.startsWith('/reports'))) {
+    redirectToLogin('expired')
+  }
 
   if (!res.ok) {
     const text = await res.text()
@@ -292,6 +295,18 @@ export function enableChannelAccount(id: string): Promise<ChannelAccountRecord> 
 
 export function registerChannelAccountWebhook(id: string, publicBaseUrl?: string): Promise<ChannelAccountRecord> {
   return request<ChannelAccountRecord>(`/admin/channel-accounts/api/${encodeURIComponent(id)}/register-webhook`, {
+    method: 'POST',
+    body: JSON.stringify(publicBaseUrl ? { publicBaseUrl } : {}),
+  })
+}
+
+export function getPublicUrlStatus(): Promise<PublicUrlStatus> {
+  return request<PublicUrlStatus>('/admin/channel-accounts/api/public-url')
+}
+
+/** Re-register every enabled channel account's webhook against one public URL. */
+export function registerAllChannelWebhooks(publicBaseUrl?: string): Promise<RegisterAllWebhooksResult> {
+  return request<RegisterAllWebhooksResult>('/admin/channel-accounts/api/register-all', {
     method: 'POST',
     body: JSON.stringify(publicBaseUrl ? { publicBaseUrl } : {}),
   })

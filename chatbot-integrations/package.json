@@ -21,7 +21,8 @@
     "db:seed:knowledge": "tsx src/knowledge/service/seed-from-meta-json.ts",
     "db:seed:presets": "tsx src/products/service/seed-presets.ts",
     "db:seed:channel-accounts": "tsx src/channel-accounts/seed-from-env.ts",
-    "telegram:webhook": "tsx scripts/register-telegram-webhook.ts"
+    "telegram:webhook": "tsx scripts/register-telegram-webhook.ts",
+    "admin": "tsx src/core/auth/admin-cli.ts"
   },
   "dependencies": {
     "@hubspot/api-client": "^13.1.0",
@@ -30,6 +31,7 @@
     "axios": "^1.6.2",
     "dotenv": "^16.4.4",
     "express": "^4.18.2",
+    "geoip-lite": "^1.4.10",
     "ioredis": "^5.11.1",
     "mammoth": "^1.9.0",
     "marked": "^15.0.1",
@@ -42,6 +44,7 @@
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
+    "@types/geoip-lite": "^1.4.4",
     "@types/multer": "^2.1.0",
     "@types/node": "^22.16.4",
     "@types/pg": "^8.20.0",

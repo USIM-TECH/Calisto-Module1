@@ -9,9 +9,10 @@ export function createWebsiteRateLimiter(
   limit: number,
   windowMs: number,
   cache?: CacheService,
+  buildRedisKey: (key: string) => string = webchatRateLimitKey,
 ): WebsiteRateLimiter {
   if (cache?.backend === 'redis') {
-    return createRedisWebsiteRateLimiter(cache, limit, windowMs)
+    return createRedisWebsiteRateLimiter(cache, limit, windowMs, buildRedisKey)
   }
   return createMemoryWebsiteRateLimiter(limit, windowMs)
 }
@@ -39,12 +40,13 @@ function createRedisWebsiteRateLimiter(
   cache: CacheService,
   limit: number,
   windowMs: number,
+  buildRedisKey: (key: string) => string,
 ): WebsiteRateLimiter {
   const windowSec = Math.max(1, Math.ceil(windowMs / 1000))
 
   return {
     async allow(key: string): Promise<boolean> {
-      const redisKey = webchatRateLimitKey(key)
+      const redisKey = buildRedisKey(key)
       const currentRaw = await cache.getString(redisKey)
       const now = Date.now()
       const current = currentRaw

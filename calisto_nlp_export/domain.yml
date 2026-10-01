@@ -403,9 +403,13 @@ responses:
       type: "card"
       title: "Get the Calisto App"
       actions:
-        - title: "Download App"
+        - title: "App Store"
           type: "url"
-          value: "https://www.lenskart.com/mobile-app"
+          value: "https://apps.apple.com/my/app/calisto-employee/id6779918228?l=ms"
+        # TODO: placeholder (Lenskart's app) until Calisto has a Google Play listing.
+        - title: "Google Play"
+          type: "url"
+          value: "https://play.google.com/store/apps/details?id=com.lenskart.app"
 
   utter_email_support:
     - text: "For further assistance, please contact: calisto123@gmail.com"

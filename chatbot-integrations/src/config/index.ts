@@ -62,8 +62,27 @@ const envSchema = z
      * images from the public internet. In dev, set this to your tunnel URL.
      */
     PUBLIC_BASE_URL: optionalString,
+    /** cloudflared metrics port to read the quick-tunnel URL from (default: scan 20241-20250). */
+    CF_METRICS_PORT: z.coerce.number().int().positive().optional(),
 
     ADMIN_API_TOKEN: optionalString,
+    ADMIN_SESSION_IDLE_TIMEOUT_MIN: z.coerce.number().int().positive().default(30),
+    ADMIN_SESSION_MAX_AGE_HOURS: z.coerce.number().positive().default(12),
+    /** Defaults to true when NODE_ENV=production. Must be true when served over HTTPS. */
+    ADMIN_COOKIE_SECURE: z
+      .preprocess((value) => {
+        if (typeof value !== 'string') return value
+        const trimmed = value.trim().toLowerCase()
+        return trimmed === '' ? undefined : trimmed
+      }, z.enum(['true', 'false', '1', '0', 'yes', 'no']).optional())
+      .transform((value) => (value === undefined ? undefined : value === 'true' || value === '1' || value === 'yes')),
+    ADMIN_LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+    ADMIN_LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+    /**
+     * Express `trust proxy` setting, needed behind a load balancer / reverse proxy so
+     * req.ip is the real client IP. Examples: `1` (one hop), `loopback`, `10.0.0.0/8`.
+     */
+    TRUST_PROXY: optionalString,
     CHANNEL_CREDENTIALS_ENCRYPTION_KEY: optionalString,
 
   WEBSITE_AUTH_TOKEN: optionalString,
@@ -98,7 +117,17 @@ export interface AppConfig {
   /** Set when mysql was requested but `DATABASE_URL` was missing; effective backend is file. */
   usedFileStorageFallback: boolean
   publicBaseUrl?: string
+  cloudflaredMetricsPort?: number
   adminApiToken?: string
+  adminAuth: {
+    sessionIdleTimeoutMs: number
+    sessionMaxAgeMs: number
+    cookieSecure: boolean
+    loginRateLimitMax: number
+    loginRateLimitWindowMs: number
+  }
+  /** Parsed TRUST_PROXY value for `app.set('trust proxy', ...)`. */
+  trustProxy?: boolean | number | string
   channelCredentialsEncryptionKey?: string
   dedupTtlMs: number
   responseStyle: 'casual' | 'professional' | 'warm' | 'concierge'
@@ -130,6 +159,15 @@ export interface AppConfig {
   }
 }
 
+function parseTrustProxy(value: string | undefined): boolean | number | string | undefined {
+  if (value === undefined) return undefined
+  const lower = value.toLowerCase()
+  if (lower === 'true') return true
+  if (lower === 'false') return false
+  if (/^\d+$/.test(value)) return Number(value)
+  return value
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = envSchema.parse(env)
 
@@ -145,7 +183,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     storageBackend,
     usedFileStorageFallback: mysqlMissingUrl,
     publicBaseUrl: parsed.PUBLIC_BASE_URL,
+    cloudflaredMetricsPort: parsed.CF_METRICS_PORT,
     adminApiToken: parsed.ADMIN_API_TOKEN,
+    adminAuth: {
+      sessionIdleTimeoutMs: parsed.ADMIN_SESSION_IDLE_TIMEOUT_MIN * 60_000,
+      sessionMaxAgeMs: parsed.ADMIN_SESSION_MAX_AGE_HOURS * 3_600_000,
+      cookieSecure: parsed.ADMIN_COOKIE_SECURE ?? env.NODE_ENV === 'production',
+      loginRateLimitMax: parsed.ADMIN_LOGIN_RATE_LIMIT_MAX,
+      loginRateLimitWindowMs: parsed.ADMIN_LOGIN_RATE_LIMIT_WINDOW_MS,
+    },
+    trustProxy: parseTrustProxy(parsed.TRUST_PROXY),
     channelCredentialsEncryptionKey: parsed.CHANNEL_CREDENTIALS_ENCRYPTION_KEY,
     dedupTtlMs: parsed.DEDUP_TTL_MS,
     responseStyle: parsed.RESPONSE_STYLE,

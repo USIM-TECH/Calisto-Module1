@@ -3,7 +3,7 @@ import { WebhookRegistrationStatus } from '@prisma/client'
 import type { Logger } from '../core/utils/index.js'
 import type { RegisteredChannelAccount } from './channel-account-registry.js'
 import type { ChannelAccountStore } from './channel-account-store.js'
-import type { WhatsAppCredentials } from './credential-types.js'
+import type { MessengerCredentials, WhatsAppCredentials } from './credential-types.js'
 import type { TelegramChannel } from '../integrations/channels/telegram/client.js'
 import type { MessengerChannel } from '../integrations/channels/messenger/client.js'
 import {
@@ -34,12 +34,47 @@ export async function registerTelegramAccountWebhook(
 
 export async function registerMessengerAccountWebhook(
   account: RegisteredChannelAccount,
+  store: ChannelAccountStore,
   publicBaseUrl: string,
   logger: Logger,
 ): Promise<string> {
   const base = await assertPublicWebhookBaseUrl(publicBaseUrl)
-  await (account.client as MessengerChannel).subscribeToWebhooks()
+  const version = account.record.apiVersion ?? 'v23.0'
   const webhookUrl = `${base}/webhooks/messenger`
+
+  const row = (await store.getEnabledRows()).find((r) => r.id === account.record.id)
+  if (!row) throw new Error('Account not found')
+  const creds = store.decryptRowCredentials(row) as MessengerCredentials
+  const appId = account.record.metaAppId ?? creds.clientId
+  const appToken = creds.appToken ?? (appId && creds.clientSecret ? `${appId}|${creds.clientSecret}` : undefined)
+
+  // Subscribing the Page alone is not enough: Meta delivers to the app-level
+  // `page` callback URL, so point that at this backend too. Without it the
+  // account shows 'active' while messages go to a stale (dead tunnel) URL.
+  if (appId && appToken) {
+    logger.info(`Setting Messenger app-level callback for app ${appId}`)
+    const subRes = await axios.post(`https://graph.facebook.com/${version}/${appId}/subscriptions`, null, {
+      params: {
+        object: 'page',
+        callback_url: webhookUrl,
+        verify_token: account.record.verifyToken ?? 'calisto_verify',
+        fields: 'messages,messaging_postbacks,message_deliveries,message_reads',
+        include_values: 'true',
+        access_token: appToken,
+      },
+      timeout: 15_000,
+    })
+    if (subRes.data?.error) {
+      throw new Error(subRes.data.error.message ?? 'Failed to set Messenger app callback')
+    }
+  } else {
+    logger.warn(
+      'Messenger app ID / client secret not configured — skipping app-level callback. ' +
+      'Add the Meta App ID and Client Secret on this account for full webhook setup.',
+    )
+  }
+
+  await (account.client as MessengerChannel).subscribeToWebhooks()
   logger.info(`Messenger page subscribed for ${account.record.label}`)
   return webhookUrl
 }
@@ -140,7 +175,7 @@ export async function registerAccountWebhook(
     }
 
     if (account.record.channel === 'messenger') {
-      const webhookUrl = await registerMessengerAccountWebhook(account, publicBaseUrl, logger)
+      const webhookUrl = await registerMessengerAccountWebhook(account, store, publicBaseUrl, logger)
       return { webhookUrl, webhookStatus: WebhookRegistrationStatus.active, webhookError: null }
     }
 
@@ -152,10 +187,13 @@ export async function registerAccountWebhook(
     if (account.record.channel === 'instagram') {
       const base = await assertPublicWebhookBaseUrl(publicBaseUrl)
       const webhookUrl = `${base}/webhooks/instagram`
+      // Meta has no API to set the Instagram callback, so this stays pending
+      // until the first verified delivery flips it to active. The dashboard
+      // shows setup instructions for this state — it is not an error.
       return {
         webhookUrl,
         webhookStatus: WebhookRegistrationStatus.pending,
-        webhookError: 'Instagram webhook callback must be configured manually in Meta App Dashboard',
+        webhookError: null,
       }
     }
 

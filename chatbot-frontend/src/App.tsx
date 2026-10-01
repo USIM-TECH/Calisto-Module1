@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BookOpen, Boxes, LogOut, MessageSquareText, Radio, Sparkles, UsersRound } from 'lucide-react'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import WebchatPage from './pages/WebchatPage'
@@ -11,7 +11,8 @@ import LoginPage from './pages/LoginPage'
 import NotFoundPage from './pages/NotFoundPage'
 import LeadDetailPage from './pages/LeadDetailPage'
 import ChatbotPage from './pages/ChatbotPage'
-import { clearAdminToken, isAuthenticated } from './lib/auth'
+import { fetchCurrentUser, logout, redirectToLogin, type AdminUser } from './lib/auth'
+import { CurrentUserContext } from './lib/current-user'
 import calistoLogo from '../calisto.svg'
 
 const navItems = [
@@ -24,11 +25,38 @@ const navItems = [
 ]
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const location = useLocation()
-  if (!isAuthenticated()) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  const [status, setStatus] = useState<'checking' | 'authenticated' | 'error'>('checking')
+  const [user, setUser] = useState<AdminUser | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchCurrentUser()
+      .then((user) => {
+        if (cancelled) return
+        if (user) {
+          setUser(user)
+          setStatus('authenticated')
+        } else {
+          redirectToLogin()
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setStatus('error')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (status === 'authenticated' && user) {
+    return <CurrentUserContext.Provider value={user}>{children}</CurrentUserContext.Provider>
   }
-  return <>{children}</>
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-calisto-canvas px-4 text-sm text-calisto-body">
+      {status === 'error' ? 'Unable to reach the server. Please refresh to try again.' : 'Loading…'}
+    </div>
+  )
 }
 
 export default function App() {
@@ -83,7 +111,7 @@ export default function App() {
 
           <button
             type="button"
-            className="mt-8 flex h-11 items-center justify-center gap-3 rounded-xl px-4 text-sm font-semibold text-calisto-surface transition hover:bg-calisto-surface/10"
+            className="mt-8 flex h-11 items-center gap-3 rounded-xl px-4 text-sm font-semibold uppercase tracking-wide text-calisto-surface/90 transition hover:bg-calisto-surface/10"
             onClick={() => setShowLogoutConfirm(true)}
           >
             <LogOut className="h-5 w-5" strokeWidth={1.8} />
@@ -151,10 +179,10 @@ export default function App() {
                 <button
                   className="inline-flex h-10 items-center justify-center rounded-xl border border-calisto-accent bg-calisto-accent px-4 text-sm font-semibold text-calisto-surface shadow-sm transition hover:bg-calisto-accent/90"
                   type="button"
-                  onClick={() => {
-                    clearAdminToken()
+                  onClick={async () => {
                     setShowLogoutConfirm(false)
-                    window.location.href = '/login'
+                    await logout()
+                    window.location.href = '/login?reason=logged_out'
                   }}
                 >
                   Log out

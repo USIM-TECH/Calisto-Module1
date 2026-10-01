@@ -38,8 +38,8 @@ export async function assertPublicWebhookBaseUrl(publicBaseUrl: string): Promise
   } catch (error: any) {
     const detail = error?.message ?? 'connection failed'
     throw new Error(
-      `PUBLIC_BASE_URL (${base}) is not reachable: ${detail}. ` +
-      'Start cloudflared tunnel --url http://localhost:3000, update PUBLIC_BASE_URL in .env, restart the server, then try again.',
+      `Public URL ${base} is not reachable: ${detail}. ` +
+      'Check that cloudflared is running (cloudflared tunnel --url http://localhost:3000) and the URL is current, then try again.',
     )
   }
 

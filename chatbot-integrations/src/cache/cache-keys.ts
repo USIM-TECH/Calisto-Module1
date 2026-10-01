@@ -16,3 +16,7 @@ export function telegramCallbackKey(token: string): string {
 export function webchatRateLimitKey(key: string): string {
   return `ratelimit:webchat:${key}`
 }
+
+export function adminLoginRateLimitKey(key: string): string {
+  return `ratelimit:admin-login:${key}`
+}

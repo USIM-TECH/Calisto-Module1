@@ -1,6 +1,8 @@
 export interface WebchatRequest {
   senderId?: string
   message: string
+  name?: string
+  email?: string
 }
 
 export interface OutgoingTextMessage {
@@ -97,6 +99,27 @@ export interface ChannelAccountRecord {
   createdAt: string
   updatedAt: string
   credentialsPreview: Record<string, string | undefined>
+}
+
+export interface PublicUrlStatus {
+  /** URL the backend currently uses for webhooks and images. */
+  current: string | null
+  /** Live Cloudflare quick-tunnel URL, when cloudflared runs next to the backend. */
+  detected: string | null
+}
+
+export interface WebhookRegistrationResult {
+  id: string
+  label: string
+  channel: ManagedChannel
+  status: 'active' | 'error' | 'manual'
+  webhookUrl?: string
+  error?: string
+}
+
+export interface RegisterAllWebhooksResult {
+  publicBaseUrl: string
+  results: WebhookRegistrationResult[]
 }
 
 export interface ChannelAccountInput {

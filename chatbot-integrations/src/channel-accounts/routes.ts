@@ -75,6 +75,25 @@ export function registerChannelAccountRoutes({ app, service, logger }: RegisterA
     }
   })
 
+  // Registered before `/:id` so "public-url" is not treated as an account id.
+  app.get('/admin/channel-accounts/api/public-url', async (_req, res, next) => {
+    try {
+      res.json(await service.getPublicUrlStatus())
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  app.post('/admin/channel-accounts/api/register-all', async (req, res) => {
+    try {
+      const body = (req.body ?? {}) as { publicBaseUrl?: string }
+      res.json(await service.registerAll(body.publicBaseUrl))
+    } catch (error: any) {
+      logger.error(`POST register-all: ${error.message}`)
+      res.status(400).json({ error: error.message })
+    }
+  })
+
   app.get('/admin/channel-accounts/api/:id', async (req, res, next) => {
     try {
       const account = await service.get(req.params.id)

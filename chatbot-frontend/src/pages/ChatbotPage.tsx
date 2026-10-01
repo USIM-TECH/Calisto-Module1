@@ -1,16 +1,22 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Bot, Circle, RotateCcw, Send } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Menu, PanelLeftClose, PanelLeftOpen, Send, SquarePen, X } from 'lucide-react'
 import { postWebchatMessage } from '../api/client'
-import Button from '../components/Button'
 import ChatMessageBubble from '../components/ChatMessageBubble'
-import PageContainer from '../components/PageContainer'
 import calistoLogo from '../../calisto.svg'
+import calistoSymbol from '../assets/calisto-symbol-black.webp'
 import {
   getOrCreateSenderId,
   messagePreview,
   persistSenderId,
   resetSenderId,
 } from '../lib/chat'
+import {
+  loadConversations,
+  loadSidebarCollapsed,
+  saveConversations,
+  saveSidebarCollapsed,
+  type StoredConversation,
+} from '../lib/chat-history'
 import type { OutgoingMessage, WebchatResponse } from '../types'
 
 interface ConsoleMessage {
@@ -21,15 +27,16 @@ interface ConsoleMessage {
   timestamp: string
 }
 
-const promptOptions = [
-  { label: 'Start conversation', value: 'hi' },
+// `display` is what appears in the chat as the user's message; defaults to `label`.
+const promptOptions: Array<{ label: string; value: string; display?: string }> = [
+  { label: 'Start conversation', value: 'hi', display: 'Hi' },
   { label: 'Browse eyewear', value: '/browse_eyewear' },
   { label: 'Find a store', value: '/find_a_store' },
   { label: 'Book appointment', value: 'I want to book an eye test appointment' },
 ]
 
 function currentStamp() {
-  return new Date().toLocaleString('en-MY')
+  return new Date().toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit' })
 }
 
 const WEBCHAT_SCOPE = 'website-chatbot'
@@ -38,24 +45,52 @@ export default function ChatbotPage() {
   const [senderId, setSenderId] = useState(() => getOrCreateSenderId(WEBCHAT_SCOPE))
   const [message, setMessage] = useState('')
   const [status, setStatus] = useState<'Ready' | 'Sending' | 'Failed'>('Ready')
-  const [messages, setMessages] = useState<ConsoleMessage[]>([
-    {
-      content: 'Chat ready. Send "hi" to start a live bot conversation.',
-      direction: 'assistant',
-      id: 'welcome',
-      timestamp: currentStamp(),
-    },
-  ])
+  const [conversations, setConversations] = useState<StoredConversation<ConsoleMessage>[]>(() => loadConversations<ConsoleMessage>())
+  // Empty until the first message: the centred greeting screen shows instead.
+  // After a refresh, the open conversation is restored from the sidebar history.
+  const [messages, setMessages] = useState<ConsoleMessage[]>(
+    () => conversations.find((conversation) => conversation.id === senderId)?.messages ?? [],
+  )
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const transcriptRef = useRef<HTMLDivElement | null>(null)
+  const composerRef = useRef<HTMLTextAreaElement | null>(null)
 
   const isSending = status === 'Sending'
-  const messageCount = useMemo(() => messages.length, [messages])
 
   useEffect(() => {
     if (!transcriptRef.current) return
-    transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight
+    transcriptRef.current.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, isSending])
+
+  // Save the open conversation to the sidebar history whenever it gains messages.
+  useEffect(() => {
+    if (messages.length === 0) return
+    setConversations((current) => {
+      const existing = current.find((conversation) => conversation.id === senderId)
+      if (existing && existing.messages.length === messages.length) return current // just reopened
+      const firstQuestion = messages.find((entry) => entry.direction === 'customer')?.content ?? 'New conversation'
+      const updated: StoredConversation<ConsoleMessage> = {
+        id: senderId,
+        title: firstQuestion.length > 48 ? `${firstQuestion.slice(0, 48)}…` : firstQuestion,
+        updatedAt: Date.now(),
+        messages,
+      }
+      const next = [updated, ...current.filter((conversation) => conversation.id !== senderId)]
+      saveConversations(next)
+      return next
+    })
+  }, [messages, senderId])
+
+  useEffect(() => {
+    saveSidebarCollapsed(sidebarCollapsed)
+  }, [sidebarCollapsed])
+
+  // Shrink the auto-growing composer back to one line once the message is sent.
+  useEffect(() => {
+    if (!message && composerRef.current) composerRef.current.style.height = ''
+  }, [message])
 
   async function sendMessage(text: string, displayText?: string) {
     const trimmed = text.trim()
@@ -104,72 +139,216 @@ export default function ChatbotPage() {
   function handleResetSession() {
     const nextSenderId = resetSenderId(WEBCHAT_SCOPE)
     setSenderId(nextSenderId)
-    setMessages([
-      {
-        content: 'Session reset. Send "hi" to start a new conversation.',
-        direction: 'assistant',
-        id: 'reset',
-        timestamp: currentStamp(),
-      },
-    ])
+    setMessages([])
     setError(null)
     setStatus('Ready')
+    setMobileSidebarOpen(false)
   }
 
+  // Reopen a past conversation; the same sender id keeps the bot's context.
+  function openConversation(conversation: StoredConversation<ConsoleMessage>) {
+    if (isSending) return
+    persistSenderId(conversation.id, WEBCHAT_SCOPE)
+    setSenderId(conversation.id)
+    setMessages(conversation.messages)
+    setError(null)
+    setStatus('Ready')
+    setMobileSidebarOpen(false)
+  }
+
+  function deleteConversation(id: string) {
+    setConversations((current) => {
+      const next = current.filter((conversation) => conversation.id !== id)
+      saveConversations(next)
+      return next
+    })
+    if (id === senderId) handleResetSession()
+  }
+
+  const hasConversation = messages.length > 0
+
+  // One rounded box holding the text area and the send button (shared by both screens).
+  const composer = (
+    <div className="rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard transition focus-within:border-calisto-accent/50 focus-within:ring-4 focus-within:ring-calisto-focus">
+      <textarea
+        aria-label="Message"
+        className="block max-h-48 min-h-[3.25rem] w-full resize-none bg-transparent px-4 pt-4 text-base leading-6 text-calisto-ink outline-none placeholder:text-calisto-soft sm:text-sm"
+        onChange={(event) => {
+          setMessage(event.target.value)
+          // Grow with the text up to max-h-48, then scroll inside the box.
+          event.target.style.height = 'auto'
+          event.target.style.height = `${event.target.scrollHeight}px`
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault()
+            void sendMessage(message)
+          }
+        }}
+        placeholder="Type your message…"
+        ref={composerRef}
+        rows={1}
+        value={message}
+      />
+      <div className="flex items-center justify-end px-3 pb-3 pt-1">
+        <button
+          aria-label="Send message"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-calisto-accent text-calisto-surface transition hover:bg-calisto-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
+          disabled={isSending || !message.trim()}
+          onClick={() => void sendMessage(message)}
+          type="button"
+        >
+          <Send className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  )
+
+  const sidebar = (
+    <aside
+      className={[
+        'fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-calisto-line bg-calisto-surface transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 lg:transition-[width]',
+        mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full',
+        sidebarCollapsed ? 'lg:w-16 lg:border-transparent lg:bg-calisto-canvas' : 'lg:w-72',
+      ].join(' ')}
+    >
+      <div className={`flex h-14 shrink-0 items-center px-3 ${sidebarCollapsed ? 'lg:justify-center' : 'justify-between'}`}>
+        <img
+          alt="Calisto"
+          className={`ml-2 h-6 w-auto brightness-0 ${sidebarCollapsed ? 'lg:hidden' : ''}`}
+          src={calistoLogo}
+        />
+        <button
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className={`hidden h-9 w-9 items-center justify-center rounded-lg text-calisto-body transition lg:inline-flex ${
+            sidebarCollapsed ? 'hover:bg-calisto-surface' : 'hover:bg-calisto-surface-muted'
+          }`}
+          onClick={() => setSidebarCollapsed((value) => !value)}
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          type="button"
+        >
+          {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+        </button>
+        <button
+          aria-label="Close sidebar"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-calisto-body transition hover:bg-calisto-surface-muted lg:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+          type="button"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="px-3">
+        <button
+          aria-label="New chat"
+          className={`flex h-10 w-full items-center gap-2.5 rounded-lg px-3 text-sm font-semibold text-calisto-ink transition hover:bg-calisto-surface-muted disabled:opacity-50 ${
+            sidebarCollapsed ? 'lg:justify-center lg:px-0 lg:hover:bg-calisto-surface' : ''
+          }`}
+          disabled={isSending}
+          onClick={handleResetSession}
+          title="New chat"
+          type="button"
+        >
+          <SquarePen className="h-4 w-4 shrink-0 text-calisto-accent" />
+          <span className={sidebarCollapsed ? 'lg:hidden' : ''}>New chat</span>
+        </button>
+      </div>
+
+      <nav aria-label="Recent conversations" className={`mt-4 min-h-0 flex-1 overflow-y-auto px-3 pb-4 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
+        <h2 className="px-3 pb-2 text-xs font-semibold text-calisto-muted">Recents</h2>
+        {conversations.length === 0 ? (
+          <p className="px-3 text-sm text-calisto-soft">No conversations yet.</p>
+        ) : (
+          <ul className="grid gap-0.5">
+            {conversations.map((conversation) => {
+              const active = conversation.id === senderId
+              return (
+                <li className="group relative" key={conversation.id}>
+                  <button
+                    aria-current={active ? 'true' : undefined}
+                    className={`flex h-9 w-full items-center rounded-lg pl-3 pr-9 text-left text-sm transition disabled:cursor-not-allowed ${
+                      active ? 'bg-calisto-surface-muted font-semibold text-calisto-ink' : 'text-calisto-body hover:bg-calisto-surface-muted'
+                    }`}
+                    disabled={isSending && !active}
+                    onClick={() => openConversation(conversation)}
+                    title={conversation.title}
+                    type="button"
+                  >
+                    <span className="truncate">{conversation.title}</span>
+                  </button>
+                  <button
+                    aria-label={`Delete conversation: ${conversation.title}`}
+                    className="absolute right-1 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-calisto-muted opacity-0 transition hover:bg-calisto-line hover:text-calisto-ink focus-visible:opacity-100 group-hover:opacity-100"
+                    onClick={() => deleteConversation(conversation.id)}
+                    title="Delete"
+                    type="button"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </nav>
+    </aside>
+  )
+
   return (
-    <PageContainer>
-      <div className="grid min-h-[calc(100vh-4rem)] gap-6 xl:grid-cols-[minmax(300px,0.75fr)_minmax(0,1.45fr)]">
-        <aside className="overflow-hidden rounded-3xl border border-calisto-line bg-calisto-surface p-7 shadow-dashboard">
-          <img className="mx-auto h-10 w-auto brightness-0" src={calistoLogo} alt="Calisto" />
+    // Claude-style layout: conversation sidebar on the left; the main area has a
+    // slim top bar and one centred column. Before the first message the greeting
+    // and composer sit in the middle; after it, the transcript fills the page
+    // (scrollbar at the window edge) and the composer docks at the bottom.
+    <div className="flex h-[100dvh] bg-calisto-canvas">
+      {mobileSidebarOpen && (
+        <div aria-hidden="true" className="fixed inset-0 z-30 bg-calisto-ink/40 lg:hidden" onClick={() => setMobileSidebarOpen(false)} />
+      )}
+      {sidebar}
 
-          <div className="mt-10">
-            <h1 className="max-w-sm text-5xl font-extrabold leading-[1.03] tracking-normal text-calisto-ink">
-              Your eyewear assistant, on the website.
-            </h1>
-            <p className="mt-5 max-w-md text-base font-medium leading-7 text-calisto-muted">
-              Validate product discovery, store lookup, bookings, and lead capture flows before customers see them.
-            </p>
+      <main className="flex min-w-0 flex-1 flex-col">
+        <header className="flex shrink-0 items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-2">
+            <button
+              aria-label="Open sidebar"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-calisto-body transition hover:bg-calisto-surface lg:hidden"
+              onClick={() => setMobileSidebarOpen(true)}
+              type="button"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <img className="h-6 w-auto brightness-0 lg:hidden" src={calistoLogo} alt="Calisto" />
           </div>
-
-          <div className="mt-8 grid gap-4">
-            {[
-              'Product discovery and recommendations',
-              'Store finder and booking flow',
-              'Lead capture for follow-up',
-            ].map((item) => (
-              <div className="flex gap-3 text-base font-bold leading-6 text-calisto-body" key={item}>
-                <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-calisto-accent" />
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </aside>
-
-        <section className="flex min-h-[720px] flex-col overflow-hidden rounded-3xl border border-calisto-line bg-calisto-surface shadow-dashboard">
-          <header className="flex shrink-0 items-center justify-between gap-4 border-b border-calisto-line px-6 py-5">
-            <div>
-              <div className="flex items-center gap-2">
-                <Bot className="h-5 w-5 text-calisto-accent" />
-                <h2 className="text-xl font-extrabold text-calisto-ink">Website Support Chat</h2>
-              </div>
-              <p className="mt-1 text-sm font-medium text-calisto-muted">
-                Connected to <strong>POST /webchat/message</strong> on the integration API.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button icon={<RotateCcw className="h-4 w-4" />} onClick={handleResetSession} variant="secondary">
-                Reset
-              </Button>
-              <span className="inline-flex items-center gap-2 rounded-full border border-calisto-line bg-calisto-table px-4 py-2 text-sm font-extrabold text-calisto-body">
-                <Circle className="h-2.5 w-2.5 fill-calisto-accent text-calisto-accent" />
-                {status}
-              </span>
-            </div>
           </header>
 
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6" ref={transcriptRef}>
-              <div className="grid content-start gap-5">
+        {!hasConversation ? (
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 pb-[12vh]">
+            <div className="w-full max-w-3xl">
+              <div className="mb-8 flex flex-col items-center gap-3 text-center">
+                <img alt="Calisto" className="h-16 w-auto" src={calistoSymbol} />
+                <h1 className="text-2xl font-bold text-calisto-ink sm:text-3xl">How can I help you today?</h1>
+                <p className="text-sm text-calisto-muted">Ask about eyewear, stores, or book an eye test.</p>
+              </div>
+              {composer}
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                {promptOptions.map((option) => (
+                  <button
+                    className="rounded-full border border-calisto-line bg-calisto-surface px-3.5 py-1.5 text-sm font-medium text-calisto-ink transition hover:border-calisto-accent/40 hover:bg-calisto-surface-muted disabled:opacity-60"
+                    disabled={isSending}
+                    key={option.value}
+                    onClick={() => void sendMessage(option.value, option.display ?? option.label)}
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" ref={transcriptRef}>
+              <div className="mx-auto grid w-full max-w-3xl content-start gap-6 px-4 py-6">
                 {messages.map((entry) => (
                   <ChatMessageBubble
                     assistantLabel="Calisto Assistant"
@@ -185,70 +364,31 @@ export default function ChatbotPage() {
                 ))}
 
                 {isSending && (
-                  <div className="flex flex-col items-start gap-2">
-                    <div className="rounded-2xl rounded-bl-md bg-calisto-table px-5 py-4 shadow-sm">
-                      <span className="inline-flex gap-1.5">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-calisto-muted" />
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-calisto-muted [animation-delay:150ms]" />
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-calisto-muted [animation-delay:300ms]" />
-                      </span>
-                    </div>
-                    <span className="text-xs font-semibold text-calisto-soft">Calisto Assistant - {currentStamp()}</span>
+                  <div aria-label="Calisto Assistant is typing" className="flex items-center gap-1.5 py-2" role="status">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-calisto-muted" />
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-calisto-muted [animation-delay:150ms]" />
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-calisto-muted [animation-delay:300ms]" />
                   </div>
                 )}
               </div>
             </div>
 
-            {error && (
-              <div className="border-t border-calisto-line-subtle bg-calisto-table px-6 py-3 text-sm font-semibold text-calisto-body">
-                {error}
-              </div>
-            )}
-
-            <div className="shrink-0 border-t border-calisto-line bg-calisto-surface px-6 py-5">
-              <div className="mb-4 flex flex-wrap gap-2">
-                {promptOptions.map((option) => (
-                  <button
-                    className="rounded-full border border-calisto-line bg-calisto-surface px-3 py-2 text-xs font-bold text-calisto-ink transition hover:bg-calisto-surface-muted"
-                    key={option.value}
-                    onClick={() => setMessage(option.value)}
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-3">
-                <textarea
-                  className="min-h-20 flex-1 resize-none rounded-2xl border border-calisto-line bg-calisto-surface px-4 py-4 text-sm font-medium leading-6 text-calisto-body outline-none placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus"
-                  onChange={(event) => setMessage(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' && !event.shiftKey) {
-                      event.preventDefault()
-                      void sendMessage(message)
-                    }
-                  }}
-                  placeholder="Type your message..."
-                  value={message}
-                />
-                <Button
-                  className="h-auto min-h-20 rounded-2xl px-8"
-                  disabled={isSending || !message.trim()}
-                  icon={<Send className="h-4 w-4" />}
-                  onClick={() => sendMessage(message)}
-                  variant="primary"
-                >
-                  Send
-                </Button>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-calisto-muted">
-                <span>Session: {senderId}</span>
-                <span>{messageCount} message{messageCount === 1 ? '' : 's'}</span>
+            <div className="shrink-0 px-4 pb-4 pt-2">
+              <div className="mx-auto w-full max-w-3xl">
+                {error && (
+                  <div className="mb-2 rounded-xl border border-rose-100 bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700">
+                    {error}
+                  </div>
+                )}
+                {composer}
+                <p className="mt-2 text-center text-xs text-calisto-soft">
+                  Calisto Assistant can make mistakes. Please check important details with our store.
+                </p>
               </div>
             </div>
-          </div>
-        </section>
-      </div>
-    </PageContainer>
+          </>
+        )}
+      </main>
+    </div>
   )
 }

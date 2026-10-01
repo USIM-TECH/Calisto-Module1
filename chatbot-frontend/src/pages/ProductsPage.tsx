@@ -1,16 +1,22 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Download, Pencil, Trash2, X } from 'lucide-react'
-import { createProduct, deleteProduct, getProduct, getProductImportTemplateUrl, getProducts, importProducts, resolveAssetUrl, setProductPresetIds, updateProduct } from '../api/client'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Download, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react'
+import { createProduct, deleteProduct, getProduct, getProductImportTemplateUrl, getProducts, importProducts, setProductPresetIds, updateProduct } from '../api/client'
 import Button from '../components/Button'
+import EmptyState from '../components/EmptyState'
 import AddProductModal, { type ProductFormData } from '../components/AddProductModal'
 import ImportProductsModal from '../components/ImportProductsModal'
 import PageContainer from '../components/PageContainer'
+import Pagination from '../components/Pagination'
+import Select from '../components/Select'
 import { SkeletonFilterBar, SkeletonTable, SkeletonTopbar } from '../components/Skeleton'
 import Topbar from '../components/Topbar'
+import { useSnackbar } from '../components/Snackbar'
 import { downloadProductsXlsx } from '../lib/export-products-xlsx'
+import { pageSlice, useFitRows } from '../lib/use-fit-rows'
 import type { ProductImportMode, ProductListResult, ProductRecord } from '../types'
 
-const PAGE_SIZE = 10
+// Fixed one-line row height; rows per page = as many as fit the screen (useFitRows).
+const ROW_HEIGHT_PX = 64
 
 function stockTone(status: string) {
   const s = (status ?? '').toLowerCase()
@@ -18,14 +24,6 @@ function stockTone(status: string) {
   if (s === 'low_stock') return 'bg-amber-100 text-amber-700'
   if (s === 'out_of_stock') return 'bg-rose-100 text-rose-700'
   return 'bg-calisto-table text-calisto-body'
-}
-
-function productInitial(product: ProductRecord) {
-  return (product.brand?.[0] ?? '?').toUpperCase()
-}
-
-function productThumbUrl(product: ProductRecord): string | undefined {
-  return resolveAssetUrl(product.imageUrl ?? product.fallbackImageUrl ?? undefined)
 }
 
 function formatStockStatus(status: string) {
@@ -115,7 +113,7 @@ function DeleteProductDialog({ deleting, onCancel, onConfirm, product }: DeleteP
 export default function ProductsPage() {
   const [data, setData] = useState<ProductListResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const snackbar = useSnackbar()
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [brandFilter, setBrandFilter] = useState('')
@@ -128,7 +126,9 @@ export default function ProductsPage() {
   const [deleteTarget, setDeleteTarget] = useState<ProductRecord | null>(null)
   const [deletingProduct, setDeletingProduct] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
-  const [preview, setPreview] = useState<{ url: string; name: string } | null>(null)
+  const tableBodyRef = useRef<HTMLDivElement | null>(null)
+  const tableHeaderRef = useRef<HTMLTableSectionElement | null>(null)
+  const rowsPerPage = useFitRows(tableBodyRef, tableHeaderRef, ROW_HEIGHT_PX, Boolean(data))
 
   function loadProducts() {
     return getProducts()
@@ -139,15 +139,6 @@ export default function ProductsPage() {
   useEffect(() => {
     loadProducts()
   }, [])
-
-  useEffect(() => {
-    if (!preview) return
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setPreview(null)
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [preview])
 
   const filtered = useMemo(() => {
     if (!data) return []
@@ -179,11 +170,7 @@ export default function ProductsPage() {
     return Array.from(new Set(data.items.map((item) => item.brand).filter(Boolean)))
   }, [data])
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const pageStart = (currentPage - 1) * PAGE_SIZE
-  const paginated = filtered.slice(pageStart, pageStart + PAGE_SIZE)
-  const visibleStart = filtered.length === 0 ? 0 : pageStart + 1
-  const visibleEnd = Math.min(pageStart + PAGE_SIZE, filtered.length)
+  const { pageCount, pageItems: paginated, visibleStart, visibleEnd } = pageSlice(filtered, rowsPerPage, currentPage)
 
   useEffect(() => {
     setCurrentPage(1)
@@ -195,30 +182,20 @@ export default function ProductsPage() {
     }
   }, [currentPage, pageCount])
 
-  function clearFilters() {
-    setSearch('')
-    setTypeFilter('')
-    setBrandFilter('')
-  }
-
   function openCreateModal() {
     setModalMode('create')
     setEditingProduct(null)
     setIsAddOpen(true)
-    setError(null)
-    setSuccessMessage(null)
   }
 
   async function openEditModal(productId: string) {
-    setError(null)
-    setSuccessMessage(null)
     try {
       const product = await getProduct(productId)
       setEditingProduct(product)
       setModalMode('edit')
       setIsAddOpen(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load product.')
+      snackbar.error(err instanceof Error ? err.message : 'Failed to load product.')
     }
   }
 
@@ -228,11 +205,11 @@ export default function ProductsPage() {
       if (modalMode === 'edit' && editingProduct) {
         await updateProduct(editingProduct.productId, productFormToPayload(form, false))
         await setProductPresetIds(editingProduct.productId, form.presetIds)
-        setSuccessMessage('Product updated successfully.')
+        snackbar.success('Product updated successfully.')
       } else {
         const created = await createProduct(productFormToPayload(form, true))
         await setProductPresetIds(created.productId, form.presetIds)
-        setSuccessMessage('Product added successfully.')
+        snackbar.success('Product added successfully.')
       }
       await loadProducts()
     } finally {
@@ -243,15 +220,13 @@ export default function ProductsPage() {
   async function handleConfirmDelete() {
     if (!deleteTarget) return
     setDeletingProduct(true)
-    setError(null)
-    setSuccessMessage(null)
     try {
       await deleteProduct(deleteTarget.productId)
       setDeleteTarget(null)
-      setSuccessMessage('Product deleted successfully.')
+      snackbar.success('Product deleted successfully.')
       await loadProducts()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete product.')
+      snackbar.error(err instanceof Error ? err.message : 'Failed to delete product.')
     } finally {
       setDeletingProduct(false)
     }
@@ -259,8 +234,6 @@ export default function ProductsPage() {
 
   async function handleImportProducts(file: File, duplicateHandling: ProductImportMode) {
     setImportingProducts(true)
-    setError(null)
-    setSuccessMessage(null)
     try {
       const result = await importProducts(file, duplicateHandling)
       await loadProducts()
@@ -269,7 +242,7 @@ export default function ProductsPage() {
         result.updated ? `${result.updated} updated` : null,
         result.skipped ? `${result.skipped} skipped` : null,
       ].filter(Boolean)
-      setSuccessMessage(parts.length > 0 ? `Import complete: ${parts.join(', ')}.` : 'Import complete.')
+      snackbar.success(parts.length > 0 ? `Import complete: ${parts.join(', ')}.` : 'Import complete.')
     } finally {
       setImportingProducts(false)
     }
@@ -284,29 +257,15 @@ export default function ProductsPage() {
   }
 
   return (
-    <PageContainer>
+    // On desktop the page fills the screen; the table takes the remaining height and pages.
+    <PageContainer className="lg:flex lg:h-[100dvh] lg:flex-col">
       <Topbar
         title="Product Catalogue"
         actions={(
-          <>
-            <Button
-              disabled={filtered.length === 0}
-              icon={<Download className="h-4 w-4" />}
-              onClick={handleExportProducts}
-            >
-              Export
-            </Button>
-            <Button id="importProductsBtn" onClick={() => setIsImportOpen(true)}>Import XLSX</Button>
-            <Button id="addBtn" variant="primary" onClick={openCreateModal}>Add Product</Button>
-          </>
+          <Button id="addBtn" icon={<Plus className="h-4 w-4" />} variant="primary" onClick={openCreateModal}>Add Product</Button>
         )}
       />
 
-      {successMessage && (
-        <div className="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-5 text-sm font-semibold text-emerald-700 shadow-sm">
-          {successMessage}
-        </div>
-      )}
       {error && (
         <div className="mb-5 rounded-2xl border border-rose-100 bg-calisto-surface p-5 text-sm font-medium text-rose-700 shadow-sm">
           {error}
@@ -317,74 +276,74 @@ export default function ProductsPage() {
           <SkeletonTopbar />
           <SkeletonFilterBar />
           <SkeletonTable
-            cols={9}
+            cols={8}
             rows={8}
-            headers={['', 'ID', 'Product', 'Type', 'Category', 'Price', 'Stock', 'Rating', 'Actions']}
+            headers={['ID', 'Product', 'Type', 'Category', 'Price', 'Stock', 'Rating', 'Actions']}
           />
         </>
       )}
       {data && (
         <>
-          <section className="mb-5 flex flex-col gap-4 rounded-xl border border-calisto-line-subtle bg-calisto-surface p-3 shadow-sm xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
-              <input
-                id="searchInput"
-                className="h-11 min-w-0 rounded-xl border border-calisto-line bg-calisto-surface px-3 text-sm font-medium text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus lg:w-72"
-                type="search"
-                placeholder="Search id, name, brand..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-              <select
-                id="typeFilter"
-                className="h-11 rounded-xl border border-calisto-line bg-calisto-surface px-3 text-sm font-medium text-calisto-body outline-none focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus"
-                value={typeFilter}
-                onChange={(event) => setTypeFilter(event.target.value)}
-              >
-                <option value="">All product types</option>
-                {productTypes.map((value) => (
-                  <option key={value} value={value}>{value}</option>
-                ))}
-              </select>
-              <select
-                id="brandFilter"
-                className="h-11 rounded-xl border border-calisto-line bg-calisto-surface px-3 text-sm font-medium text-calisto-body outline-none focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus"
-                value={brandFilter}
-                onChange={(event) => setBrandFilter(event.target.value)}
-              >
-                <option value="">All brands</option>
-                {brands.map((value) => (
-                  <option key={value} value={value}>{value}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-3">
-              <span id="resultCount" className="text-sm font-semibold text-calisto-muted">
-                {filtered.length} products
-              </span>
-              <button id="clearFilters" className="text-sm font-bold text-indigo-600 transition hover:text-indigo-700" type="button" onClick={clearFilters}>
-                Clear
-              </button>
+          {/* Same layout as the Leads filter bar: search fills the row, filters on the right. */}
+          <section className="mb-5 rounded-xl border border-calisto-line-subtle bg-calisto-surface p-3 shadow-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <label className="relative flex min-w-0 flex-1 items-center">
+                <Search className="pointer-events-none absolute left-3 h-4 w-4 text-calisto-soft" />
+                <input
+                  id="searchInput"
+                  className="h-11 w-full rounded-lg border border-calisto-line bg-calisto-surface pl-10 pr-4 text-sm text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/30 focus:ring-4 focus:ring-calisto-focus"
+                  type="search"
+                  placeholder="Search id, name, brand..."
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
+              <div className="flex flex-wrap gap-3">
+                <Select
+                  aria-label="Filter by product type"
+                  id="typeFilter"
+                  onChange={setTypeFilter}
+                  options={[{ value: '', label: 'All product types' }, ...productTypes.map((value) => ({ value, label: value }))]}
+                  value={typeFilter}
+                />
+                <Select
+                  aria-label="Filter by brand"
+                  id="brandFilter"
+                  onChange={setBrandFilter}
+                  options={[{ value: '', label: 'All brands' }, ...brands.map((value) => ({ value, label: value }))]}
+                  value={brandFilter}
+                />
+                <Button
+                  className="h-11"
+                  disabled={filtered.length === 0}
+                  icon={<Download className="h-4 w-4" />}
+                  onClick={handleExportProducts}
+                  variant="primary"
+                >
+                  Export
+                </Button>
+                <Button className="h-11" icon={<Upload className="h-4 w-4" />} id="importProductsBtn" onClick={() => setIsImportOpen(true)} variant="primary">
+                  Import XLSX
+                </Button>
+              </div>
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] table-fixed border-collapse text-left text-sm lg:min-w-0">
+          <section className="flex flex-col overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard lg:min-h-0 lg:flex-1">
+            <div className="flex flex-col overflow-x-auto lg:min-h-0 lg:flex-1 lg:overflow-hidden" ref={tableBodyRef}>
+              <table className="table-edges w-full min-w-[900px] table-fixed border-collapse text-left text-sm lg:min-w-0">
                 <colgroup>
-                  <col className="w-[5%]" />
                   <col className="w-[10%]" />
-                  <col className="w-[27%]" />
+                  <col className="w-[28%]" />
                   <col className="w-[13%]" />
-                  <col className="w-[13%]" />
+                  <col className="w-[12%]" />
                   <col className="w-[11%]" />
                   <col className="w-[12%]" />
-                  <col className="w-[6%]" />
-                  <col className="w-[9%]" />
+                  <col className="w-[8%]" />
+                  <col className="w-[12%]" />
                 </colgroup>
-                <thead>
+                <thead ref={tableHeaderRef}>
                   <tr className="bg-calisto-table/90 text-xs font-bold uppercase tracking-wider text-calisto-ink">
-                    <th className="px-3 py-4 text-center"></th>
                     <th className="px-3 py-4">ID</th>
                     <th className="px-3 py-4">Product</th>
                     <th className="px-3 py-4">Type</th>
@@ -396,49 +355,26 @@ export default function ProductsPage() {
                   </tr>
                 </thead>
                 <tbody id="rows" className="divide-y divide-calisto-line-subtle">
-                  {filtered.length === 0 && (
-                    <tr><td colSpan={9} className="px-3 py-12 text-center text-sm font-medium text-calisto-muted">No products yet. Click "Add Product".</td></tr>
-                  )}
                   {paginated.map((product: ProductRecord) => (
-                    <tr key={product.productId} className="transition hover:bg-calisto-surface-muted" data-product-id={product.productId}>
-                      <td className="px-3 py-4 text-center align-middle">
-                        {(() => {
-                          const thumb = productThumbUrl(product)
-                          return thumb ? (
-                            <button
-                              type="button"
-                              onClick={() => setPreview({ url: thumb, name: product.productName })}
-                              className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-full ring-1 ring-calisto-line transition hover:ring-2 hover:ring-calisto-accent focus:outline-none focus:ring-2 focus:ring-calisto-accent"
-                              aria-label={`Preview ${product.productName}`}
-                              title="Click to enlarge"
-                            >
-                              <img className="h-full w-full object-cover" src={thumb} alt={product.productName} />
-                            </button>
-                          ) : (
-                            <div className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-violet-600 text-xs font-bold text-calisto-surface">
-                              <span>{productInitial(product)}</span>
-                            </div>
-                          )
-                        })()}
-                      </td>
-                      <td className="px-3 py-4 align-middle font-mono text-[0.8rem] text-calisto-body"><span className="block truncate">{product.productId}</span></td>
-                      <td className="px-3 py-4 align-middle">
+                    <tr key={product.productId} className="border-b border-calisto-line-subtle transition hover:bg-calisto-surface-muted" data-product-id={product.productId} style={{ height: ROW_HEIGHT_PX }}>
+                      <td className="px-3 py-2 align-middle tabular-nums text-calisto-body"><span className="block truncate">{product.productId}</span></td>
+                      <td className="px-3 py-2 align-middle">
                         <div className="truncate font-semibold text-calisto-ink">{product.productName}</div>
                         <div className="mt-0.5 truncate text-xs text-calisto-muted">{product.brand}</div>
                       </td>
-                      <td className="px-3 py-4 align-middle text-calisto-body"><span className="block truncate">{product.productType}</span></td>
-                      <td className="px-3 py-4 align-middle text-calisto-body"><span className="block truncate">{product.category}</span></td>
-                      <td className="px-3 py-4 text-right align-middle font-mono text-[0.8rem] text-calisto-ink"><span className="block truncate">RM{product.priceMyr.toFixed(2)}</span></td>
-                      <td className="px-3 py-4 text-center align-middle">
+                      <td className="px-3 py-2 align-middle text-calisto-body"><span className="block truncate">{product.productType}</span></td>
+                      <td className="px-3 py-2 align-middle text-calisto-body"><span className="block truncate">{product.category}</span></td>
+                      <td className="px-3 py-2 text-right align-middle tabular-nums text-calisto-ink"><span className="block truncate">RM{product.priceMyr.toFixed(2)}</span></td>
+                      <td className="px-3 py-2 text-center align-middle">
                         <span className={`inline-flex max-w-full items-center justify-center truncate rounded-full px-2 py-1 text-[0.62rem] font-extrabold uppercase tracking-wide ${stockTone(product.stockStatus)}`}>
                           {formatStockStatus(product.stockStatus)}
                         </span>
                       </td>
-                      <td className="px-3 py-4 text-center align-middle text-calisto-body">{product.rating !== null && product.rating !== undefined ? product.rating.toFixed(1) : '-'}</td>
-                      <td className="px-3 py-4 align-middle">
+                      <td className="px-3 py-2 text-center align-middle text-calisto-body">{product.rating !== null && product.rating !== undefined ? product.rating.toFixed(1) : '-'}</td>
+                      <td className="px-3 py-2 align-middle">
                         <div className="flex items-center justify-center gap-2">
                           <button
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-100 bg-calisto-surface text-blue-700 transition hover:bg-blue-50"
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-calisto-surface text-blue-700 transition hover:bg-blue-50"
                             type="button"
                             onClick={() => openEditModal(product.productId)}
                             aria-label={`Edit ${product.productName}`}
@@ -447,7 +383,7 @@ export default function ProductsPage() {
                             <Pencil className="h-3.5 w-3.5" strokeWidth={2} />
                           </button>
                           <button
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-100 bg-calisto-surface text-rose-700 transition hover:bg-rose-50"
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-rose-100 bg-calisto-surface text-rose-700 transition hover:bg-rose-50"
                             type="button"
                             onClick={() => setDeleteTarget(product)}
                             aria-label={`Delete ${product.productName}`}
@@ -461,35 +397,19 @@ export default function ProductsPage() {
                   ))}
                 </tbody>
               </table>
+              {filtered.length === 0 && <EmptyState />}
             </div>
-            <div className="flex flex-col gap-3 border-t border-calisto-line-subtle px-5 py-4 text-sm text-calisto-muted sm:flex-row sm:items-center sm:justify-between">
-              <span className="font-semibold">
-                Showing {visibleStart}-{visibleEnd} of {filtered.length}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  className="inline-flex h-9 items-center gap-1 rounded-lg border border-calisto-line bg-calisto-surface px-3 text-sm font-semibold text-calisto-ink transition hover:bg-calisto-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
-                  type="button"
-                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Prev
-                </button>
-                <span className="min-w-24 text-center text-sm font-semibold text-calisto-body">
-                  Page {currentPage} of {pageCount}
-                </span>
-                <button
-                  className="inline-flex h-9 items-center gap-1 rounded-lg border border-calisto-line bg-calisto-surface px-3 text-sm font-semibold text-calisto-ink transition hover:bg-calisto-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
-                  type="button"
-                  onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
-                  disabled={currentPage === pageCount}
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+            {filtered.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                onNextPage={() => setCurrentPage(Math.min(pageCount, currentPage + 1))}
+                onPreviousPage={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                pageCount={pageCount}
+                totalCount={filtered.length}
+                visibleEnd={visibleEnd}
+                visibleStart={visibleStart}
+              />
+            )}
           </section>
         </>
       )}
@@ -514,32 +434,6 @@ export default function ProductsPage() {
         onConfirm={handleConfirmDelete}
         product={deleteTarget}
       />
-      {preview && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-calisto-ink/70 p-4"
-          onClick={() => setPreview(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-label={`${preview.name} image preview`}
-        >
-          <div className="relative max-h-[85vh] max-w-[85vw]" onClick={(event) => event.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => setPreview(null)}
-              className="absolute -right-3 -top-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-calisto-line bg-calisto-surface text-calisto-ink shadow-dashboard transition hover:bg-calisto-surface-muted"
-              aria-label="Close preview"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <img
-              src={preview.url}
-              alt={preview.name}
-              className="max-h-[85vh] max-w-[85vw] rounded-2xl object-contain shadow-dashboard"
-            />
-            <div className="mt-3 text-center text-sm font-semibold text-calisto-surface">{preview.name}</div>
-          </div>
-        </div>
-      )}
     </PageContainer>
   )
 }

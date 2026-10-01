@@ -31,6 +31,9 @@ export interface IncomingMessage {
 
   location?: { latitude: number; longitude: number; address?: string; name?: string }
 
+  /** Approximate location (e.g. from the visitor's IP). Only fills an empty lead location. */
+  inferredLocation?: string
+
   interactive?: { type: string; id: string; title: string }
 
   messageId: string

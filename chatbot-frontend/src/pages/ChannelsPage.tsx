@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
-import { KeyRound, Link2, Plus, Power } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { AlertCircle, CheckCircle2, ChevronRight, Clock, Copy, KeyRound, Link2, Plus, Power, RefreshCw } from 'lucide-react'
 import {
   createChannelAccount,
   disableChannelAccount,
@@ -8,34 +9,66 @@ import {
   registerChannelAccountWebhook,
   updateChannelAccount,
 } from '../api/client'
+import ActionMenu from '../components/ActionMenu'
 import AddChannelAccountModal from '../components/AddChannelAccountModal'
+import EmptyState from '../components/EmptyState'
+import { ChannelIcon } from '../components/ChannelIcon'
+import ReconnectChannelsModal from '../components/ReconnectChannelsModal'
 import Button from '../components/Button'
 import PageContainer from '../components/PageContainer'
+import Modal from '../components/Modal'
+import RequiredMark from '../components/RequiredMark'
+import Pagination from '../components/Pagination'
 import { SkeletonTable, SkeletonTopbar } from '../components/Skeleton'
 import Topbar from '../components/Topbar'
+import { useSnackbar } from '../components/Snackbar'
 import type { ChannelAccountInput, ChannelAccountRecord } from '../types'
+import { pageSlice, useFitRows } from '../lib/use-fit-rows'
 
-function statusTone(status: ChannelAccountRecord['webhookStatus']) {
-  if (status === 'active') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'error') return 'bg-rose-100 text-rose-700'
-  return 'bg-amber-100 text-amber-700'
+const WEBHOOK_STATUS = {
+  active: { label: 'Connected', tone: 'bg-emerald-100 text-emerald-700', Icon: CheckCircle2 },
+  pending: { label: 'Setup needed', tone: 'bg-amber-100 text-amber-700', Icon: Clock },
+  error: { label: 'Failed', tone: 'bg-rose-100 text-rose-700', Icon: AlertCircle },
+} as const
+
+const CHANNEL_META: Record<ChannelAccountRecord['channel'], { name: string; color: string }> = {
+  whatsapp: { name: 'WhatsApp', color: 'text-emerald-600' },
+  instagram: { name: 'Instagram', color: 'text-purple-600' },
+  messenger: { name: 'Messenger', color: 'text-blue-600' },
+  telegram: { name: 'Telegram', color: 'text-sky-600' },
 }
 
-function channelLabel(channel: ChannelAccountRecord['channel']) {
-  return channel.charAt(0).toUpperCase() + channel.slice(1)
-}
+const ROW_HEIGHT_PX = 60
 
 export default function ChannelsPage() {
   const [items, setItems] = useState<ChannelAccountRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const snackbar = useSnackbar()
+  const tableBodyRef = useRef<HTMLDivElement | null>(null)
+  const tableHeaderRef = useRef<HTMLTableSectionElement | null>(null)
+  const rowsPerPage = useFitRows(tableBodyRef, tableHeaderRef, ROW_HEIGHT_PX, !loading)
+  // Page lives in the URL, like the Leads page.
+  const [params, setParams] = useSearchParams()
+  const { pageCount, currentPage, pageItems, visibleStart, visibleEnd } = pageSlice(items, rowsPerPage, Number(params.get('page')))
+
+  function goToPage(page: number) {
+    setParams((previous) => {
+      const next = new URLSearchParams(previous)
+      if (page <= 1) next.delete('page')
+      else next.set('page', String(page))
+      return next
+    }, { replace: true })
+  }
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showReconnect, setShowReconnect] = useState(false)
   const [saving, setSaving] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [registerTarget, setRegisterTarget] = useState<ChannelAccountRecord | null>(null)
   const [registerUrl, setRegisterUrl] = useState('')
   const [tokenTarget, setTokenTarget] = useState<ChannelAccountRecord | null>(null)
   const [tokenValue, setTokenValue] = useState('')
+  const [webhookInfoTarget, setWebhookInfoTarget] = useState<ChannelAccountRecord | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -59,9 +92,10 @@ export default function ChannelsPage() {
     try {
       await createChannelAccount(payload)
       setShowAddModal(false)
+      snackbar.success(`Added ${payload.label}.`)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create account')
+      snackbar.error(err instanceof Error ? err.message : 'Failed to create account')
     } finally {
       setSaving(false)
     }
@@ -72,9 +106,10 @@ export default function ChannelsPage() {
     setBusyId(account.id)
     try {
       await disableChannelAccount(account.id)
+      snackbar.success(`Disabled ${account.label}.`)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to disable account')
+      snackbar.error(err instanceof Error ? err.message : 'Failed to disable account')
     } finally {
       setBusyId(null)
     }
@@ -85,9 +120,10 @@ export default function ChannelsPage() {
     setBusyId(account.id)
     try {
       await enableChannelAccount(account.id)
+      snackbar.success(`Enabled ${account.label}.`)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to enable account')
+      snackbar.error(err instanceof Error ? err.message : 'Failed to enable account')
     } finally {
       setBusyId(null)
     }
@@ -104,12 +140,22 @@ export default function ChannelsPage() {
     try {
       const url = registerUrl.trim() || undefined
       await registerChannelAccountWebhook(registerTarget.id, url)
+      snackbar.success(`Webhook registered for ${registerTarget.label}.`)
       setRegisterTarget(null)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Webhook registration failed')
+      snackbar.error(err instanceof Error ? err.message : 'Webhook registration failed')
     } finally {
       setBusyId(null)
+    }
+  }
+
+  async function copyToClipboard(value: string, what: string) {
+    try {
+      await navigator.clipboard.writeText(value)
+      snackbar.success(`${what} copied.`)
+    } catch {
+      snackbar.error('Could not copy to clipboard')
     }
   }
 
@@ -132,24 +178,36 @@ export default function ChannelsPage() {
       await updateChannelAccount(tokenTarget.id, {
         credentials: { [key]: tokenValue.trim() },
       })
+      snackbar.success(`Credentials updated for ${tokenTarget.label}.`)
       setTokenTarget(null)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update credentials')
+      snackbar.error(err instanceof Error ? err.message : 'Failed to update credentials')
     } finally {
       setBusyId(null)
     }
   }
 
   return (
-    <PageContainer>
+    // On desktop the page fills the screen and the table card stretches to the bottom.
+    <PageContainer className="lg:flex lg:h-[100dvh] lg:flex-col">
       {loading ? <SkeletonTopbar /> : (
         <Topbar
           title="Channels"
           actions={(
-            <Button icon={<Plus className="h-4 w-4" />} variant="primary" onClick={() => setShowAddModal(true)}>
-              Add account
-            </Button>
+            <>
+              <Button
+                disabled={items.every((account) => !account.enabled)}
+                icon={<RefreshCw className="h-4 w-4" />}
+                onClick={() => setShowReconnect(true)}
+                title="Point every enabled channel at the current public URL (e.g. after the tunnel restarts)"
+              >
+                Reconnect all
+              </Button>
+              <Button icon={<Plus className="h-4 w-4" />} variant="primary" onClick={() => setShowAddModal(true)}>
+                Add account
+              </Button>
+            </>
           )}
         />
       )}
@@ -167,99 +225,118 @@ export default function ChannelsPage() {
       )}
 
       {loading ? <SkeletonTable rows={5} cols={6} /> : (
-        <div className="overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-calisto-table text-xs font-semibold uppercase tracking-wide text-calisto-body">
+        <div className="flex flex-col overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard lg:min-h-0 lg:flex-1">
+          <div className="flex flex-col lg:min-h-0 lg:flex-1 lg:overflow-hidden" ref={tableBodyRef}>
+          {/* Fixed layout + one-line cells: the table fits the width and every row is the same height. */}
+          <table className="table-edges w-full table-fixed text-left text-sm">
+            <colgroup>
+              <col className="w-[26%]" />
+              <col className="w-[16%]" />
+              <col className="w-[20%]" />
+              <col className="w-[12%]" />
+              <col className="w-[18%]" />
+              <col className="w-[8%]" />
+            </colgroup>
+            <thead className="bg-calisto-table text-xs font-semibold uppercase tracking-wide text-calisto-body" ref={tableHeaderRef}>
               <tr>
                 <th className="px-4 py-3">Label</th>
                 <th className="px-4 py-3">Channel</th>
                 <th className="px-4 py-3">Native ID</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Webhook</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                <th className="px-4 py-3 text-right"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody>
-              {items.length === 0 ? (
-                <tr>
-                  <td className="px-4 py-8 text-center text-calisto-body" colSpan={6}>
-                    No channel accounts yet. Add one to connect WhatsApp, Instagram, Messenger, or Telegram.
-                  </td>
-                </tr>
-              ) : items.map((account) => (
-                <tr key={account.id} className="border-t border-calisto-line">
-                  <td className="px-4 py-4 font-semibold text-calisto-ink">
-                    {account.label}
-                    {!account.enabled && (
-                      <span className="ml-2 rounded-full bg-calisto-table px-2 py-0.5 text-xs font-medium text-calisto-body">
-                        disabled
+              {pageItems.map((account) => {
+                const { label, tone, Icon } = WEBHOOK_STATUS[account.webhookStatus]
+                const busy = busyId === account.id
+                // Disabled accounts are dimmed, except the actions menu (it holds "Enable").
+                const dim = account.enabled ? '' : 'opacity-50'
+                return (
+                  <tr
+                    className="border-y border-calisto-line"
+                    key={account.id}
+                    style={{ height: ROW_HEIGHT_PX }}
+                  >
+                    <td className={`truncate px-4 font-semibold text-calisto-ink ${dim}`} title={account.label}>
+                      {account.label}
+                    </td>
+                    <td className={`px-4 text-calisto-body ${dim}`}>
+                      <span className="inline-flex max-w-full items-center gap-2">
+                        <span className={`shrink-0 ${CHANNEL_META[account.channel].color}`}>
+                          <ChannelIcon channel={account.channel} className="h-4 w-4" />
+                        </span>
+                        <span className="truncate">{CHANNEL_META[account.channel].name}</span>
                       </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-calisto-body">{channelLabel(account.channel)}</td>
-                  <td className="px-4 py-4 font-mono text-xs text-calisto-body">{account.nativeId}</td>
-                  <td className="px-4 py-4">
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${account.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-calisto-table text-calisto-body'}`}>
-                      {account.enabled ? 'enabled' : 'disabled'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="space-y-1">
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusTone(account.webhookStatus)}`}>
-                        {account.webhookStatus}
+                    </td>
+                    <td className={`truncate px-4 tabular-nums text-calisto-body ${dim}`} title={account.nativeId}>
+                      {account.nativeId}
+                    </td>
+                    <td className={`px-4 ${dim}`}>
+                      <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${account.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-calisto-table text-calisto-body'}`}>
+                        {account.enabled ? 'enabled' : 'disabled'}
                       </span>
-                      {account.webhookError && (
-                        <p className="max-w-xs text-xs text-rose-600">{account.webhookError}</p>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex justify-end gap-2">
-                      {account.enabled && (
-                        <Button
-                          icon={<KeyRound className="h-4 w-4" />}
-                          disabled={busyId === account.id}
-                          onClick={() => handleUpdateToken(account)}
-                        >
-                          Update token
-                        </Button>
-                      )}
-                      {account.enabled && (
-                        <Button
-                          icon={<Link2 className="h-4 w-4" />}
-                          disabled={busyId === account.id}
-                          onClick={() => void handleRegisterWebhook(account)}
-                        >
-                          Register webhook
-                        </Button>
-                      )}
-                      {account.enabled ? (
-                        <Button
-                          icon={<Power className="h-4 w-4" />}
-                          variant="ghost"
-                          disabled={busyId === account.id}
-                          onClick={() => void handleDisable(account)}
-                        >
-                          Disable
-                        </Button>
+                    </td>
+                    <td className={`px-4 ${dim}`}>
+                      {account.webhookStatus === 'active' ? (
+                        <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${tone}`}>
+                          <Icon className="h-3.5 w-3.5" />
+                          {label}
+                        </span>
                       ) : (
-                        <Button
-                          icon={<Power className="h-4 w-4" />}
-                          variant="primary"
-                          disabled={busyId === account.id}
-                          onClick={() => void handleEnable(account)}
+                        // Not connected: the badge itself opens the details (no second line).
+                        <button
+                          className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-calisto-accent/40 ${tone}`}
+                          onClick={() => setWebhookInfoTarget(account)}
+                          title={account.webhookStatus === 'error' ? 'View details' : 'Finish setup'}
+                          type="button"
                         >
-                          Enable
-                        </Button>
+                          <Icon className="h-3.5 w-3.5" />
+                          {label}
+                          <ChevronRight className="-mr-0.5 h-3.5 w-3.5" />
+                        </button>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 text-right">
+                      <ActionMenu
+                        disabled={busy}
+                        items={account.enabled ? [
+                          { label: 'Update token', icon: <KeyRound className="h-4 w-4" />, onSelect: () => handleUpdateToken(account) },
+                          { label: 'Register webhook', icon: <Link2 className="h-4 w-4" />, onSelect: () => void handleRegisterWebhook(account) },
+                          { label: 'Disable', icon: <Power className="h-4 w-4" />, onSelect: () => void handleDisable(account), tone: 'danger' },
+                        ] : [
+                          { label: 'Enable', icon: <Power className="h-4 w-4" />, onSelect: () => void handleEnable(account), tone: 'primary' },
+                        ]}
+                        label={`Actions for ${account.label}`}
+                      />
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
+          {items.length === 0 && <EmptyState />}
+          </div>
+          {items.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              onNextPage={() => goToPage(currentPage + 1)}
+              onPreviousPage={() => goToPage(currentPage - 1)}
+              pageCount={pageCount}
+              totalCount={items.length}
+              visibleEnd={visibleEnd}
+              visibleStart={visibleStart}
+            />
+          )}
         </div>
       )}
+
+      <ReconnectChannelsModal
+        open={showReconnect}
+        onClose={() => setShowReconnect(false)}
+        onFinished={() => void load()}
+      />
 
       <AddChannelAccountModal
         open={showAddModal}
@@ -269,58 +346,137 @@ export default function ChannelsPage() {
       />
 
       {registerTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-calisto-ink/50 px-4 py-8">
-          <div className="w-full max-w-lg rounded-2xl border border-calisto-line bg-calisto-surface p-6 shadow-dashboard">
-            <h2 className="text-lg font-bold text-calisto-ink">Register webhook</h2>
-            <p className="mt-2 text-sm leading-6 text-calisto-body">
-              Register webhook for <strong>{registerTarget.label}</strong>. Your backend must be reachable over HTTPS (e.g. via Cloudflare tunnel).
-            </p>
-            <label className="mt-4 block">
-              <span className="mb-2 block text-sm font-semibold text-calisto-ink">Public HTTPS base URL (optional)</span>
-              <input
-                className="h-11 w-full rounded-xl border border-calisto-line px-4 text-sm"
-                placeholder="https://your-tunnel.trycloudflare.com"
-                value={registerUrl}
-                onChange={(event) => setRegisterUrl(event.target.value)}
-              />
-              <span className="mt-2 block text-xs text-calisto-body">
-                Leave empty to use PUBLIC_BASE_URL from the server .env. Use this field if your tunnel URL changed and you have not restarted the backend yet.
-              </span>
-            </label>
-            <div className="mt-6 flex justify-end gap-3">
+        <Modal
+          description={<>Register webhook for <strong>{registerTarget.label}</strong>. Your backend must be reachable over HTTPS (e.g. via Cloudflare tunnel).</>}
+          dismissible={busyId !== registerTarget.id}
+          footer={(
+            <>
               <Button variant="secondary" onClick={() => setRegisterTarget(null)}>Cancel</Button>
-              <Button variant="primary" disabled={busyId === registerTarget.id} onClick={() => void confirmRegisterWebhook()}>
+              <Button variant="primary" type="submit" disabled={busyId === registerTarget.id}>
                 {busyId === registerTarget.id ? 'Registering…' : 'Register'}
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          )}
+          onClose={() => setRegisterTarget(null)}
+          onSubmit={(event) => {
+            event.preventDefault()
+            void confirmRegisterWebhook()
+          }}
+          size="md"
+          title="Register webhook"
+        >
+          <label className="block">
+            <span className="mb-2 block text-sm font-semibold text-calisto-ink">Public HTTPS base URL (optional)</span>
+            <input
+              className="h-11 w-full rounded-xl border border-calisto-line px-4 text-sm"
+              placeholder="https://your-tunnel.trycloudflare.com"
+              value={registerUrl}
+              onChange={(event) => setRegisterUrl(event.target.value)}
+            />
+            <span className="mt-2 block text-xs text-calisto-body">
+              Leave empty to use the backend's current public URL. Tip: after a tunnel restart, use “Reconnect all” to update every channel at once.
+            </span>
+          </label>
+        </Modal>
+      )}
+
+      {webhookInfoTarget && (
+        <Modal
+          description={webhookInfoTarget.webhookStatus === 'error'
+            ? <><strong>{webhookInfoTarget.label}</strong> can't receive messages until its webhook is registered.</>
+            : webhookInfoTarget.channel === 'instagram'
+              ? <>Meta doesn't allow Instagram webhooks to be set automatically. Add the values below in your Meta App Dashboard under <strong>Webhooks → Instagram</strong>, then subscribe to the <strong>messages</strong> field.</>
+              : <>Register the webhook for <strong>{webhookInfoTarget.label}</strong> to start receiving messages.</>}
+          footer={(
+            <>
+              <Button variant="secondary" onClick={() => setWebhookInfoTarget(null)}>Close</Button>
+              {(webhookInfoTarget.webhookStatus === 'error' || webhookInfoTarget.channel !== 'instagram') && (
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    const target = webhookInfoTarget
+                    setWebhookInfoTarget(null)
+                    void handleRegisterWebhook(target)
+                  }}
+                >
+                  Register webhook
+                </Button>
+              )}
+            </>
+          )}
+          onClose={() => setWebhookInfoTarget(null)}
+          size="md"
+          title={webhookInfoTarget.webhookStatus === 'error' ? 'Webhook registration failed' : 'Finish webhook setup'}
+        >
+          {webhookInfoTarget.webhookStatus === 'error' ? (
+            <>
+              <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {webhookInfoTarget.webhookError || 'Unknown error.'}
+              </div>
+              <p className="mt-4 text-sm leading-6 text-calisto-body">
+                If the token expired, use <strong>Update token</strong> first, then try registering again.
+              </p>
+            </>
+          ) : (
+            <>
+              {webhookInfoTarget.webhookUrl && (
+                <div className="space-y-3">
+                  {[
+                    { name: 'Callback URL', value: webhookInfoTarget.webhookUrl },
+                    ...(webhookInfoTarget.verifyToken ? [{ name: 'Verify token', value: webhookInfoTarget.verifyToken }] : []),
+                  ].map((field) => (
+                    <div key={field.name}>
+                      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-calisto-body">{field.name}</span>
+                      <div className="flex items-center gap-2">
+                        <code className="min-w-0 flex-1 truncate rounded-xl border border-calisto-line bg-calisto-table px-3 py-2 text-xs text-calisto-ink">
+                          {field.value}
+                        </code>
+                        <Button icon={<Copy className="h-4 w-4" />} onClick={() => void copyToClipboard(field.value, field.name)}>
+                          Copy
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="mt-4 text-xs leading-5 text-calisto-body">
+                The status switches to <strong>Connected</strong> automatically once the first message arrives.
+              </p>
+            </>
+          )}
+        </Modal>
       )}
 
       {tokenTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-calisto-ink/50 px-4 py-8">
-          <div className="w-full max-w-lg rounded-2xl border border-calisto-line bg-calisto-surface p-6 shadow-dashboard">
-            <h2 className="text-lg font-bold text-calisto-ink">Update access token</h2>
-            <p className="mt-2 text-sm leading-6 text-calisto-body">
-              Paste a fresh token for <strong>{tokenTarget.label}</strong> from Meta Developer Dashboard or BotFather.
-            </p>
-            <label className="mt-4 block">
-              <span className="mb-2 block text-sm font-semibold text-calisto-ink">New token</span>
-              <input
-                className="h-11 w-full rounded-xl border border-calisto-line px-4 text-sm"
-                type="password"
-                value={tokenValue}
-                onChange={(event) => setTokenValue(event.target.value)}
-              />
-            </label>
-            <div className="mt-6 flex justify-end gap-3">
+        <Modal
+          description={<>Paste a fresh token for <strong>{tokenTarget.label}</strong> from Meta Developer Dashboard or BotFather.</>}
+          dismissible={busyId !== tokenTarget.id}
+          footer={(
+            <>
               <Button variant="secondary" onClick={() => setTokenTarget(null)}>Cancel</Button>
-              <Button variant="primary" disabled={!tokenValue.trim() || busyId === tokenTarget.id} onClick={() => void confirmUpdateToken()}>
+              <Button variant="primary" type="submit" disabled={!tokenValue.trim() || busyId === tokenTarget.id}>
                 {busyId === tokenTarget.id ? 'Saving…' : 'Save token'}
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          )}
+          onClose={() => setTokenTarget(null)}
+          onSubmit={(event) => {
+            event.preventDefault()
+            void confirmUpdateToken()
+          }}
+          size="md"
+          title="Update access token"
+        >
+          <label className="block">
+            <span className="mb-2 block text-sm font-semibold text-calisto-ink">New token<RequiredMark /></span>
+            <input
+              className="h-11 w-full rounded-xl border border-calisto-line px-4 text-sm"
+              type="password"
+              value={tokenValue}
+              onChange={(event) => setTokenValue(event.target.value)}
+            />
+          </label>
+        </Modal>
       )}
     </PageContainer>
   )

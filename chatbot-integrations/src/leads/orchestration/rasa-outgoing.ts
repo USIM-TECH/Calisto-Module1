@@ -1,13 +1,15 @@
 import type { OutgoingMessage } from '../../core/types.js'
 import type { NLPResponse } from '../../core/utils/index.js'
 
-function normalizeCardMessage(custom: Record<string, unknown>): OutgoingMessage | undefined {
+function normalizeCardMessage(custom: Record<string, unknown>, text?: string): OutgoingMessage | undefined {
   const title = typeof custom.title === 'string' ? custom.title : undefined
   if (!title) {
     return undefined
   }
 
-  const subtitle = typeof custom.subtitle === 'string' ? custom.subtitle : undefined
+  // A domain response can carry the card body as its `text` (e.g. utter_open_app);
+  // use it when no explicit subtitle is given so channels don't drop it.
+  const subtitle = typeof custom.subtitle === 'string' ? custom.subtitle : text || undefined
   const imageUrl = typeof custom.imageUrl === 'string' ? custom.imageUrl : undefined
   const actions = Array.isArray(custom.actions)
     ? custom.actions
@@ -59,7 +61,7 @@ export function mapNlpResponseToOutgoingMessages(nlpResponse: NLPResponse): Outg
     if (reply.custom && typeof reply.custom === 'object') {
       const custom = reply.custom as Record<string, unknown>
       if (custom.type === 'card') {
-        const card = normalizeCardMessage(custom)
+        const card = normalizeCardMessage(custom, reply.text)
         if (card) {
           outgoingMessages.push(card)
           continue

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Check, Pencil, Plus, Sparkles, Trash2, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Check, Pencil, Plus, Power, Sparkles, Trash2 } from 'lucide-react'
 import {
   createPreset,
   deletePreset,
@@ -8,10 +8,16 @@ import {
   updatePreset,
 } from '../api/client'
 import Button from '../components/Button'
+import EmptyState from '../components/EmptyState'
 import PageContainer from '../components/PageContainer'
+import Modal from '../components/Modal'
+import RequiredMark from '../components/RequiredMark'
+import Pagination from '../components/Pagination'
 import Topbar from '../components/Topbar'
+import { useSnackbar } from '../components/Snackbar'
 import { SkeletonTable, SkeletonTopbar } from '../components/Skeleton'
 import type { PresetRecord } from '../types'
+import { pageSlice, useFitRows } from '../lib/use-fit-rows'
 
 interface PresetDraft {
   name: string
@@ -20,17 +26,26 @@ interface PresetDraft {
 
 const emptyDraft: PresetDraft = { name: '', description: '' }
 
+// Fixed one-line row height; rows per page = as many as fit the screen (useFitRows).
+const ROW_HEIGHT_PX = 60
+
 export default function PresetsPage() {
   const [presets, setPresets] = useState<PresetRecord[] | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const tableBodyRef = useRef<HTMLDivElement | null>(null)
+  const tableHeaderRef = useRef<HTMLTableSectionElement | null>(null)
+  const rowsPerPage = useFitRows(tableBodyRef, tableHeaderRef, ROW_HEIGHT_PX, Boolean(presets))
+  const { pageCount, currentPage: shownPage, pageItems, visibleStart, visibleEnd } = pageSlice(presets ?? [], rowsPerPage, currentPage)
   const [activePresetId, setActivePresetId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const snackbar = useSnackbar()
   const [activating, setActivating] = useState(false)
 
   const [editorOpen, setEditorOpen] = useState(false)
   const [editorMode, setEditorMode] = useState<'create' | 'edit'>('create')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState<PresetDraft>(emptyDraft)
+  const [nameError, setNameError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   const [deleteTarget, setDeleteTarget] = useState<PresetRecord | null>(null)
@@ -53,18 +68,16 @@ export default function PresetsPage() {
 
   async function handleActivate(presetId: string | null) {
     setActivating(true)
-    setError(null)
-    setSuccessMessage(null)
     try {
       const result = await setActivePreset(presetId)
       applyResult(result)
-      setSuccessMessage(
+      snackbar.success(
         presetId
           ? `Activated "${result.items.find((p) => p.id === presetId)?.name ?? 'preset'}". The chatbot now suggests products from it.`
-          : 'Switched to default — the chatbot ranks across the whole catalogue.',
+          : 'Preset turned off. The chatbot now recommends from the whole catalogue.',
       )
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to change active preset')
+      snackbar.error(err instanceof Error ? err.message : 'Failed to change active preset')
     } finally {
       setActivating(false)
     }
@@ -74,40 +87,37 @@ export default function PresetsPage() {
     setEditorMode('create')
     setEditingId(null)
     setDraft(emptyDraft)
+    setNameError(null)
     setEditorOpen(true)
-    setError(null)
-    setSuccessMessage(null)
   }
 
   function openEdit(preset: PresetRecord) {
     setEditorMode('edit')
     setEditingId(preset.id)
     setDraft({ name: preset.name, description: preset.description ?? '' })
+    setNameError(null)
     setEditorOpen(true)
-    setError(null)
-    setSuccessMessage(null)
   }
 
   async function handleSave() {
     const name = draft.name.trim()
     if (!name) {
-      setError('Preset name is required.')
+      setNameError('Preset name is required.')
       return
     }
     setSaving(true)
-    setError(null)
     try {
       if (editorMode === 'edit' && editingId) {
         await updatePreset(editingId, { name, description: draft.description.trim() })
-        setSuccessMessage('Preset updated.')
+        snackbar.success('Preset updated.')
       } else {
         await createPreset({ name, description: draft.description.trim() })
-        setSuccessMessage('Preset created.')
+        snackbar.success('Preset created.')
       }
       setEditorOpen(false)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save preset')
+      snackbar.error(err instanceof Error ? err.message : 'Failed to save preset')
     } finally {
       setSaving(false)
     }
@@ -116,23 +126,23 @@ export default function PresetsPage() {
   async function handleConfirmDelete() {
     if (!deleteTarget) return
     setDeleting(true)
-    setError(null)
     try {
       await deletePreset(deleteTarget.id)
       setDeleteTarget(null)
-      setSuccessMessage('Preset deleted.')
+      snackbar.success('Preset deleted.')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete preset')
+      snackbar.error(err instanceof Error ? err.message : 'Failed to delete preset')
     } finally {
       setDeleting(false)
     }
   }
 
-  const isDefault = activePresetId === null
+  const activePreset = presets?.find((preset) => preset.id === activePresetId) ?? null
 
   return (
-    <PageContainer>
+    // On desktop the page fills the screen; the table takes the remaining height and pages.
+    <PageContainer className="lg:flex lg:h-[100dvh] lg:flex-col">
       <Topbar
         title="Presets"
         actions={(
@@ -142,11 +152,6 @@ export default function PresetsPage() {
         )}
       />
 
-      {successMessage && (
-        <div className="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-5 text-sm font-semibold text-emerald-700 shadow-sm">
-          {successMessage}
-        </div>
-      )}
       {error && (
         <div className="mb-5 rounded-2xl border border-rose-100 bg-calisto-surface p-5 text-sm font-medium text-rose-700 shadow-sm">
           {error}
@@ -162,59 +167,57 @@ export default function PresetsPage() {
 
       {presets && (
         <>
-          <section className="mb-5 rounded-2xl border border-calisto-line-subtle bg-calisto-surface p-5 shadow-sm">
-            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-calisto-ink">
-              <Sparkles className="h-4 w-4 text-calisto-accent" />
-              Active Preset
+          {/* Status of the chatbot's preset, with an off switch only when one is active. */}
+          <section className="mb-5 flex items-center justify-between gap-4 rounded-2xl border border-calisto-line-subtle bg-calisto-surface px-5 py-4 shadow-sm">
+            <div className="flex min-w-0 items-center gap-3">
+              <span
+                className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                  activePreset ? 'bg-calisto-accent/10 text-calisto-accent' : 'bg-calisto-table text-calisto-muted'
+                }`}
+              >
+                <Sparkles className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-calisto-ink">
+                  {activePreset ? <>Active preset: {activePreset.name}</> : 'No preset active'}
+                </p>
+                <p className="mt-0.5 text-sm text-calisto-body">
+                  {activePreset
+                    ? 'The chatbot recommends products from this preset first.'
+                    : 'The chatbot recommends from the whole catalogue.'}
+                </p>
+              </div>
             </div>
-            <p className="mt-2 text-sm font-medium text-calisto-body">
-              The active preset decides which products the chatbot suggests to every user. If a shopper asks for
-              something not in the active preset, the bot still shows the closest exact matches from the full catalogue.
-            </p>
-            <button
-              type="button"
-              disabled={activating}
-              onClick={() => handleActivate(null)}
-              className={`mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition disabled:opacity-60 ${
-                isDefault
-                  ? 'border-calisto-accent bg-calisto-accent/10 text-calisto-accent'
-                  : 'border-calisto-line bg-calisto-surface text-calisto-body hover:bg-calisto-surface-muted'
-              }`}
-            >
-              {isDefault && <Check className="h-4 w-4" />}
-              Default (no preset) — rank across the whole catalogue
-            </button>
+            {activePreset && (
+              <Button disabled={activating} icon={<Power className="h-4 w-4" />} onClick={() => handleActivate(null)}>
+                Turn off
+              </Button>
+            )}
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
-            <table className="w-full min-w-[720px] table-fixed border-collapse text-left text-sm lg:min-w-0">
+          <section className="flex flex-col overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard lg:min-h-0 lg:flex-1">
+            <div className="flex flex-col overflow-x-auto lg:min-h-0 lg:flex-1 lg:overflow-hidden" ref={tableBodyRef}>
+            <table className="table-edges w-full min-w-[720px] table-fixed border-collapse text-left text-sm lg:min-w-0">
               <colgroup>
                 <col className="w-[26%]" />
-                <col className="w-[40%]" />
+                <col className="w-[37%]" />
                 <col className="w-[14%]" />
-                <col className="w-[20%]" />
+                <col className="w-[23%]" />
               </colgroup>
-              <thead>
+              <thead ref={tableHeaderRef}>
                 <tr className="bg-calisto-table/90 text-xs font-bold uppercase tracking-wider text-calisto-ink">
                   <th className="px-4 py-4">Preset</th>
                   <th className="px-4 py-4">Description</th>
-                  <th className="px-4 py-4 text-center">Products</th>
-                  <th className="px-4 py-4 text-center">Actions</th>
+                  <th className="px-4 py-4">Products</th>
+                  <th className="px-4 py-4">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-calisto-line-subtle">
-                {presets.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-12 text-center text-sm font-medium text-calisto-muted">
-                      No presets yet. Click "Add Preset" to create one.
-                    </td>
-                  </tr>
-                )}
-                {presets.map((preset) => {
+                {pageItems.map((preset) => {
                   const active = preset.id === activePresetId
                   return (
-                    <tr key={preset.id} className="transition hover:bg-calisto-surface-muted">
-                      <td className="px-4 py-4 align-middle">
+                    <tr key={preset.id} className="border-b border-calisto-line-subtle transition hover:bg-calisto-surface-muted" style={{ height: ROW_HEIGHT_PX }}>
+                      <td className="px-4 py-2 align-middle">
                         <div className="flex items-center gap-2">
                           <span className="truncate font-semibold text-calisto-ink">{preset.name}</span>
                           {active && (
@@ -224,19 +227,19 @@ export default function PresetsPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-4 align-middle text-calisto-body">
+                      <td className="px-4 py-2 align-middle text-calisto-body">
                         <span className="block truncate">{preset.description || '—'}</span>
                       </td>
-                      <td className="px-4 py-4 text-center align-middle font-semibold text-calisto-body">
+                      <td className="px-4 py-2 align-middle font-semibold text-calisto-body">
                         {preset.productCount}
                       </td>
-                      <td className="px-4 py-4 align-middle">
-                        <div className="flex items-center justify-center gap-2">
+                      <td className="px-4 py-2 align-middle">
+                        <div className="flex items-center justify-start gap-2">
                           <button
                             type="button"
                             disabled={activating || active}
                             onClick={() => handleActivate(preset.id)}
-                            className="inline-flex h-8 items-center rounded-lg border border-calisto-accent bg-calisto-accent px-3 text-xs font-bold text-calisto-surface transition hover:bg-calisto-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="inline-flex h-8 w-[5.5rem] shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-calisto-accent bg-calisto-accent px-3 text-xs font-bold text-calisto-surface transition hover:bg-calisto-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
                             title={active ? 'Already active' : 'Set as active'}
                           >
                             {active ? 'Active' : 'Set active'}
@@ -244,7 +247,7 @@ export default function PresetsPage() {
                           <button
                             type="button"
                             onClick={() => openEdit(preset)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-100 bg-calisto-surface text-blue-700 transition hover:bg-blue-50"
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-calisto-surface text-blue-700 transition hover:bg-blue-50"
                             aria-label={`Edit ${preset.name}`}
                             title="Edit"
                           >
@@ -253,7 +256,7 @@ export default function PresetsPage() {
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(preset)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-100 bg-calisto-surface text-rose-700 transition hover:bg-rose-50"
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-rose-100 bg-calisto-surface text-rose-700 transition hover:bg-rose-50"
                             aria-label={`Delete ${preset.name}`}
                             title="Delete"
                           >
@@ -266,63 +269,77 @@ export default function PresetsPage() {
                 })}
               </tbody>
             </table>
+            {presets.length === 0 && (
+              <EmptyState />
+            )}
+            </div>
+            {presets.length > 0 && (
+              <Pagination
+                currentPage={shownPage}
+                onNextPage={() => setCurrentPage(shownPage + 1)}
+                onPreviousPage={() => setCurrentPage(shownPage - 1)}
+                pageCount={pageCount}
+                totalCount={presets.length}
+                visibleEnd={visibleEnd}
+                visibleStart={visibleStart}
+              />
+            )}
           </section>
         </>
       )}
 
       {editorOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-calisto-ink/50 px-4 py-8">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="presetEditorTitle"
-            className="w-full max-w-md overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface text-calisto-ink shadow-dashboard"
-          >
-            <div className="flex items-start justify-between gap-4 border-b border-calisto-line px-6 py-5">
-              <h2 id="presetEditorTitle" className="text-lg font-bold text-calisto-ink">
-                {editorMode === 'edit' ? 'Edit Preset' : 'Add Preset'}
-              </h2>
-              <button
-                type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-calisto-line bg-calisto-surface text-calisto-ink transition hover:bg-calisto-surface-muted"
-                onClick={() => setEditorOpen(false)}
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="grid gap-4 px-6 py-5">
-              <label className="block">
-                <span className="mb-2 block text-[0.68rem] font-bold uppercase tracking-wider text-calisto-ink">Name</span>
-                <input
-                  autoFocus
-                  className="h-11 w-full rounded-xl border border-calisto-line bg-calisto-table px-3 text-sm font-medium text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
-                  value={draft.name}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
-                  placeholder="e.g. Best Seller"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-[0.68rem] font-bold uppercase tracking-wider text-calisto-ink">Description</span>
-                <textarea
-                  className="min-h-24 w-full resize-y rounded-xl border border-calisto-line bg-calisto-table p-3 text-sm font-medium leading-6 text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
-                  value={draft.description}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
-                  placeholder="Optional short description"
-                />
-              </label>
-              <p className="text-xs font-medium text-calisto-muted">
-                Add products to this preset from the Products page (edit a product, then tick the preset).
-              </p>
-            </div>
-            <div className="flex justify-end gap-3 border-t border-calisto-line px-6 py-5">
+        <Modal
+          dismissible={!saving}
+          footer={(
+            <>
               <Button onClick={() => setEditorOpen(false)} disabled={saving}>Cancel</Button>
-              <Button variant="primary" onClick={handleSave} disabled={saving}>
+              <Button variant="primary" type="submit" disabled={saving || !draft.name.trim()}>
                 {saving ? 'Saving...' : 'Save'}
               </Button>
-            </div>
+            </>
+          )}
+          onClose={() => setEditorOpen(false)}
+          onSubmit={(event) => {
+            event.preventDefault()
+            void handleSave()
+          }}
+          size="sm"
+          title={editorMode === 'edit' ? 'Edit Preset' : 'Add Preset'}
+        >
+          <div className="grid gap-4">
+            <label className="block">
+              <span className="mb-2 block text-[0.68rem] font-bold uppercase tracking-wider text-calisto-ink">Name<RequiredMark /></span>
+              <input
+                autoFocus
+                className={`h-11 w-full rounded-xl border bg-calisto-surface px-3 text-sm font-medium text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus ${nameError ? 'border-rose-400' : 'border-calisto-line'}`}
+                value={draft.name}
+                onChange={(event) => {
+                  setDraft((prev) => ({ ...prev, name: event.target.value }))
+                  setNameError(null)
+                }}
+                onBlur={() => {
+                  if (!draft.name.trim()) setNameError('Preset name is required.')
+                }}
+                placeholder="e.g. Best Seller"
+                aria-invalid={Boolean(nameError)}
+              />
+              {nameError && <p className="mt-1.5 text-xs font-medium text-rose-600">{nameError}</p>}
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-[0.68rem] font-bold uppercase tracking-wider text-calisto-ink">Description</span>
+              <textarea
+                className="min-h-24 w-full resize-y rounded-xl border border-calisto-line bg-calisto-surface p-3 text-sm font-medium leading-6 text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus"
+                value={draft.description}
+                onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
+                placeholder="Optional short description"
+              />
+            </label>
+            <p className="text-xs font-medium text-calisto-muted">
+              Add products to this preset from the Products page (edit a product, then tick the preset).
+            </p>
           </div>
-        </div>
+        </Modal>
       )}
 
       {deleteTarget && (

@@ -15,6 +15,7 @@ import { XChannel } from '../integrations/channels/x/index.js'
 import { WebsiteChannel } from '../integrations/channels/website/index.js'
 import { HubSpotClient } from '../integrations/crm/hubspot/index.js'
 import { createNlpMessageHandler } from './message-handler.js'
+import { PublicBaseUrl } from './public-base-url.js'
 import {
   createMessageDeduplicator,
   createRuntimeStore,
@@ -31,6 +32,7 @@ const __dirname = path.dirname(__filename)
 
 export interface AppDependencies {
   config: AppConfig
+  publicBaseUrl: PublicBaseUrl
   logger: Logger
   cacheService: CacheService
   deduplicator: MessageDeduplicator
@@ -56,6 +58,7 @@ export async function createDependencies(): Promise<AppDependencies> {
 
   const logger: Logger = new ConsoleLogger()
   const config = loadConfig()
+  const publicBaseUrl = new PublicBaseUrl(config.publicBaseUrl)
   const cacheService = await createCacheService(config, logger)
 
   if (config.usedFileStorageFallback) {
@@ -168,7 +171,8 @@ export async function createDependencies(): Promise<AppDependencies> {
         cacheService,
         orchestrator,
         config.cache.telegramAliasTtlSec,
-        config.publicBaseUrl,
+        publicBaseUrl,
+        config.cloudflaredMetricsPort,
       )
       await channelAccountService.initialize()
       logger.info(`Channel account registry loaded (${channelAccountService.registry.size} enabled account(s))`)
@@ -192,6 +196,7 @@ export async function createDependencies(): Promise<AppDependencies> {
 
   return {
     config,
+    publicBaseUrl,
     logger,
     cacheService,
     deduplicator,

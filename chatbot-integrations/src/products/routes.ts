@@ -36,7 +36,8 @@ interface RegisterArgs {
   app: Express
   store: ProductStore
   logger: Logger
-  publicBaseUrl?: string
+  /** Read per request: the public URL can change at runtime (Channels → Reconnect all). */
+  getPublicBaseUrl: () => string | undefined
   cacheService?: CacheService
 }
 
@@ -252,7 +253,7 @@ function parseSearchBody(body: unknown): ProductSearchQuery {
   }
 }
 
-export function registerProductRoutes({ app, store, logger, publicBaseUrl, cacheService }: RegisterArgs): void {
+export function registerProductRoutes({ app, store, logger, getPublicBaseUrl, cacheService }: RegisterArgs): void {
   const search = new ProductSearchService(store)
 
   app.use(STATIC_PREFIX, express.static(path.resolve(__dirname, '..', '..', 'public'), {
@@ -264,7 +265,7 @@ export function registerProductRoutes({ app, store, logger, publicBaseUrl, cache
     try {
       const query = parseSearchBody(req.body)
       const results = await search.search(query)
-      res.json(results.map((p) => toWirePayload(p, publicBaseUrl)))
+      res.json(results.map((p) => toWirePayload(p, getPublicBaseUrl())))
     } catch (error: any) {
       logger.error(`/products/search error: ${error.message}`)
       res.status(400).json({ error: error.message })

@@ -68,11 +68,15 @@ import { registerKnowledgeRoutes } from '../knowledge/routes.js'
 import { registerPresetRoutes, registerProductRoutes, registerStoreRoutes } from '../products/routes.js'
 import { registerChannelAccountRoutes, ChannelAccountRegistry } from '../channel-accounts/index.js'
 import { createAdminAuthMiddleware } from '../core/auth/admin-auth.js'
+import { registerAuthRoutes } from '../core/auth/auth-routes.js'
+import { AdminSessionService } from '../core/auth/session-service.js'
+import { getPrismaClient } from '../db/prisma.js'
 import type { AppDependencies } from './dependencies.js'
 import { createWebsiteRateLimiter } from './website-rate-limiter.js'
 import { normaliseEmail, normalisePhone } from '../leads/storage/helpers.js'
 import { absolutizeOutgoingMessages } from '../core/utils/absolutize-outgoing-messages.js'
 import { CACHE_KEYS, invalidateLeadsCache, isRedisConnected } from '../cache/index.js'
+import { adminLoginRateLimitKey } from '../cache/cache-keys.js'
 
 function applyCorsHeaders(
   req: express.Request,
@@ -105,6 +109,7 @@ function applyCorsHeaders(
 export function createApp(dependencies: AppDependencies): Express {
   const {
     config,
+    publicBaseUrl,
     logger,
     cacheService,
     nlpClient,
@@ -124,6 +129,9 @@ export function createApp(dependencies: AppDependencies): Express {
   const accountCount = registry?.size ?? 0
 
   const app = express()
+  if (config.trustProxy !== undefined) {
+    app.set('trust proxy', config.trustProxy)
+  }
   const websiteRateLimiter = createWebsiteRateLimiter(
     config.website.rateLimitMax,
     config.website.rateLimitWindowMs,
@@ -143,7 +151,37 @@ export function createApp(dependencies: AppDependencies): Express {
     next()
   })
 
-  const requireAdmin = createAdminAuthMiddleware(config.adminApiToken)
+  const prisma = config.storageBackend === 'mysql' ? getPrismaClient() : undefined
+  const adminSessions = prisma
+    ? new AdminSessionService(prisma, {
+        idleTimeoutMs: config.adminAuth.sessionIdleTimeoutMs,
+        absoluteTimeoutMs: config.adminAuth.sessionMaxAgeMs,
+      })
+    : undefined
+  const trustProxy = config.trustProxy !== undefined && config.trustProxy !== false
+
+  registerAuthRoutes(app, {
+    prisma,
+    sessions: adminSessions,
+    loginRateLimiter: createWebsiteRateLimiter(
+      config.adminAuth.loginRateLimitMax,
+      config.adminAuth.loginRateLimitWindowMs,
+      cacheService,
+      adminLoginRateLimitKey,
+    ),
+    cookieSecure: config.adminAuth.cookieSecure,
+    trustProxy,
+    logger,
+  })
+
+  // Dashboard users authenticate with the session cookie; services (Rasa action
+  // server, scripts) keep using `Authorization: Bearer <ADMIN_API_TOKEN>`.
+  const requireAdmin = createAdminAuthMiddleware({
+    serviceToken: config.adminApiToken,
+    sessions: adminSessions,
+    cookieSecure: config.adminAuth.cookieSecure,
+    trustProxy,
+  })
   app.use(['/admin', '/reports'], requireAdmin)
 
   const router = express.Router()
@@ -173,9 +211,10 @@ export function createApp(dependencies: AppDependencies): Express {
       }
 
       const payload = website.parseRequest(req.body)
-      const response = await website.handleChat(payload)
+      // req.ip is the real visitor IP only when TRUST_PROXY is set behind a tunnel/proxy.
+      const response = await website.handleChat(payload, { clientIp: req.ip })
       await invalidateLeadsCache(cacheService)
-      const assetBaseUrl = config.publicBaseUrl ?? `${req.protocol}://${req.get('host')}`
+      const assetBaseUrl = publicBaseUrl.get() ?? `${req.protocol}://${req.get('host')}`
       res.json({
         ...response,
         messages: absolutizeOutgoingMessages(response.messages, assetBaseUrl),
@@ -306,7 +345,7 @@ export function createApp(dependencies: AppDependencies): Express {
       app,
       store: productStore,
       logger,
-      publicBaseUrl: config.publicBaseUrl,
+      getPublicBaseUrl: () => publicBaseUrl.get(),
       cacheService,
     })
     logger.info('Product catalogue routes registered: /admin/products + /products/search')

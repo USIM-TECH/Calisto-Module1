@@ -12,6 +12,7 @@ import type {
   RuntimeStore,
 } from '../storage/runtime-store.interface.js'
 import { normaliseEmail, normalisePhone } from '../storage/helpers.js'
+import { formatSharedLocation, locationFromPhone } from '../../core/utils/geo-location.js'
 
 interface LeadOrchestratorOptions {
   logger: Logger
@@ -183,7 +184,16 @@ function deriveChannelPhone(message: IncomingMessage): string | undefined {
   return normalized || undefined
 }
 
-function deriveMessageOnlyFields(message: IncomingMessage): { leadName?: string; email?: string; phone?: string; location?: string } {
+function deriveMessageOnlyFields(message: IncomingMessage): {
+  leadName?: string
+  email?: string
+  phone?: string
+  location?: string
+  /** Location pin the user explicitly shared — replaces any existing location. */
+  sharedLocation?: string
+  /** Best guess (visitor IP, phone country code) — only fills an empty location. */
+  inferredLocation?: string
+} {
   const raw = message.rawPayload && typeof message.rawPayload === 'object'
     ? message.rawPayload as Record<string, unknown>
     : {}
@@ -197,11 +207,15 @@ function deriveMessageOnlyFields(message: IncomingMessage): { leadName?: string;
     ? normalizeText([telegramContact.first_name, telegramContact.last_name].filter((part) => typeof part === 'string' && part.trim()).join(' '))
     : undefined
 
+  const phone = normalizeText(raw.phone ?? telegramContact?.phone_number) ?? deriveChannelPhone(message)
+
   return {
     leadName: normalizeText(message.senderName ?? raw.name ?? telegramContactName),
     email: normalizeText(raw.email),
-    phone: normalizeText(raw.phone ?? telegramContact?.phone_number) ?? deriveChannelPhone(message),
+    phone,
     location: normalizeText(raw.location),
+    sharedLocation: message.type === 'location' ? formatSharedLocation(message.location) : undefined,
+    inferredLocation: normalizeText(message.inferredLocation) ?? locationFromPhone(phone),
   }
 }
 
@@ -361,7 +375,14 @@ export class LeadOrchestrator {
     if (!customer.leadName && messageOnlyFields.leadName) preNlpSnapshot.leadName = messageOnlyFields.leadName
     if (!customer.email && messageOnlyFields.email) preNlpSnapshot.email = messageOnlyFields.email
     if (!customer.phone && messageOnlyFields.phone) preNlpSnapshot.phone = messageOnlyFields.phone
-    if (!customer.location && messageOnlyFields.location) preNlpSnapshot.location = messageOnlyFields.location
+    // Precedence: shared pin > stated location > inferred guess. The bot's
+    // lead_location slot (post-NLP below) still overrides all of these.
+    if (messageOnlyFields.sharedLocation && messageOnlyFields.sharedLocation !== customer.location) {
+      preNlpSnapshot.location = messageOnlyFields.sharedLocation
+    } else if (!customer.location) {
+      const location = messageOnlyFields.location ?? messageOnlyFields.inferredLocation
+      if (location) preNlpSnapshot.location = location
+    }
     if (inferredResponseStyle !== customer.responseStyle) preNlpSnapshot.responseStyle = inferredResponseStyle
 
     if (Object.keys(preNlpSnapshot).length) {

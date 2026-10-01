@@ -1,5 +1,6 @@
 import {
   ActionButtons,
+  ActionCTA,
   ActionList,
   Audio,
   Body,
@@ -29,17 +30,28 @@ function splitCardActions(actions: NonNullable<Extract<OutgoingMessage, { type: 
   }
 }
 
+// Card links are sent as tap-to-open CTA URL buttons instead of pasted URLs,
+// so the card text itself only carries the title and subtitle.
 function formatCardAsText(message: Extract<OutgoingMessage, { type: 'card' }>): string {
-  const lines = [`*${message.title}*`, '']
+  // `**…**` is Markdown bold; convertMarkdownToWhatsApp turns it into WhatsApp's *bold*.
+  const lines = [`**${message.title}**`]
   if (message.subtitle) {
-    lines.push(message.subtitle)
-  }
-  const urlActions = message.actions ? splitCardActions(message.actions).urlActions : []
-  if (urlActions.length) {
-    lines.push('')
-    lines.push(...urlActions.map((action) => `${action.title}: ${action.value}`))
+    lines.push('', message.subtitle)
   }
   return lines.join('\n')
+}
+
+type CardUrlAction = ReturnType<typeof splitCardActions>['urlActions'][number]
+
+// WhatsApp limits: CTA button text 20 chars, body 1024.
+const CTA_BUTTON_MAX = 20
+const BODY_MAX = 1024
+
+function buildCtaMessage(action: CardUrlAction, body: string): Interactive {
+  return new Interactive(
+    new ActionCTA(action.title.substring(0, CTA_BUTTON_MAX), action.value),
+    new Body(body.substring(0, BODY_MAX)),
+  )
 }
 
 function extractMessageId(response: any): string | undefined {
@@ -206,13 +218,16 @@ export async function sendWhatsAppMessage(
     case 'card': {
       let lastId: string | undefined
       const text = convertMarkdownToWhatsApp(formatCardAsText(message))
-      const postbackActions = message.actions ? splitCardActions(message.actions).postbackActions : []
+      const { urlActions, postbackActions } = splitCardActions(message.actions ?? [])
       const buttons = postbackActions.slice(0, 3).map((action) => new Button(action.value, action.title.substring(0, 20)))
       const buttonTuple = asNonEmptyTuple(buttons)
+      // WhatsApp allows one URL button per message: the first link can ride on the
+      // card itself when nothing else needs the message; the rest follow as their own.
+      let pendingUrlActions = urlActions
 
       if (message.imageUrl && buttonTuple) {
         // Single interactive message: image header + product details body + buttons
-        const bodyText = text.substring(0, 1024)
+        const bodyText = text.substring(0, BODY_MAX)
         const interactive = new Interactive(
           new ActionButtons(...buttonTuple),
           new Body(bodyText),
@@ -230,11 +245,18 @@ export async function sendWhatsAppMessage(
         if (!lastId) logger.warn(`[WhatsApp] Card image send returned no message id for ${recipientPhone}`)
       } else if (buttonTuple) {
         // No image: text body + buttons
-        const bodyText = text.substring(0, 1024)
+        const bodyText = text.substring(0, BODY_MAX)
         const interactive = new Interactive(new ActionButtons(...buttonTuple), new Body(bodyText))
         const response = await client.sendMessage(config.phoneNumberId, recipientPhone, interactive)
         lastId = extractMessageId(response)
         if (!lastId) logger.warn(`[WhatsApp] Card text+buttons send returned no message id for ${recipientPhone}`)
+      } else if (urlActions[0]) {
+        // Text + links only: the card text carries the first link as its button.
+        logger.debug(`[WhatsApp] Sending card with CTA URL button to ${recipientPhone}`)
+        const response = await client.sendMessage(config.phoneNumberId, recipientPhone, buildCtaMessage(urlActions[0], text))
+        lastId = extractMessageId(response)
+        if (!lastId) logger.warn(`[WhatsApp] Card CTA send returned no message id for ${recipientPhone}`)
+        pendingUrlActions = urlActions.slice(1)
       } else {
         // Text only
         const chunks = splitTextMessageIfNeeded(text)
@@ -243,6 +265,18 @@ export async function sendWhatsAppMessage(
           const response = await client.sendMessage(config.phoneNumberId, recipientPhone, new Text(chunks[i]!))
           lastId = extractMessageId(response)
         }
+      }
+
+      for (const action of pendingUrlActions) {
+        await sleep(PART_DELAY_MS)
+        logger.debug(`[WhatsApp] Sending card link "${action.title}" as CTA URL button to ${recipientPhone}`)
+        const response = await client.sendMessage(
+          config.phoneNumberId,
+          recipientPhone,
+          // A CTA message must have body text; the card title is the least noisy choice.
+          buildCtaMessage(action, message.title),
+        )
+        lastId = extractMessageId(response) ?? lastId
       }
 
       return lastId

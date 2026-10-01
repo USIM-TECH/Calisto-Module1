@@ -343,3 +343,38 @@ model KnowledgeChunk {
   @@index([documentId])
   @@index([source])
 }
+
+/// Dashboard user who signs in with email + password.
+model AdminUser {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String?
+  /// scrypt hash in the form `scrypt$N$r$p$salt$hash` (see src/core/auth/password.ts).
+  passwordHash      String
+  isActive          Boolean   @default(true)
+  lastLoginAt       DateTime?
+  passwordChangedAt DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  sessions AdminSession[]
+}
+
+/// Server-side login session. Only the SHA-256 hash of the cookie value is stored.
+model AdminSession {
+  id                String    @id @default(cuid())
+  tokenHash         String    @unique @db.Char(64)
+  userId            String
+  /// Idle expiry; pushed forward on activity but never past absoluteExpiresAt.
+  expiresAt         DateTime
+  absoluteExpiresAt DateTime
+  lastSeenAt        DateTime  @default(now())
+  ip                String?
+  userAgent         String?   @db.VarChar(512)
+  createdAt         DateTime  @default(now())
+
+  user AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}

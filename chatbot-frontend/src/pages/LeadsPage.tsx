@@ -1,18 +1,26 @@
-import { CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, Mail, Search, UserRoundCheck, UsersRound, X } from 'lucide-react'
+import { Clock3, Download, Mail, Search, UserRoundCheck, UsersRound, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { getLeads } from '../api/client'
 import Button from '../components/Button'
+import EmptyState from '../components/EmptyState'
+import { ChannelIcon, WhatsAppIcon } from '../components/ChannelIcon'
 import PageContainer from '../components/PageContainer'
+import Pagination from '../components/Pagination'
+import Select from '../components/Select'
 import { SkeletonFilterBar, SkeletonStatsCard, SkeletonTable, SkeletonTopbar } from '../components/Skeleton'
 import Topbar from '../components/Topbar'
 import { downloadLeadsXlsx } from '../lib/export-leads-xlsx'
+import { formatIntent } from '../lib/format'
+import { identityLabel } from '../lib/identity'
+import { pageSlice, useFitRows } from '../lib/use-fit-rows'
 import type { ChannelIdentityRecord, CustomerRecord, LeadsResponse } from '../types'
 
 type ChannelName = ChannelIdentityRecord['channel']
 
-const PAGE_SIZE = 5
+// Fixed one-line row height; rows per page = as many as fit the screen (useFitRows).
+const ROW_HEIGHT_PX = 64
 
 interface FilterOption {
   label: string
@@ -33,15 +41,6 @@ const statusOptions = [
   { label: 'Qualified', value: 'qualified' },
   { label: 'Unqualified', value: 'unqualified' },
 ]
-
-const channelLabels: Record<ChannelIdentityRecord['channel'], string> = {
-  instagram: 'IG',
-  messenger: 'MS',
-  telegram: 'TG',
-  website: 'WEB',
-  whatsapp: 'WA',
-  x: 'X',
-}
 
 const channelColors: Record<ChannelIdentityRecord['channel'], string> = {
   instagram: 'text-purple-700',
@@ -120,29 +119,23 @@ function StatsCard({ icon: Icon, label, trend, trendTone = 'positive', value }: 
     : 'bg-calisto-accent/10 text-calisto-accent'
 
   return (
-    <article className="rounded-2xl border border-calisto-line-subtle bg-calisto-surface p-6 shadow-dashboard">
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
-          <Icon className="h-5 w-5" strokeWidth={1.9} />
-        </span>
-        <span className={`rounded-lg px-2.5 py-1 text-xs font-bold ${trendClass}`}>{trend}</span>
+    <article className="flex items-center gap-4 rounded-2xl border border-calisto-line-subtle bg-calisto-surface px-5 py-4 shadow-dashboard">
+      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+        <Icon className="h-5 w-5" strokeWidth={1.9} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-xs font-bold uppercase tracking-wider text-calisto-muted">{label}</div>
+        <div className="mt-1 flex items-center gap-2">
+          <span className="text-2xl font-semibold leading-none text-indigo-900">{value}</span>
+          <span className={`rounded-lg px-2 py-0.5 text-xs font-bold ${trendClass}`}>{trend}</span>
+        </div>
       </div>
-      <div className="text-xs font-bold uppercase tracking-wider text-calisto-muted">{label}</div>
-      <div className="mt-2 text-3xl font-semibold leading-none text-indigo-900">{value}</div>
     </article>
   )
 }
 
-function WhatsAppIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg aria-hidden="true" className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347M12.051 21.785h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.999-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.889-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.887 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.946L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" />
-    </svg>
-  )
-}
-
 function ChannelBadge({ identity }: { identity: ChannelIdentityRecord }) {
-  const value = identity.username ? `@${identity.username}` : identity.sourceId
+  const value = identityLabel(identity)
 
   return (
     <span
@@ -150,9 +143,7 @@ function ChannelBadge({ identity }: { identity: ChannelIdentityRecord }) {
       title={`${channelName(identity.channel)} ${identity.sourceId}`}
     >
       <span className={`inline-flex h-4 w-4 shrink-0 items-center justify-center ${channelColors[identity.channel]}`}>
-        {identity.channel === 'whatsapp' ? <WhatsAppIcon className="h-3.5 w-3.5" /> : (
-          <span className="text-[0.65rem] font-black">{channelLabels[identity.channel]}</span>
-        )}
+        <ChannelIcon channel={identity.channel} className="h-3.5 w-3.5" />
       </span>
       <span className="truncate">{value}</span>
     </span>
@@ -161,7 +152,7 @@ function ChannelBadge({ identity }: { identity: ChannelIdentityRecord }) {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase ring-1 ${statusTones[status] ?? statusTones.pending}`}>
+    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold uppercase ring-1 ${statusTones[status] ?? statusTones.pending}`}>
       {statusLabel(status)}
     </span>
   )
@@ -172,6 +163,8 @@ function SearchFilters({
   channels,
   onChannelChange,
   onClear,
+  onExport,
+  exportDisabled,
   onSearchChange,
   onStatusChange,
   search,
@@ -182,6 +175,8 @@ function SearchFilters({
   channels: FilterOption[]
   onChannelChange: (value: string) => void
   onClear: () => void
+  onExport: () => void
+  exportDisabled: boolean
   onSearchChange: (value: string) => void
   onStatusChange: (value: string) => void
   search: string
@@ -194,7 +189,7 @@ function SearchFilters({
         <label className="relative flex min-w-0 flex-1 items-center">
           <Search className="pointer-events-none absolute left-3 h-4 w-4 text-calisto-soft" />
           <input
-            className="h-11 w-full rounded-lg border border-transparent bg-calisto-table pl-10 pr-4 text-sm text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/30 focus:bg-calisto-surface focus:ring-4 focus:ring-calisto-focus"
+            className="h-11 w-full rounded-lg border border-calisto-line bg-calisto-surface pl-10 pr-4 text-sm text-calisto-body outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/30 focus:ring-4 focus:ring-calisto-focus"
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Search customers..."
             type="search"
@@ -203,30 +198,26 @@ function SearchFilters({
         </label>
 
         <div className="flex flex-wrap gap-3">
-          <select
-            className="h-11 rounded-xl border border-calisto-line bg-calisto-surface px-3 text-sm font-medium text-calisto-body outline-none focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus"
-            onChange={(event) => onChannelChange(event.target.value)}
+          <Select
+            aria-label="Filter by channel"
+            onChange={onChannelChange}
+            options={[{ value: '', label: 'All Channels' }, ...channels]}
             value={channel}
-          >
-            <option value="">All Channels</option>
-            {channels.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
+          />
 
-          <select
-            className="h-11 rounded-xl border border-calisto-line bg-calisto-surface px-3 text-sm font-medium text-calisto-body outline-none focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus"
-            onChange={(event) => onStatusChange(event.target.value)}
+          <Select
+            aria-label="Filter by status"
+            onChange={onStatusChange}
+            options={[{ value: '', label: 'All Statuses' }, ...statuses]}
             value={status}
-          >
-            <option value="">All Statuses</option>
-            {statuses.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
+          />
 
-          <Button className="px-3" icon={<X className="h-4 w-4" />} onClick={onClear} variant="ghost">
+          {/* Clear and Export share one style so they read as a pair of toolbar actions. */}
+          <Button className="h-11" icon={<X className="h-4 w-4" />} onClick={onClear} variant="primary">
             Clear
+          </Button>
+          <Button className="h-11" disabled={exportDisabled} icon={<Download className="h-4 w-4" />} onClick={onExport} variant="primary">
+            Export
           </Button>
         </div>
       </div>
@@ -235,6 +226,8 @@ function SearchFilters({
 }
 
 function LeadsTable({
+  bodyRef,
+  headerRef,
   customers,
   currentPage,
   identitiesByCustomer,
@@ -245,6 +238,8 @@ function LeadsTable({
   visibleEnd,
   visibleStart,
 }: {
+  bodyRef: React.MutableRefObject<HTMLDivElement | null>
+  headerRef: React.MutableRefObject<HTMLTableSectionElement | null>
   customers: CustomerRecord[]
   currentPage: number
   identitiesByCustomer: Map<string, ChannelIdentityRecord[]>
@@ -256,55 +251,49 @@ function LeadsTable({
   visibleStart: number
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[980px] table-fixed border-collapse text-left text-sm">
+    <section className="flex flex-col overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard lg:min-h-0 lg:flex-1">
+      <div className="flex flex-col overflow-x-auto lg:min-h-0 lg:flex-1 lg:overflow-hidden" ref={bodyRef}>
+        <table className="table-edges w-full min-w-[980px] table-fixed border-collapse text-left text-sm lg:min-w-0">
           <colgroup>
-            <col className="w-[20%]" />
             <col className="w-[22%]" />
-            <col className="w-[18%]" />
-            <col className="w-[15%]" />
-            <col className="w-[10%]" />
-            <col className="w-[15%]" />
+            <col className="w-[20%]" />
+            <col className="w-[16%]" />
+            <col className="w-[14%]" />
+            <col className="w-[11%]" />
+            <col className="w-[17%]" />
           </colgroup>
-          <thead>
+          <thead ref={headerRef}>
             <tr className="bg-calisto-table/90 text-xs font-bold uppercase tracking-wider text-calisto-ink">
-              <th className="px-7 py-5">Customer</th>
-              <th className="px-7 py-5">Identity / Channel</th>
-              <th className="px-7 py-5">Intent</th>
-              <th className="px-7 py-5">Status</th>
-              <th className="px-7 py-5">Contact</th>
-              <th className="px-7 py-5 text-right">Actions</th>
+              <th className="px-4 py-4">Customer</th>
+              <th className="px-4 py-4">Identity / Channel</th>
+              <th className="px-4 py-4">Intent</th>
+              <th className="px-4 py-4">Status</th>
+              <th className="px-4 py-4">Contact</th>
+              <th className="px-4 py-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-calisto-line-subtle">
-            {customers.length === 0 && (
-              <tr>
-                <td className="px-7 py-12 text-center text-sm font-medium text-calisto-muted" colSpan={6}>
-                  No customers match these filters.
-                </td>
-              </tr>
-            )}
-
             {customers.map((customer) => {
               const identities = identitiesByCustomer.get(customer.id) ?? []
               const whatsappLink = buildWhatsappLink(customer.phone)
 
               return (
-                <tr key={customer.id} className="transition hover:bg-calisto-surface-muted">
-                  <td className="px-7 py-4">
+                <tr key={customer.id} className="border-b border-calisto-line-subtle transition hover:bg-calisto-surface-muted" style={{ height: ROW_HEIGHT_PX }}>
+                  <td className="px-4 py-2">
                     <div className="flex items-center gap-3">
                       <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-calisto-surface">
                         {customerInitials(customer)}
                       </span>
                       <div className="min-w-0">
                         <div className="truncate font-semibold text-calisto-ink">{customerName(customer)}</div>
-                        <div className="truncate text-xs text-calisto-muted">{customer.location ?? 'No location'}</div>
+                        {customer.location && (
+                          <div className="truncate text-xs text-calisto-muted">{customer.location}</div>
+                        )}
                       </div>
                     </div>
                   </td>
-                  <td className="px-7 py-4">
-                    <div className="flex max-w-xs flex-wrap gap-2">
+                  <td className="px-4 py-2">
+                    <div className="flex min-w-0 gap-2 overflow-hidden">
                       {identities.length > 0 ? (
                         identities.slice(0, 2).map((identity) => <ChannelBadge identity={identity} key={identity.id} />)
                       ) : (
@@ -312,14 +301,22 @@ function LeadsTable({
                       )}
                     </div>
                   </td>
-                  <td className="px-7 py-4 text-calisto-body">{customer.lastIntent ?? customer.preferredService ?? 'Return Request'}</td>
-                  <td className="px-7 py-4"><StatusBadge status={customer.qualificationStatus} /></td>
-                  <td className="px-7 py-4">
+                  <td className="truncate px-4 py-2 text-calisto-body">
+                    {customer.lastIntent || customer.preferredService
+                      ? formatIntent((customer.lastIntent || customer.preferredService)!)
+                      : <span className="text-calisto-soft">—</span>}
+                  </td>
+                  <td className="px-4 py-2"><StatusBadge status={customer.qualificationStatus} /></td>
+                  <td className="px-4 py-2">
                     <div className="flex items-center gap-2">
+                      {!whatsappLink && !customer.email && (
+                        <span className="text-calisto-soft" title="No phone or email captured yet">—</span>
+                      )}
                       {whatsappLink && (
                         <a
                           aria-label={`WhatsApp ${customerName(customer)}`}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-100 bg-calisto-surface text-emerald-600 transition hover:bg-emerald-50"
+                          title={`WhatsApp ${customer.phone}`}
+                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-100 bg-calisto-surface text-emerald-600 transition hover:bg-emerald-50"
                           href={whatsappLink}
                           rel="noreferrer"
                           target="_blank"
@@ -330,7 +327,8 @@ function LeadsTable({
                       {customer.email && (
                         <a
                           aria-label={`Email ${customerName(customer)}`}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-blue-100 bg-calisto-surface text-blue-700 transition hover:bg-blue-50"
+                          title={`Email ${customer.email}`}
+                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-calisto-surface text-blue-700 transition hover:bg-blue-50"
                           href={`mailto:${customer.email}`}
                         >
                           <Mail className="h-4 w-4" />
@@ -338,9 +336,10 @@ function LeadsTable({
                       )}
                     </div>
                   </td>
-                  <td className="px-7 py-4 text-right">
+                  <td className="px-4 py-2 text-right">
                     <Link
-                      className="inline-flex h-10 items-center justify-center rounded-xl border border-calisto-accent/20 bg-calisto-surface px-4 text-sm font-semibold text-calisto-accent transition hover:bg-calisto-accent/10"
+                      className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-xl border border-calisto-accent/20 bg-calisto-surface px-3 text-sm font-semibold text-calisto-accent transition hover:bg-calisto-accent/10"
+                      state={{ fromLeads: true }}
                       to={`/leads/${customer.id}`}
                     >
                       Review Lead
@@ -351,35 +350,19 @@ function LeadsTable({
             })}
           </tbody>
         </table>
+        {customers.length === 0 && <EmptyState />}
       </div>
-      <div className="flex flex-col gap-3 border-t border-calisto-line-subtle px-5 py-4 text-sm text-calisto-muted sm:flex-row sm:items-center sm:justify-between">
-        <span className="font-semibold">
-          Showing {visibleStart}-{visibleEnd} of {totalCount}
-        </span>
-        <div className="flex items-center gap-2">
-          <button
-            className="inline-flex h-9 items-center gap-1 rounded-lg border border-calisto-line bg-calisto-surface px-3 text-sm font-semibold text-calisto-ink transition hover:bg-calisto-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
-            type="button"
-            onClick={onPreviousPage}
-            disabled={currentPage === 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Prev
-          </button>
-          <span className="min-w-24 text-center text-sm font-semibold text-calisto-body">
-            Page {currentPage} of {pageCount}
-          </span>
-          <button
-            className="inline-flex h-9 items-center gap-1 rounded-lg border border-calisto-line bg-calisto-surface px-3 text-sm font-semibold text-calisto-ink transition hover:bg-calisto-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
-            type="button"
-            onClick={onNextPage}
-            disabled={currentPage === pageCount}
-          >
-            Next
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+      {customers.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          onNextPage={onNextPage}
+          onPreviousPage={onPreviousPage}
+          pageCount={pageCount}
+          totalCount={totalCount}
+          visibleEnd={visibleEnd}
+          visibleStart={visibleStart}
+        />
+      )}
     </section>
   )
 }
@@ -387,10 +370,33 @@ function LeadsTable({
 export default function LeadsPage() {
   const [data, setData] = useState<LeadsResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
-  const [channelFilter, setChannelFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
+  const tableBodyRef = useRef<HTMLDivElement | null>(null)
+  const tableHeaderRef = useRef<HTMLTableSectionElement | null>(null)
+  const rowsPerPage = useFitRows(tableBodyRef, tableHeaderRef, ROW_HEIGHT_PX, Boolean(data))
+
+  // Filters and page live in the URL so "Back to leads" (and refresh) restore them.
+  const [params, setParams] = useSearchParams()
+  const search = params.get('q') ?? ''
+  const channelFilter = params.get('channel') ?? ''
+  const statusFilter = params.get('status') ?? ''
+  const currentPage = Math.max(1, Number(params.get('page')) || 1)
+
+  function updateParams(changes: Record<string, string | number | null>) {
+    setParams((previous) => {
+      const next = new URLSearchParams(previous)
+      for (const [key, value] of Object.entries(changes)) {
+        if (!value || (key === 'page' && value === 1)) next.delete(key)
+        else next.set(key, String(value))
+      }
+      return next
+    }, { replace: true })
+  }
+
+  // Changing a filter starts again from page 1.
+  const setSearch = (value: string) => updateParams({ q: value, page: null })
+  const setChannelFilter = (value: string) => updateParams({ channel: value, page: null })
+  const setStatusFilter = (value: string) => updateParams({ status: value, page: null })
+  const setCurrentPage = (page: number) => updateParams({ page })
 
   useEffect(() => {
     getLeads()
@@ -427,7 +433,9 @@ export default function LeadsPage() {
           customer.preferredService,
           customer.location,
           customer.lastIntent,
+          customer.lastIntent && formatIntent(customer.lastIntent),
           ...identities.map((identity) => identity.sourceId),
+          ...identities.map((identity) => identityLabel(identity)),
           ...identities.map((identity) => identity.username ?? ''),
         ]
           .filter(Boolean)
@@ -443,26 +451,17 @@ export default function LeadsPage() {
       })
   }, [channelFilter, data, identitiesByCustomer, search, statusFilter])
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const pageStart = (currentPage - 1) * PAGE_SIZE
-  const paginated = filtered.slice(pageStart, pageStart + PAGE_SIZE)
-  const visibleStart = filtered.length === 0 ? 0 : pageStart + 1
-  const visibleEnd = Math.min(pageStart + PAGE_SIZE, filtered.length)
+  const { pageCount, pageItems: paginated, visibleStart, visibleEnd } = pageSlice(filtered, rowsPerPage, currentPage)
 
   useEffect(() => {
-    setCurrentPage(1)
-  }, [channelFilter, search, statusFilter])
-
-  useEffect(() => {
-    if (currentPage > pageCount) {
+    // Wait for data: before it loads pageCount is 1 and would reset a restored page.
+    if (data && currentPage > pageCount) {
       setCurrentPage(pageCount)
     }
-  }, [currentPage, pageCount])
+  }, [data, currentPage, pageCount])
 
   function clearFilters() {
-    setSearch('')
-    setChannelFilter('')
-    setStatusFilter('')
+    updateParams({ q: null, channel: null, status: null, page: null })
   }
 
   function handleExport() {
@@ -471,19 +470,10 @@ export default function LeadsPage() {
   }
 
   return (
-    <PageContainer>
+    // On desktop the page fills the screen; the table takes the remaining height and pages.
+    <PageContainer className="lg:flex lg:h-[100dvh] lg:flex-col">
       <Topbar
         title="Lead Operations Dashboard"
-        actions={(
-          <Button
-            disabled={!data || data.customers.length === 0}
-            icon={<Download className="h-4 w-4" />}
-            onClick={handleExport}
-            variant="primary"
-          >
-            Export
-          </Button>
-        )}
       />
 
       {error && (
@@ -511,7 +501,7 @@ export default function LeadsPage() {
 
       {data && (
         <>
-          <section className="mb-6 grid gap-5 md:grid-cols-3">
+          <section className="mb-5 grid gap-4 md:grid-cols-3">
             <StatsCard
               icon={UsersRound}
               label="Total Customers"
@@ -538,6 +528,8 @@ export default function LeadsPage() {
             channels={channelOptions}
             onChannelChange={setChannelFilter}
             onClear={clearFilters}
+            onExport={handleExport}
+            exportDisabled={data.customers.length === 0}
             onSearchChange={setSearch}
             onStatusChange={setStatusFilter}
             search={search}
@@ -545,20 +537,14 @@ export default function LeadsPage() {
             statuses={statusOptions}
           />
 
-          <div className="mb-3 flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-wider text-calisto-muted">
-            <span>{filtered.length} customer{filtered.length === 1 ? '' : 's'} shown</span>
-            <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              {data.summary.conversations} conversations tracked
-            </span>
-          </div>
-
           <LeadsTable
+            bodyRef={tableBodyRef}
+            headerRef={tableHeaderRef}
             customers={paginated}
             currentPage={currentPage}
             identitiesByCustomer={identitiesByCustomer}
-            onNextPage={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
-            onPreviousPage={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            onNextPage={() => setCurrentPage(Math.min(pageCount, currentPage + 1))}
+            onPreviousPage={() => setCurrentPage(Math.max(1, currentPage - 1))}
             pageCount={pageCount}
             totalCount={filtered.length}
             visibleEnd={visibleEnd}

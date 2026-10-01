@@ -9,6 +9,21 @@ import {
 } from './channel-account-registry.js'
 import { ChannelAccountStore, validateCredentials } from './channel-account-store.js'
 import type { ChannelAccountInput, ChannelAccountUpdateInput, ManagedChannel } from './credential-types.js'
+import { detectTunnelUrl, type PublicBaseUrl } from '../app/public-base-url.js'
+import { assertPublicWebhookBaseUrl } from './webhook-utils.js'
+
+export interface WebhookRegistrationResult {
+  id: string
+  label: string
+  channel: ManagedChannel
+  /** `manual` = needs a step in the provider's dashboard (Instagram). */
+  status: 'active' | 'error' | 'manual'
+  webhookUrl?: string
+  error?: string
+}
+
+// Pause between accounts so back-to-back calls don't trip Telegram/Meta timeouts.
+const REGISTER_ALL_DELAY_MS = 1_500
 
 export class ChannelAccountService {
   private _registry: ChannelAccountRegistry = new ChannelAccountRegistry()
@@ -19,7 +34,8 @@ export class ChannelAccountService {
     private readonly cacheService: CacheService,
     private readonly orchestrator: LeadOrchestrator,
     private readonly telegramAliasTtlSec: number,
-    private readonly publicBaseUrl?: string,
+    private readonly publicBaseUrl: PublicBaseUrl,
+    private readonly cloudflaredMetricsPort?: number,
   ) {}
 
   public get registry(): ChannelAccountRegistry {
@@ -108,7 +124,7 @@ export class ChannelAccountService {
   }
 
   public async registerWebhook(id: string, publicBaseUrlOverride?: string) {
-    const baseUrl = publicBaseUrlOverride?.trim() || this.publicBaseUrl
+    const baseUrl = publicBaseUrlOverride?.trim() || this.publicBaseUrl.get()
     if (!baseUrl) {
       throw new Error('PUBLIC_BASE_URL must be set before registering webhooks (or pass publicBaseUrl in the request body)')
     }
@@ -123,5 +139,57 @@ export class ChannelAccountService {
       webhookError: result.webhookError,
     })
     return this.store.getById(id)
+  }
+
+  /** The URL currently in use plus a live cloudflared tunnel URL, if one is running. */
+  public async getPublicUrlStatus() {
+    return {
+      current: this.publicBaseUrl.get() ?? null,
+      detected: (await detectTunnelUrl(this.cloudflaredMetricsPort)) ?? null,
+    }
+  }
+
+  /**
+   * Point every enabled channel account at one public URL (what
+   * scripts/register-all-webhooks.sh did). Uses the given URL, else the live
+   * tunnel URL, else the current one. The URL also becomes the backend's public
+   * URL, so product images resolve against it straight away.
+   */
+  public async registerAll(publicBaseUrlOverride?: string) {
+    const baseUrl =
+      publicBaseUrlOverride?.trim() ||
+      (await detectTunnelUrl(this.cloudflaredMetricsPort)) ||
+      this.publicBaseUrl.get()
+    if (!baseUrl) {
+      throw new Error('No public URL found. Start cloudflared (cloudflared tunnel --url http://localhost:3000) or enter the URL.')
+    }
+    // Fail fast with one clear error if the URL is wrong, instead of one per account.
+    const publicUrl = await assertPublicWebhookBaseUrl(baseUrl)
+    this.publicBaseUrl.set(publicUrl)
+    this.logger.info(`Public base URL set to ${publicUrl}; registering all channel webhooks`)
+
+    const results: WebhookRegistrationResult[] = []
+    const accounts = this._registry.list()
+    for (const [index, account] of accounts.entries()) {
+      const { id, label, channel } = account.record
+      try {
+        const updated = await this.registerWebhook(id, publicUrl)
+        results.push({
+          id,
+          label,
+          channel,
+          status: channel === 'instagram' ? 'manual' : 'active',
+          webhookUrl: updated?.webhookUrl ?? undefined,
+          error: channel === 'instagram' ? updated?.webhookError ?? undefined : undefined,
+        })
+      } catch (error: any) {
+        results.push({ id, label, channel, status: 'error', error: error.message })
+      }
+      if (index < accounts.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, REGISTER_ALL_DELAY_MS))
+      }
+    }
+
+    return { publicBaseUrl: publicUrl, results }
   }
 }

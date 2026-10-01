@@ -34,6 +34,25 @@
   a {
     @apply text-inherit no-underline;
   }
+
+  /* One font everywhere: browsers default these to monospace. */
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: inherit;
+  }
+}
+
+@layer components {
+  /* Data tables: the same breathing room at the left and right edges everywhere. */
+  .table-edges :is(th, td):first-child {
+    padding-left: 1.5rem;
+  }
+
+  .table-edges :is(th, td):last-child {
+    padding-right: 1.5rem;
+  }
 }
 
 @keyframes shimmer {
@@ -44,4 +63,30 @@
 @keyframes bounce {
   0%, 80%, 100% { transform: translateY(0);    opacity: 0.4; }
   40%           { transform: translateY(-6px); opacity: 1;   }
+}
+
+@keyframes snackbar-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+.snackbar-enter {
+  animation: snackbar-in 180ms ease-out;
+}
+
+@keyframes select-menu-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+
+/* Dropdown menu (components/Select.tsx): quick grow from the button, like MUI. */
+.select-menu-enter {
+  animation: select-menu-in 120ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snackbar-enter,
+  .select-menu-enter {
+    animation: none;
+  }
 }
