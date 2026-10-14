@@ -52,6 +52,13 @@ enum WebhookRegistrationStatus {
   error
 }
 
+/// How the bot answers on a channel: `payload` = Rasa flow with buttons/forms,
+/// `chat` = free-text assistant grounded on Calisto products and knowledge.
+enum ResponseMode {
+  payload
+  chat
+}
+
 /// Connected business account for a messaging channel (WhatsApp number, IG account, etc.).
 model ChannelAccount {
   id                   String                    @id @default(cuid())
@@ -67,6 +74,7 @@ model ChannelAccount {
   webhookUrl           String?
   webhookError         String?                   @db.Text
   tokenExpiresAt       DateTime?
+  responseMode         ResponseMode              @default(payload)
   createdAt            DateTime                  @default(now())
   updatedAt            DateTime                  @updatedAt
 
@@ -74,6 +82,14 @@ model ChannelAccount {
 
   @@unique([channel, nativeId])
   @@index([channel, enabled])
+}
+
+/// Single-row settings for the website webchat, which has no ChannelAccount.
+/// The row is keyed by a fixed id (`webchat`) and created on first write.
+model WebchatSettings {
+  id           String       @id @default("webchat")
+  responseMode ResponseMode @default(payload)
+  updatedAt    DateTime     @updatedAt
 }
 
 /// One row per real human. Identifying fields (phone, email) are kept
