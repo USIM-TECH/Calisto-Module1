@@ -20,4 +20,12 @@ export interface PresetStore {
   getPresetIdsForProduct(productId: string): Promise<string[]>
   /** Replace the full set of presets a product belongs to. */
   setPresetsForProduct(productId: string, presetIds: string[]): Promise<void>
+  /** Product ids that belong to a preset. */
+  getProductIdsForPreset(presetId: string): Promise<string[]>
+  /**
+   * Add and remove many products from one preset in a single step. Only the
+   * listed products change; the rest of the preset is left alone. Unknown
+   * product ids in `add` are ignored. Returns how many were added and removed.
+   */
+  updatePresetMembers(presetId: string, add: string[], remove: string[]): Promise<{ added: number; removed: number }>
 }

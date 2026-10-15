@@ -1,4 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import Select from './Select'
+import { PAGE_SIZE_OPTIONS, type PageSize } from '../lib/table-paging'
 
 interface PaginationProps {
   currentPage: number
@@ -9,6 +11,9 @@ interface PaginationProps {
   totalCount: number
   onPreviousPage: () => void
   onNextPage: () => void
+  /** With both set, the footer offers a rows-per-page choice. */
+  pageSize?: PageSize
+  onPageSizeChange?: (size: PageSize) => void
 }
 
 const navButtonClass =
@@ -23,12 +28,31 @@ export default function Pagination({
   totalCount,
   onPreviousPage,
   onNextPage,
+  pageSize,
+  onPageSizeChange,
 }: PaginationProps) {
   return (
     <div className="flex flex-col gap-3 border-t border-calisto-line-subtle px-5 py-4 text-sm text-calisto-muted sm:flex-row sm:items-center sm:justify-between">
-      <span className="font-semibold">
-        Showing {visibleStart}-{visibleEnd} of {totalCount}
-      </span>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <span className="font-semibold">
+          Showing {visibleStart}-{visibleEnd} of {totalCount}
+        </span>
+        {pageSize !== undefined && onPageSizeChange && (
+          <label className="flex items-center gap-2">
+            <span className="whitespace-nowrap">Rows per page</span>
+            <Select
+              aria-label="Rows per page"
+              className="!h-9 !rounded-lg !px-3 !text-sm"
+              onChange={(value) => {
+                const next = PAGE_SIZE_OPTIONS.find((option) => String(option) === value)
+                if (next) onPageSizeChange(next)
+              }}
+              options={PAGE_SIZE_OPTIONS.map((option) => ({ value: String(option), label: String(option) }))}
+              value={String(pageSize)}
+            />
+          </label>
+        )}
+      </div>
       <div className="flex items-center gap-2">
         <button className={navButtonClass} disabled={currentPage === 1} onClick={onPreviousPage} type="button">
           <ChevronLeft className="h-4 w-4" />

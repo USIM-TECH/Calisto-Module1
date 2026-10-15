@@ -17,7 +17,7 @@ import { SkeletonBlock, SkeletonTable, SkeletonTopbar } from '../components/Skel
 import Topbar from '../components/Topbar'
 import { useSnackbar } from '../components/Snackbar'
 import type { KnowledgeDocumentSummary } from '../types'
-import { pageSlice, useFitRows } from '../lib/use-fit-rows'
+import { pageSlice, useTablePaging } from '../lib/table-paging'
 
 function formatDate(value: string | null | undefined) {
   if (!value) return '-'
@@ -30,7 +30,7 @@ function documentTextFromItems(items: Array<{ text: string }>) {
   return items.map((item) => item.text || '').filter(Boolean).join('\n\n')
 }
 
-// Fixed one-line row height; rows per page = as many as fit the screen (useFitRows).
+// Fixed one-line row height; rows per page = fit the screen, or the size picked in the footer (useTablePaging).
 const ROW_HEIGHT_PX = 64
 
 const labelClass = 'mb-2 block text-[0.68rem] font-bold uppercase tracking-wider text-calisto-ink'
@@ -57,7 +57,6 @@ export default function KnowledgePage() {
   const [editContentTouched, setEditContentTouched] = useState(false)
   const [filter, setFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const tableBodyRef = useRef<HTMLDivElement | null>(null)
   const tableHeaderRef = useRef<HTMLTableSectionElement | null>(null)
   const [error, setError] = useState<string | null>(null)
   const snackbar = useSnackbar()
@@ -92,7 +91,8 @@ export default function KnowledgePage() {
     )
   }, [documents, filter])
 
-  const rowsPerPage = useFitRows(tableBodyRef, tableHeaderRef, ROW_HEIGHT_PX, !docsLoading)
+  const paging = useTablePaging(tableHeaderRef, !docsLoading)
+  const rowsPerPage = paging.rowsPerPage
   const { pageCount, currentPage: shownPage, pageItems, visibleStart, visibleEnd } = pageSlice(filteredDocuments, rowsPerPage, currentPage)
 
   function closeAddModal() {
@@ -254,7 +254,7 @@ export default function KnowledgePage() {
       </section>
 
       <section className="mt-5 flex flex-col overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard lg:min-h-0 lg:flex-1">
-        <div className="flex flex-col overflow-x-auto lg:min-h-0 lg:flex-1 lg:overflow-hidden" ref={tableBodyRef}>
+        <div className="table-scroll flex flex-col overflow-x-auto lg:min-h-0 lg:flex-1 lg:overflow-y-auto" {...paging.scrollProps}>
           <table className="table-edges w-full min-w-[820px] table-fixed border-collapse text-left text-sm lg:min-w-0">
             <colgroup>
               <col className="w-[47%]" />
@@ -262,7 +262,7 @@ export default function KnowledgePage() {
               <col className="w-[22%]" />
               <col className="w-[19%]" />
             </colgroup>
-            <thead ref={tableHeaderRef}>
+            <thead className="sticky top-0 z-10 bg-calisto-surface" ref={tableHeaderRef}>
               <tr className="bg-calisto-table/90 text-xs font-bold uppercase tracking-wider text-calisto-ink">
                 <th className="px-5 py-4">Document Title</th>
                 <th className="px-5 py-4">Chunks</th>
@@ -321,6 +321,7 @@ export default function KnowledgePage() {
         </div>
         {filteredDocuments.length > 0 && (
           <Pagination
+            {...paging.pagination}
             currentPage={shownPage}
             onNextPage={() => setCurrentPage(shownPage + 1)}
             onPreviousPage={() => setCurrentPage(shownPage - 1)}

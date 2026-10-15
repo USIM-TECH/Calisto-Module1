@@ -144,6 +144,47 @@ export class PrismaPresetStore implements PresetStore {
     return rows.map((r) => r.presetId)
   }
 
+  async getProductIdsForPreset(presetId: string): Promise<string[]> {
+    const rows = await this._client.productPreset.findMany({
+      where: { presetId },
+      select: { productId: true },
+    })
+    return rows.map((r) => r.productId)
+  }
+
+  async updatePresetMembers(
+    presetId: string,
+    add: string[],
+    remove: string[],
+  ): Promise<{ added: number; removed: number }> {
+    const toRemove = Array.from(new Set(remove))
+    const requested = Array.from(new Set(add)).filter((id) => !toRemove.includes(id))
+    // Skip ids that no longer exist (e.g. deleted in another tab) instead of failing the whole save.
+    const toAdd = requested.length > 0
+      ? (await this._client.product.findMany({ where: { productId: { in: requested } }, select: { productId: true } }))
+          .map((p) => p.productId)
+      : []
+    const alreadyIn = toAdd.length > 0
+      ? new Set(
+          (await this._client.productPreset.findMany({
+            where: { presetId, productId: { in: toAdd } },
+            select: { productId: true },
+          })).map((r) => r.productId),
+        )
+      : new Set<string>()
+    const newlyAdded = toAdd.filter((id) => !alreadyIn.has(id))
+
+    const [removed] = await this._client.$transaction([
+      this._client.productPreset.deleteMany({ where: { presetId, productId: { in: toRemove } } }),
+      this._client.productPreset.createMany({
+        data: newlyAdded.map((productId) => ({ productId, presetId })),
+        skipDuplicates: true,
+      }),
+    ])
+    await invalidatePresetCache(this._cache)
+    return { added: newlyAdded.length, removed: removed.count }
+  }
+
   async setPresetsForProduct(productId: string, presetIds: string[]): Promise<void> {
     const unique = Array.from(new Set(presetIds))
     await this._client.$transaction([

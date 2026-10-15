@@ -14,12 +14,12 @@ import Topbar from '../components/Topbar'
 import { downloadLeadsXlsx } from '../lib/export-leads-xlsx'
 import { formatIntent } from '../lib/format'
 import { identityLabel } from '../lib/identity'
-import { pageSlice, useFitRows } from '../lib/use-fit-rows'
+import { pageSlice, useTablePaging } from '../lib/table-paging'
 import type { ChannelIdentityRecord, CustomerRecord, LeadsResponse } from '../types'
 
 type ChannelName = ChannelIdentityRecord['channel']
 
-// Fixed one-line row height; rows per page = as many as fit the screen (useFitRows).
+// Fixed one-line row height; rows per page = fit the screen, or the size picked in the footer (useTablePaging).
 const ROW_HEIGHT_PX = 64
 
 interface FilterOption {
@@ -226,8 +226,8 @@ function SearchFilters({
 }
 
 function LeadsTable({
-  bodyRef,
   headerRef,
+  paging,
   customers,
   currentPage,
   identitiesByCustomer,
@@ -238,8 +238,8 @@ function LeadsTable({
   visibleEnd,
   visibleStart,
 }: {
-  bodyRef: React.MutableRefObject<HTMLDivElement | null>
   headerRef: React.MutableRefObject<HTMLTableSectionElement | null>
+  paging: ReturnType<typeof useTablePaging>
   customers: CustomerRecord[]
   currentPage: number
   identitiesByCustomer: Map<string, ChannelIdentityRecord[]>
@@ -252,7 +252,7 @@ function LeadsTable({
 }) {
   return (
     <section className="flex flex-col overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard lg:min-h-0 lg:flex-1">
-      <div className="flex flex-col overflow-x-auto lg:min-h-0 lg:flex-1 lg:overflow-hidden" ref={bodyRef}>
+      <div className="table-scroll flex flex-col overflow-x-auto lg:min-h-0 lg:flex-1 lg:overflow-y-auto" {...paging.scrollProps}>
         <table className="table-edges w-full min-w-[980px] table-fixed border-collapse text-left text-sm lg:min-w-0">
           <colgroup>
             <col className="w-[22%]" />
@@ -262,7 +262,7 @@ function LeadsTable({
             <col className="w-[11%]" />
             <col className="w-[17%]" />
           </colgroup>
-          <thead ref={headerRef}>
+          <thead className="sticky top-0 z-10 bg-calisto-surface" ref={headerRef}>
             <tr className="bg-calisto-table/90 text-xs font-bold uppercase tracking-wider text-calisto-ink">
               <th className="px-4 py-4">Customer</th>
               <th className="px-4 py-4">Identity / Channel</th>
@@ -354,6 +354,7 @@ function LeadsTable({
       </div>
       {customers.length > 0 && (
         <Pagination
+          {...paging.pagination}
           currentPage={currentPage}
           onNextPage={onNextPage}
           onPreviousPage={onPreviousPage}
@@ -370,9 +371,9 @@ function LeadsTable({
 export default function LeadsPage() {
   const [data, setData] = useState<LeadsResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const tableBodyRef = useRef<HTMLDivElement | null>(null)
   const tableHeaderRef = useRef<HTMLTableSectionElement | null>(null)
-  const rowsPerPage = useFitRows(tableBodyRef, tableHeaderRef, ROW_HEIGHT_PX, Boolean(data))
+  const paging = useTablePaging(tableHeaderRef, Boolean(data))
+  const rowsPerPage = paging.rowsPerPage
 
   // Filters and page live in the URL so "Back to leads" (and refresh) restore them.
   const [params, setParams] = useSearchParams()
@@ -538,8 +539,8 @@ export default function LeadsPage() {
           />
 
           <LeadsTable
-            bodyRef={tableBodyRef}
             headerRef={tableHeaderRef}
+            paging={paging}
             customers={paginated}
             currentPage={currentPage}
             identitiesByCustomer={identitiesByCustomer}

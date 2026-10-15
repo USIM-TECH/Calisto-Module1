@@ -12,23 +12,12 @@ import { SkeletonFilterBar, SkeletonTable, SkeletonTopbar } from '../components/
 import Topbar from '../components/Topbar'
 import { useSnackbar } from '../components/Snackbar'
 import { downloadProductsXlsx } from '../lib/export-products-xlsx'
-import { pageSlice, useFitRows } from '../lib/use-fit-rows'
+import { formatStockStatus, stockTone } from '../lib/product-display'
+import { pageSlice, useTablePaging } from '../lib/table-paging'
 import type { ProductImportMode, ProductListResult, ProductRecord } from '../types'
 
-// Fixed one-line row height; rows per page = as many as fit the screen (useFitRows).
+// Fixed one-line row height; rows per page = fit the screen, or the size picked in the footer (useTablePaging).
 const ROW_HEIGHT_PX = 64
-
-function stockTone(status: string) {
-  const s = (status ?? '').toLowerCase()
-  if (s === 'in_stock') return 'bg-emerald-100 text-emerald-700'
-  if (s === 'low_stock') return 'bg-amber-100 text-amber-700'
-  if (s === 'out_of_stock') return 'bg-rose-100 text-rose-700'
-  return 'bg-calisto-table text-calisto-body'
-}
-
-function formatStockStatus(status: string) {
-  return status.replace(/_/g, ' ')
-}
 
 function appendField(payload: FormData, key: string, value: string | boolean | null) {
   if (value === null) {
@@ -126,9 +115,9 @@ export default function ProductsPage() {
   const [deleteTarget, setDeleteTarget] = useState<ProductRecord | null>(null)
   const [deletingProduct, setDeletingProduct] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
-  const tableBodyRef = useRef<HTMLDivElement | null>(null)
   const tableHeaderRef = useRef<HTMLTableSectionElement | null>(null)
-  const rowsPerPage = useFitRows(tableBodyRef, tableHeaderRef, ROW_HEIGHT_PX, Boolean(data))
+  const paging = useTablePaging(tableHeaderRef, Boolean(data))
+  const rowsPerPage = paging.rowsPerPage
 
   function loadProducts() {
     return getProducts()
@@ -330,7 +319,7 @@ export default function ProductsPage() {
           </section>
 
           <section className="flex flex-col overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard lg:min-h-0 lg:flex-1">
-            <div className="flex flex-col overflow-x-auto lg:min-h-0 lg:flex-1 lg:overflow-hidden" ref={tableBodyRef}>
+            <div className="table-scroll flex flex-col overflow-x-auto lg:min-h-0 lg:flex-1 lg:overflow-y-auto" {...paging.scrollProps}>
               <table className="table-edges w-full min-w-[900px] table-fixed border-collapse text-left text-sm lg:min-w-0">
                 <colgroup>
                   <col className="w-[10%]" />
@@ -342,7 +331,7 @@ export default function ProductsPage() {
                   <col className="w-[8%]" />
                   <col className="w-[12%]" />
                 </colgroup>
-                <thead ref={tableHeaderRef}>
+                <thead className="sticky top-0 z-10 bg-calisto-surface" ref={tableHeaderRef}>
                   <tr className="bg-calisto-table/90 text-xs font-bold uppercase tracking-wider text-calisto-ink">
                     <th className="px-3 py-4">ID</th>
                     <th className="px-3 py-4">Product</th>
@@ -401,6 +390,7 @@ export default function ProductsPage() {
             </div>
             {filtered.length > 0 && (
               <Pagination
+                {...paging.pagination}
                 currentPage={currentPage}
                 onNextPage={() => setCurrentPage(Math.min(pageCount, currentPage + 1))}
                 onPreviousPage={() => setCurrentPage(Math.max(1, currentPage - 1))}

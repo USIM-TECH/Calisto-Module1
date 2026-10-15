@@ -1,5 +1,8 @@
 export type ManagedChannel = 'whatsapp' | 'instagram' | 'messenger' | 'telegram'
 
+/** `payload` = Rasa buttons/forms flow, `chat` = free-text grounded assistant. */
+export type ResponseMode = 'payload' | 'chat'
+
 export interface WhatsAppCredentials {
   accessToken: string
   phoneNumberId: string
@@ -41,6 +44,7 @@ export interface ChannelAccountRecord {
   channel: ManagedChannel
   nativeId: string
   enabled: boolean
+  responseMode: ResponseMode
   verifyToken?: string
   metaAppId?: string
   apiVersion?: string
@@ -59,6 +63,7 @@ export interface ChannelAccountInput {
   verifyToken?: string
   metaAppId?: string
   apiVersion?: string
+  responseMode?: ResponseMode
   credentials: ChannelCredentials
 }
 
@@ -69,5 +74,6 @@ export interface ChannelAccountUpdateInput {
   metaAppId?: string
   apiVersion?: string
   enabled?: boolean
+  responseMode?: ResponseMode
   credentials?: ChannelCredentials
 }

@@ -71,7 +71,9 @@ import { createAdminAuthMiddleware } from '../core/auth/admin-auth.js'
 import { registerAuthRoutes } from '../core/auth/auth-routes.js'
 import { AdminSessionService } from '../core/auth/session-service.js'
 import { getPrismaClient } from '../db/prisma.js'
+import { WebchatSettingsStore, registerWebchatSettingsRoutes } from '../webchat-settings/index.js'
 import type { AppDependencies } from './dependencies.js'
+import { OllamaProvider, generateConversationTitle } from '../core/chat/index.js'
 import { createWebsiteRateLimiter } from './website-rate-limiter.js'
 import { normaliseEmail, normalisePhone } from '../leads/storage/helpers.js'
 import { absolutizeOutgoingMessages } from '../core/utils/absolutize-outgoing-messages.js'
@@ -222,6 +224,38 @@ export function createApp(dependencies: AppDependencies): Express {
     } catch (error: any) {
       logger.error(`Website chat route error: ${error.message}`)
       res.status(400).json({ error: error.message })
+    }
+  })
+
+  // Short AI title for the /chatbot sidebar; the client falls back to its own title on any failure.
+  const titleProvider = new OllamaProvider({
+    ollamaUrl: config.llm.ollamaUrl,
+    model: config.llm.model,
+    timeoutMs: Math.min(config.chat.timeoutMs, 15_000),
+    temperature: 0.2,
+  })
+  app.post('/webchat/title', async (req, res) => {
+    const authHeader = typeof req.headers.authorization === 'string' ? req.headers.authorization : undefined
+    if (config.website.authToken && authHeader !== `Bearer ${config.website.authToken}`) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+    const rateLimitKey = `${req.ip}:title`
+    if (!(await websiteRateLimiter.allow(rateLimitKey))) {
+      res.status(429).json({ error: 'Rate limit exceeded' })
+      return
+    }
+    const turns = Array.isArray(req.body?.messages)
+      ? req.body.messages
+          .filter((m: any) => (m?.role === 'user' || m?.role === 'assistant') && typeof m?.content === 'string')
+          .map((m: any) => ({ role: m.role, content: m.content }))
+      : []
+    try {
+      const title = await generateConversationTitle(titleProvider, turns)
+      res.json({ title: title ?? null })
+    } catch (error: any) {
+      logger.warn(`Title generation failed: ${error.message}`)
+      res.json({ title: null })
     }
   })
 
@@ -385,6 +419,15 @@ export function createApp(dependencies: AppDependencies): Express {
       res.status(503).json({
         error: 'Channel accounts require STORAGE_BACKEND=mysql and CHANNEL_CREDENTIALS_ENCRYPTION_KEY',
       })
+    })
+  }
+
+  if (prisma) {
+    registerWebchatSettingsRoutes({ app, store: new WebchatSettingsStore(prisma), logger })
+    logger.info('Webchat settings routes registered: /admin/webchat/settings')
+  } else {
+    app.get('/admin/webchat/settings', (_req, res) => {
+      res.status(503).json({ error: 'Webchat settings require STORAGE_BACKEND=mysql' })
     })
   }
 

@@ -13,6 +13,7 @@ import type {
 } from './credential-types.js'
 
 const managedChannelSchema = z.enum(['whatsapp', 'instagram', 'messenger', 'telegram'])
+const responseModeSchema = z.enum(['payload', 'chat'])
 
 const createBodySchema = z.object({
   label: z.string().min(1),
@@ -21,6 +22,7 @@ const createBodySchema = z.object({
   verifyToken: z.string().optional(),
   metaAppId: z.string().optional(),
   apiVersion: z.string().optional(),
+  responseMode: responseModeSchema.optional(),
   credentials: z.record(z.unknown()),
 })
 
@@ -117,6 +119,7 @@ export function registerChannelAccountRoutes({ app, service, logger }: RegisterA
         verifyToken: parsed.verifyToken,
         metaAppId: parsed.metaAppId,
         apiVersion: parsed.apiVersion,
+        responseMode: parsed.responseMode,
         credentials: parseCredentials(parsed.channel, parsed.credentials),
       }
       const created = await service.create(input)
@@ -148,6 +151,7 @@ export function registerChannelAccountRoutes({ app, service, logger }: RegisterA
         metaAppId: parsed.metaAppId,
         apiVersion: parsed.apiVersion,
         enabled: parsed.enabled,
+        responseMode: parsed.responseMode,
         credentials: credentials as ChannelAccountUpdateInput['credentials'],
       })
       res.json(updated)

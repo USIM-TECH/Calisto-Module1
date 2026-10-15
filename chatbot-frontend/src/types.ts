@@ -83,12 +83,20 @@ export interface ChannelIdentityRecord {
 
 export type ManagedChannel = 'whatsapp' | 'instagram' | 'messenger' | 'telegram'
 
+/** `payload` = buttons/forms flow, `chat` = free-text assistant. */
+export type ResponseMode = 'payload' | 'chat'
+
+export interface WebchatSettings {
+  responseMode: ResponseMode
+}
+
 export interface ChannelAccountRecord {
   id: string
   label: string
   channel: ManagedChannel
   nativeId: string
   enabled: boolean
+  responseMode: ResponseMode
   verifyToken?: string
   metaAppId?: string
   apiVersion?: string
@@ -129,6 +137,7 @@ export interface ChannelAccountInput {
   verifyToken?: string
   metaAppId?: string
   apiVersion?: string
+  responseMode?: ResponseMode
   credentials: Record<string, string | undefined>
 }
 

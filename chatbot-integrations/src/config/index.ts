@@ -42,6 +42,12 @@ const envSchema = z
     OLLAMA_MODEL: z.string().default('llama3'),
     OLLAMA_TIMEOUT_MS: z.coerce.number().int().positive().default(8_000),
     OLLAMA_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.1),
+    /** Chat mode (free-text assistant). Reuses OLLAMA_URL / OLLAMA_MODEL but needs longer replies. */
+    CHAT_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+    CHAT_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.3),
+    CHAT_MAX_PRODUCTS: z.coerce.number().int().min(1).max(10).default(4),
+    CHAT_KNOWLEDGE_CHUNKS: z.coerce.number().int().min(0).max(10).default(3),
+    CHAT_HISTORY_TURNS: z.coerce.number().int().min(0).max(20).default(6),
     /**
      * Below this Rasa NLU confidence we route the message through the LLM
      * fallback. Should match (or sit just above) the `FallbackClassifier`
@@ -140,6 +146,13 @@ export interface AppConfig {
     nluConfidenceFloor: number
     llmConfidenceFloor: number
   }
+  chat: {
+    timeoutMs: number
+    temperature: number
+    maxProducts: number
+    knowledgeChunks: number
+    historyTurns: number
+  }
   website: {
     authToken?: string
     allowedOrigins: string[]
@@ -204,6 +217,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       temperature: parsed.OLLAMA_TEMPERATURE,
       nluConfidenceFloor: parsed.RASA_NLU_CONFIDENCE_FLOOR,
       llmConfidenceFloor: parsed.LLM_CONFIDENCE_FLOOR,
+    },
+    chat: {
+      timeoutMs: parsed.CHAT_TIMEOUT_MS,
+      temperature: parsed.CHAT_TEMPERATURE,
+      maxProducts: parsed.CHAT_MAX_PRODUCTS,
+      knowledgeChunks: parsed.CHAT_KNOWLEDGE_CHUNKS,
+      historyTurns: parsed.CHAT_HISTORY_TURNS,
     },
     website: {
       authToken: parsed.WEBSITE_AUTH_TOKEN,

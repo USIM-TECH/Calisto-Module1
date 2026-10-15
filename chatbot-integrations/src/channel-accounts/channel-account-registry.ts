@@ -132,6 +132,7 @@ export async function buildChannelAccountRegistry(args: BuildRegistryArgs): Prom
       channel: row.channel as ManagedChannel,
       nativeId: row.nativeId,
       enabled: row.enabled,
+      responseMode: row.responseMode,
       verifyToken: row.verifyToken ?? undefined,
       metaAppId: row.metaAppId ?? undefined,
       apiVersion: row.apiVersion ?? undefined,

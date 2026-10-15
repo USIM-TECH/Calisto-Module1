@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Pencil, Plus, Power, Sparkles, Trash2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Check, ListChecks, Pencil, Plus, Power, Sparkles, Trash2 } from 'lucide-react'
 import {
-  createPreset,
   deletePreset,
   getPresets,
   setActivePreset,
@@ -17,7 +17,7 @@ import Topbar from '../components/Topbar'
 import { useSnackbar } from '../components/Snackbar'
 import { SkeletonTable, SkeletonTopbar } from '../components/Skeleton'
 import type { PresetRecord } from '../types'
-import { pageSlice, useFitRows } from '../lib/use-fit-rows'
+import { pageSlice, useTablePaging } from '../lib/table-paging'
 
 interface PresetDraft {
   name: string
@@ -26,15 +26,16 @@ interface PresetDraft {
 
 const emptyDraft: PresetDraft = { name: '', description: '' }
 
-// Fixed one-line row height; rows per page = as many as fit the screen (useFitRows).
+// Fixed one-line row height; rows per page = fit the screen, or the size picked in the footer (useTablePaging).
 const ROW_HEIGHT_PX = 60
 
 export default function PresetsPage() {
+  const navigate = useNavigate()
   const [presets, setPresets] = useState<PresetRecord[] | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const tableBodyRef = useRef<HTMLDivElement | null>(null)
   const tableHeaderRef = useRef<HTMLTableSectionElement | null>(null)
-  const rowsPerPage = useFitRows(tableBodyRef, tableHeaderRef, ROW_HEIGHT_PX, Boolean(presets))
+  const paging = useTablePaging(tableHeaderRef, Boolean(presets))
+  const rowsPerPage = paging.rowsPerPage
   const { pageCount, currentPage: shownPage, pageItems, visibleStart, visibleEnd } = pageSlice(presets ?? [], rowsPerPage, currentPage)
   const [activePresetId, setActivePresetId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -42,7 +43,6 @@ export default function PresetsPage() {
   const [activating, setActivating] = useState(false)
 
   const [editorOpen, setEditorOpen] = useState(false)
-  const [editorMode, setEditorMode] = useState<'create' | 'edit'>('create')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState<PresetDraft>(emptyDraft)
   const [nameError, setNameError] = useState<string | null>(null)
@@ -83,37 +83,24 @@ export default function PresetsPage() {
     }
   }
 
-  function openCreate() {
-    setEditorMode('create')
-    setEditingId(null)
-    setDraft(emptyDraft)
-    setNameError(null)
-    setEditorOpen(true)
-  }
-
   function openEdit(preset: PresetRecord) {
-    setEditorMode('edit')
     setEditingId(preset.id)
     setDraft({ name: preset.name, description: preset.description ?? '' })
     setNameError(null)
     setEditorOpen(true)
   }
 
+  // Editing only renames; new presets are made on the /presets/new screen, where products are chosen first.
   async function handleSave() {
     const name = draft.name.trim()
-    if (!name) {
+    if (!name || !editingId) {
       setNameError('Preset name is required.')
       return
     }
     setSaving(true)
     try {
-      if (editorMode === 'edit' && editingId) {
-        await updatePreset(editingId, { name, description: draft.description.trim() })
-        snackbar.success('Preset updated.')
-      } else {
-        await createPreset({ name, description: draft.description.trim() })
-        snackbar.success('Preset created.')
-      }
+      await updatePreset(editingId, { name, description: draft.description.trim() })
+      snackbar.success('Preset updated.')
       setEditorOpen(false)
       await load()
     } catch (err) {
@@ -146,7 +133,7 @@ export default function PresetsPage() {
       <Topbar
         title="Presets"
         actions={(
-          <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={openCreate}>
+          <Button variant="primary" icon={<Plus className="h-4 w-4" />} onClick={() => navigate('/presets/new')}>
             Add Preset
           </Button>
         )}
@@ -196,20 +183,20 @@ export default function PresetsPage() {
           </section>
 
           <section className="flex flex-col overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard lg:min-h-0 lg:flex-1">
-            <div className="flex flex-col overflow-x-auto lg:min-h-0 lg:flex-1 lg:overflow-hidden" ref={tableBodyRef}>
+            <div className="table-scroll flex flex-col overflow-x-auto lg:min-h-0 lg:flex-1 lg:overflow-y-auto" {...paging.scrollProps}>
             <table className="table-edges w-full min-w-[720px] table-fixed border-collapse text-left text-sm lg:min-w-0">
               <colgroup>
                 <col className="w-[26%]" />
-                <col className="w-[37%]" />
-                <col className="w-[14%]" />
-                <col className="w-[23%]" />
+                <col className="w-[32%]" />
+                <col className="w-[12%]" />
+                <col className="w-[30%]" />
               </colgroup>
-              <thead ref={tableHeaderRef}>
+              <thead className="sticky top-0 z-10 bg-calisto-surface" ref={tableHeaderRef}>
                 <tr className="bg-calisto-table/90 text-xs font-bold uppercase tracking-wider text-calisto-ink">
                   <th className="px-4 py-4">Preset</th>
                   <th className="px-4 py-4">Description</th>
-                  <th className="px-4 py-4">Products</th>
-                  <th className="px-4 py-4">Actions</th>
+                  <th className="px-4 py-4 text-center">Products</th>
+                  <th className="px-4 py-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-calisto-line-subtle">
@@ -230,19 +217,32 @@ export default function PresetsPage() {
                       <td className="px-4 py-2 align-middle text-calisto-body">
                         <span className="block truncate">{preset.description || '—'}</span>
                       </td>
-                      <td className="px-4 py-2 align-middle font-semibold text-calisto-body">
+                      <td className="px-4 py-2 text-center align-middle font-semibold text-calisto-body">
                         {preset.productCount}
                       </td>
                       <td className="px-4 py-2 align-middle">
-                        <div className="flex items-center justify-start gap-2">
+                        <div className="flex items-center justify-center gap-2">
                           <button
                             type="button"
                             disabled={activating || active}
                             onClick={() => handleActivate(preset.id)}
-                            className="inline-flex h-8 w-[5.5rem] shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-calisto-accent bg-calisto-accent px-3 text-xs font-bold text-calisto-surface transition hover:bg-calisto-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+                            className={`inline-flex h-8 w-[5.5rem] shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border px-3 text-xs font-bold transition disabled:cursor-not-allowed ${
+                              active
+                                ? 'border-calisto-accent/30 bg-calisto-accent/10 text-calisto-accent'
+                                : 'border-calisto-accent bg-calisto-accent text-calisto-surface hover:bg-calisto-accent/90 disabled:opacity-50'
+                            }`}
                             title={active ? 'Already active' : 'Set as active'}
                           >
-                            {active ? 'Active' : 'Set active'}
+                            {active ? <><Check className="h-3 w-3" /> Active</> : 'Set active'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/presets/${preset.id}/products`)}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-calisto-line bg-calisto-surface text-calisto-ink transition hover:bg-calisto-surface-muted"
+                            aria-label={`Manage products in ${preset.name}`}
+                            title="Manage products"
+                          >
+                            <ListChecks className="h-3.5 w-3.5" strokeWidth={2} />
                           </button>
                           <button
                             type="button"
@@ -275,6 +275,7 @@ export default function PresetsPage() {
             </div>
             {presets.length > 0 && (
               <Pagination
+                {...paging.pagination}
                 currentPage={shownPage}
                 onNextPage={() => setCurrentPage(shownPage + 1)}
                 onPreviousPage={() => setCurrentPage(shownPage - 1)}
@@ -305,7 +306,7 @@ export default function PresetsPage() {
             void handleSave()
           }}
           size="sm"
-          title={editorMode === 'edit' ? 'Edit Preset' : 'Add Preset'}
+          title="Edit Preset"
         >
           <div className="grid gap-4">
             <label className="block">
@@ -336,7 +337,7 @@ export default function PresetsPage() {
               />
             </label>
             <p className="text-xs font-medium text-calisto-muted">
-              Add products to this preset from the Products page (edit a product, then tick the preset).
+              Use the Manage products button on a preset to choose which products it contains.
             </p>
           </div>
         </Modal>

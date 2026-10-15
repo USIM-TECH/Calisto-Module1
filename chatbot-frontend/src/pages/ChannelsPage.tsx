@@ -18,12 +18,13 @@ import Button from '../components/Button'
 import PageContainer from '../components/PageContainer'
 import Modal from '../components/Modal'
 import RequiredMark from '../components/RequiredMark'
+import ResponseModeSelect, { RESPONSE_MODE_HELP } from '../components/ResponseModeSelect'
 import Pagination from '../components/Pagination'
 import { SkeletonTable, SkeletonTopbar } from '../components/Skeleton'
 import Topbar from '../components/Topbar'
 import { useSnackbar } from '../components/Snackbar'
-import type { ChannelAccountInput, ChannelAccountRecord } from '../types'
-import { pageSlice, useFitRows } from '../lib/use-fit-rows'
+import type { ChannelAccountInput, ChannelAccountRecord, ResponseMode } from '../types'
+import { pageSlice, useTablePaging } from '../lib/table-paging'
 
 const WEBHOOK_STATUS = {
   active: { label: 'Connected', tone: 'bg-emerald-100 text-emerald-700', Icon: CheckCircle2 },
@@ -45,9 +46,9 @@ export default function ChannelsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const snackbar = useSnackbar()
-  const tableBodyRef = useRef<HTMLDivElement | null>(null)
   const tableHeaderRef = useRef<HTMLTableSectionElement | null>(null)
-  const rowsPerPage = useFitRows(tableBodyRef, tableHeaderRef, ROW_HEIGHT_PX, !loading)
+  const paging = useTablePaging(tableHeaderRef, !loading)
+  const rowsPerPage = paging.rowsPerPage
   // Page lives in the URL, like the Leads page.
   const [params, setParams] = useSearchParams()
   const { pageCount, currentPage, pageItems, visibleStart, visibleEnd } = pageSlice(items, rowsPerPage, Number(params.get('page')))
@@ -124,6 +125,19 @@ export default function ChannelsPage() {
       await load()
     } catch (err) {
       snackbar.error(err instanceof Error ? err.message : 'Failed to enable account')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function handleResponseMode(account: ChannelAccountRecord, responseMode: ResponseMode) {
+    setBusyId(account.id)
+    try {
+      const updated = await updateChannelAccount(account.id, { responseMode })
+      setItems((current) => current.map((item) => (item.id === account.id ? { ...item, responseMode: updated.responseMode } : item)))
+      snackbar.success(`${account.label} now uses ${responseMode === 'chat' ? 'Chat' : 'Payload'} mode.`)
+    } catch (err) {
+      snackbar.error(err instanceof Error ? err.message : 'Failed to change response mode')
     } finally {
       setBusyId(null)
     }
@@ -214,7 +228,8 @@ export default function ChannelsPage() {
 
       {!loading && (
         <p className="-mt-3 mb-6 text-sm text-calisto-body">
-          Manage WhatsApp, Instagram, Messenger, and Telegram business accounts.
+          Manage WhatsApp, Instagram, Messenger, and Telegram business accounts. Response mode sets how each one answers:
+          {' '}<strong>Payload</strong> is the guided flow with buttons; <strong>Chat</strong> is a free-text assistant for Calisto products.
         </p>
       )}
 
@@ -224,24 +239,26 @@ export default function ChannelsPage() {
         </div>
       )}
 
-      {loading ? <SkeletonTable rows={5} cols={6} /> : (
+      {loading ? <SkeletonTable rows={5} cols={7} /> : (
         <div className="flex flex-col overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-dashboard lg:min-h-0 lg:flex-1">
-          <div className="flex flex-col lg:min-h-0 lg:flex-1 lg:overflow-hidden" ref={tableBodyRef}>
+          <div className="table-scroll flex flex-col lg:min-h-0 lg:flex-1 lg:overflow-y-auto" {...paging.scrollProps}>
           {/* Fixed layout + one-line cells: the table fits the width and every row is the same height. */}
           <table className="table-edges w-full table-fixed text-left text-sm">
             <colgroup>
-              <col className="w-[26%]" />
-              <col className="w-[16%]" />
               <col className="w-[20%]" />
-              <col className="w-[12%]" />
+              <col className="w-[13%]" />
+              <col className="w-[15%]" />
+              <col className="w-[15%]" />
+              <col className="w-[11%]" />
               <col className="w-[18%]" />
               <col className="w-[8%]" />
             </colgroup>
-            <thead className="bg-calisto-table text-xs font-semibold uppercase tracking-wide text-calisto-body" ref={tableHeaderRef}>
+            <thead className="sticky top-0 z-10 bg-calisto-table text-xs font-semibold uppercase tracking-wide text-calisto-body" ref={tableHeaderRef}>
               <tr>
                 <th className="px-4 py-3">Label</th>
                 <th className="px-4 py-3">Channel</th>
                 <th className="px-4 py-3">Native ID</th>
+                <th className="px-4 py-3" title="How this account answers customers">Response mode</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Webhook</th>
                 <th className="px-4 py-3 text-right"><span className="sr-only">Actions</span></th>
@@ -272,6 +289,15 @@ export default function ChannelsPage() {
                     </td>
                     <td className={`truncate px-4 tabular-nums text-calisto-body ${dim}`} title={account.nativeId}>
                       {account.nativeId}
+                    </td>
+                    <td className={`px-4 ${dim}`} title={RESPONSE_MODE_HELP[account.responseMode]}>
+                      <ResponseModeSelect
+                        aria-label={`Response mode for ${account.label}`}
+                        compact
+                        disabled={busy || !account.enabled}
+                        onChange={(mode) => void handleResponseMode(account, mode)}
+                        value={account.responseMode}
+                      />
                     </td>
                     <td className={`px-4 ${dim}`}>
                       <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${account.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-calisto-table text-calisto-body'}`}>
@@ -320,6 +346,7 @@ export default function ChannelsPage() {
           </div>
           {items.length > 0 && (
             <Pagination
+              {...paging.pagination}
               currentPage={currentPage}
               onNextPage={() => goToPage(currentPage + 1)}
               onPreviousPage={() => goToPage(currentPage - 1)}

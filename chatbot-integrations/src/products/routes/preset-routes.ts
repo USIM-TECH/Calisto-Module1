@@ -8,6 +8,8 @@ interface RegisterPresetArgs {
   logger: Logger
 }
 
+const MAX_MEMBER_CHANGES = 5000
+
 function pickString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined
   const trimmed = value.trim()
@@ -91,6 +93,40 @@ export function registerPresetRoutes({ app, store, logger }: RegisterPresetArgs)
       const presetIds = pickStringArray(body.presetIds)
       await store.setPresetsForProduct(req.params.productId, presetIds)
       res.json({ presetIds })
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  // Bulk membership for one preset (the "Manage products" screen).
+  app.get('/admin/presets/api/:id/members', async (req, res, next) => {
+    try {
+      if (!(await store.get(req.params.id))) {
+        res.status(404).json({ error: 'Preset not found' })
+        return
+      }
+      res.json({ productIds: await store.getProductIdsForPreset(req.params.id) })
+    } catch (error) {
+      next(error)
+    }
+  })
+
+  // Changes only the listed products; everything else in the preset stays as it is.
+  app.patch('/admin/presets/api/:id/members', async (req, res, next) => {
+    try {
+      const body = (req.body ?? {}) as Record<string, unknown>
+      const add = pickStringArray(body.add)
+      const remove = pickStringArray(body.remove)
+      if (add.length > MAX_MEMBER_CHANGES || remove.length > MAX_MEMBER_CHANGES) {
+        res.status(400).json({ error: `At most ${MAX_MEMBER_CHANGES} products can be changed at once` })
+        return
+      }
+      if (!(await store.get(req.params.id))) {
+        res.status(404).json({ error: 'Preset not found' })
+        return
+      }
+      const result = await store.updatePresetMembers(req.params.id, add, remove)
+      res.json({ ...result, productIds: await store.getProductIdsForPreset(req.params.id) })
     } catch (error) {
       next(error)
     }

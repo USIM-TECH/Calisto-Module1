@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircle2, Info, X, XCircle } from 'lucide-react'
 
-// App-wide snackbar: bottom-right on desktop (clear of the left sidebar),
+// App-wide snackbar (one at a time; a new message replaces the old one): bottom-right on desktop (clear of the left sidebar),
 // full-width bottom on mobile. Use for results of user actions ("Product saved").
 // Form validation errors stay inline next to the fields instead.
 
@@ -32,7 +32,6 @@ interface SnackbarApi {
   dismiss: (id: number) => void
 }
 
-const MAX_VISIBLE = 3
 const DEFAULT_DURATION: Record<SnackbarVariant, number> = {
   success: 5000,
   info: 5000,
@@ -71,8 +70,8 @@ export function SnackbarProvider({ children }: { children: React.ReactNode }) {
       action: options?.action,
       duration: options?.duration ?? DEFAULT_DURATION[variant],
     }
-    // Newest at the bottom; drop the oldest beyond the visible limit.
-    setItems((current) => [...current, item].slice(-MAX_VISIBLE))
+    // One at a time: a new message replaces the current one instead of stacking.
+    setItems([item])
   }, [])
 
   const api = useMemo<SnackbarApi>(() => ({

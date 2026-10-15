@@ -14,6 +14,8 @@ import type {
   ChannelAccountInput,
   ChannelAccountListResult,
   ChannelAccountRecord,
+  ResponseMode,
+  WebchatSettings,
   PublicUrlStatus,
   RegisterAllWebhooksResult,
 } from '../types'
@@ -100,6 +102,21 @@ export function postWebchatMessage(payload: WebchatRequest): Promise<WebchatResp
     headers,
     body: JSON.stringify(payload),
   })
+}
+
+export async function generateConversationTitle(
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+): Promise<string | null> {
+  const headers: Record<string, string> = {}
+  if (WEBCHAT_AUTH_TOKEN) {
+    headers.Authorization = `Bearer ${WEBCHAT_AUTH_TOKEN}`
+  }
+  const result = await request<{ title: string | null }>('/webchat/title', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ messages }),
+  })
+  return result.title
 }
 
 export function getLeads(): Promise<LeadsResponse> {
@@ -317,10 +334,47 @@ export function updateChannelAccount(
   payload: Partial<ChannelAccountInput> & {
     credentials?: Record<string, string | undefined>
     enabled?: boolean
+    responseMode?: ResponseMode
   },
 ): Promise<ChannelAccountRecord> {
   return request<ChannelAccountRecord>(`/admin/channel-accounts/api/${encodeURIComponent(id)}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
   })
+}
+
+export function getWebchatSettings(): Promise<WebchatSettings> {
+  return request<WebchatSettings>('/admin/webchat/settings')
+}
+
+export function updateWebchatSettings(responseMode: ResponseMode): Promise<WebchatSettings> {
+  return request<WebchatSettings>('/admin/webchat/settings', {
+    method: 'PUT',
+    body: JSON.stringify({ responseMode }),
+  })
+}
+
+/** Every product, fetched page by page (the list endpoint caps a page at 500). */
+export async function getAllProducts(): Promise<ProductListResult['items']> {
+  const items: ProductListResult['items'] = []
+  for (let page = 1; ; page += 1) {
+    const result = await request<ProductListResult>(`/admin/products/api?limit=500&page=${page}`)
+    items.push(...result.items)
+    if (items.length >= result.total || result.items.length === 0) return items
+  }
+}
+
+export function getPresetMembers(presetId: string): Promise<{ productIds: string[] }> {
+  return request<{ productIds: string[] }>(`/admin/presets/api/${encodeURIComponent(presetId)}/members`)
+}
+
+/** Adds and removes only the listed products; the rest of the preset is untouched. */
+export function updatePresetMembers(
+  presetId: string,
+  changes: { add: string[]; remove: string[] },
+): Promise<{ added: number; removed: number; productIds: string[] }> {
+  return request<{ added: number; removed: number; productIds: string[] }>(
+    `/admin/presets/api/${encodeURIComponent(presetId)}/members`,
+    { method: 'PATCH', body: JSON.stringify(changes) },
+  )
 }

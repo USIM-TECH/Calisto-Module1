@@ -452,10 +452,7 @@ export class NLPClient {
     const llmFloor = this._config.llmConfidenceFloor ?? DEFAULT_LLM_FLOOR
 
     let safeMessage = String(message).slice(0, 1000).trim()
-    const senderNamespace = this._config.isolateTrackersByChannel && metadata?.channel
-      ? `${metadata.channel}:${userId}`
-      : userId
-    const safeSender = String(senderNamespace).replace(/[^a-zA-Z0-9:_-]/g, '').slice(0, 80)
+    const safeSender = this._senderKey(userId, metadata)
 
     if (!safeMessage) {
       return { text: fallback, raw: [] }
@@ -716,6 +713,20 @@ export class NLPClient {
       this._logger.warn(`[NLU] /model/parse failed: ${describeAxiosError(error, url)}`)
       return undefined
     }
+  }
+
+  /** Rasa tracker id for a sender; same namespacing `getResponse` uses. */
+  private _senderKey(userId: string, metadata?: NLPRequestMetadata): string {
+    const senderNamespace = this._config.isolateTrackersByChannel && metadata?.channel
+      ? `${metadata.channel}:${userId}`
+      : userId
+    return String(senderNamespace).replace(/[^a-zA-Z0-9:_-]/g, '').slice(0, 80)
+  }
+
+  /** True while Rasa is in the middle of a form (e.g. lead capture) for this sender. */
+  public async hasActiveForm(userId: string, metadata?: NLPRequestMetadata): Promise<boolean> {
+    const tracker = await this.getTracker(this._senderKey(userId, metadata))
+    return Boolean(tracker?.activeLoop)
   }
 
   public async getTracker(userId: string): Promise<NLPResponse['tracker']> {

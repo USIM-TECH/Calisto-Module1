@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Menu, PanelLeftClose, PanelLeftOpen, Send, SquarePen, X } from 'lucide-react'
-import { postWebchatMessage } from '../api/client'
+import { Menu, PanelLeftClose, PanelLeftOpen, Search, Send, SquarePen, X } from 'lucide-react'
+import { generateConversationTitle, postWebchatMessage } from '../api/client'
 import ChatMessageBubble from '../components/ChatMessageBubble'
 import calistoLogo from '../../calisto.svg'
 import calistoSymbol from '../assets/calisto-symbol-black.webp'
@@ -11,10 +11,12 @@ import {
   resetSenderId,
 } from '../lib/chat'
 import {
+  conversationTitle,
   loadConversations,
   loadSidebarCollapsed,
   saveConversations,
   saveSidebarCollapsed,
+  SMALL_TALK,
   type StoredConversation,
 } from '../lib/chat-history'
 import type { OutgoingMessage, WebchatResponse } from '../types'
@@ -41,6 +43,12 @@ function currentStamp() {
 
 const WEBCHAT_SCOPE = 'website-chatbot'
 
+// The AI title is requested once the customer has asked something real and got an answer.
+function readyForAiTitle(messages: ConsoleMessage[]): boolean {
+  const topicIndex = messages.findIndex((entry) => entry.direction === 'customer' && !SMALL_TALK.test(entry.content.trim()))
+  return topicIndex >= 0 && messages.slice(topicIndex + 1).some((entry) => entry.direction === 'assistant')
+}
+
 export default function ChatbotPage() {
   const [senderId, setSenderId] = useState(() => getOrCreateSenderId(WEBCHAT_SCOPE))
   const [message, setMessage] = useState('')
@@ -51,6 +59,7 @@ export default function ChatbotPage() {
   const [messages, setMessages] = useState<ConsoleMessage[]>(
     () => conversations.find((conversation) => conversation.id === senderId)?.messages ?? [],
   )
+  const [historyQuery, setHistoryQuery] = useState('')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -70,10 +79,10 @@ export default function ChatbotPage() {
     setConversations((current) => {
       const existing = current.find((conversation) => conversation.id === senderId)
       if (existing && existing.messages.length === messages.length) return current // just reopened
-      const firstQuestion = messages.find((entry) => entry.direction === 'customer')?.content ?? 'New conversation'
       const updated: StoredConversation<ConsoleMessage> = {
         id: senderId,
-        title: firstQuestion.length > 48 ? `${firstQuestion.slice(0, 48)}…` : firstQuestion,
+        title: existing?.aiTitle ? existing.title : conversationTitle(messages),
+        aiTitle: existing?.aiTitle,
         updatedAt: Date.now(),
         messages,
       }
@@ -82,6 +91,43 @@ export default function ChatbotPage() {
       return next
     })
   }, [messages, senderId])
+
+  // Ask the backend for a short AI title once, after the first real exchange.
+  // On any failure the first-message title stays.
+  const titleRequested = useRef(new Set<string>())
+  useEffect(() => {
+    if (!readyForAiTitle(messages)) return
+    if (titleRequested.current.has(senderId)) return
+    if (conversations.find((conversation) => conversation.id === senderId)?.aiTitle) return
+    titleRequested.current.add(senderId)
+    const conversationId = senderId
+    const turns = messages.map((entry) => ({
+      role: entry.direction === 'customer' ? ('user' as const) : ('assistant' as const),
+      content: entry.content,
+    }))
+    generateConversationTitle(turns)
+      .then((title) => {
+        if (!title) return
+        setConversations((current) => {
+          const next = current.map((conversation) =>
+            conversation.id === conversationId ? { ...conversation, title, aiTitle: true } : conversation,
+          )
+          saveConversations(next)
+          return next
+        })
+      })
+      .catch(() => {})
+  }, [messages, senderId, conversations])
+
+  // Matches the title or any message text, so an old chat can be found by what was said in it.
+  const trimmedQuery = historyQuery.trim().toLowerCase()
+  const visibleConversations = trimmedQuery
+    ? conversations.filter(
+        (conversation) =>
+          conversation.title.toLowerCase().includes(trimmedQuery) ||
+          conversation.messages.some((entry) => entry.content.toLowerCase().includes(trimmedQuery)),
+      )
+    : conversations
 
   useEffect(() => {
     saveSidebarCollapsed(sidebarCollapsed)
@@ -255,13 +301,29 @@ export default function ChatbotPage() {
         </button>
       </div>
 
+      <div className={`mt-2 px-3 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
+        <label className="relative block">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-calisto-muted" />
+          <input
+            aria-label="Search conversations"
+            className="h-9 w-full rounded-lg border border-calisto-line bg-calisto-surface pl-9 pr-8 text-sm text-calisto-ink outline-none transition placeholder:text-calisto-soft focus:border-calisto-accent/50 focus:ring-4 focus:ring-calisto-focus"
+            onChange={(event) => setHistoryQuery(event.target.value)}
+            placeholder="Search chats"
+            type="search"
+            value={historyQuery}
+          />
+        </label>
+      </div>
+
       <nav aria-label="Recent conversations" className={`mt-4 min-h-0 flex-1 overflow-y-auto px-3 pb-4 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
         <h2 className="px-3 pb-2 text-xs font-semibold text-calisto-muted">Recents</h2>
-        {conversations.length === 0 ? (
-          <p className="px-3 text-sm text-calisto-soft">No conversations yet.</p>
+        {visibleConversations.length === 0 ? (
+          <p className="px-3 text-sm text-calisto-soft">
+            {conversations.length === 0 ? 'No conversations yet.' : 'No matching conversations.'}
+          </p>
         ) : (
           <ul className="grid gap-0.5">
-            {conversations.map((conversation) => {
+            {visibleConversations.map((conversation) => {
               const active = conversation.id === senderId
               return (
                 <li className="group relative" key={conversation.id}>

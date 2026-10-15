@@ -24,6 +24,10 @@ import {
   type RuntimeStore,
 } from '../leads/index.js'
 import { getPrismaClient } from '../db/prisma.js'
+import { ChatService, ChatRetriever, OllamaProvider } from '../core/chat/index.js'
+import { ResponseModeResolver } from '../core/chat/mode-resolver.js'
+import { ProductSearchService } from '../products/service/product-search.js'
+import { WebchatSettingsStore } from '../webchat-settings/index.js'
 import { PrismaKnowledgeChunkStore, type KnowledgeChunkStore } from '../knowledge/index.js'
 import { PrismaProductStore, PrismaPresetStore, PrismaStoreStore, type PresetStore, type ProductStore, type StoreStore } from '../products/index.js'
 
@@ -146,6 +150,34 @@ export async function createDependencies(): Promise<AppDependencies> {
     logger.info('HubSpot client enabled')
   }
 
+  // Chat mode (free-text assistant) needs the product catalogue; without MySQL it stays off.
+  const chat = productStore
+    ? {
+        service: new ChatService(
+          new OllamaProvider({
+            ollamaUrl: config.llm.ollamaUrl,
+            model: config.llm.model,
+            timeoutMs: config.chat.timeoutMs,
+            temperature: config.chat.temperature,
+          }),
+          new ChatRetriever(
+            new ProductSearchService(productStore),
+            presetStore,
+            knowledgeChunkStore,
+            { maxProducts: config.chat.maxProducts, knowledgeChunks: config.chat.knowledgeChunks },
+          ),
+          productStore,
+          { historyTurns: config.chat.historyTurns },
+          logger,
+        ),
+        resolver: new ResponseModeResolver(
+          (accountId) => channelAccountService?.registry.getById(accountId)?.record.responseMode,
+          config.storageBackend === 'mysql' ? new WebchatSettingsStore(getPrismaClient()) : undefined,
+        ),
+        getPublicBaseUrl: () => publicBaseUrl.get(),
+      }
+    : undefined
+
   const orchestrator = new LeadOrchestrator({
     logger,
     nlpClient,
@@ -153,6 +185,7 @@ export async function createDependencies(): Promise<AppDependencies> {
     runtimeStore,
     hubspot,
     responseStyle: config.responseStyle,
+    chat,
   })
   const website = new WebsiteChannel(orchestrator, logger)
 

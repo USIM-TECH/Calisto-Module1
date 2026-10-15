@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { ChatChannel, WebhookRegistrationStatus, type PrismaClient } from '@prisma/client'
+import { ChatChannel, WebhookRegistrationStatus, type PrismaClient, type ResponseMode } from '@prisma/client'
 import { decryptCredentials, encryptCredentials, maskSecret } from './encryption.js'
 import { extractGraphApiError, validateWhatsAppAccessToken } from './webhook-utils.js'
 import type {
@@ -20,6 +20,7 @@ type DbRow = {
   channel: ChatChannel
   nativeId: string
   enabled: boolean
+  responseMode: ResponseMode
   credentialsEncrypted: string
   verifyToken: string | null
   metaAppId: string | null
@@ -54,6 +55,7 @@ function rowToRecord(row: DbRow): ChannelAccountRecord {
     channel: toManagedChannel(row.channel),
     nativeId: row.nativeId,
     enabled: row.enabled,
+    responseMode: row.responseMode,
     verifyToken: row.verifyToken ?? undefined,
     metaAppId: row.metaAppId ?? undefined,
     apiVersion: row.apiVersion ?? undefined,
@@ -161,6 +163,7 @@ export class ChannelAccountStore {
         channel: toPrismaChannel(input.channel),
         nativeId,
         enabled: true,
+        responseMode: input.responseMode,
         credentialsEncrypted: encryptCredentials(JSON.stringify(input.credentials), this.encryptionKey),
         verifyToken: input.verifyToken?.trim() || null,
         metaAppId: input.metaAppId?.trim() || null,
@@ -194,6 +197,7 @@ export class ChannelAccountStore {
         label: input.label?.trim() ?? undefined,
         nativeId,
         enabled: input.enabled,
+        responseMode: input.responseMode,
         verifyToken: input.verifyToken !== undefined ? (input.verifyToken.trim() || null) : undefined,
         metaAppId: input.metaAppId !== undefined ? (input.metaAppId.trim() || null) : undefined,
         apiVersion: input.apiVersion !== undefined ? (input.apiVersion.trim() || null) : undefined,

@@ -4,6 +4,7 @@ import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import WebchatPage from './pages/WebchatPage'
 import LeadsPage from './pages/LeadsPage'
 import ProductsPage from './pages/ProductsPage'
+import PresetProductsPage from './pages/PresetProductsPage'
 import PresetsPage from './pages/PresetsPage'
 import KnowledgePage from './pages/KnowledgePage'
 import ChannelsPage from './pages/ChannelsPage'
@@ -149,6 +150,8 @@ export default function App() {
             <Route path="/channels" element={<ChannelsPage />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/presets" element={<PresetsPage />} />
+            <Route path="/presets/new" element={<PresetProductsPage key="new" />} />
+            <Route path="/presets/:presetId/products" element={<PresetProductsPage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

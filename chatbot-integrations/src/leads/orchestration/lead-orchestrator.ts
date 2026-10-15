@@ -4,6 +4,10 @@ import type { NLPClient, NLPRequestMetadata, Logger } from '../../core/utils/ind
 import type { HubSpotClient } from '../../integrations/crm/hubspot/index.js'
 import type { MessageDeduplicator } from './message-deduplicator.js'
 import { mapNlpResponseToOutgoingMessages } from './rasa-outgoing.js'
+import type { ChatService } from '../../core/chat/chat-service.js'
+import type { ChatMessage } from '../../core/chat/llm-provider.js'
+import type { ResponseModeResolver } from '../../core/chat/mode-resolver.js'
+import { chatReplyToNlpResponse } from '../../core/chat/reply-mapper.js'
 import { normalizeBrand } from './normalization.js'
 import type { ChannelIdentityRecord, CustomerRecord, InterestKind } from '../types/records.js'
 import type {
@@ -21,6 +25,12 @@ interface LeadOrchestratorOptions {
   runtimeStore: RuntimeStore
   hubspot?: HubSpotClient
   responseStyle?: 'casual' | 'professional' | 'warm' | 'concierge'
+  /** Free-text assistant, used only on channels whose response mode is `chat`. */
+  chat?: {
+    service: ChatService
+    resolver: ResponseModeResolver
+    getPublicBaseUrl: () => string | undefined
+  }
 }
 
 type ResponseStyle = 'casual' | 'professional' | 'warm' | 'concierge'
@@ -299,6 +309,15 @@ function decorateWhatsappMessages(
   })
 }
 
+/**
+ * The suggested-prompt buttons send bare slash commands. In chat mode those are
+ * answered as the equivalent question instead of being routed to Rasa.
+ */
+const CHAT_MODE_COMMANDS: Record<string, string> = {
+  '/browse_eyewear': 'Show me your eyewear collection',
+  '/find_a_store': 'Where are your stores located?',
+}
+
 export class LeadOrchestrator {
   private readonly _logger: Logger
   private readonly _nlpClient: NLPClient
@@ -306,8 +325,10 @@ export class LeadOrchestrator {
   private readonly _runtimeStore: RuntimeStore
   private readonly _hubspot?: HubSpotClient
   private readonly _responseStyle: ResponseStyle
+  private readonly _chat?: LeadOrchestratorOptions['chat']
 
   constructor(options: LeadOrchestratorOptions) {
+    this._chat = options.chat
     this._logger = options.logger
     this._nlpClient = options.nlpClient
     this._deduplicator = options.deduplicator
@@ -339,7 +360,7 @@ export class LeadOrchestrator {
       : (message.text || message.interactive?.title)
     const inferredResponseStyle = inferResponseStyle(messageText, this._responseStyle, customer.responseStyle)
 
-    await this._runtimeStore.appendConversationMessage(
+    const conversation = await this._runtimeStore.appendConversationMessage(
       customer.id,
       identity.id,
       {
@@ -410,7 +431,10 @@ export class LeadOrchestrator {
 
     const requestMetadata = this._buildPrefillMetadata(message, customer, identity, sourceId)
 
-    const nlpResponse = await this._nlpClient.getResponse(message.senderId, messageText, requestMetadata)
+    const chatText = Object.hasOwn(CHAT_MODE_COMMANDS, messageText) ? CHAT_MODE_COMMANDS[messageText] : messageText
+    const nlpResponse = (await this._shouldUseChat(message, chatText, requestMetadata))
+      ? await this._getChatResponse(chatText, conversation.messages, message.messageId)
+      : await this._nlpClient.getResponse(message.senderId, messageText, requestMetadata)
 
     const trackerFields = deriveTrackerLeadFields(nlpResponse.tracker)
     const trackerInterests = deriveTrackerInterestSamples(nlpResponse.tracker)
@@ -553,6 +577,33 @@ export class LeadOrchestrator {
     await this._syncQualifiedLead(customer)
 
     return { customer, identity, outgoingMessages }
+  }
+
+  /**
+   * Chat mode answers free text only. Button payloads (`/intent{...}`) and any
+   * message sent while a Rasa form is active still go to Rasa, so lead capture
+   * ("Book Visit", name/phone questions) keeps working inside chat mode.
+   */
+  private async _shouldUseChat(
+    message: IncomingMessage,
+    messageText: string,
+    metadata: NLPRequestMetadata,
+  ): Promise<boolean> {
+    if (!this._chat || message.type === 'interactive' || messageText.startsWith('/')) return false
+    if ((await this._chat.resolver.resolve(message)) !== 'chat') return false
+    return !(await this._nlpClient.hasActiveForm(message.senderId, metadata))
+  }
+
+  private async _getChatResponse(
+    messageText: string,
+    conversationMessages: Array<{ direction: 'inbound' | 'outbound'; messageId: string; text?: string }>,
+    currentMessageId: string,
+  ) {
+    const history: ChatMessage[] = conversationMessages
+      .filter((m) => m.messageId !== currentMessageId && m.text?.trim())
+      .map((m) => ({ role: m.direction === 'inbound' ? 'user' as const : 'assistant' as const, content: m.text!.trim() }))
+    const reply = await this._chat!.service.reply(messageText, history)
+    return chatReplyToNlpResponse(reply, this._chat!.getPublicBaseUrl())
   }
 
   public async getSummary() {
