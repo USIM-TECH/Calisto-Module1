@@ -76,17 +76,45 @@ cd chatbot-integrations
 
 For step-by-step manual startup, see [Typical dev workflow](#typical-dev-workflow) below.
 
-### 0. Start Ollama + pull Llama 3 (one-time, only if LLM fallback is enabled)
+### 0. Start Ollama + pull Llama 3 (needed for Chat response mode and the LLM fallback)
+
+Ollama is required when a channel's response mode is set to **Chat** (Webchat settings /
+channel accounts), or when `LLM_LAYER_ENABLED=true`. Without it, Chat mode replies with
+*"Sorry, I am having trouble answering right now..."* and the backend logs a blank
+`[Chat] reply failed:` (connection refused to `localhost:11434`).
+
+**macOS (Homebrew, recommended: uses the Apple GPU, so replies are fast):**
 
 ```bash
-# Install from https://ollama.com if you haven't
-ollama serve &            # usually already running as a systemd/user service
-ollama pull llama3
-ollama list               # verify llama3 appears
+brew install ollama          # one-time
+brew services start ollama   # one-time: runs in the background and auto-starts after every reboot
+ollama pull llama3           # one-time: ~4.7 GB, stays on disk
+ollama list                  # verify llama3 appears
+curl http://localhost:11434/api/tags   # verify the server answers
+```
+
+If you only ran `ollama serve` in a terminal, it stops when the terminal closes or the Mac
+restarts, so use `brew services start ollama` instead. Don't run the Ollama desktop app, the
+brew service and the Docker container at the same time: they share port 11434.
+
+**Docker alternative (slower on Mac: Docker can't use the Apple GPU, so it runs on CPU):**
+
+```bash
+docker compose --profile llm up -d ollama
+docker compose exec ollama ollama pull llama3
 ```
 
 The integration service expects Ollama at `http://localhost:11434`
-(`OLLAMA_URL` / `OLLAMA_MODEL` in `chatbot-integrations/.env`).
+(`OLLAMA_URL` / `OLLAMA_MODEL` in `chatbot-integrations/.env`). Chat mode makes two model
+calls per message; if replies time out on a slow machine, raise `CHAT_TIMEOUT_MS` (default 30000).
+
+**Troubleshooting Chat mode:**
+
+| Symptom | Cause / fix |
+|---|---|
+| Fallback apology + blank `[Chat] reply failed:` in the backend log | Ollama isn't running. `brew services start ollama` |
+| Same, but the log shows a 404 / "model not found" | `ollama pull llama3` |
+| Log shows `timeout of 30000ms exceeded` | Model is loading or the machine is slow. Raise `CHAT_TIMEOUT_MS` |
 
 ### 1. Start the NLP service
 
