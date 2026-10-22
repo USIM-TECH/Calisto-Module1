@@ -1,733 +1,199 @@
 # Calisto Module 1
 
-## Architecture
+Customer chatbot for Calisto (eyewear retailer) across WhatsApp, Instagram, Messenger, Telegram, X and website chat, plus an admin dashboard for leads, products and knowledge.
+
+## How it works
 
 ```
-User message (WhatsApp / Instagram / Messenger / Telegram / X / Webchat)
+Customer message (any channel)
         │
         ▼
-chatbot-integrations (Node/TS API, :3000)
+chatbot-integrations  (Node/TypeScript API, :3000)
+        │   picks a response mode per channel (set in the admin UI)
         │
-        ├── 0. Context Expansion (Redis session memory)  [resolves "that", "this", "it"]
-        │      • Simple references (that, this, it) → expands using session context
-        │      • Product modifications (blue ones, cheaper ones) → adds to context
-        │      • Accessories (lenses for that) → expands with product context
+        ├── payload mode (default) ──► Rasa (:5005) ──► action server (:5055)
+        │      Rasa classifies the intent. If it is unsure (confidence < 0.4),
+        │      Llama 3 classifies instead (LLM fallback).
         │
-        ├── 1. Rasa /model/parse  (primary classifier)
-        │      • intent.name != nlu_fallback AND confidence ≥ 0.40
-        │        → forward raw text to /webhooks/rest/webhook
-        │
-        ├── 2. LLM fallback (Llama 3 via Ollama, :11434)   [only if Rasa unsure]
-        │      • classify intent + entities
-        │      • confidence ≥ 0.35 → send /intent{...} payload to Rasa
-        │      • confidence  < 0.35 → forward raw text, let Rasa default-fallback fire
-        │
-        ▼
-Rasa core (:5005)  ── runs deterministic rules / forms / actions
-        ▼
-Rasa action server (:5055)
-        ▼
-Reply forwarded to the originating channel verbatim
+        └── chat mode ──► Llama 3 via Ollama (:11434)
+               1. query-planner: classify intent + extract filters
+               2. retriever: look up products / knowledge in MySQL
+               3. answerer: write the reply from only that data
+               (src/core/chat/)
 
-Admin UI (React, :5173)
-        │
-        ▼
-chatbot-frontend  ── calls chatbot-integrations JSON APIs
-        (products, knowledge, leads, webchat playground)
+chatbot-frontend  (React admin UI, :5173) ──► chatbot-integrations API
 ```
 
-The LLM layer lives in `chatbot-integrations/src/core/utils/llm-client.ts` and
-is toggled with `LLM_LAYER_ENABLED=true|false` in `chatbot-integrations/.env`.
-Thresholds: `RASA_NLU_CONFIDENCE_FLOOR` (default `0.4`, matches Rasa's
-`FallbackClassifier`) and `LLM_CONFIDENCE_FLOOR` (default `0.35`).
-
-The Context Expansion layer lives in `chatbot-integrations/src/core/context/` and
-automatically activates when Redis is enabled. It resolves contextual references
-("that", "this", "it") without LLM invocation. See [CONTEXT_EXPANSION.md](chatbot-integrations/CONTEXT_EXPANSION.md).
-
-## Repository layout
-
-| Path | Role |
-|------|------|
-| [`calisto_nlp_export/`](calisto_nlp_export/) | Rasa NLU, rules, stories, domain, custom actions |
-| [`chatbot-integrations/`](chatbot-integrations/) | Channel webhooks, lead orchestration, REST API, Postgres via Prisma |
-| [`chatbot-frontend/`](chatbot-frontend/) | React + Vite + Tailwind admin UI (replaces legacy server-rendered dashboards) |
-
-## Quick Start
-
-### Recommended: one command (daily dev)
-
-After first-time `.env` setup (see below), start everything from `chatbot-integrations/`:
-
-```bash
-cd chatbot-integrations
-cp .env.example .env   # first time only — edit tokens, DATABASE_URL, etc.
-./scripts/start-all.sh
-```
-
-`start-all.sh` starts MySQL + Redis, runs database migrations, Rasa, Cloudflare tunnel, backend, frontend, and registers Meta/Telegram webhooks when configured.
-
-**First-time database only** (new machine, optional presets):
-
-```bash
-cd chatbot-integrations
-./scripts/setup-database.sh --seed-presets   # or: npm run db:setup -- --seed-presets
-```
-
-For step-by-step manual startup, see [Typical dev workflow](#typical-dev-workflow) below.
-
-### 0. Start Ollama + pull Llama 3 (needed for Chat response mode and the LLM fallback)
-
-Ollama is required when a channel's response mode is set to **Chat** (Webchat settings /
-channel accounts), or when `LLM_LAYER_ENABLED=true`. Without it, Chat mode replies with
-*"Sorry, I am having trouble answering right now..."* and the backend logs a blank
-`[Chat] reply failed:` (connection refused to `localhost:11434`).
-
-**macOS (Homebrew, recommended: uses the Apple GPU, so replies are fast):**
-
-```bash
-brew install ollama          # one-time
-brew services start ollama   # one-time: runs in the background and auto-starts after every reboot
-ollama pull llama3           # one-time: ~4.7 GB, stays on disk
-ollama list                  # verify llama3 appears
-curl http://localhost:11434/api/tags   # verify the server answers
-```
-
-If you only ran `ollama serve` in a terminal, it stops when the terminal closes or the Mac
-restarts, so use `brew services start ollama` instead. Don't run the Ollama desktop app, the
-brew service and the Docker container at the same time: they share port 11434.
-
-**Docker alternative (slower on Mac: Docker can't use the Apple GPU, so it runs on CPU):**
-
-```bash
-docker compose --profile llm up -d ollama
-docker compose exec ollama ollama pull llama3
-```
-
-The integration service expects Ollama at `http://localhost:11434`
-(`OLLAMA_URL` / `OLLAMA_MODEL` in `chatbot-integrations/.env`). Chat mode makes two model
-calls per message; if replies time out on a slow machine, raise `CHAT_TIMEOUT_MS` (default 30000).
-
-**Troubleshooting Chat mode:**
-
-| Symptom | Cause / fix |
+| Folder | What it is |
 |---|---|
-| Fallback apology + blank `[Chat] reply failed:` in the backend log | Ollama isn't running. `brew services start ollama` |
-| Same, but the log shows a 404 / "model not found" | `ollama pull llama3` |
-| Log shows `timeout of 30000ms exceeded` | Model is loading or the machine is slow. Raise `CHAT_TIMEOUT_MS` |
+| `calisto_nlp_export/` | Rasa project (NLU data, stories, rules, custom actions) |
+| `chatbot-integrations/` | Backend API: channel webhooks, chat mode, leads, products, auth. MySQL via Prisma, Redis cache |
+| `chatbot-frontend/` | Admin dashboard (React + Vite) |
 
-### 1. Start the NLP service
+Response mode is chosen per channel: **Channels** page for social channels, **Webchat** page for the website. Anything unset uses `payload`.
+
+## Prerequisites
+
+Works the same on macOS, Windows (cmd or PowerShell, no WSL needed) and Linux. Install:
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/): runs MySQL, Redis and Rasa
+- [Node.js](https://nodejs.org) 18+ (includes npm)
+- [Ollama](https://ollama.com/download): runs Llama 3 for chat mode
+- [`cloudflared`](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/): only for connecting real channels (WhatsApp, Telegram, etc.)
+
+You do not need Python. Rasa runs inside Docker.
+
+## First-time setup
+
+Run from the repo root. Commands are the same on every OS except file copy (`cp` on Mac/Linux, `copy` on Windows).
+
+### 1. Llama 3
+
+Make sure Ollama is running (the installer starts it; on Linux it runs as a service, on Mac `brew services start ollama` if installed with Homebrew), then:
 
 ```bash
-cd calisto_nlp_export
-docker compose down
-rm -f models/*.tar.gz
-docker compose build --no-cache rasa
-mkdir -p models
-docker compose run --rm rasa train
-docker compose up -d --build
+ollama pull llama3            # about 4.7 GB
 ```
 
-Rasa endpoints:
-- `http://localhost:5005`
-- `http://localhost:5055`
+Check with `curl http://localhost:11434/api/tags` (Windows: open that URL in a browser). Run only one Ollama at a time; the app, a service and a Docker container all use port 11434. Without a GPU, chat replies are slow; raise `CHAT_TIMEOUT_MS` in `.env` if they time out.
 
-Health/status endpoints:
-- `GET /status` (JSON)
-- `GET /version` (JSON)
+### 2. Environment files
 
-### 2. Start the integration service (backend API)
+You will be given the contents of three `.env` files (keep them private; they hold secrets and are git-ignored). Create each file in the folder shown and paste the contents in:
+
+| File to create | Holds |
+|---|---|
+| `chatbot-integrations/.env` | Backend config: tokens, keys, database, Ollama |
+| `calisto_nlp_export/.env` | One line, `BACKEND_API_KEY=...` (Rasa uses it to read products from the backend) |
+| `chatbot-frontend/.env` | `VITE_API_BASE_URL=` (leave the value empty) |
+
+How to create them:
+
+- **Any editor (VS Code recommended):** File > New File, paste, then Save As with the exact name `.env` in the right folder.
+- **Windows:** Notepad often saves `.env` as `.env.txt` and File Explorer hides extensions. Use VS Code, or in cmd: `ren .env.txt .env`. Check with `dir /a` in the folder; the name must be exactly `.env`.
+- **Mac/Linux:** files starting with a dot are hidden in Finder; use `ls -a` in the terminal to see them.
+
+Each file is plain `NAME=value` lines, no quotes and no spaces around `=`.
+
+### 3. Backend
 
 ```bash
 cd chatbot-integrations
 npm install
-cp .env.example .env
-# Edit .env: DATABASE_URL, channel tokens, RASA_URL=http://localhost:5005
-npm run db:migrate
-npm run dev
 ```
 
-Set `STORAGE_BACKEND=mysql` and `DATABASE_URL` in `.env`. For production, point `DATABASE_URL` at AWS RDS MySQL; Prisma is only the ORM/migration tool, not the database server.
+The `chatbot-integrations/.env` from step 2 already has the tokens, keys and local defaults filled in.
 
-**Local dev (Docker MySQL):**
+(Without one, `cp .env.example .env` gives a template, but `ADMIN_API_TOKEN` and `CHANNEL_CREDENTIALS_ENCRYPTION_KEY` must then be filled in with random strings from `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.)
+
+Start the database, create the tables and your login:
 
 ```bash
+docker compose -f docker-compose.mysql.yml up -d     # MySQL :3306 + Redis :6379
+npx prisma generate
+npm run db:migrate
+npm run db:seed:presets
+npm run admin -- create --email you@example.com      # asks for a password
+```
+
+### 4. Rasa
+
+Trained models are not in git, so train one. Rasa runs in Docker.
+
+The `calisto_nlp_export/.env` from step 2 holds `BACKEND_API_KEY`, which must equal `ADMIN_API_TOKEN` in the backend `.env`; otherwise product lookups from Rasa fail with 401.
+
+```bash
+cd calisto_nlp_export
+docker compose run --rm rasa train                   # a few minutes
+```
+
+### 5. Frontend
+
+```bash
+cd chatbot-frontend
+npm install
+```
+
+## Daily start
+
+Use four terminals (the first two only need to run once and stay up):
+
+```bash
+# 1. Database + Redis
+cd chatbot-integrations
 docker compose -f docker-compose.mysql.yml up -d
-./scripts/setup-database.sh
-```
 
-`.env`:
-
-```env
-STORAGE_BACKEND=mysql
-DATABASE_URL=mysql://calisto:calisto@localhost:3306/calisto_chatbot
-REDIS_URL=redis://localhost:6379
-```
-
-Browse tables with `npm run db:studio`. Caching is documented in [chatbot-integrations/CACHING.md](chatbot-integrations/CACHING.md). Database setup: [chatbot-integrations/prisma/README.md](chatbot-integrations/prisma/README.md).
-
-
-For JSON-only storage (no MySQL), set `STORAGE_BACKEND=file`. See [chatbot-integrations/LEADS.md](chatbot-integrations/LEADS.md) and [chatbot-integrations/prisma/README.md](chatbot-integrations/prisma/README.md).
-
-Backend API endpoints (used by channels and the React frontend):
-- `http://localhost:3000/` — service info
-- `http://localhost:3000/health`
-- `http://localhost:3000/webhooks/whatsapp`
-- `http://localhost:3000/webhooks/instagram`
-- `http://localhost:3000/webhooks/messenger`
-- `http://localhost:3000/webhooks/telegram`
-- `http://localhost:3000/webhooks/x`
-- `http://localhost:3000/webchat/message` — website chat API
-- `http://localhost:3000/reports/leads` — leads JSON
-- `http://localhost:3000/reports/leads/:customerId` — lead detail JSON
-- `http://localhost:3000/admin/products/api/*` — product CRUD + CSV import
-- `http://localhost:3000/admin/knowledge/api/*` — knowledge document CRUD
-- `http://localhost:3000/products/search` — product search (also used by Rasa actions)
-- `http://localhost:3000/knowledge/chunks` — knowledge chunks (also used by Rasa actions)
-
-### 3. Start the frontend (React admin UI)
-
-The admin UI is a separate Vite app in `chatbot-frontend/`. It talks to the backend over HTTP — start the integration service first.
-
-```bash
-cd chatbot-frontend
-npm install
-cp .env.example .env
-npm run dev
-```
-
-Open **http://localhost:5173**
-
-Set the backend URL in `chatbot-frontend/.env`. For local dev, leave it empty so Vite proxies API calls to `http://localhost:3000`:
-
-```env
-# Recommended for npm run dev (uses Vite proxy)
-VITE_API_BASE_URL=
-
-# Or point directly at the backend (production / preview without proxy)
-# VITE_API_BASE_URL=http://localhost:3000
-```
-
-**Stack:** React 18, TypeScript, Vite, Tailwind CSS, react-router-dom
-
-**Pages:**
-
-| Route | Purpose |
-|-------|---------|
-| `/leads` | Lead list and summary |
-| `/leads/:customerId` | Lead detail, transcript, interests |
-| `/products` | Product catalogue admin + CSV import |
-| `/knowledge` | Knowledge base document admin |
-| `/webchat` | Webchat playground (calls `/webchat/message`) |
-| `/chatbot` | Standalone customer-facing chat widget (full-screen, no sidebar) |
-
-Production build:
-
-```bash
-cd chatbot-frontend
-npm run build
-npm run preview   # serves dist/ on :4173 by default
-```
-
-See also [chatbot-frontend/README.md](chatbot-frontend/README.md).
-
-### 4. Telegram
-
-See the full end-to-end Telegram runbook: [chatbot-integrations/scripts/TELEGRAM.md](chatbot-integrations/scripts/TELEGRAM.md)
-
-### 5. Cloudflare tunnel (webhooks in dev)
-
-Expose the **backend** for Meta/Telegram webhooks:
-
-```bash
-cloudflared tunnel --url http://localhost:3000
-```
-
-For WhatsApp and Messenger, update webhook URLs after each tunnel restart:
-
-```bash
-cd chatbot-integrations
-./scripts/set-meta-webhooks.sh
-```
-
-This also syncs `PUBLIC_BASE_URL` from the live tunnel (writing it to `.env` and recreating the Rasa action server) so product-card images are fetchable by WhatsApp/Telegram/Messenger. Without a public URL, those channels fall back to a generated placeholder image.
-
-Instagram callback URLs must be set in the Meta App Dashboard (Instagram → API setup → Webhooks).
-
-## Typical dev workflow
-
-### Option 0: One-shot start (recommended)
-
-```bash
-cd chatbot-integrations
-./scripts/start-all.sh
-```
-
-Then open **http://localhost:5173** for the admin UI.
-
-### Option A: Fully Docker-based (production-like, manual terminals)
-
-Run these in separate terminals:
-
-```bash
-# Terminal 1 — MySQL + Redis (local Docker)
-cd chatbot-integrations && docker compose -f docker-compose.mysql.yml up -d
-
-# Terminal 2 — Rasa + actions
-cd calisto_nlp_export && docker compose up -d
-
-# Terminal 3 — backend API
-cd chatbot-integrations && npm run dev
-
-# Terminal 4 — React admin UI
-cd chatbot-frontend && npm run dev
-
-# Terminal 5 — tunnel (when testing channel webhooks)
-cloudflared tunnel --url http://localhost:3000
-```
-
-Then open **http://localhost:5173** for the admin UI.
-
-### Option B: Hybrid local setup (databases in Docker, services local)
-
-Use this if you're developing Rasa models locally or prefer local Python debugging:
-
-```bash
-# Terminal 1 — Start PostgreSQL + Redis in Docker
-cd Calisto-Module1
-docker compose -f docker-compose.services.yml up -d
-
-# Terminal 2 — Train and run Rasa locally
+# 2. Rasa + action server
 cd calisto_nlp_export
-source .venv/bin/activate  # Activate Python virtual environment
-rasa train                  # Train model (first time or after changes)
-rasa run --enable-api --cors "*" --port 5005
-
-# Terminal 3 — Run Rasa action server locally
-cd calisto_nlp_export
-source .venv/bin/activate
-rasa run actions --port 5055
-
-# Terminal 4 — Backend API
-cd chatbot-integrations
-npm run dev
-
-# Terminal 5 — React admin UI
-cd chatbot-frontend
-npm run dev
-
-# Terminal 6 — Tunnel (when testing channel webhooks)
-cloudflared tunnel --url http://localhost:3000
-```
-
-**Local Rasa setup requirements:**
-- Python virtual environment at `calisto_nlp_export/.venv`
-- Rasa 3.6.21 and dependencies installed
-- Redis Python client (4.6.0) installed
-- Trained model in `calisto_nlp_export/models/`
-
-**Note:** Redis tracker store is available but currently disabled in `endpoints.yml` due to a Rasa 3.6 local compatibility issue. It works fine in Docker mode.
-
-Then open **http://localhost:5173** for the admin UI.
-
-## Detailed Terminal Commands
-
-### Option A: Docker-based Setup (Step-by-step)
-
-#### First-time setup:
-
-```bash
-# 1. Start databases (PostgreSQL + Redis)
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
-docker compose -f docker-compose.postgres.yml up -d
-
-# 2. Setup database schema
-./scripts/setup-database.sh
-
-# 3. Build and train Rasa
-cd ../calisto_nlp_export
-docker compose down
-rm -f models/*.tar.gz
-docker compose build --no-cache rasa
-mkdir -p models
-docker compose run --rm rasa train
-
-# 4. Start Rasa services
 docker compose up -d
 
-# 5. Setup backend dependencies
-cd ../chatbot-integrations
-npm install
-cp .env.example .env
-# Edit .env file with your settings
-npm run db:migrate
-
-# 6. Setup frontend dependencies
-cd ../chatbot-frontend
-npm install
-cp .env.example .env
-```
-
-#### Daily startup (after first-time setup):
-
-**Terminal 1 - Databases:**
-```bash
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
-docker compose -f docker-compose.postgres.yml up
-# Or run detached: docker compose -f docker-compose.postgres.yml up -d
-```
-
-**Terminal 2 - Rasa (NLU + Actions):**
-```bash
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
-docker compose up
-# Or run detached: docker compose up -d
-```
-
-**Terminal 3 - Backend API:**
-```bash
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
-npm run dev
-```
-
-**Terminal 4 - Frontend:**
-```bash
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-frontend
-npm run dev
-```
-
-**Terminal 5 - Cloudflare Tunnel (optional, for webhooks):**
-```bash
-cloudflared tunnel --url http://localhost:3000
-```
-
-#### Useful Docker commands:
-
-```bash
-# Check running containers
-docker ps
-
-# View logs
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
-docker compose logs -f rasa
-docker compose logs -f actions
-
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
-docker compose -f docker-compose.postgres.yml logs -f postgres
-docker compose -f docker-compose.postgres.yml logs -f redis
-
-# Stop services
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
-docker compose down
-
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
-docker compose -f docker-compose.postgres.yml down
-
-# Restart services
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
-docker compose restart rasa
-docker compose restart actions
-
-# Rebuild after code changes
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
-docker compose down
-docker compose build --no-cache
-docker compose run --rm rasa train  # If model changed
-docker compose up -d
-```
-
----
-
-### Option B: Hybrid Local Setup (Step-by-step)
-
-#### First-time setup:
-
-```bash
-# 1. Create Python virtual environment
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
-python3 -m venv .venv
-source .venv/bin/activate
-
-# 2. Install Rasa and dependencies
-pip install --upgrade pip
-pip install rasa==3.6.21
-pip install redis==4.6.0
-pip install -r requirements.txt
-
-# 3. Start databases (PostgreSQL + Redis)
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1
-docker compose -f docker-compose.services.yml up -d
-
-# 4. Setup database schema
+# 3. Backend
 cd chatbot-integrations
-./scripts/setup-database.sh
-
-# 5. Train Rasa model
-cd ../calisto_nlp_export
-source .venv/bin/activate
-rasa train
-
-# 6. Setup backend dependencies
-cd ../chatbot-integrations
-npm install
-cp .env.example .env
-# Edit .env file with:
-# DATABASE_URL=postgresql://calisto:calisto@localhost:5432/calisto_chatbot
-# REDIS_URL=redis://localhost:6379
-# RASA_URL=http://localhost:5005
-npm run db:migrate
-
-# 7. Setup frontend dependencies
-cd ../chatbot-frontend
-npm install
-cp .env.example .env
-# Leave VITE_API_BASE_URL empty for local dev
-```
-
-#### Daily startup (after first-time setup):
-
-**Terminal 1 - Databases:**
-```bash
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1
-docker compose -f docker-compose.services.yml up
-# Or run detached: docker compose -f docker-compose.services.yml up -d
-
-# Verify services are running:
-docker ps
-# Should show postgres and redis containers
-```
-
-**Terminal 2 - Rasa NLU Server:**
-```bash
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
-source .venv/bin/activate
-rasa run --enable-api --cors "*" --port 5005
-
-# You should see:
-# Rasa server is up and running on http://localhost:5005
-```
-
-**Terminal 3 - Rasa Action Server:**
-```bash
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
-source .venv/bin/activate
-rasa run actions --port 5055
-
-# You should see:
-# Action endpoint is up and running on http://localhost:5055
-```
-
-**Terminal 4 - Backend API:**
-```bash
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
 npm run dev
 
-# You should see:
-# Server running on http://localhost:3000
-```
-
-**Terminal 5 - Frontend:**
-```bash
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-frontend
-npm run dev
-
-# You should see:
-# Local: http://localhost:5173/
-```
-
-**Terminal 6 - Cloudflare Tunnel (optional, for webhooks):**
-```bash
-cloudflared tunnel --url http://localhost:3000
-
-# Copy the generated URL (e.g., https://xxx.trycloudflare.com)
-# Update webhook URLs if needed:
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
-./scripts/set-meta-webhooks.sh
-```
-
-#### When you make changes:
-
-**After changing Rasa training data (NLU, stories, rules, domain):**
-```bash
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
-source .venv/bin/activate
-rasa train
-# Then restart Terminal 2 (Rasa server) - Ctrl+C and run again
-```
-
-**After changing Rasa actions (Python code):**
-```bash
-# Just restart Terminal 3 (Action server) - Ctrl+C and run again
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
-source .venv/bin/activate
-rasa run actions --port 5055
-```
-
-**After changing backend code:**
-```bash
-# Hot reload is automatic with npm run dev
-# If needed, restart Terminal 4 - Ctrl+C and run again
-```
-
-**After changing frontend code:**
-```bash
-# Hot reload is automatic with npm run dev
-# If needed, restart Terminal 5 - Ctrl+C and run again
-```
-
-#### Useful local commands:
-
-```bash
-# Check if ports are in use
-lsof -i :5005  # Rasa server
-lsof -i :5055  # Rasa actions
-lsof -i :3000  # Backend API
-lsof -i :5173  # Frontend
-lsof -i :5432  # PostgreSQL
-lsof -i :6379  # Redis
-
-# Kill process on port (if needed)
-kill -9 $(lsof -t -i:5005)
-
-# Check database connection
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
-psql postgresql://calisto:calisto@localhost:5432/calisto_chatbot
-
-# Check Redis connection
-redis-cli -h localhost -p 6379 ping
-# Should return: PONG
-
-# View Redis data
-redis-cli -h localhost -p 6379
-> KEYS *
-> GET <key>
-> exit
-
-# View database with Prisma Studio
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
-npm run db:studio
-# Opens http://localhost:5555
-
-# Test Rasa endpoint
-curl http://localhost:5005/
-
-# Test backend health
-curl http://localhost:3000/health
-
-# View backend logs in real-time
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
-npm run dev | grep ERROR  # Filter errors only
-
-# Shutdown databases
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1
-docker compose -f docker-compose.services.yml down
-
-# Shutdown and remove volumes (clean slate)
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1
-docker compose -f docker-compose.services.yml down -v
-```
-
-#### Troubleshooting:
-
-**Rasa won't start:**
-```bash
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/calisto_nlp_export
-source .venv/bin/activate
-# Check if model exists
-ls -la models/
-# If no model, train one:
-rasa train
-```
-
-**Database connection errors:**
-```bash
-# Check if PostgreSQL is running
-docker ps | grep postgres
-
-# If not running, start it:
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1
-docker compose -f docker-compose.services.yml up -d postgres
-
-# Check connection:
-psql postgresql://calisto:calisto@localhost:5432/calisto_chatbot -c "SELECT 1;"
-```
-
-**Redis connection errors:**
-```bash
-# Check if Redis is running
-docker ps | grep redis
-
-# If not running, start it:
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1
-docker compose -f docker-compose.services.yml up -d redis
-
-# Check connection:
-redis-cli -h localhost -p 6379 ping
-```
-
-**Port already in use:**
-```bash
-# Find what's using the port
-lsof -i :5005
-
-# Kill the process
-kill -9 <PID>
-
-# Or kill all Rasa processes
-pkill -f rasa
-```
-
-**Frontend not loading:**
-```bash
-# Clear npm cache and reinstall
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-frontend
-rm -rf node_modules package-lock.json
-npm install
+# 4. Frontend
+cd chatbot-frontend
 npm run dev
 ```
 
-**Backend not connecting to Rasa:**
-```bash
-# Check RASA_URL in .env
-cd /Users/aswanthb/Documents/GitHub/Calisto-Module1/chatbot-integrations
-cat .env | grep RASA_URL
-# Should be: RASA_URL=http://localhost:5005
+Open http://localhost:5173 and sign in with the account you created.
 
-# Test Rasa endpoint
-curl http://localhost:5005/
-```
+| Service | Check |
+|---|---|
+| Admin UI | http://localhost:5173 |
+| Backend | http://localhost:3000/health |
+| Rasa | http://localhost:5005/version |
 
----
+Stop with Ctrl+C in terminals 3 and 4, and `docker compose down` in each folder you started Docker from.
 
-### Access URLs
+## Add data
 
-Once all services are running:
+The bot answers only from your data. In the admin UI add products on **Products** (CSV import works) and documents on **Knowledge**. With an empty database it has nothing to recommend.
 
-- **Frontend (Admin UI)**: http://localhost:5173
-  - Leads: http://localhost:5173/leads
-  - Products: http://localhost:5173/products
-  - Knowledge: http://localhost:5173/knowledge
-  - Webchat Playground: http://localhost:5173/webchat
-  - Customer Chat Widget: http://localhost:5173/chatbot
+## Connect a real channel (optional)
 
-- **Backend API**: http://localhost:3000
-  - Health: http://localhost:3000/health
-  - Leads API: http://localhost:3000/reports/leads
-  - Products API: http://localhost:3000/admin/products/api/products
-  - Webchat: http://localhost:3000/webchat/message
+Webchat and the admin UI work without this. WhatsApp, Instagram, Messenger and Telegram need a public HTTPS URL:
 
-- **Rasa Server**: http://localhost:5005
-  - Status: http://localhost:5005/status
-  - Version: http://localhost:5005/version
+1. Start a tunnel: `cloudflared tunnel --url http://localhost:3000`. Copy the `https://...trycloudflare.com` URL it prints.
+2. Open the **Channels** page, add the account with its tokens, then use **Register webhook** and paste the tunnel URL.
+3. The URL changes every time the tunnel restarts. Click **Reconnect all** to point every channel at the new one.
 
-- **Rasa Actions**: http://localhost:5055
-  - Health: http://localhost:5055/health
+Instagram callback URLs must also be set in the Meta App Dashboard (Instagram > API setup > Webhooks).
 
-- **Prisma Studio** (Database UI): http://localhost:5555
-  - Run: `cd chatbot-integrations && npm run db:studio`
+## Testing the bot
 
-- **PostgreSQL**: localhost:5432
-  - Connect: `psql postgresql://calisto:calisto@localhost:5432/calisto_chatbot`
+1. Open http://localhost:5173 and sign in.
+2. **Webchat** page: choose the response mode (Payload or Chat).
+3. Open the **Chatbot** page (`/chatbot`) or the Webchat playground and send a message such as "show me sunglasses under 300".
 
-- **Redis**: localhost:6379
-  - Connect: `redis-cli -h localhost -p 6379`
+To compare the two modes, switch the setting and ask the same question. Changes apply within about 5 seconds.
+
+## When you change things
+
+| Changed | Do |
+|---|---|
+| Backend or frontend code | Nothing, hot reload |
+| Rasa training data (`data/`, `domain.yml`) | `cd calisto_nlp_export && docker compose run --rm rasa train && docker compose up -d --build` |
+| Rasa custom actions (`actions/`) | `cd calisto_nlp_export && docker compose up -d --build action-server` |
+| `prisma/schema.prisma` | `cd chatbot-integrations && npm run db:migrate:dev` |
+| Chat mode behaviour | `chatbot-integrations/src/core/chat/` (prompts are in `query-planner.ts` and `answerer.ts`) |
+
+Type-check the backend with `npm run check:type`; build the frontend with `npm run build`.
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| Chat mode replies "Sorry, I am having trouble answering right now" and `[Chat] reply failed:` is blank in the backend log | Ollama is not running. Start it (desktop app, `brew services start ollama` on Mac, or `systemctl start ollama` on Linux) |
+| Same, with 404 or "model not found" in the log | `ollama pull llama3` |
+| `timeout of 30000ms exceeded` | Model is still loading or the machine is slow. Raise `CHAT_TIMEOUT_MS` in `.env` |
+| Rasa will not start or says no model found | Train one: `cd calisto_nlp_export && docker compose run --rm rasa train`, then `docker compose up -d` |
+| Rasa answers but product results are empty or the action server gets 401 | The backend must be running on :3000 and the Products page must have data. For Rasa in Docker, `BACKEND_API_KEY` in `calisto_nlp_export/.env` must equal `ADMIN_API_TOKEN` |
+| Port already in use | Another copy is running. Mac/Linux: `lsof -i :<port>`. Windows: `netstat -ano` and look for the port, then end that process in Task Manager. Also check `docker ps` for old containers |
+| Cannot connect to the database | `docker ps` should show `calisto-mysql` and `calisto-redis` as healthy. If not, rerun the `docker compose ... up -d` command |
+| Product images missing on WhatsApp, Telegram or Messenger | Set `PUBLIC_BASE_URL` in `chatbot-integrations/.env` to the tunnel URL and restart the backend |
+
+## More documentation
+
+- `chatbot-integrations/prisma/README.md`: database and migrations
+- `chatbot-frontend/README.md`, `calisto_nlp_export/README.md`
