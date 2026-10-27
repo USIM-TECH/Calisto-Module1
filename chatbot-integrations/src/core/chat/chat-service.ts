@@ -1,3 +1,4 @@
+
 import type { ProductStore } from '../../products/storage/product-store.interface.js'
 import type { ProductRecord } from '../../products/types.js'
 import type { Logger } from '../utils/index.js'
@@ -56,51 +57,111 @@ export class ChatService {
 
   public async reply(message: string, history: ChatMessage[] = []): Promise<ChatReply> {
     const recent = history.slice(-this._config.historyTurns)
+
     if (looksLikeInjection(message)) {
       this._logger.warn('[Chat] blocked a prompt-injection style message')
-      return { text: this._config.offTopicMessage ?? DEFAULT_OFF_TOPIC, products: [] }
+      return {
+        text: this._config.offTopicMessage ?? DEFAULT_OFF_TOPIC,
+        products: [],
+      }
     }
+
     try {
       const vocab = {
         productTypes: await this._products.distinctProductTypes(),
         brands: await this._products.distinctBrands(),
       }
+
       const plan = await this._planner.plan(message, recent, vocab)
-      this._logger.debug(`[Chat] intent=${plan.intent} filters=${JSON.stringify(plan.filters)}`)
+
+      this._logger.debug(
+        `[Chat] intent=${plan.intent} filters=${JSON.stringify(plan.filters)}`,
+      )
 
       if (plan.intent === 'off_topic') {
-        return { text: this._config.offTopicMessage ?? DEFAULT_OFF_TOPIC, products: [] }
-      }
-      if (plan.intent === 'chitchat' && recent.length === 0) {
-        return { text: this._config.greetingMessage ?? DEFAULT_GREETING, products: [] }
+        return {
+          text: this._config.offTopicMessage ?? DEFAULT_OFF_TOPIC,
+          products: [],
+        }
       }
 
-      let context = await this._retriever.retrieve(message, plan.intent === 'product' ? plan.filters : null)
+      if (plan.intent === 'chitchat' && recent.length === 0) {
+        return {
+          text: this._config.greetingMessage ?? DEFAULT_GREETING,
+          products: [],
+        }
+      }
+
+      let context = await this._retriever.retrieve(
+        message,
+        plan.intent === 'product' ? plan.filters : null,
+      )
+
       if (plan.intent === 'product' && context.products.length === 0) {
-        // Over-narrow filters are the usual cause, so retry on type and brand alone.
-        const { productType, brand } = plan.filters
-        if (Object.keys(plan.filters).some((key) => key !== 'productType' && key !== 'brand')) {
-          context = await this._retriever.retrieve(message, { productType, brand })
+        const hasBudgetConstraint =
+          plan.filters.budgetMin !== undefined ||
+          plan.filters.budgetMax !== undefined ||
+          plan.filters.budgetBucket !== undefined ||
+          plan.filters.priceRange !== undefined
+
+        // Never remove an explicit budget when retrying a product search.
+        // A relaxed retry is allowed only when no budget constraint was given.
+        if (!hasBudgetConstraint) {
+          const { productType, brand } = plan.filters
+
+          if (
+            Object.keys(plan.filters).some(
+              (key) => key !== 'productType' && key !== 'brand',
+            )
+          ) {
+            context = await this._retriever.retrieve(message, {
+              productType,
+              brand,
+            })
+          }
         }
-        // Still nothing: the model would invent products to fill the gap, so don't ask it.
+
+        // Do not ask the model to invent products when no matches exist.
         if (context.products.length === 0) {
-          return { text: this._config.noMatchMessage ?? DEFAULT_NO_MATCH, products: [] }
+          return {
+            text: this._config.noMatchMessage ?? DEFAULT_NO_MATCH,
+            products: [],
+          }
         }
       }
-      // A business question with nothing to ground it would be answered from the model's
-      // imagination (hours, policies), so say we don't know instead of calling it.
+
+      // Do not let the model invent business information without evidence.
       if (plan.intent === 'knowledge' && context.knowledge.length === 0) {
-        return { text: this._config.noInfoMessage ?? DEFAULT_NO_INFO, products: [] }
+        return {
+          text: this._config.noInfoMessage ?? DEFAULT_NO_INFO,
+          products: [],
+        }
       }
+
       const text = await this._answerer.answer(message, recent, context)
+
       if (leaksInstructions(text)) {
         this._logger.warn('[Chat] reply echoed its instructions; replaced')
-        return { text: this._config.offTopicMessage ?? DEFAULT_OFF_TOPIC, products: [] }
+        return {
+          text: this._config.offTopicMessage ?? DEFAULT_OFF_TOPIC,
+          products: [],
+        }
       }
-      return { text, products: plan.intent === 'product' ? context.products : [] }
-    } catch (error: any) {
-      this._logger.error(`[Chat] reply failed: ${error.message}`)
-      return { text: this._config.fallbackMessage ?? DEFAULT_FALLBACK, products: [] }
+
+      return {
+        text,
+        products: plan.intent === 'product' ? context.products : [],
+      }
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
+
+      this._logger.error(`[Chat] reply failed: ${errorMessage}`)
+
+      return {
+        text: this._config.fallbackMessage ?? DEFAULT_FALLBACK,
+        products: [],
+      }
     }
   }
 }
