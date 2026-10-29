@@ -10,7 +10,7 @@ import { handleTelegramWebhook } from './webhook.js'
 
 export interface TelegramConfig {
   botToken: string
-  secretToken?: string
+  secretToken: string
   apiBaseUrl?: string
 }
 
@@ -62,15 +62,13 @@ export class TelegramChannel {
       allowed_updates: ['message', 'edited_message', 'callback_query'],
       drop_pending_updates: true,
     }
-    const secret = this._config.secretToken?.trim()
-    if (secret) {
-      if (!/^[A-Za-z0-9_-]{1,256}$/.test(secret)) {
-        throw new Error(
-          'Telegram secret_token must be 1–256 characters and only contain A-Z, a-z, 0-9, _ and -',
-        )
-      }
-      body.secret_token = secret
+    const secret = this._config.secretToken.trim()
+    if (!/^[A-Za-z0-9_-]{1,256}$/.test(secret)) {
+      throw new Error(
+        'Telegram secret_token must be 1–256 characters and only contain A-Z, a-z, 0-9, _ and -',
+      )
     }
+    body.secret_token = secret
 
     let response
     try {

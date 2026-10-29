@@ -84,7 +84,7 @@ function buildCandidates(): ChannelAccountInput[] {
       channel: 'telegram',
       credentials: {
         botToken: tgToken,
-        secretToken: optionalEnv('TELEGRAM_SECRET_TOKEN'),
+        secretToken: optionalEnv('TELEGRAM_SECRET_TOKEN') ?? '',
         apiBaseUrl: optionalEnv('TELEGRAM_API_BASE_URL'),
       },
     })

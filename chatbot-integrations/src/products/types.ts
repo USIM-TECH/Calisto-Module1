@@ -50,6 +50,9 @@ export interface ProductListResult {
 }
 
 export interface ProductSearchQuery {
+  productId?: string
+  productIds?: string[]
+  productName?: string
   productType?: string
   brand?: string
   priceRange?: string
@@ -68,6 +71,7 @@ export interface ProductSearchQuery {
   budgetMax?: number
   budgetBucket?: 'low' | 'mid' | 'premium' | string
   priceModifier?: string
+  stockRequired?: boolean
   limit?: number
 }
 

@@ -90,6 +90,7 @@ const envSchema = z
      */
     TRUST_PROXY: optionalString,
     CHANNEL_CREDENTIALS_ENCRYPTION_KEY: optionalString,
+    LLM_PROVIDER_ENCRYPTION_KEY: optionalString,
 
   WEBSITE_AUTH_TOKEN: optionalString,
   WEBSITE_ALLOWED_ORIGINS: optionalString,
@@ -135,6 +136,7 @@ export interface AppConfig {
   /** Parsed TRUST_PROXY value for `app.set('trust proxy', ...)`. */
   trustProxy?: boolean | number | string
   channelCredentialsEncryptionKey?: string
+  llmProviderEncryptionKey?: string
   dedupTtlMs: number
   responseStyle: 'casual' | 'professional' | 'warm' | 'concierge'
   llm: {
@@ -207,6 +209,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     },
     trustProxy: parseTrustProxy(parsed.TRUST_PROXY),
     channelCredentialsEncryptionKey: parsed.CHANNEL_CREDENTIALS_ENCRYPTION_KEY,
+    llmProviderEncryptionKey: parsed.LLM_PROVIDER_ENCRYPTION_KEY,
     dedupTtlMs: parsed.DEDUP_TTL_MS,
     responseStyle: parsed.RESPONSE_STYLE,
     llm: {

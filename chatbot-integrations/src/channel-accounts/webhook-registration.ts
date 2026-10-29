@@ -10,6 +10,7 @@ import {
   assertPublicWebhookBaseUrl,
   extractGraphApiError,
   extractTelegramApiError,
+  normalizePublicWebhookBaseUrl,
   validateWhatsAppAccessToken,
 } from './webhook-utils.js'
 
@@ -17,6 +18,7 @@ export {
   assertPublicWebhookBaseUrl,
   extractGraphApiError,
   extractTelegramApiError,
+  normalizePublicWebhookBaseUrl,
   validateWhatsAppAccessToken,
 } from './webhook-utils.js'
 
@@ -201,7 +203,7 @@ export async function registerAccountWebhook(
   } catch (error) {
     const message = account.record.channel === 'telegram'
       ? extractTelegramApiError(error)
-      : extractGraphApiError(error)
+      : extractGraphApiError(error, account.record.channel)
     await store.updateWebhookState(account.record.id, {
       webhookStatus: WebhookRegistrationStatus.error,
       webhookError: message,

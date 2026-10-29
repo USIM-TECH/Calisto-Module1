@@ -304,7 +304,7 @@ export async function validateCredentials(channel: ManagedChannel, credentials: 
       try {
         await validateWhatsAppAccessToken(c.accessToken.trim(), c.phoneNumberId.trim(), 'v25.0')
       } catch (error) {
-        throw new Error(extractGraphApiError(error))
+        throw new Error(extractGraphApiError(error, 'whatsapp'))
       }
       return
     }
@@ -314,10 +314,14 @@ export async function validateCredentials(channel: ManagedChannel, credentials: 
         throw new Error('Instagram requires accessToken and instagramId')
       }
       const version = 'v21.0'
-      await axios.get(`https://graph.instagram.com/${version}/${c.instagramId.trim()}`, {
-        params: { fields: 'id,username', access_token: c.accessToken.trim() },
-        timeout: 10_000,
-      })
+      try {
+        await axios.get(`https://graph.instagram.com/${version}/${c.instagramId.trim()}`, {
+          params: { fields: 'id,username', access_token: c.accessToken.trim() },
+          timeout: 10_000,
+        })
+      } catch (error) {
+        throw new Error(extractGraphApiError(error, 'instagram'))
+      }
       return
     }
     case 'messenger': {
@@ -326,13 +330,25 @@ export async function validateCredentials(channel: ManagedChannel, credentials: 
         throw new Error('Messenger requires pageAccessToken and pageId')
       }
       const version = 'v23.0'
-      await axios.get(`https://graph.facebook.com/${version}/${c.pageId.trim()}`, {
-        params: { fields: 'id,name', access_token: c.pageAccessToken.trim() },
-        timeout: 10_000,
-      })
+      try {
+        await axios.get(`https://graph.facebook.com/${version}/${c.pageId.trim()}`, {
+          params: { fields: 'id,name', access_token: c.pageAccessToken.trim() },
+          timeout: 10_000,
+        })
+      } catch (error) {
+        throw new Error(extractGraphApiError(error, 'messenger'))
+      }
       return
     }
     case 'telegram': {
+      const c = credentials as TelegramCredentials
+      const secret = c.secretToken?.trim()
+      if (!secret) {
+        throw new Error('Telegram requires a webhook secret token')
+      }
+      if (!/^[A-Za-z0-9_-]{1,256}$/.test(secret)) {
+        throw new Error('Telegram webhook secret token must be 1–256 characters and only contain A-Z, a-z, 0-9, _ and -')
+      }
       await resolveNativeId(channel, credentials)
       return
     }

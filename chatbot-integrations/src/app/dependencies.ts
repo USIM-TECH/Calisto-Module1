@@ -1,4 +1,5 @@
 import * as dotenv from 'dotenv'
+import crypto from 'crypto'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import type { AppConfig } from '../config/index.js'
@@ -24,7 +25,7 @@ import {
   type RuntimeStore,
 } from '../leads/index.js'
 import { getPrismaClient } from '../db/prisma.js'
-import { ChatService, ChatRetriever, OllamaProvider } from '../core/chat/index.js'
+import { ChatService, ChatRetriever, LlmProviderManager, OllamaProvider, ProviderConfigStore } from '../core/chat/index.js'
 import { ResponseModeResolver } from '../core/chat/mode-resolver.js'
 import { ProductSearchService } from '../products/service/product-search.js'
 import { WebchatSettingsStore } from '../webchat-settings/index.js'
@@ -51,6 +52,8 @@ export interface AppDependencies {
   x?: XChannel
   website: WebsiteChannel
   hubspot?: HubSpotClient
+  llmProviderManager: LlmProviderManager
+  llmProviderStore?: ProviderConfigStore
 }
 
 export function loadEnvironment(): void {
@@ -117,6 +120,19 @@ export async function createDependencies(): Promise<AppDependencies> {
         logger,
       )
     : undefined
+  const providerEncryptionKey = config.llmProviderEncryptionKey
+    ?? (config.channelCredentialsEncryptionKey
+      ? crypto.createHash('sha256').update(`${config.channelCredentialsEncryptionKey}:llm-provider-config`).digest('hex')
+      : undefined)
+  const llmProviderStore = config.storageBackend === 'mysql' && providerEncryptionKey
+    ? new ProviderConfigStore(getPrismaClient(), providerEncryptionKey)
+    : undefined
+  if (llmProviderStore) await llmProviderStore.ensureOllama(config.llm.model)
+  const llmProviderManager = new LlmProviderManager(
+    llmProviderStore,
+    { ollamaUrl: config.llm.ollamaUrl, model: config.llm.model, timeoutMs: config.chat.timeoutMs, temperature: config.chat.temperature },
+    logger,
+  )
 
   if (llmClassifier) {
     logger.info(
@@ -154,12 +170,7 @@ export async function createDependencies(): Promise<AppDependencies> {
   const chat = productStore
     ? {
         service: new ChatService(
-          new OllamaProvider({
-            ollamaUrl: config.llm.ollamaUrl,
-            model: config.llm.model,
-            timeoutMs: config.chat.timeoutMs,
-            temperature: config.chat.temperature,
-          }),
+          llmProviderManager.runtimeProvider(),
           new ChatRetriever(
             new ProductSearchService(productStore),
             presetStore,
@@ -244,5 +255,7 @@ export async function createDependencies(): Promise<AppDependencies> {
     x,
     website,
     hubspot,
+    llmProviderManager,
+    llmProviderStore,
   }
 }

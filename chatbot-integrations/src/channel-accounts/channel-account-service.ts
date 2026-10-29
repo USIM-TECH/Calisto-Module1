@@ -26,7 +26,10 @@ export interface WebhookRegistrationResult {
 const REGISTER_ALL_DELAY_MS = 1_500
 
 export class ChannelAccountService {
-  private _registry: ChannelAccountRegistry = new ChannelAccountRegistry()
+  // Keep this object stable. The webhook router and response-mode resolver retain
+  // a reference to it when the application starts, so replacing the instance on
+  // account changes leaves those consumers looking at stale account mappings.
+  private readonly _registry = new ChannelAccountRegistry()
 
   constructor(
     private readonly store: ChannelAccountStore,
@@ -47,7 +50,7 @@ export class ChannelAccountService {
   }
 
   public async reload(): Promise<void> {
-    this._registry = await buildChannelAccountRegistry({
+    const reloaded = await buildChannelAccountRegistry({
       store: this.store,
       logger: this.logger,
       cacheService: this.cacheService,
@@ -57,6 +60,7 @@ export class ChannelAccountService {
         await this.store.updateAccessToken(accountId, accessToken, expiresAt)
       },
     })
+    this._registry.replaceAll(reloaded.list())
   }
 
   public async list() {

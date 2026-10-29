@@ -27,7 +27,7 @@ import type { ChannelAccountInput, ChannelAccountRecord, ResponseMode } from '..
 import { pageSlice, useTablePaging } from '../lib/table-paging'
 
 const WEBHOOK_STATUS = {
-  active: { label: 'Connected', tone: 'bg-emerald-100 text-emerald-700', Icon: CheckCircle2 },
+  active: { label: 'Webhook active', tone: 'bg-emerald-100 text-emerald-700', Icon: CheckCircle2 },
   pending: { label: 'Setup needed', tone: 'bg-amber-100 text-amber-700', Icon: Clock },
   error: { label: 'Failed', tone: 'bg-rose-100 text-rose-700', Icon: AlertCircle },
 } as const
@@ -69,6 +69,7 @@ export default function ChannelsPage() {
   const [registerUrl, setRegisterUrl] = useState('')
   const [tokenTarget, setTokenTarget] = useState<ChannelAccountRecord | null>(null)
   const [tokenValue, setTokenValue] = useState('')
+  const [telegramSecretToken, setTelegramSecretToken] = useState('')
   const [webhookInfoTarget, setWebhookInfoTarget] = useState<ChannelAccountRecord | null>(null)
 
   const load = useCallback(async () => {
@@ -176,10 +177,11 @@ export default function ChannelsPage() {
   async function handleUpdateToken(account: ChannelAccountRecord) {
     setTokenTarget(account)
     setTokenValue('')
+    setTelegramSecretToken('')
   }
 
   async function confirmUpdateToken() {
-    if (!tokenTarget || !tokenValue.trim()) return
+    if (!tokenTarget || !tokenValue.trim() || (tokenTarget.channel === 'telegram' && !telegramSecretToken.trim())) return
     setBusyId(tokenTarget.id)
     try {
       const key = tokenTarget.channel === 'whatsapp'
@@ -190,7 +192,9 @@ export default function ChannelsPage() {
             ? 'accessToken'
             : 'botToken'
       await updateChannelAccount(tokenTarget.id, {
-        credentials: { [key]: tokenValue.trim() },
+        credentials: tokenTarget.channel === 'telegram'
+          ? { botToken: tokenValue.trim(), secretToken: telegramSecretToken.trim() }
+          : { [key]: tokenValue.trim() },
       })
       snackbar.success(`Credentials updated for ${tokenTarget.label}.`)
       setTokenTarget(null)
@@ -467,7 +471,7 @@ export default function ChannelsPage() {
                 </div>
               )}
               <p className="mt-4 text-xs leading-5 text-calisto-body">
-                The status switches to <strong>Connected</strong> automatically once the first message arrives.
+                A registered webhook is not an end-to-end message test. Send and verify an inbound customer message before treating this account as operational.
               </p>
             </>
           )}
@@ -476,12 +480,14 @@ export default function ChannelsPage() {
 
       {tokenTarget && (
         <Modal
-          description={<>Paste a fresh token for <strong>{tokenTarget.label}</strong> from Meta Developer Dashboard or BotFather.</>}
+          description={tokenTarget.channel === 'telegram'
+            ? <>Paste the rotated BotFather token and a new webhook secret for <strong>{tokenTarget.label}</strong>.</>
+            : <>Paste a fresh token for <strong>{tokenTarget.label}</strong> from Meta Developer Dashboard.</>}
           dismissible={busyId !== tokenTarget.id}
           footer={(
             <>
               <Button variant="secondary" onClick={() => setTokenTarget(null)}>Cancel</Button>
-              <Button variant="primary" type="submit" disabled={!tokenValue.trim() || busyId === tokenTarget.id}>
+              <Button variant="primary" type="submit" disabled={!tokenValue.trim() || (tokenTarget.channel === 'telegram' && !telegramSecretToken.trim()) || busyId === tokenTarget.id}>
                 {busyId === tokenTarget.id ? 'Saving…' : 'Save token'}
               </Button>
             </>
@@ -492,10 +498,10 @@ export default function ChannelsPage() {
             void confirmUpdateToken()
           }}
           size="md"
-          title="Update access token"
+          title={tokenTarget.channel === 'telegram' ? 'Update Telegram credentials' : 'Update access token'}
         >
           <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-calisto-ink">New token<RequiredMark /></span>
+            <span className="mb-2 block text-sm font-semibold text-calisto-ink">{tokenTarget.channel === 'telegram' ? 'New BotFather token' : 'New token'}<RequiredMark /></span>
             <input
               className="h-11 w-full rounded-xl border border-calisto-line px-4 text-sm"
               type="password"
@@ -503,6 +509,18 @@ export default function ChannelsPage() {
               onChange={(event) => setTokenValue(event.target.value)}
             />
           </label>
+          {tokenTarget.channel === 'telegram' && (
+            <label className="mt-4 block">
+              <span className="mb-2 block text-sm font-semibold text-calisto-ink">Webhook secret token<RequiredMark /></span>
+              <input
+                className="h-11 w-full rounded-xl border border-calisto-line px-4 text-sm"
+                type="password"
+                value={telegramSecretToken}
+                onChange={(event) => setTelegramSecretToken(event.target.value)}
+              />
+              <span className="mt-2 block text-xs text-calisto-body">Use 1–256 letters, numbers, underscores, or hyphens. Telegram sends it with every webhook request.</span>
+            </label>
+          )}
         </Modal>
       )}
     </PageContainer>

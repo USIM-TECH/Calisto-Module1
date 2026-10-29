@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage'
 import NotFoundPage from './pages/NotFoundPage'
 import LeadDetailPage from './pages/LeadDetailPage'
 import ChatbotPage from './pages/ChatbotPage'
+import AiSettingsPage from './pages/AiSettingsPage'
 import { fetchCurrentUser, logout, redirectToLogin, type AdminUser } from './lib/auth'
 import { CurrentUserContext } from './lib/current-user'
 import calistoLogo from '../calisto.svg'
@@ -22,6 +23,7 @@ const navItems = [
   { label: 'Products', to: '/products', icon: Boxes },
   { label: 'Presets', to: '/presets', icon: Sparkles },
   { label: 'Documents', to: '/knowledge', icon: BookOpen },
+  { label: 'AI Settings', to: '/ai-settings', icon: Sparkles },
   { label: 'Webchat', to: '/webchat', icon: MessageSquareText },
 ]
 
@@ -153,6 +155,7 @@ export default function App() {
             <Route path="/presets/new" element={<PresetProductsPage key="new" />} />
             <Route path="/presets/:presetId/products" element={<PresetProductsPage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
+            <Route path="/ai-settings" element={<AiSettingsPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>

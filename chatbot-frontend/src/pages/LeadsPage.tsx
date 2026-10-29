@@ -2,7 +2,7 @@ import { Clock3, Download, Mail, Search, UserRoundCheck, UsersRound, X } from 'l
 import type { LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { getLeads } from '../api/client'
+import { activateAiProvider, getEligibleAiProviders, getLeads, getWebchatSettings, updateWebchatSettings } from '../api/client'
 import Button from '../components/Button'
 import EmptyState from '../components/EmptyState'
 import { ChannelIcon, WhatsAppIcon } from '../components/ChannelIcon'
@@ -16,6 +16,7 @@ import { formatIntent } from '../lib/format'
 import { identityLabel } from '../lib/identity'
 import { pageSlice, useTablePaging } from '../lib/table-paging'
 import type { ChannelIdentityRecord, CustomerRecord, LeadsResponse } from '../types'
+import type { AiProviderRecord, ResponseMode } from '../types'
 
 type ChannelName = ChannelIdentityRecord['channel']
 
@@ -223,6 +224,16 @@ function SearchFilters({
       </div>
     </section>
   )
+}
+
+function AiControl() {
+  const [mode, setMode] = useState<ResponseMode | null>(null)
+  const [providers, setProviders] = useState<AiProviderRecord[]>([])
+  const [busy, setBusy] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+  useEffect(() => { void Promise.all([getWebchatSettings(), getEligibleAiProviders()]).then(([settings, result]) => { setMode(settings.responseMode); setProviders(result.providers); setLoadError(false) }).catch(() => setLoadError(true)) }, [])
+  const active = providers.find((provider) => provider.active)
+  return <section className="mb-5 rounded-2xl border border-calisto-line bg-calisto-surface p-4 shadow-dashboard"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-bold text-calisto-ink">AI Control</h2><p className="text-xs text-calisto-muted">Applies to Website Chat only. Social-channel response modes remain account-specific.</p></div><Link className="text-sm font-semibold text-calisto-accent" to="/ai-settings">Manage AI Providers</Link></div>{loadError ? <p className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700" role="alert">AI controls could not be loaded. Refresh to try again.</p> : <div className="mt-4 flex flex-wrap items-end gap-4"><label className="min-w-44 text-xs font-bold uppercase tracking-wider text-calisto-muted">Website response mode<Select aria-label="Website response mode" disabled={busy || !mode} fullWidth onChange={(value) => { const next = value as ResponseMode; setBusy(true); void updateWebchatSettings(next).then((saved) => setMode(saved.responseMode)).finally(() => setBusy(false)) }} options={[{ value: 'payload', label: 'Payload (Rasa)' }, { value: 'chat', label: 'Chat (LLM)' }]} value={mode ?? ''} /></label>{mode === 'chat' && <label className="min-w-64 text-xs font-bold uppercase tracking-wider text-calisto-muted">Active LLM<Select aria-label="Active LLM provider" disabled={busy || providers.length === 0} fullWidth onChange={(id) => { if (!id || id === active?.id) return; setBusy(true); void activateAiProvider(id).then(() => getEligibleAiProviders()).then((result) => setProviders(result.providers)).finally(() => setBusy(false)) }} options={providers.map((provider) => ({ value: provider.id, label: `${provider.name} · ${provider.provider} · ${provider.model}` }))} placeholder={providers.length ? 'Choose configuration' : 'No validated provider available'} value={active?.id ?? ''} /></label>}{mode === 'chat' && !providers.length && <span className="pb-2 text-sm text-calisto-muted">Add and validate a provider in AI Settings.</span>}</div>}</section>
 }
 
 function LeadsTable({
@@ -502,6 +513,7 @@ export default function LeadsPage() {
 
       {data && (
         <>
+          <AiControl />
           <section className="mb-5 grid gap-4 md:grid-cols-3">
             <StatsCard
               icon={UsersRound}

@@ -1,4 +1,7 @@
 export { ChatService, type ChatReply, type ChatServiceConfig } from './chat-service.js'
 export { ChatRetriever } from './retriever.js'
 export { OllamaProvider, type LlmProvider, type ChatMessage } from './llm-provider.js'
+export { HostedLlmProvider } from './llm-provider.js'
+export { ProviderConfigStore } from './provider-config-store.js'
+export { LlmProviderManager, RuntimeLlmProvider } from './provider-manager.js'
 export { generateConversationTitle, type TitleTurn } from './title-generator.js'

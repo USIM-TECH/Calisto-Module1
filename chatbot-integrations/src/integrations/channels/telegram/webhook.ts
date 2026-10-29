@@ -17,12 +17,15 @@ export async function handleTelegramWebhook({
   onUpdate,
 }: HandleTelegramWebhookArgs): Promise<WebhookResponse> {
   try {
-    if (config.secretToken) {
-      const header = req.headers['x-telegram-bot-api-secret-token']
-      if (header !== config.secretToken) {
-        logger.error('Telegram webhook secret token validation failed')
-        return { status: 401, body: 'Invalid secret token' }
-      }
+    const secret = config.secretToken.trim()
+    if (!secret) {
+      logger.error('Telegram webhook rejected because no secret token is configured')
+      return { status: 503, body: 'Telegram webhook secret token is not configured' }
+    }
+    const header = req.headers['x-telegram-bot-api-secret-token']
+    if (header !== secret) {
+      logger.error('Telegram webhook secret token validation failed')
+      return { status: 401, body: 'Invalid secret token' }
     }
 
     if (!req.body) {

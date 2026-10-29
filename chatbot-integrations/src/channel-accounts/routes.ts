@@ -54,7 +54,7 @@ function parseCredentials(channel: ManagedChannel, raw: Record<string, unknown>)
     case 'telegram':
       return {
         botToken: String(raw.botToken ?? ''),
-        secretToken: raw.secretToken ? String(raw.secretToken) : undefined,
+        secretToken: String(raw.secretToken ?? ''),
         apiBaseUrl: raw.apiBaseUrl ? String(raw.apiBaseUrl) : undefined,
       } satisfies TelegramCredentials
     default:

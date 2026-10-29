@@ -1,10 +1,14 @@
 import axios from 'axios'
 
-export function extractGraphApiError(error: unknown): string {
+export type MetaChannel = 'whatsapp' | 'instagram' | 'messenger'
+
+export function extractGraphApiError(error: unknown, channel?: MetaChannel): string {
   const err = error as { response?: { data?: { error?: { message?: string; code?: number } } }; message?: string }
   const meta = err.response?.data?.error
   if (meta?.code === 190) {
-    return 'WhatsApp access token is expired or invalid. In Meta Developer Dashboard → WhatsApp → API Setup, generate a new access token, then update this account under Channels (edit credentials).'
+    const product = channel === 'whatsapp' ? 'WhatsApp' : channel === 'messenger' ? 'Messenger' : channel === 'instagram' ? 'Instagram' : 'Meta'
+    const dashboard = channel === 'whatsapp' ? 'WhatsApp → API Setup' : channel === 'messenger' ? 'Messenger → Settings' : channel === 'instagram' ? 'Instagram → API setup' : 'the relevant Meta product settings'
+    return `${product} access token is expired or invalid. In Meta Developer Dashboard → ${dashboard}, generate or select a valid token, then update this account under Channels.`
   }
   if (meta?.message) return meta.message
   return err.message ?? 'Webhook registration failed'
@@ -23,8 +27,27 @@ export function extractTelegramApiError(error: unknown): string {
   return err.message ?? 'Telegram webhook registration failed'
 }
 
+export function normalizePublicWebhookBaseUrl(publicBaseUrl: string): string {
+  const raw = publicBaseUrl.trim().replace(/\/+$/, '')
+  let parsed: URL
+  try {
+    parsed = new URL(raw)
+  } catch {
+    throw new Error('PUBLIC_BASE_URL must be a valid https:// URL.')
+  }
+  const path = parsed.pathname.replace(/\/+$/, '')
+  const knownWebhookPath = /^\/webhooks(?:\/(?:messenger|instagram|whatsapp|telegram(?:\/[^/]+)?))?$/.test(path)
+  if (path && !knownWebhookPath) {
+    throw new Error('PUBLIC_BASE_URL must be the public base URL, not an unrelated path.')
+  }
+  parsed.pathname = ''
+  parsed.search = ''
+  parsed.hash = ''
+  return parsed.toString().replace(/\/$/, '')
+}
+
 export async function assertPublicWebhookBaseUrl(publicBaseUrl: string): Promise<string> {
-  const base = publicBaseUrl.replace(/\/$/, '')
+  const base = normalizePublicWebhookBaseUrl(publicBaseUrl)
   if (!base.startsWith('https://')) {
     throw new Error('PUBLIC_BASE_URL must start with https:// (Telegram and Meta require a public HTTPS URL).')
   }
@@ -56,6 +79,6 @@ export async function validateWhatsAppAccessToken(
     timeout: 10_000,
   })
   if (data?.error) {
-    throw new Error(extractGraphApiError({ response: { data } }))
+    throw new Error(extractGraphApiError({ response: { data } }, 'whatsapp'))
   }
 }

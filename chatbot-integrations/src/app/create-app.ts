@@ -73,7 +73,8 @@ import { AdminSessionService } from '../core/auth/session-service.js'
 import { getPrismaClient } from '../db/prisma.js'
 import { WebchatSettingsStore, registerWebchatSettingsRoutes } from '../webchat-settings/index.js'
 import type { AppDependencies } from './dependencies.js'
-import { OllamaProvider, generateConversationTitle } from '../core/chat/index.js'
+import { generateConversationTitle } from '../core/chat/index.js'
+import { registerProviderRoutes } from '../core/chat/provider-routes.js'
 import { createWebsiteRateLimiter } from './website-rate-limiter.js'
 import { normaliseEmail, normalisePhone } from '../leads/storage/helpers.js'
 import { absolutizeOutgoingMessages } from '../core/utils/absolutize-outgoing-messages.js'
@@ -125,6 +126,8 @@ export function createApp(dependencies: AppDependencies): Express {
     presetStore,
     storeStore,
     knowledgeChunkStore,
+    llmProviderManager,
+    llmProviderStore,
   } = dependencies
 
   const registry = channelAccountService?.registry
@@ -185,6 +188,7 @@ export function createApp(dependencies: AppDependencies): Express {
     trustProxy,
   })
   app.use(['/admin', '/reports'], requireAdmin)
+  if (llmProviderStore) registerProviderRoutes(app, llmProviderStore, llmProviderManager, logger)
 
   const router = express.Router()
   createWebhookRouter(router, {
@@ -228,12 +232,6 @@ export function createApp(dependencies: AppDependencies): Express {
   })
 
   // Short AI title for the /chatbot sidebar; the client falls back to its own title on any failure.
-  const titleProvider = new OllamaProvider({
-    ollamaUrl: config.llm.ollamaUrl,
-    model: config.llm.model,
-    timeoutMs: Math.min(config.chat.timeoutMs, 15_000),
-    temperature: 0.2,
-  })
   app.post('/webchat/title', async (req, res) => {
     const authHeader = typeof req.headers.authorization === 'string' ? req.headers.authorization : undefined
     if (config.website.authToken && authHeader !== `Bearer ${config.website.authToken}`) {
@@ -251,7 +249,7 @@ export function createApp(dependencies: AppDependencies): Express {
           .map((m: any) => ({ role: m.role, content: m.content }))
       : []
     try {
-      const title = await generateConversationTitle(titleProvider, turns)
+      const title = await generateConversationTitle(llmProviderManager.runtimeProvider(), turns)
       res.json({ title: title ?? null })
     } catch (error: any) {
       logger.warn(`Title generation failed: ${error.message}`)

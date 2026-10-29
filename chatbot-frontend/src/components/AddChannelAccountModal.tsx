@@ -36,7 +36,7 @@ const emptyCredentials = (channel: ManagedChannel): Credentials =>
 const emptyDrafts = (): Record<ManagedChannel, Credentials> =>
   Object.fromEntries(CHANNELS.map((channel) => [channel, emptyCredentials(channel)])) as Record<ManagedChannel, Credentials>
 
-const OPTIONAL_CREDENTIALS = ['wabaId', 'appToken', 'secretToken', 'apiBaseUrl']
+const OPTIONAL_CREDENTIALS = ['wabaId', 'appToken', 'apiBaseUrl']
 
 function credentialFieldsFor(channel: ManagedChannel): Array<{ key: string; label: string; secret?: boolean }> {
   switch (channel) {
@@ -66,7 +66,7 @@ function credentialFieldsFor(channel: ManagedChannel): Array<{ key: string; labe
     case 'telegram':
       return [
         { key: 'botToken', label: 'Bot token', secret: true },
-        { key: 'secretToken', label: 'Webhook secret token (recommended)', secret: true },
+        { key: 'secretToken', label: 'Webhook secret token', secret: true },
         { key: 'apiBaseUrl', label: 'API base URL (optional)' },
       ]
     default:

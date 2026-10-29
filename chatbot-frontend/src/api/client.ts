@@ -18,6 +18,8 @@ import type {
   WebchatSettings,
   PublicUrlStatus,
   RegisterAllWebhooksResult,
+  AiProviderName,
+  AiProviderRecord,
 } from '../types'
 import { redirectToLogin } from '../lib/auth'
 
@@ -353,6 +355,27 @@ export function updateWebchatSettings(responseMode: ResponseMode): Promise<Webch
     body: JSON.stringify({ responseMode }),
   })
 }
+
+export function getAiProviders(): Promise<{ providers: AiProviderRecord[] }> {
+  return request<{ providers: AiProviderRecord[] }>('/admin/ai/providers')
+}
+
+export function createAiProvider(payload: { name: string; provider: AiProviderName; model: string; apiKey?: string; enabled?: boolean }): Promise<AiProviderRecord> {
+  return request<AiProviderRecord>('/admin/ai/providers', { method: 'POST', body: JSON.stringify(payload) })
+}
+export function saveAiProvider(id: string, payload: { name: string; provider: AiProviderName; model: string; apiKey?: string; enabled?: boolean }): Promise<AiProviderRecord> {
+  return request<AiProviderRecord>(`/admin/ai/providers/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(payload) })
+}
+export function getEligibleAiProviders(): Promise<{ providers: AiProviderRecord[] }> { return request<{ providers: AiProviderRecord[] }>('/admin/ai/providers/eligible') }
+export function testAiProvider(id: string): Promise<{ ok: boolean; status: string; category?: string }> {
+  return request<{ ok: boolean; status: string; category?: string }>(`/admin/ai/providers/${encodeURIComponent(id)}/test`, { method: 'POST', body: '{}' })
+}
+export function discoverGeminiModels(id: string): Promise<{ models: Array<{ id: string; displayName: string }> }> {
+  return request<{ models: Array<{ id: string; displayName: string }> }>(`/admin/ai/providers/${encodeURIComponent(id)}/models`)
+}
+export function activateAiProvider(id: string): Promise<{ ok: boolean }> { return request<{ ok: boolean }>(`/admin/ai/providers/${encodeURIComponent(id)}/activate`, { method: 'POST', body: '{}' }) }
+export function disableAiProvider(id: string): Promise<{ ok: boolean }> { return request<{ ok: boolean }>(`/admin/ai/providers/${encodeURIComponent(id)}/disable`, { method: 'POST', body: '{}' }) }
+export function deleteAiProvider(id: string): Promise<void> { return request<void>(`/admin/ai/providers/${encodeURIComponent(id)}`, { method: 'DELETE' }) }
 
 /** Every product, fetched page by page (the list endpoint caps a page at 500). */
 export async function getAllProducts(): Promise<ProductListResult['items']> {

@@ -28,7 +28,7 @@ export interface MessengerCredentials {
 
 export interface TelegramCredentials {
   botToken: string
-  secretToken?: string
+  secretToken: string
   apiBaseUrl?: string
 }
 

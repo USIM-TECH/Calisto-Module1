@@ -92,6 +92,24 @@ model WebchatSettings {
   updatedAt    DateTime     @updatedAt
 }
 
+/// Runtime LLM provider settings. API keys are encrypted before persistence.
+model LlmProviderConfig {
+  id               String   @id @default(cuid())
+  name             String
+  provider         String
+  model            String
+  apiKeyEncrypted  String?  @db.Text
+  enabled          Boolean  @default(true)
+  active           Boolean  @default(false)
+  lastTestAt       DateTime?
+  lastTestStatus   String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([active, enabled])
+  @@index([provider, enabled])
+}
+
 /// One row per real human. Identifying fields (phone, email) are kept
 /// here so the same person on multiple channels collapses to one record.
 model Customer {

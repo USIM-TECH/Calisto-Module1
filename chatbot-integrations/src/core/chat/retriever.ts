@@ -47,7 +47,7 @@ export class ChatRetriever {
   }
 
   private async _searchProducts(filters: ProductSearchQuery): Promise<ProductRecord[]> {
-    const max = this._config.maxProducts
+    const max = Math.min(this._config.maxProducts, filters.limit ?? this._config.maxProducts)
     // "Cheaper"/"premium" asks are about price order, which the search only uses as a
     // tie-break, so pull a wide candidate set and order it by price ourselves.
     const byPrice = filters.priceModifier === 'cheap' ? 'asc'

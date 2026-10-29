@@ -77,6 +77,10 @@ function ciEquals(value: string | null | undefined, target: string): boolean {
   return value.toLowerCase() === target.toLowerCase()
 }
 
+function normalizeProductName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ')
+}
+
 function yesNoMatches(value: string | null | undefined, target: string | boolean): boolean {
   const expected = typeof target === 'boolean'
     ? (target ? 'yes' : 'no')
@@ -209,6 +213,10 @@ export class ProductSearchService {
     const wantsAllBrands = query.brand ? SHOW_ALL.has(query.brand.trim().toLowerCase()) : false
 
     const filtered = all.filter((p) => {
+      if (query.productId && p.productId.toLowerCase() !== query.productId.toLowerCase()) return false
+      if (query.productIds && !query.productIds.some((id) => id.toLowerCase() === p.productId.toLowerCase())) return false
+      if (query.productName && normalizeProductName(p.productName) !== normalizeProductName(query.productName)) return false
+      if (query.stockRequired && p.stockStatus.toLowerCase() === 'out_of_stock') return false
       if (query.uvProtection && !yesNoMatches(p.uvProtection, query.uvProtection)) return false
       if (query.polarized && !yesNoMatches(p.polarized, query.polarized)) return false
       if (query.multifocal !== undefined && !yesNoMatches(p.multifocal, query.multifocal)) return false
@@ -226,7 +234,9 @@ export class ProductSearchService {
       if (query.lensFeature && !lensFeatureMatches(p.lensFeature, query.lensFeature)) return false
       if (query.lensDuration && !ciIncludes(p.lensDuration, query.lensDuration)) return false
       if (query.productType && !ciIncludes(p.productType, query.productType) && !ciIncludes(query.productType, p.productType)) return false
-      if (query.brand && !wantsAllBrands && !ciEquals(p.brand, query.brand)) return false
+      // An explicit product identity wins over a contradictory brand field; do not
+      // silently substitute another model merely because its metadata disagrees.
+      if (query.brand && !query.productName && !query.productId && !wantsAllBrands && !ciEquals(p.brand, query.brand)) return false
       if (query.frameColor && !ciEquals(p.frameColor, query.frameColor)) return false
       if (query.frameShape && !ciEquals(p.frameShape, query.frameShape)) return false
       if (query.frameMaterial && !ciEquals(p.frameMaterial, query.frameMaterial)) return false

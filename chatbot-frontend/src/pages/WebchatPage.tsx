@@ -1,8 +1,9 @@
-import { Circle, ExternalLink, Globe2, History, MessageSquareText, Plus, Send, Trash2, UserRound } from 'lucide-react'
+import { Circle, ExternalLink, Globe2, History, Plus, Send, Trash2, UserRound } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { getWebchatSettings, postWebchatMessage, updateWebchatSettings } from '../api/client'
+import { getProducts, getWebchatSettings, postWebchatMessage, updateWebchatSettings } from '../api/client'
 import Button from '../components/Button'
 import ChatMessageBubble from '../components/ChatMessageBubble'
+import GuidedShoppingPanel, { type GuidedStep } from '../components/GuidedShoppingPanel'
 import PageContainer from '../components/PageContainer'
 import ResponseModeSelect, { RESPONSE_MODE_HELP } from '../components/ResponseModeSelect'
 import { useSnackbar } from '../components/Snackbar'
@@ -11,6 +12,7 @@ import Topbar from '../components/Topbar'
 import { getOrCreateSenderId, messagePreview, persistSenderId, resetSenderId } from '../lib/chat'
 import { conversationTitle, loadConversations, saveConversations, type StoredConversation } from '../lib/chat-history'
 import { displayName, useCurrentUser } from '../lib/current-user'
+import { buildGuidedSearchRequest, guidedSelectionLabel, type BudgetOption, type GuidedCategory } from '../lib/guided-shopping'
 import type { ResponseMode, WebchatResponse } from '../types'
 
 interface ChatBubble {
@@ -69,6 +71,18 @@ export default function WebchatPage() {
   const loading = status === 'Sending'
   const transcriptRef = useRef<HTMLDivElement | null>(null)
   const composerRef = useRef<HTMLTextAreaElement | null>(null)
+  const sendingRef = useRef(false)
+  const followLatestRef = useRef(true)
+  const brandRequestRef = useRef(0)
+  const [showLatest, setShowLatest] = useState(false)
+  const [guidedStep, setGuidedStep] = useState<GuidedStep>(() => bubbles.length === 0 ? 'welcome' : 'closed')
+  const [guidedCategory, setGuidedCategory] = useState<GuidedCategory | undefined>()
+  const [guidedBudget, setGuidedBudget] = useState<BudgetOption | undefined>()
+  const [guidedBrand, setGuidedBrand] = useState<string | undefined>()
+  const [guidedInStock, setGuidedInStock] = useState<boolean | undefined>()
+  const [guidedBrands, setGuidedBrands] = useState<string[]>([])
+  const [loadingBrands, setLoadingBrands] = useState(false)
+  const [promptsOpen, setPromptsOpen] = useState(true)
 
   useEffect(() => {
     getWebchatSettings()
@@ -90,8 +104,8 @@ export default function WebchatPage() {
   }
 
   useEffect(() => {
-    if (!transcriptRef.current) return
-    transcriptRef.current.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: 'smooth' })
+    if (!transcriptRef.current || !followLatestRef.current) return
+    transcriptRef.current.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: 'auto' })
   }, [bubbles, loading])
 
   // Save the open conversation to the history list whenever it gains messages.
@@ -118,7 +132,9 @@ export default function WebchatPage() {
   }, [message])
 
   async function sendMessage(text: string, displayText?: string) {
-    if (!text.trim() || loading) return
+    if (!text.trim() || sendingRef.current) return
+    sendingRef.current = true
+    followLatestRef.current = true
     const trimmed = text.trim()
     const visible = (displayText ?? trimmed).trim()
     setBubbles((prev) => [
@@ -149,28 +165,99 @@ export default function WebchatPage() {
       }))
       setBubbles((prev) => [...prev, ...botBubbles])
       setStatus('Ready')
-    } catch (caught: unknown) {
+    } catch {
       setStatus('Failed')
-      setError(caught instanceof Error ? caught.message : 'Message failed.')
+      setError('We could not confirm a response. Check your connection and try again when ready. Your message may already have been received.')
+    } finally {
+      sendingRef.current = false
     }
   }
 
+  function resetGuidedFlow() {
+    brandRequestRef.current += 1
+    setGuidedCategory(undefined)
+    setGuidedBudget(undefined)
+    setGuidedBrand(undefined)
+    setGuidedInStock(undefined)
+    setGuidedBrands([])
+    setGuidedStep('welcome')
+  }
+
+  async function beginGuidedCategory(category: GuidedCategory) {
+    const requestId = ++brandRequestRef.current
+    setGuidedCategory(category)
+    setGuidedBudget(undefined)
+    setGuidedBrand(undefined)
+    setGuidedInStock(undefined)
+    setGuidedBrands([])
+    setGuidedStep('budget')
+    setLoadingBrands(true)
+    try {
+      const catalogue = await getProducts()
+      const brands = [...new Set(catalogue.items
+        .filter((product) => product.productType === category.productType && product.brand.trim())
+        .map((product) => product.brand.trim()))]
+        .sort((first, second) => first.localeCompare(second))
+        .slice(0, 6)
+      if (requestId === brandRequestRef.current) setGuidedBrands(brands)
+    } catch {
+      // The category/budget route still works if the optional brand list cannot load.
+      if (requestId === brandRequestRef.current) setGuidedBrands([])
+    } finally {
+      if (requestId === brandRequestRef.current) setLoadingBrands(false)
+    }
+  }
+
+  function chooseGuidedBudget(budget: BudgetOption) {
+    setGuidedBudget(budget)
+    setGuidedStep('preferences')
+  }
+
+  function submitGuidedSearch(options: { brand?: string; inStock?: boolean }) {
+    if (!guidedCategory || !guidedBudget) return
+    const selection = { category: guidedCategory, budget: guidedBudget, brand: options.brand, inStock: options.inStock }
+    setGuidedBrand(options.brand)
+    setGuidedInStock(options.inStock)
+    setGuidedStep('closed')
+    void sendMessage(buildGuidedSearchRequest(selection), guidedSelectionLabel(selection))
+  }
+
+  function exploreProducts() {
+    setGuidedStep('closed')
+    void sendMessage('Show me Calisto products that are currently in stock.', 'Explore available products')
+  }
+
+  function reopenGuidedFilters() {
+    setGuidedStep(guidedCategory && guidedBudget ? 'preferences' : guidedCategory ? 'budget' : 'welcome')
+    requestAnimationFrame(() => transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: 'smooth' }))
+  }
+
   function startNewChat() {
+    followLatestRef.current = true
+    setShowLatest(false)
     setSenderId(resetSenderId(WEBCHAT_SCOPE, SENDER_STORAGE))
     setBubbles([])
     setMessage('')
     setError(null)
     setStatus('Ready')
+    resetGuidedFlow()
   }
 
   function openConversation(conversation: StoredConversation<ChatBubble>) {
     if (loading || conversation.id === senderId) return
+    followLatestRef.current = true
+    setShowLatest(false)
     persistSenderId(conversation.id, WEBCHAT_SCOPE, SENDER_STORAGE)
     setSenderId(conversation.id)
     setBubbles(conversation.messages)
     setMessage('')
     setError(null)
     setStatus('Ready')
+    setGuidedStep('closed')
+    setGuidedCategory(undefined)
+    setGuidedBudget(undefined)
+    setGuidedBrand(undefined)
+    setGuidedInStock(undefined)
   }
 
   function deleteConversation(conversation: StoredConversation<ChatBubble>) {
@@ -216,9 +303,9 @@ export default function WebchatPage() {
         )}
       />
 
-      <div className="grid gap-6 xl:min-h-0 xl:flex-1 xl:grid-cols-[300px_minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-6 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
         {/* Below xl the conversation comes first so the chat is visible without scrolling. */}
-        <aside className="order-last flex flex-col gap-5 rounded-2xl border border-calisto-line bg-calisto-surface p-5 shadow-dashboard xl:order-none xl:overflow-y-auto">
+        <aside className="order-last flex min-w-0 flex-col gap-5 rounded-2xl border border-calisto-line bg-calisto-surface p-5 shadow-dashboard xl:order-none xl:min-h-0 xl:overflow-hidden">
           <section>
             <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-calisto-muted">Session</h2>
             <dl className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
@@ -258,7 +345,7 @@ export default function WebchatPage() {
               <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-calisto-muted">Response mode</h2>
               <ResponseModeSelect
                 aria-label="Website chat response mode"
-                disabled={savingMode}
+                disabled={savingMode || loading}
                 onChange={(mode) => void handleResponseMode(mode)}
                 value={responseMode}
               />
@@ -287,7 +374,7 @@ export default function WebchatPage() {
                 <History className="h-4 w-4 shrink-0" /> Your chats are saved here.
               </p>
             ) : (
-              <ul className="-mx-1 grid max-h-64 gap-1 overflow-y-auto px-1">
+              <ul className="-mx-1 grid max-h-[min(16rem,34vh)] min-h-0 gap-1 overflow-y-auto overflow-x-hidden px-1">
                 {conversations.map((conversation) => {
                   const active = conversation.id === senderId
                   return (
@@ -319,9 +406,12 @@ export default function WebchatPage() {
             )}
           </section>
 
-          <section className="border-t border-calisto-line-subtle pt-5">
-            <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-calisto-muted">Suggested prompts</h2>
-            <div className="flex flex-wrap gap-2">
+          <section className="border-t border-calisto-line-subtle pt-4">
+            <button aria-controls="suggested-prompts" aria-expanded={promptsOpen} className="flex w-full items-center justify-between text-left text-xs font-bold uppercase tracking-wider text-calisto-muted" onClick={() => setPromptsOpen((open) => !open)} type="button">
+              Suggested prompts
+              <span aria-hidden="true" className="text-base leading-none">{promptsOpen ? '−' : '+'}</span>
+            </button>
+            <div className={`${promptsOpen ? 'mt-3' : 'hidden'} flex flex-wrap gap-2`} id="suggested-prompts">
               {promptOptions.map((option) => (
                 <button
                   className="rounded-full border border-calisto-line bg-calisto-surface px-3.5 py-1.5 text-sm font-medium text-calisto-ink transition hover:border-calisto-accent/40 hover:bg-calisto-surface-muted disabled:opacity-60"
@@ -353,13 +443,40 @@ export default function WebchatPage() {
             id="messages"
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-calisto-surface-muted px-5 py-5"
             ref={transcriptRef}
+            role="log"
+            aria-label="Conversation messages"
+            aria-live="polite"
+            onScroll={(event) => {
+              const element = event.currentTarget
+              const nearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 80
+              followLatestRef.current = nearBottom
+              setShowLatest(!nearBottom)
+            }}
           >
             <div className="flex min-h-full flex-col gap-4">
-              {bubbles.length === 0 && !loading && (
-                <div className="flex min-h-40 flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-calisto-line bg-calisto-surface px-4 text-center text-sm text-calisto-muted">
-                  <MessageSquareText className="h-7 w-7 text-calisto-soft/70" />
-                  Send a message or pick a suggested prompt to start.
+              {bubbles.length === 0 && !loading && guidedStep === 'closed' && (
+                <div className="flex min-h-40 flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-calisto-line bg-calisto-surface px-4 text-center">
+                  <p className="text-sm font-semibold text-calisto-ink">Free-text chat is ready</p>
+                  <p className="text-sm text-calisto-muted">Ask Calisto anything about products, prices or availability.</p>
                 </div>
+              )}
+              {!loading && guidedStep !== 'closed' && (
+                <GuidedShoppingPanel
+                  brands={guidedBrands}
+                  budget={guidedBudget}
+                  category={guidedCategory}
+                  selectedBrand={guidedBrand}
+                  selectedInStock={guidedInStock}
+                  disabled={loading}
+                  loadingBrands={loadingBrands}
+                  onBack={() => setGuidedStep(guidedStep === 'preferences' ? 'budget' : 'welcome')}
+                  onCategory={(category) => void beginGuidedCategory(category)}
+                  onChooseBudget={chooseGuidedBudget}
+                  onExplore={exploreProducts}
+                  onReset={resetGuidedFlow}
+                  onSearch={submitGuidedSearch}
+                  step={guidedStep}
+                />
               )}
               {bubbles.map((bubble) => (
                 <ChatMessageBubble
@@ -372,19 +489,34 @@ export default function WebchatPage() {
                   payload={bubble.payload}
                   timestamp={bubble.timestamp}
                   variant="console"
+                  disabled={loading}
                 />
               ))}
               {loading && (
-                <div className="flex flex-col items-start gap-1.5">
+                <div role="status" className="flex flex-col items-start gap-1.5">
                   <TypingIndicator />
-                  <span className="px-1 text-xs text-calisto-soft">AI Assistant is typing…</span>
+                  <span className="px-1 text-xs text-calisto-muted">Preparing your response…</span>
+                </div>
+              )}
+              {bubbles.length > 0 && !loading && guidedStep === 'closed' && /could not find|no matching (?:product|option)/i.test(bubbles[bubbles.length - 1]?.content ?? '') && (
+                <div className="rounded-xl border border-calisto-line bg-calisto-surface p-4">
+                  <p className="text-sm font-semibold text-calisto-ink">Want to adjust your filters?</p>
+                  <p className="mt-1 text-sm text-calisto-muted">Choose another category, budget or availability option.</p>
+                  <button className="mt-3 min-h-10 rounded-lg bg-calisto-accent px-3.5 py-2 text-sm font-semibold text-calisto-surface transition hover:bg-calisto-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-calisto-accent/40" onClick={reopenGuidedFilters} type="button">Adjust filters</button>
                 </div>
               )}
             </div>
           </div>
 
+          {showLatest && (
+            <button type="button" className="shrink-0 border-t border-calisto-line bg-calisto-surface px-4 py-2 text-sm font-semibold text-calisto-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-calisto-accent" onClick={() => {
+              followLatestRef.current = true
+              transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: 'auto' })
+              setShowLatest(false)
+            }}>Jump to latest message ↓</button>
+          )}
           {error && (
-            <div className="shrink-0 border-t border-rose-100 bg-rose-50 px-5 py-2.5 text-sm font-medium text-rose-700">
+            <div role="alert" className="shrink-0 border-t border-rose-100 bg-rose-50 px-5 py-2.5 text-sm font-medium text-rose-700">
               {error}
             </div>
           )}
@@ -406,7 +538,7 @@ export default function WebchatPage() {
                 event.target.style.height = `${event.target.scrollHeight}px`
               }}
               onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
+                if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
                   event.preventDefault()
                   void sendMessage(message)
                 }

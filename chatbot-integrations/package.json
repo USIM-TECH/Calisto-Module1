@@ -8,6 +8,7 @@
     "build": "prisma generate && tsc",
     "dev": "tsx watch src/app/server.ts",
     "start": "node dist/app/server.js",
+    "test": "tsx --test src/channel-accounts/channel-account-registry.test.ts src/channel-accounts/webhook-utils.test.ts src/integrations/channels/telegram/webhook.test.ts src/integrations/channels/messenger/webhook.test.ts src/core/chat/answerer.test.ts src/core/chat/query-planner.test.ts src/core/chat/chat-service.test.ts src/core/chat/reply-mapper.test.ts src/core/chat/llm-provider.test.ts src/core/chat/provider-config-store.test.ts src/products/service/product-search.test.ts",
     "check:type": "tsc --noEmit",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",

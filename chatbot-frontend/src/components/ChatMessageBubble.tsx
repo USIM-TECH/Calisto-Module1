@@ -11,6 +11,7 @@ interface ChatMessageBubbleProps {
   payload?: OutgoingMessage
   timestamp: string
   variant?: 'chatbot' | 'console'
+  disabled?: boolean
 }
 
 export default function ChatMessageBubble({
@@ -22,6 +23,7 @@ export default function ChatMessageBubble({
   payload,
   timestamp,
   variant = 'chatbot',
+  disabled = false,
 }: ChatMessageBubbleProps) {
   const isCustomer = direction === 'customer'
   const customerBubble =
@@ -37,19 +39,22 @@ export default function ChatMessageBubble({
   const bubbleShape = variant === 'chatbot' && !isCustomer
     ? 'w-full'
     : 'max-w-[88%] rounded-2xl px-4 py-3 shadow-sm sm:max-w-[75%]'
+  const noMatchNotice = !isCustomer && /could not find|no matching (?:product|option)/i.test(content)
+  const systemError = !isCustomer && /trouble answering right now/i.test(content)
 
   return (
-    <div className={`flex flex-col gap-1.5 ${isCustomer ? 'items-end' : 'items-start'}`}>
+    <div className={`flex min-w-0 flex-col gap-1.5 ${isCustomer ? 'items-end' : 'items-start'}`}>
       {payload?.type === 'card' ? (
-        <CardMessage card={payload} onPostback={onPostback} />
+        <CardMessage card={payload} onPostback={onPostback} disabled={disabled} />
       ) : (
         <div
           className={[
             'whitespace-pre-wrap break-words text-sm leading-6',
             bubbleShape,
-            isCustomer ? customerBubble : assistantBubble,
+            systemError ? 'rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-950' : noMatchNotice ? 'rounded-xl border border-calisto-line bg-calisto-surface px-4 py-3 text-calisto-ink' : isCustomer ? customerBubble : assistantBubble,
           ].join(' ')}
         >
+          {(noMatchNotice || systemError) && <div className="mb-1 font-semibold">{systemError ? 'Unable to answer right now' : 'No matching products'}</div>}
           {content && <div>{content}</div>}
 
           {payload?.type === 'image' && (
@@ -66,6 +71,7 @@ export default function ChatMessageBubble({
                 <button
                   className="rounded-full border border-calisto-line bg-calisto-surface px-3.5 py-1.5 text-sm font-medium text-calisto-ink transition hover:border-calisto-accent/40 hover:bg-calisto-surface-muted"
                   key={option.value}
+                  disabled={disabled}
                   onClick={() => onPostback(option.value, option.label)}
                   type="button"
                 >
@@ -139,17 +145,24 @@ function StoreBadge({ store, href }: { store: AppStore; href: string }) {
 }
 
 /** Standalone card (not nested in a bubble): optional image, title, description, actions. */
-function CardMessage({ card, onPostback }: { card: CardPayload; onPostback: (value: string, label?: string) => void }) {
+function CardMessage({ card, onPostback, disabled }: { card: CardPayload; onPostback: (value: string, label?: string) => void; disabled: boolean }) {
+  const lines = card.subtitle?.split('\n') ?? []
+  const priceIndex = lines.findIndex((line) => /^Price:\s*RM\d[\d,.]*\s*$/i.test(line.trim()))
+  const price = priceIndex >= 0 ? lines[priceIndex].replace(/^Price:\s*/i, '') : undefined
   return (
-    <div className="w-full max-w-[88%] overflow-hidden rounded-2xl rounded-bl-md border border-calisto-line bg-calisto-surface shadow-sm sm:max-w-sm">
+    <div className="w-full min-w-0 max-w-lg overflow-hidden rounded-2xl border border-calisto-line bg-calisto-surface shadow-sm">
+      <div className="flex items-start gap-3 p-4">
       {card.imageUrl && (
-        <img alt={card.title} className="max-h-56 w-full border-b border-calisto-line-subtle object-cover" src={cardImageUrl(card.imageUrl)} />
+        <img alt={card.title} loading="lazy" className="h-20 w-20 shrink-0 rounded-lg border border-calisto-line-subtle object-contain sm:h-24 sm:w-24" src={cardImageUrl(card.imageUrl)} />
       )}
-      <div className="px-4 py-3.5">
+      <div className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">
+        {price && <div className="mb-1 text-xs font-medium text-calisto-muted">Product details</div>}
         <div className="text-sm font-semibold leading-6 text-calisto-ink">{card.title}</div>
+        {price && <div className="mt-1 text-lg font-bold tabular-nums text-calisto-ink">{price}</div>}
         {card.subtitle && (
-          <div className="mt-1 whitespace-pre-line text-sm leading-6 text-calisto-body">{card.subtitle}</div>
+          <div className="mt-1 whitespace-pre-line text-sm leading-6 text-calisto-body">{lines.filter((_, index) => index !== priceIndex).join('\n')}</div>
         )}
+      </div>
       </div>
       {card.actions && card.actions.length > 0 && (
         <div className="flex flex-wrap gap-2 border-t border-calisto-line-subtle bg-calisto-surface-muted px-4 py-3">
@@ -175,7 +188,8 @@ function CardMessage({ card, onPostback }: { card: CardPayload; onPostback: (val
               </a>
             ) : (
               <button
-                className={`${cardActionClass} ${tone}`}
+                className={`${cardActionClass} ${tone} disabled:cursor-not-allowed disabled:opacity-50`}
+                disabled={disabled}
                 key={action.value}
                 onClick={() => onPostback(action.value, action.title)}
                 type="button"

@@ -192,7 +192,7 @@ function ResultRow({ item }: { item: WebhookRegistrationResult }) {
           <span className="text-sm font-semibold text-calisto-ink">{item.label}</span>
           <span className="text-xs text-calisto-muted">{channelName(item.channel)}</span>
         </div>
-        {item.status === 'active' && <p className="mt-0.5 text-sm text-calisto-body">Connected</p>}
+        {item.status === 'active' && <p className="mt-0.5 text-sm text-calisto-body">Webhook registered — inbound and outbound delivery still need verification.</p>}
         {item.status === 'error' && <p className="mt-0.5 break-words text-sm leading-6 text-rose-700">{item.error}</p>}
         {item.status === 'manual' && (
           <div className="mt-1 text-sm leading-6 text-calisto-body">

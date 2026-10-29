@@ -86,6 +86,22 @@ export type ManagedChannel = 'whatsapp' | 'instagram' | 'messenger' | 'telegram'
 /** `payload` = buttons/forms flow, `chat` = free-text assistant. */
 export type ResponseMode = 'payload' | 'chat'
 
+export type AiProviderName = 'ollama' | 'gemini' | 'openai' | 'anthropic' | 'groq'
+export interface AiProviderRecord {
+  id: string
+  name: string
+  provider: AiProviderName
+  model: string
+  enabled: boolean
+  configured: boolean
+  eligible: boolean
+  active: boolean
+  keyPreview?: string
+  lastTestAt?: string
+  lastTestStatus?: 'succeeded' | 'failed'
+  lastTestCategory?: string
+}
+
 export interface WebchatSettings {
   responseMode: ResponseMode
 }

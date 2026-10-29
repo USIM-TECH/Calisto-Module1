@@ -198,7 +198,7 @@ export async function buildChannelAccountRegistry(args: BuildRegistryArgs): Prom
         const c = credentials as TelegramCredentials
         const config: TelegramConfig = {
           botToken: c.botToken,
-          secretToken: c.secretToken,
+          secretToken: c.secretToken ?? '',
           apiBaseUrl: c.apiBaseUrl,
         }
         client = new TelegramChannel(config, args.logger, args.cacheService, args.telegramAliasTtlSec)

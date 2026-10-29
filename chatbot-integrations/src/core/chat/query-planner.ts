@@ -10,6 +10,7 @@ export type ChatIntent = 'product' | 'knowledge' | 'chitchat' | 'off_topic'
 export interface ChatPlan {
   intent: ChatIntent
   filters: ProductSearchQuery
+  requestedCount?: number
 }
 
 export interface CatalogueVocabulary {
@@ -30,6 +31,10 @@ const PLAN_SCHEMA = {
     budget_min: { type: 'number' },
     budget_max: { type: 'number' },
     price_modifier: { type: 'string' },
+    exact_product_name: { type: 'string' },
+    product_id: { type: 'string' },
+    stock_required: { type: 'boolean' },
+    requested_count: { type: 'number' },
   },
   required: ['intent'],
 }
@@ -54,6 +59,9 @@ function buildSystemPrompt(vocab: CatalogueVocabulary): string {
     'polarized and uv_protection are "yes" when requested.',
     'budget_min and budget_max are numbers in MYR ("under 300" means budget_max 300).',
     'price_modifier is "cheap", "expensive" or "premium" only when the customer says so.',
+    'For an exact named product or model, fill exact_product_name or product_id; never substitute another model.',
+    'Set stock_required when the customer asks for in-stock or available products.',
+    'Set requested_count when the customer asks for a specific number of products.',
     'Resolve words like "that one" or "cheaper ones" using the recent conversation.',
   ].join('\n')
 }
@@ -65,6 +73,48 @@ function pickString(value: unknown): string | undefined {
 /** Budgets must be positive; models often emit 0 for "no budget", which would match nothing. */
 function pickNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined
+}
+
+const NUMBER_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5 }
+
+export function applyExplicitConstraints(message: string, plan: ChatPlan): ChatPlan {
+  const lower = message.toLowerCase()
+  const budget = /(?:under|below|less than|at most|up to|<=)\s*(?:rm\s*)?(\d+(?:\.\d+)?)/i.exec(lower)
+  if (budget) plan.filters.budgetMax = Number(budget[1])
+  const budgetRange = /(?:between|from)\s*(?:rm\s*)?(\d+(?:\.\d+)?)\s*(?:and|to|-)\s*(?:rm\s*)?(\d+(?:\.\d+)?)/i.exec(lower)
+  if (budgetRange) {
+    plan.filters.budgetMin = Number(budgetRange[1])
+    plan.filters.budgetMax = Number(budgetRange[2])
+  }
+  const budgetMinimum = /(?:from|over|above|at least|>=)\s*(?:rm\s*)?(\d+(?:\.\d+)?)/i.exec(lower)
+  if (budgetMinimum && !budgetRange) plan.filters.budgetMin = Number(budgetMinimum[1])
+
+  const count = /\b(?:recommend|show|find|suggest|give)\s+(?:me\s+)?(?:the\s+)?(\d+|one|two|three|four|five)\b/i.exec(lower)
+  if (count) plan.requestedCount = Math.min(10, Number(count[1]) || NUMBER_WORDS[count[1].toLowerCase()] || 1)
+
+  const productId = /\bP\d{3,}\b/i.exec(message)
+  if (productId) plan.filters.productId = productId[0].toUpperCase()
+  if (!plan.filters.productId) {
+    const namedProduct = /\b([a-z][a-z&'-]*(?:\s+[a-z][a-z&'-]*){0,2}\s+(?:luxe\s+)?(?:sunglasses|frames|lenses)\s+\d+)\b/i.exec(message)
+    if (namedProduct) plan.filters.productName = namedProduct[1].replace(/^(?:do you have|you have|show me|find)\s+/i, '')
+  }
+  if (/\b(?:in stock|available|currently available)\b/i.test(lower)) plan.filters.stockRequired = true
+  return plan
+}
+
+/** A new imperative product request starts a fresh constraint scope. */
+export function scopePlanToMessage(message: string, plan: ChatPlan): ChatPlan {
+  const lower = message.toLowerCase()
+  const hasBudget = /(?:(?:under|below|less than|at most|up to|<=)\s*(?:rm\s*)?\d|(?:between|from)\s*(?:rm\s*)?\d+(?:\.\d+)?\s*(?:and|to|-)\s*(?:rm\s*)?\d|(?:over|above|at least|>=)\s*(?:rm\s*)?\d)/i.test(lower)
+  const followUp = /\b(?:those|these|them|previous|earlier|just recommended|of the|cheapest|cheaper|first|second|third|which one|that one)\b/i.test(lower)
+  const freshRequest = /\b(?:recommend|show|find|suggest|give)\b/i.test(lower)
+  if (freshRequest && !followUp && !hasBudget) {
+    delete plan.filters.budgetMin
+    delete plan.filters.budgetMax
+    delete plan.filters.budgetBucket
+    delete plan.filters.priceRange
+  }
+  return plan
 }
 
 /** polarized / uv_protection are only useful as "yes"; a "no" is the model filling in blanks. */
@@ -104,6 +154,9 @@ export function sanitizePlan(raw: unknown, vocab: CatalogueVocabulary): ChatPlan
     budgetMin: pickNumber(data.budget_min),
     budgetMax: pickNumber(data.budget_max),
     priceModifier: PRICE_MODIFIERS.has(String(data.price_modifier)) ? String(data.price_modifier) : undefined,
+    productName: pickString(data.exact_product_name),
+    productId: pickString(data.product_id),
+    stockRequired: data.stock_required === true ? true : undefined,
   }
   if (filters.budgetMin !== undefined && filters.budgetMax !== undefined && filters.budgetMin > filters.budgetMax) {
     delete filters.budgetMin
@@ -111,7 +164,7 @@ export function sanitizePlan(raw: unknown, vocab: CatalogueVocabulary): ChatPlan
   for (const key of Object.keys(filters) as Array<keyof ProductSearchQuery>) {
     if (filters[key] === undefined) delete filters[key]
   }
-  return { intent, filters }
+  return { intent, filters, requestedCount: pickNumber(data.requested_count) }
 }
 
 export class QueryPlanner {
@@ -129,7 +182,7 @@ export class QueryPlanner {
       { temperature: 0, jsonSchema: PLAN_SCHEMA },
     )
     try {
-      return sanitizePlan(JSON.parse(raw), vocab)
+      return scopePlanToMessage(message, applyExplicitConstraints(message, sanitizePlan(JSON.parse(raw), vocab)))
     } catch {
       // Unparseable output: treat it as a plain product question rather than failing the chat.
       return FALLBACK_PLAN
