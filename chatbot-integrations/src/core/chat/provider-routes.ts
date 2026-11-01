@@ -4,6 +4,7 @@ import axios from 'axios'
 import type { Logger } from '../utils/index.js'
 import type { LlmProviderManager } from './provider-manager.js'
 import type { ProviderConfigStore } from './provider-config-store.js'
+import type { LlmTelemetry } from './llm-telemetry.js'
 
 const providerSchema = z.enum(['ollama', 'gemini', 'openai', 'anthropic', 'groq'])
 const configSchema = z.object({ id: z.string().min(1).max(191).optional(), name: z.string().trim().min(1).max(120), provider: providerSchema, model: z.string().trim().min(1).max(120), apiKey: z.string().max(4096).optional(), enabled: z.boolean().optional() })
@@ -22,7 +23,8 @@ function failureCategory(error: unknown): 'invalid_credentials' | 'model_unavail
   return 'unknown_failure'
 }
 
-export function registerProviderRoutes(app: Express, store: ProviderConfigStore, manager: LlmProviderManager, logger: Logger): void {
+export function registerProviderRoutes(app: Express, store: ProviderConfigStore, manager: LlmProviderManager, logger: Logger, telemetry?: LlmTelemetry): void {
+  app.get('/admin/ai/metrics', (_req, res) => { res.json(telemetry?.snapshot() ?? { totalRequests: 0, events: [], byProvider: {} }) })
   app.get('/admin/ai/providers', async (_req, res) => {
     try { res.json({ providers: await store.list() }) }
     catch (error: any) { logger.error(`AI provider list failed: ${error?.stack ?? error?.message ?? 'unknown error'}`); res.status(500).json({ error: 'Unable to load AI provider configurations.' }) }

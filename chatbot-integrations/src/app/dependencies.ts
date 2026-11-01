@@ -25,10 +25,11 @@ import {
   type RuntimeStore,
 } from '../leads/index.js'
 import { getPrismaClient } from '../db/prisma.js'
-import { ChatService, ChatRetriever, LlmProviderManager, OllamaProvider, ProviderConfigStore } from '../core/chat/index.js'
+import { ChatService, ChatRetriever, LlmProviderManager, LlmTelemetry, OllamaProvider, ProviderConfigStore } from '../core/chat/index.js'
 import { ResponseModeResolver } from '../core/chat/mode-resolver.js'
 import { ProductSearchService } from '../products/service/product-search.js'
 import { WebchatSettingsStore } from '../webchat-settings/index.js'
+import { GuidedShoppingEngine } from '../core/guided-shopping/guided-shopping-engine.js'
 import { PrismaKnowledgeChunkStore, type KnowledgeChunkStore } from '../knowledge/index.js'
 import { PrismaProductStore, PrismaPresetStore, PrismaStoreStore, type PresetStore, type ProductStore, type StoreStore } from '../products/index.js'
 
@@ -54,6 +55,7 @@ export interface AppDependencies {
   hubspot?: HubSpotClient
   llmProviderManager: LlmProviderManager
   llmProviderStore?: ProviderConfigStore
+  llmTelemetry: LlmTelemetry
 }
 
 export function loadEnvironment(): void {
@@ -67,6 +69,7 @@ export async function createDependencies(): Promise<AppDependencies> {
   const config = loadConfig()
   const publicBaseUrl = new PublicBaseUrl(config.publicBaseUrl)
   const cacheService = await createCacheService(config, logger)
+  const llmTelemetry = new LlmTelemetry()
 
   if (config.usedFileStorageFallback) {
     logger.warn(
@@ -116,6 +119,7 @@ export async function createDependencies(): Promise<AppDependencies> {
           model: config.llm.model,
           timeout: config.llm.timeoutMs,
           temperature: config.llm.temperature,
+          telemetry: llmTelemetry,
         },
         logger,
       )
@@ -132,6 +136,7 @@ export async function createDependencies(): Promise<AppDependencies> {
     llmProviderStore,
     { ollamaUrl: config.llm.ollamaUrl, model: config.llm.model, timeoutMs: config.chat.timeoutMs, temperature: config.chat.temperature },
     logger,
+    llmTelemetry,
   )
 
   if (llmClassifier) {
@@ -198,7 +203,9 @@ export async function createDependencies(): Promise<AppDependencies> {
     responseStyle: config.responseStyle,
     chat,
   })
-  const website = new WebsiteChannel(orchestrator, logger)
+  const website = productStore
+    ? new WebsiteChannel(orchestrator, logger, new GuidedShoppingEngine(productStore, new ProductSearchService(productStore)))
+    : new WebsiteChannel(orchestrator, logger)
 
   if (config.storageBackend === 'mysql') {
     if (!config.channelCredentialsEncryptionKey) {
@@ -217,6 +224,7 @@ export async function createDependencies(): Promise<AppDependencies> {
         config.cache.telegramAliasTtlSec,
         publicBaseUrl,
         config.cloudflaredMetricsPort,
+        productStore,
       )
       await channelAccountService.initialize()
       logger.info(`Channel account registry loaded (${channelAccountService.registry.size} enabled account(s))`)
@@ -257,5 +265,6 @@ export async function createDependencies(): Promise<AppDependencies> {
     hubspot,
     llmProviderManager,
     llmProviderStore,
+    llmTelemetry,
   }
 }

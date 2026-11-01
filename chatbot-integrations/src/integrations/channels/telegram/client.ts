@@ -7,6 +7,8 @@ import { normalizeTelegramUpdate } from './incoming.js'
 import { buildTelegramSendPayload } from './outgoing.js'
 import type { TelegramUpdate } from './types.js'
 import { handleTelegramWebhook } from './webhook.js'
+import { TelegramGuidedShopping } from './guided-shopping.js'
+import type { ProductStore } from '../../../products/storage/product-store.interface.js'
 
 export interface TelegramConfig {
   botToken: string
@@ -20,17 +22,22 @@ export class TelegramChannel {
   private readonly _baseUrl: string
   private readonly _callbackAliases: CallbackAliasStore
   private _onMessage?: (message: IncomingMessage) => Promise<void>
+  private readonly _guided?: TelegramGuidedShopping
+  private readonly _handledGuidedCallbacks = new Set<string>()
 
   constructor(
     config: TelegramConfig,
     logger: Logger,
     cacheService: CacheService,
     aliasTtlSec: number,
+    productStore?: ProductStore,
+    accountId: string = 'default',
   ) {
     this._config = config
     this._logger = logger
     this._baseUrl = `${config.apiBaseUrl ?? 'https://api.telegram.org'}/bot${config.botToken}`
     this._callbackAliases = createCallbackAliasStore(cacheService, aliasTtlSec)
+    this._guided = productStore ? new TelegramGuidedShopping(productStore, accountId) : undefined
   }
 
   public onMessage(handler: (message: IncomingMessage) => Promise<void>) {
@@ -133,6 +140,19 @@ export class TelegramChannel {
     })
     if (!incoming) {
       return
+    }
+
+    if (this._guided) {
+      const callbackId = update.callback_query?.id
+      if (callbackId && this._handledGuidedCallbacks.has(callbackId)) return
+      const handled = await this._guided.handle(incoming.conversationId, incoming.text, (message) => this.sendMessage(incoming.conversationId, message), callbackId)
+      if (handled) {
+        if (callbackId) {
+          this._handledGuidedCallbacks.add(callbackId)
+          if (this._handledGuidedCallbacks.size > 1000) this._handledGuidedCallbacks.delete(this._handledGuidedCallbacks.values().next().value!)
+        }
+        return
+      }
     }
 
     if (this._onMessage) {

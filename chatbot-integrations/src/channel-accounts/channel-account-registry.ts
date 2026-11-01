@@ -7,6 +7,7 @@ import { TelegramChannel, type TelegramConfig } from '../integrations/channels/t
 import { WhatsAppChannel, type WhatsAppConfig } from '../integrations/channels/whatsapp/index.js'
 import { createNlpMessageHandler } from '../app/message-handler.js'
 import type { LeadOrchestrator } from '../leads/index.js'
+import type { ProductStore } from '../products/storage/product-store.interface.js'
 import { ChannelAccountStore } from './channel-account-store.js'
 import type {
   ChannelAccountRecord,
@@ -65,6 +66,7 @@ interface BuildRegistryArgs {
   cacheService: CacheService
   orchestrator: LeadOrchestrator
   telegramAliasTtlSec: number
+  productStore?: ProductStore
   onInstagramTokenRefreshed?: (accountId: string, accessToken: string, expiresAt: Date) => Promise<void>
 }
 
@@ -201,7 +203,7 @@ export async function buildChannelAccountRegistry(args: BuildRegistryArgs): Prom
           secretToken: c.secretToken ?? '',
           apiBaseUrl: c.apiBaseUrl,
         }
-        client = new TelegramChannel(config, args.logger, args.cacheService, args.telegramAliasTtlSec)
+        client = new TelegramChannel(config, args.logger, args.cacheService, args.telegramAliasTtlSec, args.productStore, record.id)
         break
       }
       default:

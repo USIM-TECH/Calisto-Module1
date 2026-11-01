@@ -188,7 +188,7 @@ export function createApp(dependencies: AppDependencies): Express {
     trustProxy,
   })
   app.use(['/admin', '/reports'], requireAdmin)
-  if (llmProviderStore) registerProviderRoutes(app, llmProviderStore, llmProviderManager, logger)
+  if (llmProviderStore) registerProviderRoutes(app, llmProviderStore, llmProviderManager, logger, dependencies.llmTelemetry)
 
   const router = express.Router()
   createWebhookRouter(router, {

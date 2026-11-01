@@ -1,20 +1,24 @@
 import type { Logger } from '../utils/index.js'
 import { discoverGeminiModels, HostedLlmProvider, OllamaProvider, type DiscoveredGeminiModel, type GenerateOptions, type LlmProvider, type ChatMessage, type OllamaProviderConfig } from './llm-provider.js'
 import type { ProviderConfigStore } from './provider-config-store.js'
+import { LlmTelemetry, estimateUsage, type LlmStage } from './llm-telemetry.js'
+import { ReliableLlmProvider, type ReliabilityOptions } from './llm-reliability.js'
 
 export class RuntimeLlmProvider implements LlmProvider {
   public readonly name = 'runtime'
-  constructor(private readonly _resolve: () => Promise<{ provider: LlmProvider; config?: { id: string; provider: string; model: string } }>, private readonly _logger: Logger) {}
+  constructor(private readonly _resolve: () => Promise<{ provider: LlmProvider; config?: { id: string; provider: string; model: string } }>, private readonly _logger: Logger, private readonly _telemetry?: LlmTelemetry) {}
   public async generate(messages: ChatMessage[], options?: GenerateOptions): Promise<string> {
     const start = Date.now()
     const resolved = await this._resolve()
-    const stage = /You classify customer messages/i.test(messages[0]?.content ?? '') ? 'planner' : /Calisto shopping assistant/i.test(messages[0]?.content ?? '') ? 'answerer' : 'other'
+    const stage: LlmStage = options?.stage ?? (/You classify customer messages/i.test(messages[0]?.content ?? '') ? 'planner' : /Calisto shopping assistant/i.test(messages[0]?.content ?? '') ? 'answerer' : 'other')
     try {
       const response = await resolved.provider.generate(messages, options)
+      this._telemetry?.record({ requestId: options?.requestId ?? LlmTelemetry.requestId(), provider: resolved.provider.name, model: resolved.config?.model ?? 'configured', stage, channel: options?.channel, accountId: options?.accountId, startedAt: new Date(start).toISOString(), durationMs: Date.now() - start, success: true, usage: estimateUsage(messages.map((message) => message.content).join('\n'), response, resolved.provider.lastUsage) })
       this._logger.info(`[LLM] config=${resolved.config?.id ?? 'environment-ollama'} provider=${resolved.provider.name} model=${resolved.config?.model ?? 'configured'} stage=${stage} result=success latency_ms=${Date.now() - start}`)
       return response
     } catch (error: any) {
       this._logger.warn(`[LLM] config=${resolved.config?.id ?? 'environment-ollama'} provider=${resolved.provider.name} model=${resolved.config?.model ?? 'configured'} stage=${stage} result=failure latency_ms=${Date.now() - start} category=${error?.response?.status ?? error?.code ?? 'unknown'}`)
+      this._telemetry?.record({ requestId: options?.requestId ?? LlmTelemetry.requestId(), provider: resolved.provider.name, model: resolved.config?.model ?? 'configured', stage, channel: options?.channel, accountId: options?.accountId, startedAt: new Date(start).toISOString(), durationMs: Date.now() - start, success: false, errorCategory: error?.response?.status ?? error?.code ?? 'unknown', usage: estimateUsage(messages.map((message) => message.content).join('\n'), '', resolved.provider.lastUsage) })
       throw error
     }
   }
@@ -24,14 +28,17 @@ export class RuntimeLlmProvider implements LlmProvider {
 }
 
 export class LlmProviderManager {
+  private readonly _reliable = new Map<string, LlmProvider>()
   constructor(
     private readonly _store: ProviderConfigStore | undefined,
     private readonly _ollama: OllamaProviderConfig,
     private readonly _logger: Logger,
+    private readonly _telemetry?: LlmTelemetry,
+    private readonly _reliability: ReliabilityOptions = {},
   ) {}
 
-  public runtimeProvider(): LlmProvider {
-    return new RuntimeLlmProvider(() => this.resolveWithMetadata(), this._logger)
+  public runtimeProvider(telemetry?: LlmTelemetry): LlmProvider {
+    return new RuntimeLlmProvider(() => this.resolveWithMetadata(), this._logger, telemetry ?? this._telemetry)
   }
 
   public async resolve(): Promise<LlmProvider> {
@@ -58,12 +65,22 @@ export class LlmProviderManager {
 
   private _fromConfig(active: { provider: string; model: string; apiKey?: string }): LlmProvider {
     if (active.provider === 'ollama') {
-      return new OllamaProvider({ ...this._ollama, model: active?.model || this._ollama.model })
+      const key = `ollama:${active?.model || this._ollama.model}`
+      const cached = this._reliable.get(key)
+      if (cached) return cached
+      const provider = new ReliableLlmProvider(new OllamaProvider({ ...this._ollama, model: active?.model || this._ollama.model }), this._reliability)
+      this._reliable.set(key, provider)
+      return provider
     }
     if (!active.apiKey) {
       this._logger.warn(`Active provider ${active.provider} has no key; request will use the safe Chat fallback`)
       throw new Error(`Active provider ${active.provider} is not configured`)
     }
-    return new HostedLlmProvider({ provider: active.provider as 'gemini' | 'openai' | 'anthropic' | 'groq', apiKey: active.apiKey, model: active.model, timeoutMs: this._ollama.timeoutMs, temperature: this._ollama.temperature })
+    const key = `${active.provider}:${active.model}:${active.apiKey}`
+    const cached = this._reliable.get(key)
+    if (cached) return cached
+    const provider = new ReliableLlmProvider(new HostedLlmProvider({ provider: active.provider as 'gemini' | 'openai' | 'anthropic' | 'groq', apiKey: active.apiKey, model: active.model, timeoutMs: this._ollama.timeoutMs, temperature: this._ollama.temperature }), this._reliability)
+    this._reliable.set(key, provider)
+    return provider
   }
 }

@@ -30,7 +30,7 @@ export async function generateConversationTitle(
       },
       { role: 'user', content: transcript },
     ],
-    { temperature: 0.2 },
+    { temperature: 0.2, stage: 'title' },
   )
 
   const title = raw

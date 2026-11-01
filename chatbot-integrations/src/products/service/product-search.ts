@@ -215,6 +215,7 @@ export class ProductSearchService {
     const filtered = all.filter((p) => {
       if (query.productId && p.productId.toLowerCase() !== query.productId.toLowerCase()) return false
       if (query.productIds && !query.productIds.some((id) => id.toLowerCase() === p.productId.toLowerCase())) return false
+      if (query.excludeProductIds?.some((id) => id.toLowerCase() === p.productId.toLowerCase())) return false
       if (query.productName && normalizeProductName(p.productName) !== normalizeProductName(query.productName)) return false
       if (query.stockRequired && p.stockStatus.toLowerCase() === 'out_of_stock') return false
       if (query.uvProtection && !yesNoMatches(p.uvProtection, query.uvProtection)) return false

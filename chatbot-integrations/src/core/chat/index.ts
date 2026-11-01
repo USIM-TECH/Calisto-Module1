@@ -4,4 +4,6 @@ export { OllamaProvider, type LlmProvider, type ChatMessage } from './llm-provid
 export { HostedLlmProvider } from './llm-provider.js'
 export { ProviderConfigStore } from './provider-config-store.js'
 export { LlmProviderManager, RuntimeLlmProvider } from './provider-manager.js'
+export { LlmTelemetry, estimateCost, estimateUsage, type LlmTelemetryEvent, type ProviderUsage, type LlmPricing } from './llm-telemetry.js'
+export { ReliableLlmProvider, classifyLlmError, isTransientLlmError, type LlmErrorCategory, type ReliabilityOptions } from './llm-reliability.js'
 export { generateConversationTitle, type TitleTurn } from './title-generator.js'

@@ -1,10 +1,10 @@
 import type { ProductStore } from '../../products/storage/product-store.interface.js'
 import type { ProductRecord } from '../../products/types.js'
-import type { Logger } from '../utils/index.js'
+import { sanitizeLogText, type Logger } from '../utils/index.js'
 import { Answerer, type StructuredChatAnswer } from './answerer.js'
 import { leaksInstructions, looksLikeInjection } from './guard.js'
 import type { ChatMessage, LlmProvider } from './llm-provider.js'
-import { QueryPlanner } from './query-planner.js'
+import { applyExplicitConstraints, clearExplicitlyUnconstrained, QueryPlanner } from './query-planner.js'
 import type { ChatRetriever } from './retriever.js'
 
 export interface ChatReply {
@@ -61,6 +61,35 @@ function normalizedBrand(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
+function isContinuation(message: string): boolean {
+  return /\b(?:more|another|other|options?|cheaper|cheapest|less expensive)\b/i.test(message)
+}
+
+function inheritPriorConstraints(
+  message: string,
+  history: ChatMessage[],
+  filters: import('../../products/types.js').ProductSearchQuery,
+  vocab: { productTypes: string[]; brands: string[] },
+) {
+  if (!isContinuation(message)) return
+  for (const entry of [...history].reverse()) {
+    if (entry.role !== 'user') continue
+    const recovered = applyExplicitConstraints(entry.content, { intent: 'product', filters: {} })
+    if (recovered.filters.budgetMin !== undefined || recovered.filters.budgetMax !== undefined) {
+      if (filters.budgetMin === undefined) filters.budgetMin = recovered.filters.budgetMin
+      if (filters.budgetMax === undefined) filters.budgetMax = recovered.filters.budgetMax
+    }
+    if (!filters.brand) filters.brand = requestedCatalogueBrand(entry.content, vocab.brands)
+    if (!filters.productType) {
+      filters.productType = vocab.productTypes.find((type) => {
+        const words = type.toLowerCase().split(/\s+/).filter((word) => word.length > 3)
+        const text = entry.content.toLowerCase()
+        return words.some((word) => text.includes(word))
+      })
+    }
+  }
+}
+
 /** Reject only an affirmative contradiction: a product name starts with another known catalogue brand. */
 function conflictsWithRequestedBrand(product: ProductRecord, requestedBrand: string, brands: string[]): boolean {
   const name = normalizedBrand(product.productName)
@@ -83,7 +112,12 @@ export function validateSelectedProducts(answer: StructuredChatAnswer, available
   return selected
 }
 
-function canonicalProductText(products: ProductRecord[], requestedCount?: number, rationale?: string): string {
+/**
+ * Product turns are grounded entirely from canonical records. The Answerer
+ * still selects IDs and can provide a rationale for internal diagnostics, but
+ * its free-form text is never allowed to introduce unverified catalogue facts.
+ */
+function canonicalProductText(products: ProductRecord[], requestedCount?: number): string {
   if (products.length === 0) return DEFAULT_NO_MATCH
   const facts = products.map((product) => {
     const stock = product.stockStatus.toLowerCase().replace(/_/g, ' ')
@@ -92,10 +126,7 @@ function canonicalProductText(products: ProductRecord[], requestedCount?: number
   const countNote = requestedCount && products.length < requestedCount
     ? ` I found only ${products.length} matching option${products.length === 1 ? '' : 's'} out of the ${requestedCount} requested.`
     : ''
-  const safeRationale = rationale && !/\bRM\s*\d|\b(?:in|out of) stock\b/i.test(rationale) && !products.some((product) => rationale.toLowerCase().includes(product.productName.toLowerCase()))
-    ? `${rationale.trim()} `
-    : ''
-  return `${safeRationale}Here are verified Calisto options: ${facts.join('; ')}.${countNote}`
+  return `Here are verified Calisto options: ${facts.join('; ')}.${countNote}`
 }
 
 async function priorProductIds(history: ChatMessage[], store: ProductStore): Promise<string[]> {
@@ -127,8 +158,12 @@ export class ChatService {
   }
 
   public async reply(message: string, history: ChatMessage[] = []): Promise<ChatReply> {
-    const recent = history.slice(-this._config.historyTurns)
-    if (looksLikeInjection(message)) {
+    const safeMessage = String(message).slice(0, 2_000).trim()
+    const recent = history.slice(-this._config.historyTurns).map((entry) => ({
+      ...entry,
+      content: entry.content.slice(0, 2_000),
+    }))
+    if (looksLikeInjection(safeMessage)) {
       this._logger.warn('[Chat] blocked a prompt-injection style message')
       return { text: this._config.offTopicMessage ?? DEFAULT_OFF_TOPIC, products: [] }
     }
@@ -137,16 +172,21 @@ export class ChatService {
         productTypes: await this._products.distinctProductTypes(),
         brands: await this._products.distinctBrands(),
       }
-      const plan = await this._planner.plan(message, recent, vocab)
-      if (plan.intent === 'chitchat' && includesProductRequest(message)) {
+      const plan = await this._planner.plan(safeMessage, recent, vocab)
+      clearExplicitlyUnconstrained(safeMessage, plan)
+      inheritPriorConstraints(safeMessage, recent, plan.filters, vocab)
+      if (plan.intent === 'chitchat' && includesProductRequest(safeMessage)) {
         plan.intent = 'product'
-        const productType = vocab.productTypes.find((value) => /sunglass/i.test(message) && /sunglass/i.test(value))
-          ?? vocab.productTypes.find((value) => /frame|glass|lens/i.test(message) && /frame|glass|lens/i.test(value))
+        const productType = vocab.productTypes.find((value) => /sunglass/i.test(safeMessage) && /sunglass/i.test(value))
+          ?? vocab.productTypes.find((value) => /frame|glass|lens/i.test(safeMessage) && /frame|glass|lens/i.test(value))
         if (productType) plan.filters.productType = productType
       }
-      if (plan.intent === 'product' && !plan.filters.brand) {
-        const brand = requestedCatalogueBrand(message, vocab.brands)
-        if (brand) plan.filters.brand = brand
+      if (plan.intent === 'product') {
+        const brand = requestedCatalogueBrand(safeMessage, vocab.brands)
+        const anyBrand = /\b(?:any|all)\s+brands?\b/i.test(safeMessage)
+        if (anyBrand) delete plan.filters.brand
+        else if (brand) plan.filters.brand = brand
+        else if (!isContinuation(safeMessage)) delete plan.filters.brand
       }
       this._logger.debug(`[Chat] intent=${plan.intent} filters=${JSON.stringify(plan.filters)}`)
 
@@ -155,16 +195,16 @@ export class ChatService {
       }
       // Mixed greetings such as "hi, I'm looking for sunglasses" are product
       // requests, even if a planner labels the opening phrase as chitchat.
-      if (plan.intent === 'chitchat' && recent.length === 0 && !includesProductRequest(message)) {
+      if (plan.intent === 'chitchat' && recent.length === 0 && !includesProductRequest(safeMessage)) {
         return { text: this._config.greetingMessage ?? DEFAULT_GREETING, products: [] }
       }
 
-      const followUpComparison = plan.intent === 'product' && /\b(?:cheapest|cheaper|least expensive)\b/i.test(message)
-      const previousIds = followUpComparison ? await priorProductIds(recent, this._products) : []
+      const followUpRequest = plan.intent === 'product' && isContinuation(safeMessage)
+      const previousIds = followUpRequest ? await priorProductIds(recent, this._products) : []
       const searchFilters = plan.intent === 'product'
-        ? { ...plan.filters, ...(previousIds.length > 0 ? { productIds: previousIds } : {}), limit: plan.requestedCount }
+        ? { ...plan.filters, ...(previousIds.length > 0 ? { excludeProductIds: previousIds } : {}), limit: plan.requestedCount }
         : null
-      let context = await this._retriever.retrieve(message, searchFilters)
+      let context = await this._retriever.retrieve(safeMessage, searchFilters)
       if (plan.intent === 'product' && plan.filters.brand && !plan.filters.productId && !plan.filters.productName) {
         const safeProducts = context.products.filter((product) => !conflictsWithRequestedBrand(product, plan.filters.brand!, vocab.brands))
         for (const product of context.products) {
@@ -173,26 +213,17 @@ export class ChatService {
         context = { ...context, products: safeProducts }
       }
       if (plan.intent === 'product' && context.products.length === 0) {
-        // Over-narrow filters are the usual cause, so retry on type and brand alone.
-        const { productType, brand } = plan.filters
-        const hasExactOrRequirement = Boolean(
-          plan.filters.productId || plan.filters.productName || plan.filters.budgetMin !== undefined ||
-          plan.filters.budgetMax !== undefined || plan.filters.stockRequired,
-        )
-        if (!hasExactOrRequirement && Object.keys(plan.filters).some((key) => key !== 'productType' && key !== 'brand')) {
-          context = await this._retriever.retrieve(message, { productType, brand, limit: plan.requestedCount })
-        }
-        // Still nothing: the model would invent products to fill the gap, so don't ask it.
-        if (context.products.length === 0) {
-          return { text: this._config.noMatchMessage ?? noMatchMessage(plan.filters), products: [] }
-        }
+        // Never widen an explicit request after a zero-result search. A near
+        // match must not be presented as an exact match or silently violate a
+        // budget, stock, colour, material or lens constraint.
+        return { text: this._config.noMatchMessage ?? noMatchMessage(plan.filters), products: [] }
       }
       // A business question with nothing to ground it would be answered from the model's
       // imagination (hours, policies), so say we don't know instead of calling it.
       if (plan.intent === 'knowledge' && context.knowledge.length === 0) {
         return { text: this._config.noInfoMessage ?? DEFAULT_NO_INFO, products: [] }
       }
-      const answer = await this._answerer.answer(message, recent, context)
+      const answer = await this._answerer.answer(safeMessage, recent, context)
       const products = plan.intent === 'product'
         ? validateSelectedProducts(answer, context.products).slice(0, plan.requestedCount ?? context.products.length)
         : []
@@ -201,14 +232,14 @@ export class ChatService {
         return { text: this._config.noMatchMessage ?? noMatchMessage(plan.filters), products: [] }
       }
       // Product facts are rendered from canonical records, never from model text.
-      const text = plan.intent === 'product' ? canonicalProductText(products, plan.requestedCount, answer.text) : answer.text
+      const text = plan.intent === 'product' ? canonicalProductText(products, plan.requestedCount) : answer.text
       if (leaksInstructions(text)) {
         this._logger.warn('[Chat] reply echoed its instructions; replaced')
         return { text: this._config.offTopicMessage ?? DEFAULT_OFF_TOPIC, products: [] }
       }
       return { text, products }
     } catch (error: any) {
-      this._logger.error(`[Chat] reply failed: ${error.message}`)
+      this._logger.error(`[Chat] reply failed: ${sanitizeLogText(error.message)}`)
       return { text: this._config.fallbackMessage ?? DEFAULT_FALLBACK, products: [] }
     }
   }

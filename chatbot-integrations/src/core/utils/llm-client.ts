@@ -1,5 +1,7 @@
 import axios, { AxiosInstance } from 'axios'
 import type { Logger } from './logger.js'
+import { sanitizeLogText } from './log-sanitizer.js'
+import { LlmTelemetry } from '../chat/llm-telemetry.js'
 
 /**
  * LLM intent classifier (Llama 3 via Ollama) used as a *fallback* when Rasa's
@@ -19,6 +21,7 @@ export interface LlmClassifierConfig {
   timeout?: number
   /** Model sampling temperature. Low values keep the JSON output deterministic. */
   temperature?: number
+  telemetry?: LlmTelemetry
 }
 
 export interface LlmClassificationContext {
@@ -543,15 +546,23 @@ export class LlmIntentClassifier {
       ],
     }
 
-    const response = await this._http.post('/api/chat', body)
+    const startedAt = Date.now()
+    let response
+    try {
+      response = await this._http.post('/api/chat', body)
+    } catch (error) {
+      this._config.telemetry?.record({ requestId: LlmTelemetry.requestId(), provider: 'ollama', model: this._config.model, stage: 'classifier', startedAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, success: false, errorCategory: sanitizeLogText((error as any)?.code ?? (error as any)?.response?.status ?? 'unknown'), usage: { reported: false } })
+      throw error
+    }
     const content: string = response.data?.message?.content ?? ''
     const rawJson = extractJson(content)
     let parsed: Record<string, unknown>
     try {
       parsed = JSON.parse(rawJson)
     } catch (error: any) {
-      this._logger.warn(`[LLM] Failed to parse model output as JSON: ${error.message}. raw="${content}"`)
-      throw new Error(`LLM returned non-JSON output: ${content.slice(0, 200)}`)
+      this._logger.warn(`[LLM] Failed to parse model output as JSON: ${sanitizeLogText(error.message)}`)
+      this._config.telemetry?.record({ requestId: LlmTelemetry.requestId(), provider: 'ollama', model: this._config.model, stage: 'classifier', startedAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, success: false, errorCategory: 'structured_output_failure', usage: { reported: false } })
+      throw new Error('LLM returned non-JSON output')
     }
 
     const classification: LlmClassification = {
@@ -567,6 +578,7 @@ export class LlmIntentClassifier {
     this._logger.debug(
       `[LLM] intent=${classification.intent} confidence=${classification.confidence.toFixed(2)} entities=${JSON.stringify(classification.entities)}`,
     )
+    this._config.telemetry?.record({ requestId: LlmTelemetry.requestId(), provider: 'ollama', model: this._config.model, stage: 'classifier', startedAt: new Date(startedAt).toISOString(), durationMs: Date.now() - startedAt, success: true, usage: { reported: false } })
 
     return classification
   }

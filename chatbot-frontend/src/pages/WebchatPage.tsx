@@ -12,7 +12,7 @@ import Topbar from '../components/Topbar'
 import { getOrCreateSenderId, messagePreview, persistSenderId, resetSenderId } from '../lib/chat'
 import { conversationTitle, loadConversations, saveConversations, type StoredConversation } from '../lib/chat-history'
 import { displayName, useCurrentUser } from '../lib/current-user'
-import { buildGuidedSearchRequest, guidedSelectionLabel, type BudgetOption, type GuidedCategory } from '../lib/guided-shopping'
+import { buildGuidedSearchRequest, guidedCategories, guidedSelectionLabel, type BudgetOption, type GuidedCategory } from '../lib/guided-shopping'
 import type { ResponseMode, WebchatResponse } from '../types'
 
 interface ChatBubble {
@@ -131,7 +131,7 @@ export default function WebchatPage() {
     if (!message && composerRef.current) composerRef.current.style.height = ''
   }, [message])
 
-  async function sendMessage(text: string, displayText?: string) {
+  async function sendMessage(text: string, displayText?: string, guidedAction?: NonNullable<import('../types').WebchatRequest['guidedAction']>, hideGuidedChoices = false) {
     if (!text.trim() || sendingRef.current) return
     sendingRef.current = true
     followLatestRef.current = true
@@ -152,17 +152,20 @@ export default function WebchatPage() {
         message: trimmed,
         name: currentUser.name?.trim() || undefined,
         email: currentUser.email,
+        guidedAction,
       })
       persistSenderId(response.senderId, WEBCHAT_SCOPE, SENDER_STORAGE)
       setSenderId(response.senderId)
 
-      const botBubbles = response.messages.map((msg, index) => ({
+      const botBubbles = response.messages
+        .filter((msg) => !(hideGuidedChoices && msg.type === 'choice'))
+        .map((msg, index) => ({
         id: `${Date.now()}-bot-${index}`,
         direction: 'assistant' as const,
         content: messagePreview(msg),
         payload: msg,
         timestamp: currentStamp(),
-      }))
+        }))
       setBubbles((prev) => [...prev, ...botBubbles])
       setStatus('Ready')
     } catch {
@@ -181,6 +184,7 @@ export default function WebchatPage() {
     setGuidedInStock(undefined)
     setGuidedBrands([])
     setGuidedStep('welcome')
+    void sendMessage('Start over', 'Start over', { action: 'reset', eventId: `web-${Date.now()}-${Math.random().toString(36).slice(2)}` }, true)
   }
 
   async function beginGuidedCategory(category: GuidedCategory) {
@@ -191,6 +195,11 @@ export default function WebchatPage() {
     setGuidedInStock(undefined)
     setGuidedBrands([])
     setGuidedStep('budget')
+    void sendMessage(category.label, category.label, {
+      action: 'category',
+      value: category.productType ?? 'any',
+      eventId: `web-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    }, true)
     setLoadingBrands(true)
     try {
       const catalogue = await getProducts()
@@ -211,6 +220,17 @@ export default function WebchatPage() {
   function chooseGuidedBudget(budget: BudgetOption) {
     setGuidedBudget(budget)
     setGuidedStep('preferences')
+    void sendMessage(budget.label, budget.label, {
+      action: 'budget',
+      value: budget.maximum === undefined && budget.minimum === undefined
+        ? 'any'
+        : budget.minimum !== undefined && budget.maximum !== undefined
+          ? `range:${budget.minimum}-${budget.maximum}`
+          : budget.maximum !== undefined
+            ? `max:${budget.maximum}`
+            : `min:${budget.minimum}`,
+      eventId: `web-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    }, true)
   }
 
   function submitGuidedSearch(options: { brand?: string; inStock?: boolean }) {
@@ -219,12 +239,26 @@ export default function WebchatPage() {
     setGuidedBrand(options.brand)
     setGuidedInStock(options.inStock)
     setGuidedStep('closed')
-    void sendMessage(buildGuidedSearchRequest(selection), guidedSelectionLabel(selection))
+    void sendMessage(
+      buildGuidedSearchRequest(selection),
+      guidedSelectionLabel(selection),
+      { action: 'brand', value: options.brand ?? 'any', eventId: `web-${Date.now()}-${Math.random().toString(36).slice(2)}`, stockRequired: options.inStock ?? false },
+    )
   }
 
   function exploreProducts() {
-    setGuidedStep('closed')
-    void sendMessage('Show me Calisto products that are currently in stock.', 'Explore available products')
+    const explore = guidedCategories.find((item) => item.kind === 'explore')
+    if (!explore) return
+    setGuidedCategory(explore)
+    setGuidedBudget(undefined)
+    setGuidedBrand(undefined)
+    setGuidedInStock(undefined)
+    setGuidedStep('budget')
+    void sendMessage('Explore products', 'Explore products', {
+      action: 'category',
+      value: 'any',
+      eventId: `web-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    }, true)
   }
 
   function reopenGuidedFilters() {
@@ -469,7 +503,15 @@ export default function WebchatPage() {
                   selectedInStock={guidedInStock}
                   disabled={loading}
                   loadingBrands={loadingBrands}
-                  onBack={() => setGuidedStep(guidedStep === 'preferences' ? 'budget' : 'welcome')}
+                  onBack={() => {
+                    const nextStep = guidedStep === 'preferences' ? 'budget' : 'welcome'
+                    setGuidedStep(nextStep)
+                    void sendMessage('Back', 'Back', {
+                      action: guidedStep === 'preferences' ? 'back' : 'reset',
+                      value: guidedStep === 'preferences' ? 'budget' : undefined,
+                      eventId: `web-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                    }, true)
+                  }}
                   onCategory={(category) => void beginGuidedCategory(category)}
                   onChooseBudget={chooseGuidedBudget}
                   onExplore={exploreProducts}
@@ -485,7 +527,23 @@ export default function WebchatPage() {
                   customerLabel={senderName}
                   direction={bubble.direction}
                   key={bubble.id}
-                  onPostback={sendMessage}
+                  onPostback={(value, label) => {
+                    if (value.startsWith('guided:')) {
+                      const [, action, ...parts] = value.split(':')
+                      if (action === 'reset') setGuidedStep('welcome')
+                      else if (action === 'back') setGuidedStep('budget')
+                      else if (action === 'category') setGuidedStep('budget')
+                      else if (action === 'budget') setGuidedStep('preferences')
+                      else if (action === 'brand' || action === 'showMore') setGuidedStep('closed')
+                      void sendMessage(label ?? value, label, {
+                        action: action as NonNullable<import('../types').WebchatRequest['guidedAction']>['action'],
+                        value: parts.length ? parts.join(':') : undefined,
+                        eventId: `web-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                      })
+                      return
+                    }
+                    void sendMessage(value, label)
+                  }}
                   payload={bubble.payload}
                   timestamp={bubble.timestamp}
                   variant="console"

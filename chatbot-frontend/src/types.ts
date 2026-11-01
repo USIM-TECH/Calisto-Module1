@@ -3,6 +3,12 @@ export interface WebchatRequest {
   message: string
   name?: string
   email?: string
+  guidedAction?: {
+    action: 'start' | 'reset' | 'category' | 'budget' | 'brand' | 'back' | 'showMore'
+    value?: string
+    eventId?: string
+    stockRequired?: boolean
+  }
 }
 
 export interface OutgoingTextMessage {

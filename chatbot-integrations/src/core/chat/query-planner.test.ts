@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { applyExplicitConstraints, sanitizePlan, scopePlanToMessage } from './query-planner.js'
+import { applyExplicitConstraints, clearExplicitlyUnconstrained, sanitizePlan, scopePlanToMessage } from './query-planner.js'
 
 const vocab = { productTypes: ['Luxury Sunglasses'], brands: ['RayBan'] }
 
@@ -36,6 +36,14 @@ test('a genuine follow-up retains the prior budget scope', () => {
   assert.equal(plan.filters.budgetMax, 300)
 })
 
+test('show me more options retains the prior budget scope', () => {
+  const plan = scopePlanToMessage(
+    'Show me more options.',
+    { intent: 'product', filters: { budgetMax: 400 }, requestedCount: 1 },
+  )
+  assert.equal(plan.filters.budgetMax, 400)
+})
+
 test('explicit RM ranges retain deterministic lower and upper constraints', () => {
   const plan = applyExplicitConstraints(
     'Recommend three Luxury Sunglasses priced between RM300 and RM600, currently in stock.',
@@ -52,4 +60,27 @@ test('deterministic exact-name extraction overrides an incomplete LLM name', () 
     { intent: 'product', filters: { productName: 'RayBan Luxe Sunglasses' } },
   )
   assert.equal(plan.filters.productName, 'RayBan Luxe Sunglasses 275')
+})
+
+test('explicit any brand and no budget clear inherited constraints', () => {
+  const plan = clearExplicitlyUnconstrained(
+    'Show me sunglasses from any brand with no specific budget.',
+    { intent: 'product', filters: { brand: 'RayBan', budgetMax: 500 } },
+  )
+  assert.deepEqual(plan.filters, {})
+})
+
+test('preserves structured material and lens constraints for strict catalogue filtering', () => {
+  const plan = sanitizePlan({
+    intent: 'product',
+    product_type: 'Luxury Sunglasses',
+    frame_material: 'Titanium',
+    lens_type: 'Single Vision',
+    lens_feature: 'Blue Light',
+    lens_duration: 'Daily',
+  }, vocab)
+  assert.equal(plan.filters.frameMaterial, 'Titanium')
+  assert.equal(plan.filters.lensType, 'Single Vision')
+  assert.equal(plan.filters.lensFeature, 'Blue Light')
+  assert.equal(plan.filters.lensDuration, 'Daily')
 })

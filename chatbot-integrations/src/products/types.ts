@@ -52,6 +52,7 @@ export interface ProductListResult {
 export interface ProductSearchQuery {
   productId?: string
   productIds?: string[]
+  excludeProductIds?: string[]
   productName?: string
   productType?: string
   brand?: string

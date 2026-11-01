@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance } from 'axios'
+import type { ProviderUsage, LlmStage } from './llm-telemetry.js'
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant'
@@ -9,6 +10,10 @@ export interface GenerateOptions {
   temperature?: number
   /** When set, the model is constrained to return JSON matching this schema. */
   jsonSchema?: Record<string, unknown>
+  stage?: LlmStage
+  requestId?: string
+  channel?: string
+  accountId?: string
 }
 
 export type HostedLlmProviderName = 'gemini' | 'openai' | 'anthropic' | 'groq'
@@ -25,7 +30,7 @@ export interface DiscoveredGeminiModel { id: string; displayName: string }
 
 /** Uses Google's trusted models.list endpoint; the key never leaves this backend process. */
 export async function discoverGeminiModels(apiKey: string, timeoutMs: number): Promise<DiscoveredGeminiModel[]> {
-  const response = await axios.get('https://generativelanguage.googleapis.com/v1beta/models', { params: { key: apiKey }, timeout: timeoutMs })
+  const response = await axios.get('https://generativelanguage.googleapis.com/v1beta/models', { headers: { 'x-goog-api-key': apiKey }, timeout: timeoutMs })
   return (response.data?.models ?? [])
     .filter((model: any) => Array.isArray(model?.supportedGenerationMethods) && model.supportedGenerationMethods.includes('generateContent'))
     .map((model: any) => ({ id: String(model.name ?? '').replace(/^models\//, ''), displayName: String(model.displayName ?? model.name ?? '') }))
@@ -41,6 +46,7 @@ export interface LlmProvider {
   readonly name: string
   generate(messages: ChatMessage[], options?: GenerateOptions): Promise<string>
   healthCheck(): Promise<boolean>
+  readonly lastUsage?: ProviderUsage
 }
 
 export interface OllamaProviderConfig {
@@ -52,6 +58,7 @@ export interface OllamaProviderConfig {
 
 export class OllamaProvider implements LlmProvider {
   public readonly name = 'ollama'
+  public lastUsage?: ProviderUsage
   private readonly _http: AxiosInstance
 
   constructor(private readonly _config: OllamaProviderConfig) {
@@ -69,6 +76,12 @@ export class OllamaProvider implements LlmProvider {
     const content = response.data?.message?.content
     if (typeof content !== 'string' || !content.trim()) {
       throw new Error('Ollama returned an empty response')
+    }
+    this.lastUsage = {
+      inputTokens: response.data?.prompt_eval_count,
+      outputTokens: response.data?.eval_count,
+      totalTokens: typeof response.data?.prompt_eval_count === 'number' && typeof response.data?.eval_count === 'number' ? response.data.prompt_eval_count + response.data.eval_count : undefined,
+      reported: typeof response.data?.prompt_eval_count === 'number' || typeof response.data?.eval_count === 'number',
     }
     return content.trim()
   }
@@ -108,6 +121,7 @@ function geminiSchema(schema: Record<string, unknown>): Record<string, unknown> 
 /** Hosted adapters normalize provider-specific response envelopes to the same chat contract. */
 export class HostedLlmProvider implements LlmProvider {
   public readonly name: HostedLlmProviderName
+  public lastUsage?: ProviderUsage
   private readonly _http: AxiosInstance
 
   constructor(private readonly _config: HostedLlmProviderConfig) {
@@ -140,6 +154,7 @@ export class HostedLlmProvider implements LlmProvider {
       temperature: options.temperature ?? this._config.temperature,
       response_format: options.jsonSchema ? { type: 'json_object' } : undefined,
     }, { headers: { Authorization: `Bearer ${this._config.apiKey}` } })
+    this.lastUsage = response.data?.usage ? { inputTokens: response.data.usage.prompt_tokens, outputTokens: response.data.usage.completion_tokens, totalTokens: response.data.usage.total_tokens, reported: true } : undefined
     return extractOpenAiText(response.data)
   }
 
@@ -152,6 +167,7 @@ export class HostedLlmProvider implements LlmProvider {
       system: [system, structuredInstruction(options.jsonSchema)].filter(Boolean).join('\n'),
       messages: messages.filter((message) => message.role !== 'system'),
     }, { headers: { 'x-api-key': this._config.apiKey, 'anthropic-version': '2023-06-01' } })
+    this.lastUsage = response.data?.usage ? { inputTokens: response.data.usage.input_tokens, outputTokens: response.data.usage.output_tokens, totalTokens: (response.data.usage.input_tokens ?? 0) + (response.data.usage.output_tokens ?? 0), reported: true } : undefined
     return extractAnthropicText(response.data)
   }
 
@@ -170,8 +186,10 @@ export class HostedLlmProvider implements LlmProvider {
           responseSchema: options.jsonSchema ? geminiSchema(options.jsonSchema) : undefined,
         },
       },
-      { params: { key: this._config.apiKey } },
+      { headers: { 'x-goog-api-key': this._config.apiKey } },
     )
+    const usage = response.data?.usageMetadata
+    this.lastUsage = usage ? { inputTokens: usage.promptTokenCount, outputTokens: usage.candidatesTokenCount, totalTokens: usage.totalTokenCount, reported: true } : undefined
     return extractGeminiText(response.data)
   }
 }

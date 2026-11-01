@@ -32,6 +32,14 @@ test('exact product-name lookup does not substitute another model', async () => 
   assert.deepEqual(result.map((row) => row.productId), ['P0275'])
 })
 
+test('strict brand search does not reinterpret contradictory name metadata', async () => {
+  const contradictory = { ...product('P0123', 'RayBan Premium Frame 123', 374.09), productType: 'Designer Frames', brand: 'Burberry' }
+  const strict = await search([contradictory]).search({ brand: 'RayBan', productType: 'Designer Frames' })
+  const broad = await search([contradictory]).search({ productType: 'Designer Frames' })
+  assert.deepEqual(strict, [])
+  assert.deepEqual(broad.map((row) => row.productId), ['P0123'])
+})
+
 test('strict budget with no eligible rows returns an empty result', async () => {
   const result = await search([product('P1', 'Over Budget', 561.37)]).search({ budgetMax: 300, stockRequired: true })
   assert.deepEqual(result, [])
@@ -40,4 +48,9 @@ test('strict budget with no eligible rows returns an empty result', async () => 
 test('follow-up comparison can be restricted to previously verified product IDs', async () => {
   const result = await search([product('P1', 'First', 100), product('P2', 'Second', 50)]).search({ productIds: ['P1'] })
   assert.deepEqual(result.map((row) => row.productId), ['P1'])
+})
+
+test('follow-up recommendations exclude products already shown', async () => {
+  const result = await search([product('P1', 'First', 100), product('P2', 'Second', 50)]).search({ budgetMax: 150, excludeProductIds: ['P1'] })
+  assert.deepEqual(result.map((row) => row.productId), ['P2'])
 })

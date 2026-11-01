@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Menu, PanelLeftClose, PanelLeftOpen, Search, Send, SquarePen, X } from 'lucide-react'
 import { generateConversationTitle, postWebchatMessage } from '../api/client'
 import ChatMessageBubble from '../components/ChatMessageBubble'
+import GuidedShoppingPanel, { type GuidedStep } from '../components/GuidedShoppingPanel'
 import calistoLogo from '../../calisto.svg'
-import calistoSymbol from '../assets/calisto-symbol-black.webp'
 import {
   getOrCreateSenderId,
   messagePreview,
@@ -19,7 +19,8 @@ import {
   SMALL_TALK,
   type StoredConversation,
 } from '../lib/chat-history'
-import type { OutgoingMessage, WebchatResponse } from '../types'
+import { guidedCategories, type BudgetOption, type GuidedCategory } from '../lib/guided-shopping'
+import type { OutgoingMessage, WebchatRequest, WebchatResponse } from '../types'
 
 interface ConsoleMessage {
   content: string
@@ -63,6 +64,12 @@ export default function ChatbotPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [guidedStep, setGuidedStep] = useState<GuidedStep>(() => messages.length === 0 ? 'welcome' : 'closed')
+  const [guidedCategory, setGuidedCategory] = useState<GuidedCategory | undefined>()
+  const [guidedBudget, setGuidedBudget] = useState<BudgetOption | undefined>()
+  const [guidedBrand, setGuidedBrand] = useState<string | undefined>()
+  const [guidedInStock, setGuidedInStock] = useState<boolean | undefined>()
+  const [guidedBrands, setGuidedBrands] = useState<string[]>([])
   const transcriptRef = useRef<HTMLDivElement | null>(null)
   const composerRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -138,7 +145,7 @@ export default function ChatbotPage() {
     if (!message && composerRef.current) composerRef.current.style.height = ''
   }, [message])
 
-  async function sendMessage(text: string, displayText?: string) {
+  async function sendMessage(text: string, displayText?: string, guidedAction?: WebchatRequest['guidedAction'], hideGuidedChoices = false): Promise<WebchatResponse | undefined> {
     const trimmed = text.trim()
     if (!trimmed || isSending) return
     const visible = (displayText ?? trimmed).trim()
@@ -157,7 +164,7 @@ export default function ChatbotPage() {
     setError(null)
 
     try {
-      const response: WebchatResponse = await postWebchatMessage({ senderId, message: trimmed })
+      const response: WebchatResponse = await postWebchatMessage({ senderId, message: trimmed, guidedAction })
       persistSenderId(response.senderId, WEBCHAT_SCOPE)
       setSenderId(response.senderId)
 
@@ -167,7 +174,7 @@ export default function ChatbotPage() {
 
       setMessages((current) => [
         ...current,
-        ...replies.map((reply, index) => ({
+        ...replies.filter((reply) => !(hideGuidedChoices && reply.type === 'choice')).map((reply, index) => ({
           content: messagePreview(reply),
           direction: 'assistant' as const,
           id: `${Date.now()}-assistant-${index}`,
@@ -176,10 +183,76 @@ export default function ChatbotPage() {
         })),
       ])
       setStatus('Ready')
+      return response
     } catch (caught) {
       setStatus('Failed')
       setError(caught instanceof Error ? caught.message : 'Message failed.')
+      return undefined
     }
+  }
+
+  function eventId() { return `web-${Date.now()}-${Math.random().toString(36).slice(2)}` }
+
+  function resetGuidedFlow() {
+    setGuidedStep('welcome')
+    setGuidedCategory(undefined)
+    setGuidedBudget(undefined)
+    setGuidedBrand(undefined)
+    setGuidedInStock(undefined)
+    setGuidedBrands([])
+    void sendMessage('Start over', 'Start over', { action: 'reset', eventId: eventId() }, true)
+  }
+
+  function beginGuidedCategory(category: GuidedCategory) {
+    setGuidedCategory(category)
+    setGuidedBudget(undefined)
+    setGuidedBrand(undefined)
+    setGuidedInStock(undefined)
+    setGuidedBrands([])
+    setGuidedStep('budget')
+    void sendMessage(category.label, category.label, { action: 'category', value: category.productType ?? 'any', eventId: eventId() }, true)
+  }
+
+  async function chooseGuidedBudget(budget: BudgetOption) {
+    setGuidedBudget(budget)
+    setGuidedStep('preferences')
+    const value = budget.minimum === undefined && budget.maximum === undefined
+      ? 'any'
+      : budget.minimum !== undefined && budget.maximum !== undefined
+        ? `range:${budget.minimum}-${budget.maximum}`
+        : budget.maximum !== undefined ? `max:${budget.maximum}` : `min:${budget.minimum}`
+    const response = await sendMessage(budget.label, budget.label, { action: 'budget', value, eventId: eventId() }, true)
+    const choice = response?.messages.find((message) => message.type === 'choice')
+    if (choice?.type === 'choice') setGuidedBrands(choice.options.filter((option) => option.value.startsWith('guided:brand:')).map((option) => option.label))
+  }
+
+  function submitGuidedSearch(options: { brand?: string; inStock?: boolean }) {
+    if (!guidedCategory || !guidedBudget) return
+    setGuidedBrand(options.brand)
+    setGuidedInStock(options.inStock)
+    setGuidedStep('closed')
+    void sendMessage(
+      `${guidedCategory.label} ${guidedBudget.label}`,
+      [guidedCategory.label, guidedBudget.label, options.brand, options.inStock ? 'Available now' : undefined].filter(Boolean).join(' · '),
+      { action: 'brand', value: options.brand ?? 'any', stockRequired: options.inStock ?? false, eventId: eventId() },
+    )
+  }
+
+  function exploreProducts() {
+    const category = guidedCategories.find((item) => item.kind === 'explore')
+    if (!category) return
+    beginGuidedCategory(category)
+  }
+
+  function handlePostback(value: string, label?: string) {
+    if (!value.startsWith('guided:')) return void sendMessage(value, label)
+    const [, action, ...parts] = value.split(':')
+    if (action === 'reset') setGuidedStep('welcome')
+    else if (action === 'back') setGuidedStep('budget')
+    else if (action === 'category') setGuidedStep('budget')
+    else if (action === 'budget') setGuidedStep('preferences')
+    else if (action === 'brand' || action === 'showMore') setGuidedStep('closed')
+    void sendMessage(label ?? value, label, { action: action as NonNullable<WebchatRequest['guidedAction']>['action'], value: parts.length ? parts.join(':') : undefined, eventId: eventId() })
   }
 
   function handleResetSession() {
@@ -188,6 +261,12 @@ export default function ChatbotPage() {
     setMessages([])
     setError(null)
     setStatus('Ready')
+    setGuidedStep('welcome')
+    setGuidedCategory(undefined)
+    setGuidedBudget(undefined)
+    setGuidedBrand(undefined)
+    setGuidedInStock(undefined)
+    setGuidedBrands([])
     setMobileSidebarOpen(false)
   }
 
@@ -199,6 +278,7 @@ export default function ChatbotPage() {
     setMessages(conversation.messages)
     setError(null)
     setStatus('Ready')
+    setGuidedStep('closed')
     setMobileSidebarOpen(false)
   }
 
@@ -357,6 +437,29 @@ export default function ChatbotPage() {
     </aside>
   )
 
+  const guidedPanel = (
+    <GuidedShoppingPanel
+      brands={guidedBrands}
+      budget={guidedBudget}
+      category={guidedCategory}
+      selectedBrand={guidedBrand}
+      selectedInStock={guidedInStock}
+      disabled={isSending}
+      onBack={() => {
+        if (guidedStep === 'preferences') {
+          setGuidedStep('budget')
+          void sendMessage('Back', 'Back', { action: 'back', value: 'budget', eventId: eventId() }, true)
+        } else resetGuidedFlow()
+      }}
+      onCategory={(category) => beginGuidedCategory(category)}
+      onChooseBudget={(budget) => void chooseGuidedBudget(budget)}
+      onExplore={exploreProducts}
+      onReset={resetGuidedFlow}
+      onSearch={submitGuidedSearch}
+      step={guidedStep}
+    />
+  )
+
   return (
     // Claude-style layout: conversation sidebar on the left; the main area has a
     // slim top bar and one centred column. Before the first message the greeting
@@ -386,11 +489,7 @@ export default function ChatbotPage() {
         {!hasConversation ? (
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 pb-[12vh]">
             <div className="w-full max-w-3xl">
-              <div className="mb-8 flex flex-col items-center gap-3 text-center">
-                <img alt="Calisto" className="h-16 w-auto" src={calistoSymbol} />
-                <h1 className="text-2xl font-bold text-calisto-ink sm:text-3xl">How can I help you today?</h1>
-                <p className="text-sm text-calisto-muted">Ask about eyewear, stores, or book an eye test.</p>
-              </div>
+              {guidedPanel}
               {composer}
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 {promptOptions.map((option) => (
@@ -411,6 +510,7 @@ export default function ChatbotPage() {
           <>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" ref={transcriptRef}>
               <div className="mx-auto grid w-full max-w-3xl content-start gap-6 px-4 py-6">
+                {guidedStep !== 'closed' && guidedPanel}
                 {messages.map((entry) => (
                   <ChatMessageBubble
                     assistantLabel="Calisto Assistant"
@@ -418,7 +518,7 @@ export default function ChatbotPage() {
                     customerLabel="You"
                     direction={entry.direction}
                     key={entry.id}
-                    onPostback={sendMessage}
+                    onPostback={handlePostback}
                     payload={entry.payload}
                     timestamp={entry.timestamp}
                     variant="chatbot"

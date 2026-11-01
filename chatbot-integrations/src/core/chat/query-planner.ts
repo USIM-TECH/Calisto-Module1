@@ -26,6 +26,10 @@ const PLAN_SCHEMA = {
     brand: { type: 'string' },
     frame_color: { type: 'string' },
     frame_shape: { type: 'string' },
+    frame_material: { type: 'string' },
+    lens_type: { type: 'string' },
+    lens_feature: { type: 'string' },
+    lens_duration: { type: 'string' },
     polarized: { type: 'string' },
     uv_protection: { type: 'string' },
     budget_min: { type: 'number' },
@@ -61,6 +65,7 @@ function buildSystemPrompt(vocab: CatalogueVocabulary): string {
     'price_modifier is "cheap", "expensive" or "premium" only when the customer says so.',
     'For an exact named product or model, fill exact_product_name or product_id; never substitute another model.',
     'Set stock_required when the customer asks for in-stock or available products.',
+    'Preserve explicit frame material, lens type, lens feature and wear duration requests exactly in their matching fields.',
     'Set requested_count when the customer asks for a specific number of products.',
     'Resolve words like "that one" or "cheaper ones" using the recent conversation.',
   ].join('\n')
@@ -102,11 +107,24 @@ export function applyExplicitConstraints(message: string, plan: ChatPlan): ChatP
   return plan
 }
 
+/** Explicit negations remove constraints carried by an LLM or earlier turn. */
+export function clearExplicitlyUnconstrained(message: string, plan: ChatPlan): ChatPlan {
+  const lower = message.toLowerCase()
+  if (/\b(?:any|all)\s+brands?\b/i.test(lower)) delete plan.filters.brand
+  if (/\b(?:no|without)\s+(?:specific\s+)?budget\b|\bno budget specified\b/i.test(lower)) {
+    delete plan.filters.budgetMin
+    delete plan.filters.budgetMax
+    delete plan.filters.budgetBucket
+    delete plan.filters.priceRange
+  }
+  return plan
+}
+
 /** A new imperative product request starts a fresh constraint scope. */
 export function scopePlanToMessage(message: string, plan: ChatPlan): ChatPlan {
   const lower = message.toLowerCase()
   const hasBudget = /(?:(?:under|below|less than|at most|up to|<=)\s*(?:rm\s*)?\d|(?:between|from)\s*(?:rm\s*)?\d+(?:\.\d+)?\s*(?:and|to|-)\s*(?:rm\s*)?\d|(?:over|above|at least|>=)\s*(?:rm\s*)?\d)/i.test(lower)
-  const followUp = /\b(?:those|these|them|previous|earlier|just recommended|of the|cheapest|cheaper|first|second|third|which one|that one)\b/i.test(lower)
+  const followUp = /\b(?:those|these|them|previous|earlier|just recommended|of the|cheapest|cheaper|first|second|third|which one|that one|more|another|other|options?)\b/i.test(lower)
   const freshRequest = /\b(?:recommend|show|find|suggest|give)\b/i.test(lower)
   if (freshRequest && !followUp && !hasBudget) {
     delete plan.filters.budgetMin
@@ -149,6 +167,10 @@ export function sanitizePlan(raw: unknown, vocab: CatalogueVocabulary): ChatPlan
     brand: matchVocabulary(data.brand, vocab.brands),
     frameColor: pickString(data.frame_color),
     frameShape: pickString(data.frame_shape),
+    frameMaterial: pickString(data.frame_material),
+    lensType: pickString(data.lens_type),
+    lensFeature: pickString(data.lens_feature),
+    lensDuration: pickString(data.lens_duration),
     polarized: pickYes(data.polarized),
     uvProtection: pickYes(data.uv_protection),
     budgetMin: pickNumber(data.budget_min),
@@ -176,10 +198,13 @@ export class QueryPlanner {
         { role: 'system', content: buildSystemPrompt(vocab) },
         {
           role: 'user',
-          content: JSON.stringify({ recent_conversation: history, customer_message: message }),
+          content: JSON.stringify({
+            recent_conversation: history.map((entry) => ({ role: entry.role, content: entry.content.slice(0, 2_000) })),
+            customer_message: message.slice(0, 2_000),
+          }),
         },
       ],
-      { temperature: 0, jsonSchema: PLAN_SCHEMA },
+      { temperature: 0, jsonSchema: PLAN_SCHEMA, stage: 'planner' },
     )
     try {
       return scopePlanToMessage(message, applyExplicitConstraints(message, sanitizePlan(JSON.parse(raw), vocab)))

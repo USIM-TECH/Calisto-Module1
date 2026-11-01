@@ -11,6 +11,7 @@ import { ChannelAccountStore, validateCredentials } from './channel-account-stor
 import type { ChannelAccountInput, ChannelAccountUpdateInput, ManagedChannel } from './credential-types.js'
 import { detectTunnelUrl, type PublicBaseUrl } from '../app/public-base-url.js'
 import { assertPublicWebhookBaseUrl } from './webhook-utils.js'
+import type { ProductStore } from '../products/storage/product-store.interface.js'
 
 export interface WebhookRegistrationResult {
   id: string
@@ -39,6 +40,7 @@ export class ChannelAccountService {
     private readonly telegramAliasTtlSec: number,
     private readonly publicBaseUrl: PublicBaseUrl,
     private readonly cloudflaredMetricsPort?: number,
+    private readonly productStore?: ProductStore,
   ) {}
 
   public get registry(): ChannelAccountRegistry {
@@ -56,6 +58,7 @@ export class ChannelAccountService {
       cacheService: this.cacheService,
       orchestrator: this.orchestrator,
       telegramAliasTtlSec: this.telegramAliasTtlSec,
+      productStore: this.productStore,
       onInstagramTokenRefreshed: async (accountId, accessToken, expiresAt) => {
         await this.store.updateAccessToken(accountId, accessToken, expiresAt)
       },

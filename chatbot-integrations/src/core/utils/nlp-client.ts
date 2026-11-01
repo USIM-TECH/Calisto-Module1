@@ -8,6 +8,7 @@ import {
 import { QueryExpander } from '../context/query-expander.js'
 import { SessionMemoryManager } from '../context/session-memory.js'
 import type { CacheService } from '../../cache/cache-service.js'
+import { sanitizeLogText } from './log-sanitizer.js'
 
 
 export interface NLPClientConfig {
@@ -463,7 +464,7 @@ export class NLPClient {
       const expansion = await this._queryExpander.expand(safeSender, safeMessage)
       if (expansion.expanded && expansion.expanded_query) {
         this._logger.info(
-          `[Context] Query expansion applied: "${safeMessage}" → "${expansion.expanded_query}"`,
+          `[Context] Query expansion applied: "${sanitizeLogText(safeMessage)}" → "${sanitizeLogText(expansion.expanded_query)}"`,
         )
         safeMessage = expansion.expanded_query
       }
@@ -489,7 +490,7 @@ export class NLPClient {
 
       if (supportKeywordDetected) {
         this._logger.info(JSON.stringify({
-          message: safeMessage,
+          message: sanitizeLogText(safeMessage),
           support_keyword_detected: true,
           opportunistic_blocked: true,
           route: 'raw',
@@ -535,7 +536,7 @@ export class NLPClient {
 
           if (parseResult && parseResult.intent !== 'nlu_fallback' && parseResult.confidence >= nluFloor) {
             this._logger.debug(
-              `[NLU] Rasa classified "${truncateForLog(safeMessage)}" as ${parseResult.intent} ` +
+              `[NLU] Rasa classified "${sanitizeLogText(safeMessage)}" as ${parseResult.intent} ` +
               `(confidence=${parseResult.confidence.toFixed(2)}) — forwarding raw text`,
             )
             route = 'raw'
@@ -544,7 +545,7 @@ export class NLPClient {
               ? `${parseResult.intent}@${parseResult.confidence.toFixed(2)}`
               : 'parse-failed'
             this._logger.info(
-              `[NLU] Rasa unsure (${reason}) for "${truncateForLog(safeMessage)}" — invoking LLM fallback`,
+              `[NLU] Rasa unsure (${reason}) for "${sanitizeLogText(safeMessage)}" — invoking LLM fallback`,
             )
 
             try {
@@ -557,23 +558,23 @@ export class NLPClient {
                 rasaMessage = buildRasaIntentPayload(llmResult)
                 route = 'llm-trigger'
                 this._logger.info(
-                  `[LLM] Routed "${truncateForLog(safeMessage)}" -> ${rasaMessage} ` +
+                  `[LLM] Routed "${sanitizeLogText(safeMessage)}" -> ${sanitizeLogText(rasaMessage)} ` +
                   `(confidence=${llmResult.confidence.toFixed(2)})`,
                 )
               } else {
                 route = 'fallback-raw'
                 this._logger.info(
                   `[LLM] Low confidence (${llmResult.confidence.toFixed(2)}) for ` +
-                  `"${truncateForLog(safeMessage)}" — letting Rasa fallback fire`,
+                  `"${sanitizeLogText(safeMessage)}" — letting Rasa fallback fire`,
                 )
               }
             } catch (error: any) {
-              this._logger.error(`[LLM] Classification failed, letting Rasa fallback fire: ${error.message}`)
+              this._logger.error(`[LLM] Classification failed, letting Rasa fallback fire: ${sanitizeLogText(error.message)}`)
               route = 'fallback-raw'
             }
           } else {
             this._logger.debug(
-              `[NLU] Rasa unsure and LLM disabled — letting Rasa fallback fire for "${truncateForLog(safeMessage)}"`,
+              `[NLU] Rasa unsure and LLM disabled — letting Rasa fallback fire for "${sanitizeLogText(safeMessage)}"`,
             )
             route = 'fallback-raw'
           }
@@ -582,7 +583,7 @@ export class NLPClient {
     }
 
     try {
-      this._logger.debug(`[NLP] Sending to Rasa: sender="${safeSender}", message="${truncateForLog(rasaMessage)}", route=${route}`)
+      this._logger.debug(`[NLP] Sending to Rasa: sender="${sanitizeLogText(safeSender)}", route=${route}`)
 
       const response = await axios.post(
         `${rasaUrl}/webhooks/rest/webhook`,
@@ -641,7 +642,7 @@ export class NLPClient {
         .filter(Boolean)
         .join('\n\n')
 
-      this._logger.debug(`[NLP] Rasa response: ${combinedText.substring(0, 200)}...`)
+      this._logger.debug(`[NLP] Rasa response summary: ${sanitizeLogText(combinedText, 120)}`)
       this._logger.info(JSON.stringify({
         event: 'nlp_turn',
         channel: metadata?.channel,
@@ -832,6 +833,6 @@ function describeAxiosError(error: any, url: string): string {
   const message = typeof error?.message === 'string' && error.message.trim()
     ? error.message.trim()
     : (error?.code === 'ECONNREFUSED' ? 'connection refused (Rasa is not running)' : 'unknown error')
-  parts.push(`msg="${message}"`)
+  parts.push(`msg="${sanitizeLogText(message, 160)}"`)
   return parts.join(' ')
 }
